@@ -12,6 +12,7 @@ import {
 } from '../controllers/userController.js';
 import { authenticate } from '../../auth/middleware/auth.js';
 import { uploadMiddleware } from '../../../shared/utils/cloudinaryService.js';
+import { createDonationOrder, verifyDonation } from '../controllers/donationController.js';
 import userWalletRoutes from './userWalletRoutes.js';
 import complaintRoutes from './complaintRoutes.js';
 
@@ -46,6 +47,10 @@ router.use('/wallet', userWalletRoutes);
 
 // Complaint routes
 router.use('/complaints', complaintRoutes);
+
+// Donation routes
+router.post('/donation/create', createDonationOrder);
+router.post('/donation/verify', verifyDonation);
 
 export default router;
 

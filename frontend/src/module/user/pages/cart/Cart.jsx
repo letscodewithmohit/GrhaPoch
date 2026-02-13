@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Truck, Leaf, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Truck, Leaf, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, PlusCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -15,6 +15,14 @@ import { orderAPI, restaurantAPI, adminAPI, userAPI, API_ENDPOINTS } from "@/lib
 import { API_BASE_URL } from "@/lib/api/config"
 import { initRazorpayPayment } from "@/lib/utils/razorpay"
 import { toast } from "sonner"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetDescription,
+} from "@/components/ui/sheet"
 
 
 // Removed hardcoded suggested items - now fetching approved addons from backend
@@ -104,6 +112,7 @@ export default function Cart() {
   const [orderProgress, setOrderProgress] = useState(0)
   const [showOrderSuccess, setShowOrderSuccess] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState(null)
+  const [showAddressSheet, setShowAddressSheet] = useState(false)
 
   // Restaurant and pricing state
   const [restaurantData, setRestaurantData] = useState(null)
@@ -621,16 +630,10 @@ export default function Cart() {
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || cart[0]?.restaurant || "Restaurant"
 
-  // Handler to select address by label (Home, Office, Other)
-  const handleSelectAddressByLabel = async (label) => {
+  // Handler to select address (re-calculates pricing)
+  const handleSelectAddress = async (address) => {
     try {
-      // Find address with matching label
-      const address = addresses.find(addr => addr.label === label)
-
-      if (!address) {
-        toast.error(`No ${label} address found. Please add an address first.`)
-        return
-      }
+      if (!address) return
 
       // Get coordinates from address location
       const coordinates = address.location?.coordinates || []
@@ -638,7 +641,7 @@ export default function Cart() {
       const latitude = coordinates[1]
 
       if (!latitude || !longitude) {
-        toast.error(`Invalid coordinates for ${label} address`)
+        toast.error(`Invalid coordinates for address`)
         return
       }
 
@@ -670,14 +673,32 @@ export default function Cart() {
       }
       localStorage.setItem("userLocation", JSON.stringify(locationData))
 
-      toast.success(`${label} address selected!`)
+      toast.success(`Address selected!`)
 
-      // Force page reload to update location
-      window.location.reload()
+      // Close sheet
+      setShowAddressSheet(false)
+
+      // Instead of reload, we could trigger a re-fetch of location from useLocation hook 
+      // but the easiest for now to ensure consistency across all hooks (useZone, etc) is still a quick reload
+      // or we can just update the currentLocation object manually if it was possible.
+      // For now, let's keep the reload but make it feel faster
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
     } catch (error) {
-      console.error(`Error selecting ${label} address:`, error)
-      toast.error(`Failed to select ${label} address. Please try again.`)
+      console.error(`Error selecting address:`, error)
+      toast.error(`Failed to select address. Please try again.`)
     }
+  }
+
+  // Handler to select address by label (Home, Office, Other)
+  const handleSelectAddressByLabel = async (label) => {
+    const address = addresses.find(addr => addr.label === label)
+    if (!address) {
+      toast.error(`No ${label} address found. Please add an address first.`)
+      return
+    }
+    handleSelectAddress(address)
   }
 
   const handleApplyCoupon = async (coupon) => {
@@ -892,7 +913,7 @@ export default function Cart() {
       // If restaurant names match but IDs differ, that's OK (same restaurant, different ID format)
       // But log a warning in development
       if (uniqueRestaurantIds.length > 1 && uniqueRestaurantNames.length === 1) {
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.MODE === 'development') {
           console.warn('⚠️ Cart items have different restaurant IDs but same name. This is OK if IDs are in different formats.', {
             restaurantIds: uniqueRestaurantIds,
             restaurantName: uniqueRestaurantNames[0]
@@ -1243,7 +1264,7 @@ export default function Cart() {
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName === 'MoGrocery' ? 'GrhaPoch' : restaurantName}</p>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
-                  {restaurantData?.estimatedDeliveryTime || "10-15 mins"} to <span className="font-semibold">Location</span>
+                  {restaurantData?.estimatedDeliveryTime || "10-15 mins"} to <button onClick={() => setShowAddressSheet(true)} className="font-semibold hover:text-red-600 transition-colors">{defaultAddress?.label || "Location"}</button>
                   <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">{defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || defaultAddress?.city || "Select address") : "Select address"}</span>
                 </p>
               </div>
@@ -1573,43 +1594,45 @@ export default function Cart() {
 
               {/* Delivery Address */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
-                <Link className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <MapPin className="h-4 w-4 md:h-5 md:w-5 text-gray-500 dark:text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
-                        Delivery at <span className="font-semibold">Location</span>
-                      </p>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Add delivery address") : "Add delivery address"}
-                      </p>
-                      {/* Address Selection Buttons */}
-                      <div className="flex gap-2 mt-2">
-                        {["Home", "Office", "Other"].map((label) => {
-                          const addressExists = addresses.some(addr => addr.label === label)
-                          return (
-                            <button
-                              key={label}
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                handleSelectAddressByLabel(label)
-                              }}
-                              disabled={!addressExists}
-                              className={`text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 rounded-md border transition-colors ${addressExists
-                                ? 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 bg-white dark:bg-[#1a1a1a]'
-                                : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
-                                }`}
-                            >
-                              {label}
-                            </button>
-                          )
-                        })}
-                      </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <MapPin className="h-4 w-4 md:h-5 md:w-5 text-gray-500 dark:text-gray-400" />
+                      <button onClick={() => setShowAddressSheet(true)} className="flex-1 text-left">
+                        <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
+                          Delivery at <span className="font-semibold">{defaultAddress?.label || "Location"}</span>
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                          {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Add delivery address") : "Add delivery address"}
+                        </p>
+                      </button>
+                    </div>
+                    {/* Address Selection Buttons */}
+                    <div className="flex gap-2 mt-2 ml-7 md:ml-9">
+                      {["Home", "Office", "Other"].map((label) => {
+                        const addressExists = addresses.some(addr => addr.label === label)
+                        return (
+                          <button
+                            key={label}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleSelectAddressByLabel(label)
+                            }}
+                            disabled={!addressExists}
+                            className={`text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 rounded-md border transition-colors ${addressExists
+                              ? 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 bg-white dark:bg-[#1a1a1a]'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
+                              }`}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
-                </Link>
+                  <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-gray-400" onClick={() => setShowAddressSheet(true)} />
+                </div>
               </div>
 
               {/* Contact */}
@@ -1724,11 +1747,11 @@ export default function Cart() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {/* Bottom Sticky - Place Order */}
-      <div className="bg-white dark:bg-[#1a1a1a] border-t dark:border-gray-800 shadow-lg z-30 flex-shrink-0 fixed bottom-0 left-0 right-0">
+      < div className="bg-white dark:bg-[#1a1a1a] border-t dark:border-gray-800 shadow-lg z-30 flex-shrink-0 fixed bottom-0 left-0 right-0" >
         <div className="max-w-7xl mx-auto">
           <div className="px-4 md:px-6 py-3 md:py-4">
             <div className="w-full max-w-md md:max-w-lg mx-auto">
@@ -1792,206 +1815,275 @@ export default function Cart() {
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Placing Order Modal */}
-      {showPlacingOrder && (
-        <div className="fixed inset-0 z-[60] h-screen w-screen overflow-hidden">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      {
+        showPlacingOrder && (
+          <div className="fixed inset-0 z-[60] h-screen w-screen overflow-hidden">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-          {/* Modal Sheet */}
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
-            style={{ animation: 'slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
-          >
-            <div className="px-6 py-8">
-              {/* Title */}
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Placing your order</h2>
+            {/* Modal Sheet */}
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
+              style={{ animation: 'slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
+            >
+              <div className="px-6 py-8">
+                {/* Title */}
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Placing your order</h2>
 
-              {/* Payment Info */}
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-white shadow-sm">
-                  <CreditCard className="w-6 h-6 text-gray-600" />
+                {/* Payment Info */}
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-white shadow-sm">
+                    <CreditCard className="w-6 h-6 text-gray-600" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedPaymentMethod === "razorpay"
+                        ? `Pay ₹${total.toFixed(2)} online (Razorpay)`
+                        : selectedPaymentMethod === "wallet"
+                          ? `Pay ₹${total.toFixed(2)} from Wallet`
+                          : `Pay on delivery (COD)`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {selectedPaymentMethod === "razorpay"
-                      ? `Pay ₹${total.toFixed(2)} online (Razorpay)`
-                      : selectedPaymentMethod === "wallet"
-                        ? `Pay ₹${total.toFixed(2)} from Wallet`
-                        : `Pay on delivery (COD)`}
-                  </p>
-                </div>
-              </div>
 
-              {/* Delivery Address */}
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
-                  <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path d="M9 22V12h6v10" />
-                  </svg>
+                {/* Delivery Address */}
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
+                    <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path d="M9 22V12h6v10" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">Delivering to {defaultAddress?.label || "Location"}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address") : "Add address"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {defaultAddress ? (formatFullAddress(defaultAddress) || "Address") : "Address"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-lg font-semibold text-gray-900">Delivering to Location</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address") : "Add address"}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {defaultAddress ? (formatFullAddress(defaultAddress) || "Address") : "Address"}
-                  </p>
-                </div>
-              </div>
 
-              {/* Progress Bar */}
-              <div className="relative mb-6">
-                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                {/* Progress Bar */}
+                <div className="relative mb-6">
+                  <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-100 ease-linear"
+                      style={{
+                        width: `${orderProgress}%`,
+                        boxShadow: '0 0 10px rgba(34, 197, 94, 0.5)'
+                      }}
+                    />
+                  </div>
+                  {/* Animated shimmer effect */}
                   <div
-                    className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-100 ease-linear"
+                    className="absolute inset-0 h-2.5 rounded-full overflow-hidden pointer-events-none"
                     style={{
-                      width: `${orderProgress}%`,
-                      boxShadow: '0 0 10px rgba(34, 197, 94, 0.5)'
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                      animation: 'shimmer 1.5s infinite',
+                      width: `${orderProgress}%`
                     }}
                   />
                 </div>
-                {/* Animated shimmer effect */}
-                <div
-                  className="absolute inset-0 h-2.5 rounded-full overflow-hidden pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                    animation: 'shimmer 1.5s infinite',
-                    width: `${orderProgress}%`
-                  }}
-                />
-              </div>
 
-              {/* Cancel Button */}
-              <button
-                onClick={() => {
-                  setShowPlacingOrder(false)
-                  setIsPlacingOrder(false)
-                }}
-                className="w-full text-right"
-              >
-                <span className="text-green-600 font-semibold text-base hover:text-green-700 transition-colors">
-                  CANCEL
-                </span>
-              </button>
+                {/* Cancel Button */}
+                <button
+                  onClick={() => {
+                    setShowPlacingOrder(false)
+                    setIsPlacingOrder(false)
+                  }}
+                  className="w-full text-right"
+                >
+                  <span className="text-green-600 font-semibold text-base hover:text-green-700 transition-colors">
+                    CANCEL
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Order Success Celebration Page */}
-      {showOrderSuccess && (
-        <div
-          className="fixed inset-0 z-[70] bg-white flex flex-col items-center justify-center h-screen w-screen overflow-hidden"
-          style={{ animation: 'fadeIn 0.3s ease-out' }}
-        >
-          {/* Confetti Background */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Animated confetti pieces */}
-            {[...Array(50)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-3 h-3 rounded-sm"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `-10%`,
-                  backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
-                  animation: `confettiFall ${2 + Math.random() * 2}s linear ${Math.random() * 2}s infinite`,
-                  transform: `rotate(${Math.random() * 360}deg)`,
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Success Content */}
-          <div className="relative z-10 flex flex-col items-center px-6">
-            {/* Success Tick Circle */}
-            <div
-              className="relative mb-8"
-              style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both' }}
-            >
-              {/* Outer ring animation */}
-              <div
-                className="absolute inset-0 w-32 h-32 rounded-full border-4 border-green-500"
-                style={{
-                  animation: 'ringPulse 1.5s ease-out infinite',
-                  opacity: 0.3
-                }}
-              />
-              {/* Main circle */}
-              <div className="w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-2xl">
-                <svg
-                  className="w-16 h-16 text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ animation: 'checkDraw 0.5s ease-out 0.5s both' }}
-                >
-                  <path d="M5 12l5 5L19 7" className="check-path" />
-                </svg>
-              </div>
-              {/* Sparkles */}
-              {[...Array(6)].map((_, i) => (
+      {
+        showOrderSuccess && (
+          <div
+            className="fixed inset-0 z-[70] bg-white flex flex-col items-center justify-center h-screen w-screen overflow-hidden"
+            style={{ animation: 'fadeIn 0.3s ease-out' }}
+          >
+            {/* Confetti Background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {/* Animated confetti pieces */}
+              {[...Array(50)].map((_, i) => (
                 <div
                   key={i}
-                  className="absolute w-2 h-2 bg-yellow-400 rounded-full"
+                  className="absolute w-3 h-3 rounded-sm"
                   style={{
-                    top: '50%',
-                    left: '50%',
-                    animation: `sparkle 0.6s ease-out ${0.3 + i * 0.1}s both`,
-                    transform: `rotate(${i * 60}deg) translateY(-80px)`,
+                    left: `${Math.random() * 100}%`,
+                    top: `-10%`,
+                    backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
+                    animation: `confettiFall ${2 + Math.random() * 2}s linear ${Math.random() * 2}s infinite`,
+                    transform: `rotate(${Math.random() * 360}deg)`,
                   }}
                 />
               ))}
             </div>
 
-            {/* Location Info */}
-            <div
-              className="text-center"
-              style={{ animation: 'slideUp 0.5s ease-out 0.6s both' }}
-            >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="w-5 h-5 text-red-500">
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+            {/* Success Content */}
+            <div className="relative z-10 flex flex-col items-center px-6">
+              {/* Success Tick Circle */}
+              <div
+                className="relative mb-8"
+                style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both' }}
+              >
+                {/* Outer ring animation */}
+                <div
+                  className="absolute inset-0 w-32 h-32 rounded-full border-4 border-green-500"
+                  style={{
+                    animation: 'ringPulse 1.5s ease-out infinite',
+                    opacity: 0.3
+                  }}
+                />
+                {/* Main circle */}
+                <div className="w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-2xl">
+                  <svg
+                    className="w-16 h-16 text-white"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ animation: 'checkDraw 0.5s ease-out 0.5s both' }}
+                  >
+                    <path d="M5 12l5 5L19 7" className="check-path" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {defaultAddress?.city || "Your Location"}
-                </h2>
+                {/* Sparkles */}
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-2 h-2 bg-yellow-400 rounded-full"
+                    style={{
+                      top: '50%',
+                      left: '50%',
+                      animation: `sparkle 0.6s ease-out ${0.3 + i * 0.1}s both`,
+                      transform: `rotate(${i * 60}deg) translateY(-80px)`,
+                    }}
+                  />
+                ))}
               </div>
-              <p className="text-gray-500 text-base">
-                {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Delivery Address") : "Delivery Address"}
-              </p>
-            </div>
 
-            {/* Order Placed Message */}
-            <div
-              className="mt-12 text-center"
-              style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}
-            >
-              <h3 className="text-3xl font-bold text-green-600 mb-2">Order Placed!</h3>
-              <p className="text-gray-600">Your delicious food is on its way</p>
-            </div>
+              {/* Location Info */}
+              <div
+                className="text-center"
+                style={{ animation: 'slideUp 0.5s ease-out 0.6s both' }}
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="w-5 h-5 text-red-500">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {defaultAddress?.label || defaultAddress?.city || "Location"}
+                  </h2>
+                </div>
+                <p className="text-gray-500 text-base">
+                  {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Delivery Address") : "Delivery Address"}
+                </p>
+              </div>
 
-            {/* Action Button */}
-            <button
-              onClick={handleGoToOrders}
-              className="mt-10 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-12 rounded-xl shadow-lg transition-all hover:shadow-xl hover:scale-105"
-              style={{ animation: 'slideUp 0.5s ease-out 1s both' }}
-            >
-              Track Your Order
-            </button>
+              {/* Order Placed Message */}
+              <div
+                className="mt-12 text-center"
+                style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}
+              >
+                <h3 className="text-3xl font-bold text-green-600 mb-2">Order Placed!</h3>
+                <p className="text-gray-600">Your delicious food is on its way</p>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={handleGoToOrders}
+                className="mt-10 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-12 rounded-xl shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                style={{ animation: 'slideUp 0.5s ease-out 1s both' }}
+              >
+                Track Your Order
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* Address Selection Sheet */}
+      <Sheet open={showAddressSheet} onOpenChange={setShowAddressSheet}>
+        <SheetContent side="bottom" className="rounded-t-3xl p-0 overflow-hidden h-[80vh] md:h-auto border-0">
+          <SheetHeader className="px-6 pt-6 pb-2">
+            <SheetTitle className="text-xl font-bold">Select Delivery Address</SheetTitle>
+            <SheetDescription>Choose where you want your food delivered</SheetDescription>
+          </SheetHeader>
+
+          <div className="px-6 pb-8 overflow-y-auto max-h-[calc(80vh-100px)]">
+            <div className="space-y-4 mt-4">
+              {addresses.length > 0 ? (
+                addresses.map((address) => {
+                  const isCurrent = defaultAddress?.id === address.id ||
+                    (defaultAddress?.formattedAddress === address.formattedAddress && !address.id);
+
+                  return (
+                    <button
+                      key={address.id || address.label}
+                      onClick={() => handleSelectAddress(address)}
+                      className={`w-full flex items-start gap-4 p-4 rounded-xl border-2 transition-all ${isCurrent
+                        ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
+                        : 'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'
+                        }`}
+                    >
+                      <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${isCurrent ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                        }`}>
+                        {address.label === 'Home' ? <Building2 className="h-4 w-4" /> :
+                          address.label === 'Office' ? <Building2 className="h-4 w-4" /> :
+                            <MapPin className="h-4 w-4" />}
+                      </div>
+                      <div className="flex-1 text-left min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className={`font-bold text-sm md:text-base ${isCurrent ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                            {address.label}
+                          </p>
+                          {isCurrent && <Check className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                          {formatFullAddress(address)}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="text-center py-10">
+                  <div className="bg-gray-100 dark:bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MapPin className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">You haven't saved any addresses yet.</p>
+                </div>
+              )}
+
+              <Link
+                to="/user/profile"
+                className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="font-semibold">Add New Address</span>
+              </Link>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Animation Styles */}
       <style>{`
@@ -2179,6 +2271,6 @@ export default function Cart() {
           stroke-dashoffset: 0;
         }
       `}</style>
-    </div>
+    </div >
   )
 }

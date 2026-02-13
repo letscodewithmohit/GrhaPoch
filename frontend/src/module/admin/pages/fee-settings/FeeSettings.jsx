@@ -11,7 +11,6 @@ export default function FeeSettings() {
     deliveryFeeRanges: [],
     freeDeliveryThreshold: 149,
     platformFee: 5,
-    platformFee: 5,
     platformFeeRanges: [],
     gstRate: 5,
     fixedFee: 0,

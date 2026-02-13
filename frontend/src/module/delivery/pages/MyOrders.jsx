@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { 
+import {
   ArrowLeft,
   Search,
   Mic,
@@ -26,30 +26,30 @@ export default function MyOrders() {
     const fetchOrders = async () => {
       try {
         setLoading(true)
-        
+
         // Check authentication token
         const deliveryToken = localStorage.getItem('delivery_accessToken') || localStorage.getItem('accessToken')
         console.log('🔐 Delivery Token exists:', !!deliveryToken)
-        
+
         console.log('🔄 Fetching orders using Trip History API (includes all completed orders)...')
-        
+
         // Use Trip History API which includes all orders including delivered/completed
         // Fetch from last 1 year to get all orders
         const oneYearAgo = new Date()
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-        
+
         const response = await deliveryAPI.getTripHistory({
           period: 'monthly',
           date: new Date().toISOString().split('T')[0],
           status: 'ALL TRIPS', // Get all trips including completed
           limit: 1000 // Get more orders
         })
-        
+
         console.log('📦 Trip History API Response:', response?.data)
-        
+
         // Trip History API returns: { success: true, data: { trips: [...] } }
         let ordersData = []
-        
+
         if (response?.data?.success && response?.data?.data?.trips) {
           // Trip History returns trips array
           ordersData = response.data.data.trips || []
@@ -63,10 +63,10 @@ export default function MyOrders() {
           ordersData = response.data.data
           console.log('✅ Using direct array, found orders:', ordersData.length)
         }
-        
+
         console.log('✅ Final orders to set:', ordersData.length)
         console.log('✅ Orders sample:', ordersData.slice(0, 2))
-        
+
         if (ordersData && ordersData.length > 0) {
           setOrders(ordersData)
           console.log('✅ Orders state updated successfully')
@@ -74,15 +74,15 @@ export default function MyOrders() {
           console.warn('⚠️ No orders found - trying getOrders API as fallback...')
           // Fallback to getOrders API
           try {
-            const fallbackResponse = await deliveryAPI.getOrders({ 
-              includeDelivered: 'true', 
-              limit: 100 
+            const fallbackResponse = await deliveryAPI.getOrders({
+              includeDelivered: 'true',
+              limit: 100
             })
             if (fallbackResponse?.data?.success && fallbackResponse?.data?.data?.orders) {
               const fallbackOrders = fallbackResponse.data.data.orders || []
               console.log('✅ Fallback API found orders:', fallbackOrders.length)
               setOrders(fallbackOrders)
-    } else {
+            } else {
               setOrders([])
             }
           } catch (fallbackError) {
@@ -103,7 +103,7 @@ export default function MyOrders() {
         console.error('❌ Error response headers:', error?.response?.headers)
         console.error('❌ Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
         console.error('❌ ========== END ERROR DETAILS ==========')
-        
+
         const errorMessage = error?.response?.data?.message || error?.message || 'Failed to load orders'
         toast.error(errorMessage)
         setOrders([])
@@ -216,14 +216,14 @@ export default function MyOrders() {
           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
         >
           <ArrowLeft className="w-6 h-6 text-gray-700" />
-                    </button>
+        </button>
         <h1 className="ml-4 text-xl font-semibold text-gray-800">Your Orders</h1>
         {/* Debug: Show orders count and state */}
         {!loading && (
           <div className="ml-auto text-xs text-gray-500 flex flex-col items-end">
             <span>({orders.length} orders, {filteredOrders.length} filtered)</span>
-            {process.env.NODE_ENV === 'development' && (
-        <button
+            {import.meta.env.MODE === 'development' && (
+              <button
                 onClick={() => {
                   console.log('🔍 Current State:', {
                     orders,
@@ -238,7 +238,7 @@ export default function MyOrders() {
                 Debug
               </button>
             )}
-        </div>
+          </div>
         )}
       </div>
 
@@ -246,24 +246,24 @@ export default function MyOrders() {
       <div className="p-4 bg-white mt-1">
         <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
           <Search className="w-5 h-5 text-red-500" />
-          <input 
-            type="text" 
-            placeholder="Search by restaurant or dish" 
+          <input
+            type="text"
+            placeholder="Search by restaurant or dish"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 ml-3 outline-none text-gray-600 placeholder-gray-400"
           />
           <Mic className="w-5 h-5 text-red-500 border-l pl-2 box-content border-gray-300" />
-            </div>
-          </div>
-          
+        </div>
+      </div>
+
       {/* Orders List */}
       <div className="px-4 py-2">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="w-8 h-8 text-red-500 animate-spin mb-4" />
             <p className="text-gray-600">Loading orders...</p>
-            </div>
+          </div>
         ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <Package className="w-16 h-16 text-gray-300 mb-4" />
@@ -271,7 +271,7 @@ export default function MyOrders() {
               {searchQuery ? "No orders found" : "You haven't placed any orders yet"}
             </h3>
             <p className="text-gray-600 text-sm text-center mb-6">
-              {searchQuery 
+              {searchQuery
                 ? "Try searching with different keywords"
                 : "Start accepting orders to see them here"}
             </p>
@@ -291,7 +291,7 @@ export default function MyOrders() {
               const rating = order.rating || order.deliveryState?.rating || null
 
               const orderKey = order.orderId || order._id || `order-${Math.random()}`
-              
+
               return (
                 <div key={orderKey} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                   {/* Card Header: Restaurant Info */}
@@ -299,32 +299,32 @@ export default function MyOrders() {
                     <div className="flex gap-3">
                       {/* Restaurant/Food Image */}
                       <div className="w-14 h-14 rounded-lg bg-gray-200 overflow-hidden shrink-0">
-            <img 
-                          src={restaurantImage} 
+                        <img
+                          src={restaurantImage}
                           alt={restaurantName}
-              className="w-full h-full object-cover"
+                          className="w-full h-full object-cover"
                           onError={(e) => {
                             e.target.src = "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=100&q=80"
                           }}
-            />
-      </div>
+                        />
+                      </div>
 
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-800 text-lg leading-tight">{restaurantName}</h3>
                         <p className="text-xs text-gray-500 mt-0.5">{restaurantLocation}</p>
-                        <button 
+                        <button
                           onClick={() => navigate(`/restaurant/${order.restaurantId?.slug || order.restaurantId?._id || order.restaurantId}`)}
                           className="text-xs text-red-500 font-medium flex items-center mt-1 hover:text-red-600"
                         >
                           View menu <span className="ml-0.5">▸</span>
                         </button>
-        </div>
-      </div>
+                      </div>
+                    </div>
 
                     <button className="p-1 hover:bg-gray-100 rounded-full">
                       <MoreVertical className="w-5 h-5 text-gray-400" />
-            </button>
-        </div>
+                    </button>
+                  </div>
 
                   {/* Separator */}
                   <div className="border-t border-dashed border-gray-200 mx-4 my-1"></div>
@@ -336,13 +336,13 @@ export default function MyOrders() {
                         {/* Veg/Non-Veg Icon */}
                         <div className={`w-4 h-4 border ${item.isVeg ? 'border-green-600' : 'border-red-600'} flex items-center justify-center p-[2px] shrink-0`}>
                           <div className={`w-full h-full rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-600'}`}></div>
-              </div>
+                        </div>
                         <span className="text-sm text-gray-700 font-medium">
                           {item.quantity || 1} x {item.name}
                         </span>
-            </div>
-          ))}
-      </div>
+                      </div>
+                    ))}
+                  </div>
 
                   {/* Date and Price */}
                   <div className="px-4 py-2 flex items-center justify-between">
@@ -351,12 +351,12 @@ export default function MyOrders() {
                       {!paymentFailed && isDelivered && (
                         <p className="text-xs font-medium text-gray-500 mt-1">{orderStatus}</p>
                       )}
-        </div>
+                    </div>
                     <div className="flex items-center">
                       <span className="text-sm font-semibold text-gray-800">₹{orderPrice.toFixed(2)}</span>
                       <ChevronRight className="w-4 h-4 text-gray-400 ml-1" />
-        </div>
-      </div>
+                    </div>
+                  </div>
 
                   {/* Separator */}
                   <div className="border-t border-gray-100 mx-4"></div>
@@ -368,7 +368,7 @@ export default function MyOrders() {
                       <div className="flex items-center gap-2">
                         <div className="bg-red-100 p-1 rounded-full">
                           <AlertCircle className="w-4 h-4 text-red-500" />
-                    </div>
+                        </div>
                         <span className="text-xs font-semibold text-red-500">Payment failed</span>
                       </div>
                     ) : isDelivered && rating ? (
@@ -377,29 +377,29 @@ export default function MyOrders() {
                           <span className="text-sm text-gray-800">You rated</span>
                           <div className="flex bg-yellow-400 text-white px-1 rounded text-[10px] items-center gap-0.5 h-4">
                             {rating}<Star className="w-2 h-2 fill-current" />
-                    </div>
-                  </div>
+                          </div>
+                        </div>
                         <button className="text-xs text-red-500 font-medium mt-0.5 flex items-center hover:text-red-600">
                           View your feedback <span className="ml-0.5">▸</span>
                         </button>
-                </div>
+                      </div>
                     ) : isDelivered ? (
                       <div>
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-gray-800">Order {orderStatus}</span>
-          </div>
+                        </div>
                         <button className="text-xs text-red-500 font-medium mt-0.5 flex items-center hover:text-red-600">
                           View details <span className="ml-0.5">▸</span>
                         </button>
-        </div>
+                      </div>
                     ) : (
                       <div>
                         <span className="text-sm text-gray-800">{orderStatus}</span>
-              </div>
+                      </div>
                     )}
 
                     {/* Right Side: Reorder Button */}
-              <button
+                    <button
                       onClick={() => {
                         // Navigate to restaurant or reorder functionality
                         if (order.restaurantId) {
@@ -411,8 +411,8 @@ export default function MyOrders() {
                       <RotateCcw className="w-3.5 h-3.5" />
                       Reorder
                     </button>
-                    </div>
                   </div>
+                </div>
               )
             })}
           </div>
@@ -422,7 +422,7 @@ export default function MyOrders() {
       {/* Footer Branding */}
       <div className="flex justify-center mt-8 mb-4">
         <h1 className="text-4xl font-black text-gray-200 tracking-tighter italic">appzeto</h1>
-                  </div>
+      </div>
     </div>
   )
 }

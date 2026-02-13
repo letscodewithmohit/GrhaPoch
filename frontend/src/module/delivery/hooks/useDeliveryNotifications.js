@@ -8,11 +8,11 @@ import originalSound from '@/assets/audio/original.mp3';
 export const useDeliveryNotifications = () => {
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Order: useRef -> useState -> useEffect -> useCallback
-  
+
   // Step 1: All refs first (unconditional)
   const socketRef = useRef(null);
   const audioRef = useRef(null);
-  
+
   // Step 2: All state hooks (unconditional)
   const [newOrder, setNewOrder] = useState(null);
   const [orderReady, setOrderReady] = useState(null);
@@ -22,13 +22,13 @@ export const useDeliveryNotifications = () => {
   // Step 3: All callbacks before effects (unconditional)
   // Track user interaction for autoplay policy
   const userInteractedRef = useRef(false);
-  
+
   const playNotificationSound = useCallback(() => {
     try {
       // Get current selected sound preference from localStorage
       const selectedSound = localStorage.getItem('delivery_alert_sound') || 'zomato_tone';
       const soundFile = selectedSound === 'original' ? originalSound : alertSound;
-      
+
       // Update audio source if preference changed or initialize if not exists
       if (audioRef.current) {
         const currentSrc = audioRef.current.src;
@@ -45,14 +45,14 @@ export const useDeliveryNotifications = () => {
         audioRef.current = new Audio(soundFile);
         audioRef.current.volume = 0.7;
       }
-      
+
       if (audioRef.current) {
         // Only play if user has interacted with the page (browser autoplay policy)
         if (!userInteractedRef.current) {
           console.log('🔇 Audio playback skipped - user has not interacted with page yet');
           return;
         }
-        
+
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(error => {
           // Don't log autoplay policy errors as they're expected
@@ -79,25 +79,25 @@ export const useDeliveryNotifications = () => {
       document.removeEventListener('touchstart', handleUserInteraction);
       document.removeEventListener('keydown', handleUserInteraction);
     };
-    
+
     // Listen for user interaction
     document.addEventListener('click', handleUserInteraction, { once: true });
     document.addEventListener('touchstart', handleUserInteraction, { once: true });
     document.addEventListener('keydown', handleUserInteraction, { once: true });
-    
+
     return () => {
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
       document.removeEventListener('keydown', handleUserInteraction);
     };
   }, []);
-  
+
   // Initialize audio on mount - use selected preference from localStorage
   useEffect(() => {
     // Get selected alert sound preference from localStorage
     const selectedSound = localStorage.getItem('delivery_alert_sound') || 'zomato_tone';
     const soundFile = selectedSound === 'original' ? originalSound : alertSound;
-    
+
     if (!audioRef.current) {
       audioRef.current = new Audio(soundFile);
       audioRef.current.volume = 0.7;
@@ -113,7 +113,7 @@ export const useDeliveryNotifications = () => {
         console.log('🔊 Audio updated to:', selectedSound === 'original' ? 'Original' : 'Zomato Tone');
       }
     }
-    
+
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -130,9 +130,9 @@ export const useDeliveryNotifications = () => {
         if (response.data?.success && response.data.data) {
           const deliveryPartner = response.data.data.user || response.data.data.deliveryPartner;
           if (deliveryPartner) {
-            const id = deliveryPartner.id?.toString() || 
-                      deliveryPartner._id?.toString() || 
-                      deliveryPartner.deliveryId;
+            const id = deliveryPartner.id?.toString() ||
+              deliveryPartner._id?.toString() ||
+              deliveryPartner.deliveryId;
             if (id) {
               setDeliveryPartnerId(id);
               console.log('✅ Delivery Partner ID fetched:', id);
@@ -161,7 +161,7 @@ export const useDeliveryNotifications = () => {
 
     // Normalize backend URL - use simpler, more robust approach
     let backendUrl = API_BASE_URL;
-    
+
     // Step 1: Extract protocol and hostname using URL parsing if possible
     try {
       const urlObj = new URL(backendUrl);
@@ -174,7 +174,7 @@ export const useDeliveryNotifications = () => {
       // Remove /api suffix first
       backendUrl = backendUrl.replace(/\/api\/?$/, '');
       backendUrl = backendUrl.replace(/\/+$/, ''); // Remove trailing slashes
-      
+
       // Normalize protocol - ensure exactly two slashes after protocol
       // Fix patterns: https:/, https:///, https://https://
       if (backendUrl.startsWith('https:') || backendUrl.startsWith('http:')) {
@@ -191,19 +191,19 @@ export const useDeliveryNotifications = () => {
         }
       }
     }
-    
+
     // Final cleanup: ensure exactly two slashes after protocol
     backendUrl = backendUrl.replace(/^(https?):\/+/gi, '$1://');
     backendUrl = backendUrl.replace(/\/+$/, ''); // Remove trailing slashes
-    
+
     const socketUrl = `${backendUrl}/delivery`;
-    
+
     console.log('🔌 Attempting to connect to Delivery Socket.IO:', socketUrl);
     console.log('🔌 Backend URL:', backendUrl);
     console.log('🔌 API_BASE_URL:', API_BASE_URL);
     console.log('🔌 Delivery Partner ID:', deliveryPartnerId);
     console.log('🔌 Environment:', import.meta.env.MODE);
-    
+
     // Warn if trying to connect to localhost in production
     if (import.meta.env.MODE === 'production' && backendUrl.includes('localhost')) {
       console.error('❌ CRITICAL: Trying to connect Socket.IO to localhost in production!');
@@ -213,12 +213,12 @@ export const useDeliveryNotifications = () => {
       console.error('💡 Fix: Rebuild frontend with: VITE_API_BASE_URL=https://your-backend-domain.com/api npm run build');
       console.error('💡 Note: Vite environment variables are embedded at BUILD TIME, not runtime');
       console.error('💡 You must rebuild and redeploy the frontend with correct VITE_API_BASE_URL');
-      
+
       // Don't try to connect to localhost in production - it will fail
       setIsConnected(false);
       return;
     }
-    
+
     // Validate backend URL format
     if (!backendUrl || !backendUrl.startsWith('http')) {
       console.error('❌ CRITICAL: Invalid backend URL format:', backendUrl);
@@ -226,7 +226,7 @@ export const useDeliveryNotifications = () => {
       console.error('💡 Expected format: https://your-domain.com or http://localhost:5000');
       return; // Don't try to connect with invalid URL
     }
-    
+
     // Validate socket URL format
     try {
       new URL(socketUrl); // This will throw if URL is invalid
@@ -257,7 +257,7 @@ export const useDeliveryNotifications = () => {
     socketRef.current.on('connect', () => {
       console.log('✅ Delivery Socket connected, deliveryPartnerId:', deliveryPartnerId);
       setIsConnected(true);
-      
+
       if (deliveryPartnerId) {
         console.log('📢 Joining delivery room with ID:', deliveryPartnerId);
         socketRef.current.emit('join-delivery', deliveryPartnerId);
@@ -271,19 +271,19 @@ export const useDeliveryNotifications = () => {
     socketRef.current.on('connect_error', (error) => {
       // Only log if it's not a network/polling/websocket error (backend might be down or WebSocket not available)
       // Socket.IO will automatically retry connection and fall back to polling
-      const isTransportError = error.type === 'TransportError' || 
-                               error.message === 'xhr poll error' ||
-                               error.message?.includes('WebSocket') ||
-                               error.message?.includes('websocket') ||
-                               error.description === 0; // WebSocket upgrade failures
-      
+      const isTransportError = error.type === 'TransportError' ||
+        error.message === 'xhr poll error' ||
+        error.message?.includes('WebSocket') ||
+        error.message?.includes('websocket') ||
+        error.description === 0; // WebSocket upgrade failures
+
       if (!isTransportError) {
         console.error('❌ Delivery Socket connection error:', error);
       } else {
         // Silently handle transport errors - backend might not be running or WebSocket not available
         // Socket.IO will automatically retry with exponential backoff and fall back to polling
         // Only log in development for debugging
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.MODE === 'development') {
           console.log('⏳ Delivery Socket: WebSocket upgrade failed, using polling fallback');
         }
       }
@@ -293,7 +293,7 @@ export const useDeliveryNotifications = () => {
     socketRef.current.on('disconnect', (reason) => {
       console.log('❌ Delivery Socket disconnected:', reason);
       setIsConnected(false);
-      
+
       if (reason === 'io server disconnect') {
         socketRef.current.connect();
       }
@@ -306,7 +306,7 @@ export const useDeliveryNotifications = () => {
     socketRef.current.on('reconnect', (attemptNumber) => {
       console.log(`✅ Reconnected after ${attemptNumber} attempts`);
       setIsConnected(true);
-      
+
       if (deliveryPartnerId) {
         socketRef.current.emit('join-delivery', deliveryPartnerId);
       }

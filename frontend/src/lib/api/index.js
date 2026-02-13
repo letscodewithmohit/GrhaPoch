@@ -172,6 +172,16 @@ export const userAPI = {
     return apiClient.put(API_ENDPOINTS.USER.PREFERENCES, preferences);
   },
 
+  // Create donation order
+  createDonationOrder: (data) => {
+    return apiClient.post(API_ENDPOINTS.USER.DONATION_CREATE, data);
+  },
+
+  // Verify donation
+  verifyDonation: (data) => {
+    return apiClient.post(API_ENDPOINTS.USER.DONATION_VERIFY, data);
+  },
+
   // Get wallet
   getWallet: () => {
     return apiClient.get(API_ENDPOINTS.USER.WALLET);
@@ -629,6 +639,9 @@ export const restaurantAPI = {
   getSubscriptionStatus: () => {
     return apiClient.get(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.STATUS);
   },
+  getSubscriptionPlans: () => {
+    return apiClient.get(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.PLANS);
+  },
 };
 
 // Export delivery API helper functions
@@ -935,6 +948,26 @@ export const adminAPI = {
       API_ENDPOINTS.ADMIN.RESTAURANTS_SUBSCRIPTION_UPDATE.replace(':restaurantId', restaurantId),
       { status, planId }
     );
+  },
+
+  // Subscription Plan Management
+  getSubscriptionPlans: () => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLANS);
+  },
+  getActiveSubscriptionPlans: () => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLANS_ACTIVE);
+  },
+  createSubscriptionPlan: (data) => {
+    return apiClient.post(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLANS, data);
+  },
+  updateSubscriptionPlan: (id, data) => {
+    return apiClient.put(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLAN_BY_ID.replace(':id', id), data);
+  },
+  deleteSubscriptionPlan: (id) => {
+    return apiClient.delete(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLAN_BY_ID.replace(':id', id));
+  },
+  toggleSubscriptionPlanStatus: (id) => {
+    return apiClient.patch(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLAN_STATUS.replace(':id', id));
   },
 
   // Delete restaurant

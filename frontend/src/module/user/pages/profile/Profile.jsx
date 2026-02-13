@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   Settings as SettingsIcon,
   Power,
-  ShoppingCart
+  ShoppingCart,
+  Heart
 } from "lucide-react"
 
 import AnimatedPage from "../../components/AnimatedPage"
@@ -48,6 +49,9 @@ export default function Profile() {
   const [vegModeOpen, setVegModeOpen] = useState(false)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [donationOpen, setDonationOpen] = useState(false)
+  const [donationAmount, setDonationAmount] = useState("")
+  const [isDonating, setIsDonating] = useState(false)
 
   // Settings states
   const [appearance, setAppearance] = useState(() => {
@@ -238,6 +242,70 @@ export default function Profile() {
     }
   }
 
+  // Handle Donation
+  const handleDonation = async (amount) => {
+    const finalAmount = amount || donationAmount
+    if (!finalAmount || isNaN(finalAmount) || parseFloat(finalAmount) <= 0) {
+      import("sonner").then(({ toast }) => toast.error("Please enter a valid amount"))
+      return
+    }
+
+    setIsDonating(true)
+    try {
+      const { userAPI } = await import("@/lib/api")
+      const { initRazorpayPayment } = await import("@/lib/utils/razorpay")
+      const { toast } = await import("sonner")
+
+      // 1. Create donation order in backend
+      const response = await userAPI.createDonationOrder({ amount: parseFloat(finalAmount) })
+      const { razorpay, donation } = response.data.data
+
+      // 2. Initialize Razorpay
+      await initRazorpayPayment({
+        key: razorpay.key,
+        amount: razorpay.amount,
+        currency: razorpay.currency,
+        order_id: razorpay.orderId,
+        name: "GrhaPoch Foundation",
+        description: "Contribution for a social cause",
+        prefill: {
+          name: userProfile?.name || "",
+          email: userProfile?.email || "",
+          contact: userProfile?.phone || ""
+        },
+        handler: async (paymentResponse) => {
+          try {
+            // 3. Verify payment
+            await userAPI.verifyDonation({
+              donationId: donation._id,
+              razorpayOrderId: paymentResponse.razorpay_order_id,
+              razorpayPaymentId: paymentResponse.razorpay_payment_id,
+              razorpaySignature: paymentResponse.razorpay_signature
+            })
+
+            toast.success("Thank you for your generous contribution! ❤️")
+            setDonationOpen(false)
+            setDonationAmount("")
+          } catch (error) {
+            console.error("Verification error:", error)
+            toast.error("Payment verification failed. Please contact support.")
+          }
+        },
+        onClose: () => setIsDonating(false),
+        onError: () => {
+          toast.error("Payment failed. Please try again.")
+          setIsDonating(false)
+        }
+      })
+    } catch (error) {
+      console.error("Donation error:", error)
+      const { toast } = await import("sonner")
+      toast.error(error?.response?.data?.message || "Failed to initialize donation")
+    } finally {
+      setIsDonating(false)
+    }
+  }
+
   return (
     <AnimatedPage className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a]">
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10">
@@ -392,8 +460,8 @@ export default function Profile() {
                   <div className="flex items-center gap-2">
                     <motion.span
                       className={`text-xs font-medium px-2 py-1 rounded ${isComplete
-                          ? 'bg-green-100 text-green-700 border border-green-300'
-                          : 'bg-yellow-200 text-yellow-800'
+                        ? 'bg-green-100 text-green-700 border border-green-300'
+                        : 'bg-yellow-200 text-yellow-800'
                         }`}
                       whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.2 }}
@@ -599,6 +667,46 @@ export default function Profile() {
           </Link>
         </div>
 
+        {/* Contribution Section */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="w-1 h-4 bg-red-600 rounded"></div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Contribution</h3>
+          </div>
+          <motion.div
+            whileHover={{ x: 4, scale: 1.01 }}
+            transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
+            onClick={() => setDonationOpen(true)}
+          >
+            <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="bg-red-50 dark:bg-red-900/20 rounded-full p-2"
+                    whileHover={{ scale: 1.2 }}
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      transition: { repeat: Infinity, duration: 2 }
+                    }}
+                  >
+                    <Heart className="h-5 w-5 text-red-600 dark:text-red-400 fill-current" />
+                  </motion.div>
+                  <div>
+                    <span className="text-base font-medium text-gray-900 dark:text-white block leading-tight">Donate for a Cause</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Help us feed the needy</span>
+                  </div>
+                </div>
+                <motion.div
+                  whileHover={{ x: 4 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
         {/* More Section */}
         <div className="mb-6 pb-4">
           <div className="flex items-center gap-2 mb-2 px-1">
@@ -768,8 +876,8 @@ export default function Profile() {
                 setVegModeOpen(false)
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center justify-between ${vegMode
-                  ? 'border-green-600 bg-green-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-green-600 bg-green-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
             >
               <div className="flex items-center gap-3">
@@ -790,8 +898,8 @@ export default function Profile() {
                 setVegModeOpen(false)
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center justify-between ${!vegMode
-                  ? 'border-red-600 bg-red-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-red-600 bg-red-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
             >
               <div className="flex items-center gap-3">
@@ -805,6 +913,72 @@ export default function Profile() {
                 </div>
               </div>
             </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Donation Sheet */}
+      <Dialog open={donationOpen} onOpenChange={setDonationOpen}>
+        <DialogContent className="max-w-sm md:max-w-md w-[calc(100%-2rem)] rounded-3xl p-0 overflow-hidden border-0 shadow-2xl">
+          <div className="bg-gradient-to-br from-red-500 to-rose-600 p-8 text-center relative overflow-hidden">
+            <motion.div
+              className="relative z-10"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            >
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-4 border border-white/30">
+                <Heart className="h-10 w-10 text-white fill-current" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Be a Food Hero</h2>
+              <p className="text-red-50 text-sm leading-relaxed max-w-[240px] mx-auto">
+                Small acts of kindness make a big difference. Donate today!
+              </p>
+            </motion.div>
+
+            {/* Animated Circles for background */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full -ml-12 -mb-12 blur-xl" />
+          </div>
+
+          <div className="p-6 space-y-6 bg-white dark:bg-[#1a1a1a]">
+            <div className="grid grid-cols-3 gap-3">
+              {[20, 50, 100].map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => handleDonation(amount)}
+                  disabled={isDonating}
+                  className="py-3 px-4 rounded-2xl border-2 border-gray-100 dark:border-gray-800 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-gray-800 dark:text-white"
+                >
+                  ₹{amount}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <span className="text-gray-400 font-bold">₹</span>
+              </div>
+              <input
+                type="number"
+                value={donationAmount}
+                onChange={(e) => setDonationAmount(e.target.value)}
+                placeholder="Enter custom amount"
+                className="w-full bg-gray-50 dark:bg-gray-800/50 border-0 rounded-2xl py-4 pl-8 pr-4 text-lg font-bold focus:ring-2 focus:ring-red-500 transition-all placeholder:text-gray-400 dark:text-white"
+              />
+            </div>
+
+            <Button
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white text-lg font-bold shadow-lg shadow-red-200 dark:shadow-none transition-all active:scale-95 disabled:opacity-50"
+              onClick={() => handleDonation()}
+              disabled={isDonating || (!donationAmount && !isDonating)}
+            >
+              {isDonating ? "Processing..." : "Contribute Now"}
+            </Button>
+
+            <p className="text-[10px] text-center text-gray-400 uppercase tracking-widest font-medium">
+              Securely processed by Razorpay
+            </p>
           </div>
         </DialogContent>
       </Dialog>
@@ -825,8 +999,8 @@ export default function Profile() {
                 setAppearanceOpen(false)
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${appearance === 'light'
-                  ? 'border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                ? 'border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
             >
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${appearance === 'light' ? 'border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500' : 'border-gray-300 dark:border-gray-600'
@@ -845,8 +1019,8 @@ export default function Profile() {
                 setAppearanceOpen(false)
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${appearance === 'dark'
-                  ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
             >
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${appearance === 'dark' ? 'border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500' : 'border-gray-300 dark:border-gray-600'

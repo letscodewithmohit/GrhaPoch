@@ -5,6 +5,7 @@ import {
     verifyPaymentAndActivate,
     getSubscriptionStatus
 } from '../controllers/subscriptionController.js';
+import { getActiveSubscriptionPlans } from '../../admin/controllers/subscriptionPlanController.js';
 
 const router = express.Router();
 
@@ -16,5 +17,8 @@ router.post('/verify-payment', authenticate, verifyPaymentAndActivate);
 
 // Get subscription status
 router.get('/status', authenticate, getSubscriptionStatus);
+
+// Get active subscription plans
+router.get('/plans', authenticate, getActiveSubscriptionPlans);
 
 export default router;

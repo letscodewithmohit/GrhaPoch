@@ -120,6 +120,8 @@ export const API_ENDPOINTS = {
     LOCATION: '/user/location',
     COMPLAINTS: '/user/complaints',
     COMPLAINT_BY_ID: '/user/complaints/:id',
+    DONATION_CREATE: '/user/donation/create',
+    DONATION_VERIFY: '/user/donation/verify',
   },
   // Location endpoints
   LOCATION: {
@@ -193,6 +195,8 @@ export const API_ENDPOINTS = {
       CREATE_ORDER: '/restaurant/subscription/create-order',
       VERIFY_PAYMENT: '/restaurant/subscription/verify-payment',
       STATUS: '/restaurant/subscription/status',
+      PLANS: '/restaurant/subscription/plans',
+
     },
   },
   // Delivery endpoints
@@ -261,7 +265,13 @@ export const API_ENDPOINTS = {
     RESTAURANT_DELETE: '/admin/restaurants/:id',
     RESTAURANT_MENU: '/admin/restaurants/:id/menu',
     RESTAURANTS_SUBSCRIPTIONS: '/admin/restaurants/subscriptions',
+    RESTAURANTS_SUBSCRIPTIONS: '/admin/restaurants/subscriptions',
     RESTAURANTS_SUBSCRIPTION_UPDATE: '/admin/restaurants/subscription/:restaurantId',
+    SUBSCRIPTION_PLANS: '/admin/subscription-plans',
+    SUBSCRIPTION_PLANS_ACTIVE: '/admin/subscription-plans/active',
+    SUBSCRIPTION_PLAN_BY_ID: '/admin/subscription-plans/:id',
+    SUBSCRIPTION_PLAN_STATUS: '/admin/subscription-plans/:id/status',
+
 
     DELIVERY: '/admin/delivery',
     DELIVERY_PARTNERS: '/admin/delivery-partners',

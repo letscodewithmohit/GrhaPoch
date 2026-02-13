@@ -353,7 +353,7 @@ export function useCart() {
   // Check if context is from the actual provider by checking the _isProvider flag
   if (!context || context._isProvider !== true) {
     // In development, log a warning but don't throw to prevent crashes
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.MODE === 'development') {
       console.warn('⚠️ useCart called outside CartProvider. Using default values.');
       console.warn('💡 Make sure the component is rendered inside UserLayout which provides CartProvider.');
     }

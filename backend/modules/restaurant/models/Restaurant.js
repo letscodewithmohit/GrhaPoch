@@ -271,7 +271,6 @@ const restaurantSchema = new mongoose.Schema(
     subscription: {
       planId: {
         type: String,
-        enum: ['1_month', '6_months', '12_months'],
         default: null
       },
       status: {

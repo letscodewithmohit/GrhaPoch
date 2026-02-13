@@ -1,17 +1,8 @@
 import Restaurant from '../models/Restaurant.js';
+import SubscriptionPlan from '../../admin/models/SubscriptionPlan.js';
 import { successResponse, errorResponse } from '../../../shared/utils/response.js';
 import { createOrder, verifyPayment } from '../../payment/services/razorpayService.js';
 import crypto from 'crypto';
-
-// Get plan pricing
-const getPlanPrice = (planId) => {
-    const prices = {
-        '1_month': 99900,  // in paise (₹999)
-        '6_months': 499900, // in paise (₹4,999)
-        '12_months': 899900 // in paise (₹8,999)
-    };
-    return prices[planId];
-};
 
 // Create Razorpay order for subscription
 export const createSubscriptionOrder = async (req, res) => {
@@ -19,8 +10,14 @@ export const createSubscriptionOrder = async (req, res) => {
         const restaurantId = req.restaurant._id;
         const { planId } = req.body;
 
-        if (!planId || !['1_month', '6_months', '12_months'].includes(planId)) {
-            return errorResponse(res, 400, 'Invalid plan selected');
+        if (!planId) {
+            return errorResponse(res, 400, 'Plan ID is required');
+        }
+
+        // Fetch plan details
+        const plan = await SubscriptionPlan.findById(planId);
+        if (!plan || !plan.isActive) {
+            return errorResponse(res, 404, 'Subscription plan not found or inactive');
         }
 
         const restaurant = await Restaurant.findById(restaurantId);
@@ -28,7 +25,7 @@ export const createSubscriptionOrder = async (req, res) => {
             return errorResponse(res, 404, 'Restaurant not found');
         }
 
-        const amount = getPlanPrice(planId);
+        const amount = plan.price * 100; // Convert to paise
 
         // Create Razorpay order using centralized service
         const order = await createOrder({
@@ -70,6 +67,12 @@ export const verifyPaymentAndActivate = async (req, res) => {
             return errorResponse(res, 400, 'Invalid payment signature');
         }
 
+        // Fetch plan to determine duration
+        const plan = await SubscriptionPlan.findById(planId);
+        if (!plan) {
+            return errorResponse(res, 404, 'Subscription plan not found');
+        }
+
         // Payment verified, activate subscription
         const restaurant = await Restaurant.findById(restaurantId);
         if (!restaurant) {
@@ -77,7 +80,7 @@ export const verifyPaymentAndActivate = async (req, res) => {
         }
 
         const now = new Date();
-        const durationDays = planId === '1_month' ? 30 : planId === '6_months' ? 180 : 365;
+        const durationDays = plan.durationMonths * 30; // Approximation
         const endDate = new Date(now);
         endDate.setDate(endDate.getDate() + durationDays);
 
@@ -89,6 +92,7 @@ export const verifyPaymentAndActivate = async (req, res) => {
             paymentId: razorpay_payment_id,
             orderId: razorpay_order_id
         };
+        restaurant.businessModel = 'Subscription Base';
         restaurant.isActive = true;
 
         await restaurant.save();
@@ -106,15 +110,19 @@ export const verifyPaymentAndActivate = async (req, res) => {
 export const getSubscriptionStatus = async (req, res) => {
     try {
         const restaurantId = req.restaurant._id;
-        const restaurant = await Restaurant.findById(restaurantId).select('subscription isActive');
+        const restaurant = await Restaurant.findById(restaurantId).select('subscription isActive businessModel');
 
         if (!restaurant) {
             return errorResponse(res, 404, 'Restaurant not found');
         }
 
+        // Optionally populate plan name if needed, or frontend can fetch current plans
+        // We'll return just the subscription object. Frontend can lookup plan details.
+
         return successResponse(res, 200, 'Subscription status retrieved', {
             subscription: restaurant.subscription,
-            isActive: restaurant.isActive
+            isActive: restaurant.isActive,
+            businessModel: restaurant.businessModel
         });
     } catch (error) {
         console.error('Get status error:', error);
@@ -127,7 +135,7 @@ export const getAllSubscriptions = async (req, res) => {
     try {
         // Fetch all restaurants to allow admin to manage subscriptions for any restaurant
         const restaurants = await Restaurant.find()
-            .select('name email phone subscription isActive createdAt');
+            .select('name email phone subscription isActive createdAt businessModel');
 
         return successResponse(res, 200, 'Subscriptions retrieved successfully', {
             restaurants
@@ -152,11 +160,14 @@ export const updateSubscriptionStatus = async (req, res) => {
         const updateFields = {};
         updateFields['subscription.status'] = status;
 
-        const effectivePlanId = (planId && ['1_month', '6_months', '12_months'].includes(planId))
-            ? planId
-            : restaurant.subscription.planId;
+        let plan = null;
+        if (planId) {
+            plan = await SubscriptionPlan.findById(planId);
+        }
 
-        if (planId && ['1_month', '6_months', '12_months'].includes(planId)) {
+        const effectivePlanId = plan ? planId : restaurant.subscription.planId;
+
+        if (plan) {
             updateFields['subscription.planId'] = planId;
         }
 
@@ -165,15 +176,39 @@ export const updateSubscriptionStatus = async (req, res) => {
                 return errorResponse(res, 400, 'Cannot activate subscription without a valid plan');
             }
 
-            const now = new Date();
-            const durationDays = effectivePlanId === '1_month' ? 30 :
-                effectivePlanId === '6_months' ? 180 : 365;
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + durationDays);
+            // If we have a plan object (either fetched now or we should fetch it if it's existing planId)
+            if (!plan && effectivePlanId) {
+                plan = await SubscriptionPlan.findById(effectivePlanId);
+            }
 
-            updateFields['subscription.startDate'] = now;
-            updateFields['subscription.endDate'] = endDate;
+            if (!plan) {
+                // Fallback for old string IDs if necessary, or error
+                // For now assuming we moved to dynamic plans completely.
+                // But let's support old strings just in case logic is mixed, or error out.
+                if (['1_month', '6_months', '12_months'].includes(effectivePlanId)) {
+                    // Backward compat logic
+                    const now = new Date();
+                    const durationDays = effectivePlanId === '1_month' ? 30 : effectivePlanId === '6_months' ? 180 : 365;
+                    const endDate = new Date(now);
+                    endDate.setDate(endDate.getDate() + durationDays);
+                    updateFields['subscription.startDate'] = now;
+                    updateFields['subscription.endDate'] = endDate;
+                } else {
+                    return errorResponse(res, 404, 'Plan not found to calculate duration');
+                }
+            } else {
+                const now = new Date();
+                const durationDays = plan.durationMonths * 30;
+                const endDate = new Date(now);
+                endDate.setDate(endDate.getDate() + durationDays);
+
+                updateFields['subscription.startDate'] = now;
+                updateFields['subscription.endDate'] = endDate;
+            }
+
             updateFields['isActive'] = true;
+            updateFields['businessModel'] = 'Subscription Base';
+
         } else if (status === 'inactive' || status === 'expired') {
             updateFields['isActive'] = false;
         }

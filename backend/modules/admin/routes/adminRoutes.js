@@ -219,6 +219,14 @@ import {
   getFeeSettingsHistory,
   getPublicFeeSettings
 } from '../controllers/feeSettingsController.js';
+import {
+  getSubscriptionPlans,
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  deleteSubscriptionPlan,
+  toggleSubscriptionPlanStatus,
+  getActiveSubscriptionPlans
+} from '../controllers/subscriptionPlanController.js';
 import zoneRoutes from './zoneRoutes.js';
 import { authenticateAdmin } from '../middleware/adminAuth.js';
 import { uploadMiddleware } from '../../../shared/utils/cloudinaryService.js';
@@ -299,6 +307,14 @@ router.put('/restaurants/:id/menu', updateRestaurantMenu);
 // Restaurant Subscription Management
 router.get('/restaurants/subscriptions', getAllSubscriptions);
 router.put('/restaurants/subscription/:restaurantId', updateSubscriptionStatus);
+
+// Subscription Plan Management
+router.get('/subscription-plans', getSubscriptionPlans);
+router.get('/subscription-plans/active', getActiveSubscriptionPlans);
+router.post('/subscription-plans', createSubscriptionPlan);
+router.put('/subscription-plans/:id', updateSubscriptionPlan);
+router.delete('/subscription-plans/:id', deleteSubscriptionPlan);
+router.patch('/subscription-plans/:id/status', toggleSubscriptionPlanStatus);
 
 // Category Management
 router.get('/categories', getCategories);

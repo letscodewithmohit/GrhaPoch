@@ -1,0 +1,26 @@
+Connecting to MongoDB...
+Connected to MongoDB
+Checking restaurant locations...
+Found 1 restaurants.
+❌ Restaurant missing location: Test Restaurant (ID: 698c4b0c4a5d6d5a3a4fd0d0)
+Location object:
+{
+  "addressLine1": "123 Main Street",
+  "addressLine2": "Building A, Floor 2",
+  "area": "Downtown",
+  "city": "Mumbai",
+  "landmark": "Near Central Park",
+  "_id": "698c4b434a5d6d5a3a4fd149"
+}
+Found location in onboarding.step1.location:
+{
+  "addressLine1": "123 Main Street",
+  "addressLine2": "Building A, Floor 2",
+  "area": "Downtown",
+  "city": "Mumbai",
+  "landmark": "Near Central Park",
+  "_id": "698c4b434a5d6d5a3a4fd149"
+}
+Attempting to fix...
+✅ Fixed restaurant location.
+Finished checking. Found 1 restaurants with missing location.
