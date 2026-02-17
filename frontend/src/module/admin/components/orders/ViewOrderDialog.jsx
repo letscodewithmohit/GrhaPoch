@@ -50,7 +50,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
   // Format address for display
   const formatAddress = (address) => {
     if (!address) return "N/A"
-    
+
     const parts = []
     if (address.label) parts.push(address.label)
     if (address.street) parts.push(address.street)
@@ -62,7 +62,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
       if (address.state) parts.push(address.state)
       if (address.zipCode) parts.push(address.zipCode)
     }
-    
+
     return parts.length > 0 ? parts.join(", ") : "Address not available"
   }
 
@@ -121,9 +121,9 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                     Delivered At
                   </p>
                   <p className="text-sm font-medium text-slate-900">
-                    {new Date(order.deliveredAt).toLocaleString('en-GB', { 
-                      day: '2-digit', 
-                      month: 'short', 
+                    {new Date(order.deliveredAt).toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
@@ -143,17 +143,17 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                   {order.cancellationReason && (
                     <p className="text-xs text-red-600 mt-1">
                       <span className="font-medium">
-                        {order.cancelledBy === 'user' ? 'Cancelled by User - ' : 
-                         order.cancelledBy === 'restaurant' ? 'Cancelled by Restaurant - ' : 
-                         'Cancellation '}Reason:
+                        {order.cancelledBy === 'user' ? 'Cancelled by User - ' :
+                          order.cancelledBy === 'restaurant' ? 'Cancelled by Restaurant - ' :
+                            'Cancellation '}Reason:
                       </span> {order.cancellationReason}
                     </p>
                   )}
                   {order.cancelledAt && (
                     <p className="text-xs text-slate-500 mt-1">
-                      Cancelled: {new Date(order.cancelledAt).toLocaleString('en-GB', { 
-                        day: '2-digit', 
-                        month: 'short', 
+                      Cancelled: {new Date(order.cancelledAt).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
@@ -401,8 +401,8 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">Platform Fee</span>
                 <span className="font-medium text-slate-900">
-                  {order.platformFee !== undefined && order.platformFee > 0 
-                    ? `₹${order.platformFee.toFixed(2)}` 
+                  {order.platformFee !== undefined && order.platformFee > 0
+                    ? `₹${order.platformFee.toFixed(2)}`
                     : <span className="text-slate-400">₹0.00</span>}
                 </span>
               </div>
@@ -412,6 +412,12 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                   <span className="font-medium text-slate-900">₹{order.vatTax.toFixed(2)}</span>
                 </div>
               )}
+              {(order.tipAmount !== undefined && order.tipAmount > 0) || (order.pricing?.tip > 0) ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Delivery Tip</span>
+                  <span className="font-medium text-orange-600">₹{(order.tipAmount || order.pricing?.tip).toFixed(2)}</span>
+                </div>
+              ) : null}
               <div className="pt-2 border-t border-slate-200">
                 <div className="flex justify-between items-center">
                   <span className="text-base font-semibold text-slate-700">Total Amount</span>

@@ -58,8 +58,18 @@ export const releaseEscrow = async (orderId) => {
       throw new Error('Settlement not found');
     }
 
+    // Check if escrow is in held status
+    // For COD orders, escrow might still be 'pending' as money is collected at delivery
     if (settlement.escrowStatus !== 'held') {
-      throw new Error(`Escrow not in held status. Current status: ${settlement.escrowStatus}`);
+      const Order = (await import('../models/Order.js')).default;
+      const order = await Order.findById(orderId);
+      const isCOD = order?.payment?.method === 'cash' || order?.payment?.method === 'cod';
+
+      if (!isCOD) {
+        throw new Error(`Escrow not in held status. Current status: ${settlement.escrowStatus}`);
+      }
+
+      console.log(`ℹ️ Releasing escrow for COD order ${settlement.orderNumber} from ${settlement.escrowStatus} status`);
     }
 
     // Update escrow status
@@ -151,13 +161,13 @@ const creditRestaurantWallet = async (restaurantId, orderId, netAmount, orderNum
   try {
     const RestaurantWallet = (await import('../../restaurant/models/RestaurantWallet.js')).default;
     const wallet = await RestaurantWallet.findOrCreateByRestaurantId(restaurantId);
-    
+
     // Create description with breakdown
     let description = `Payment for order ${orderNumber}`;
     if (foodPrice && commission) {
       description = `Payment for order ${orderNumber} (Order: ₹${foodPrice}, Commission: ₹${commission}, Net: ₹${netAmount})`;
     }
-    
+
     wallet.addTransaction({
       amount: netAmount, // Credit net amount (₹170)
       type: 'payment',
@@ -165,7 +175,7 @@ const creditRestaurantWallet = async (restaurantId, orderId, netAmount, orderNum
       description: description,
       orderId: orderId
     });
-    
+
     await wallet.save();
 
     // Create audit log
@@ -200,16 +210,24 @@ const creditDeliveryWallet = async (deliveryId, orderId, amount, orderNumber) =>
   try {
     const DeliveryWallet = (await import('../../delivery/models/DeliveryWallet.js')).default;
     const wallet = await DeliveryWallet.findOrCreateByDeliveryId(deliveryId);
-    
+
+    const OrderSettlement = (await import('../models/OrderSettlement.js')).default;
+    const settlement = await OrderSettlement.findOne({ orderId });
+    const tip = settlement?.deliveryPartnerEarning?.tip || 0;
+    const baseEarning = amount - tip;
+
     wallet.addTransaction({
       amount: amount,
       type: 'payment',
       status: 'Completed',
-      description: `Payment for order ${orderNumber}`,
+      description: tip > 0
+        ? `Payment for order ${orderNumber} (Earning: ₹${baseEarning}, Tip: ₹${tip})`
+        : `Payment for order ${orderNumber}`,
       orderId: orderId,
-      paymentCollected: false // Will be updated when COD is collected
+      paymentCollected: false, // Will be updated when COD is collected
+      metadata: { tip: tip }
     });
-    
+
     await wallet.save();
 
     // Create audit log

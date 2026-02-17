@@ -9,7 +9,7 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['payment', 'withdrawal', 'bonus', 'deduction', 'refund', 'deposit', 'earning_addon'],
+    enum: ['payment', 'withdrawal', 'bonus', 'deduction', 'refund', 'deposit', 'earning_addon', 'tip'],
     required: true
   },
   status: {
@@ -164,33 +164,33 @@ deliveryWalletSchema.index({ 'transactions.createdAt': -1 });
 deliveryWalletSchema.index({ lastTransactionAt: -1 });
 
 // Virtual for pocket balance (totalBalance - cashInHand)
-deliveryWalletSchema.virtual('pocketBalance').get(function() {
+deliveryWalletSchema.virtual('pocketBalance').get(function () {
   return this.totalBalance - this.cashInHand;
 });
 
 // Virtual for pending withdrawals
-deliveryWalletSchema.virtual('pendingWithdrawals').get(function() {
+deliveryWalletSchema.virtual('pendingWithdrawals').get(function () {
   return this.transactions
     .filter(t => t.type === 'withdrawal' && t.status === 'Pending')
     .reduce((sum, t) => sum + t.amount, 0);
 });
 
 // Method to add transaction and update balances
-deliveryWalletSchema.methods.addTransaction = function(transactionData) {
+deliveryWalletSchema.methods.addTransaction = function (transactionData) {
   const transaction = {
     ...transactionData,
     createdAt: new Date()
   };
-  
+
   this.transactions.push(transaction);
-  
+
   // Update balances based on transaction type and status
   if (transaction.status === 'Completed') {
-    if (transaction.type === 'payment' || transaction.type === 'bonus' || transaction.type === 'refund' || transaction.type === 'earning_addon') {
+    if (transaction.type === 'payment' || transaction.type === 'bonus' || transaction.type === 'refund' || transaction.type === 'earning_addon' || transaction.type === 'tip') {
       const oldBalance = this.totalBalance || 0;
       this.totalBalance += transaction.amount;
       this.totalEarned += transaction.amount;
-      
+
       // Log bonus/earning_addon transaction for debugging
       if (transaction.type === 'bonus' || transaction.type === 'earning_addon') {
         console.log(`💰 ${transaction.type.toUpperCase()} TRANSACTION ADDED:`, {
@@ -200,7 +200,7 @@ deliveryWalletSchema.methods.addTransaction = function(transactionData) {
           walletId: this._id
         });
       }
-      
+
       // If payment is collected (COD), add to cash in hand
       if (transaction.paymentCollected) {
         this.cashInHand += transaction.amount;
@@ -208,7 +208,7 @@ deliveryWalletSchema.methods.addTransaction = function(transactionData) {
     } else if (transaction.type === 'withdrawal') {
       this.totalBalance -= transaction.amount;
       this.totalWithdrawn += transaction.amount;
-      
+
       // Deduct from cash in hand if it was collected cash
       if (transaction.paymentCollected) {
         this.cashInHand = Math.max(0, this.cashInHand - transaction.amount);
@@ -220,42 +220,42 @@ deliveryWalletSchema.methods.addTransaction = function(transactionData) {
       this.cashInHand = Math.max(0, (this.cashInHand || 0) - transaction.amount);
     }
   }
-  
+
   this.lastTransactionAt = new Date();
-  
+
   return transaction;
 };
 
 // Method to update transaction status
-deliveryWalletSchema.methods.updateTransactionStatus = function(transactionId, status, failureReason = null) {
+deliveryWalletSchema.methods.updateTransactionStatus = function (transactionId, status, failureReason = null) {
   const transaction = this.transactions.id(transactionId);
   if (!transaction) {
     throw new Error('Transaction not found');
   }
-  
+
   const oldStatus = transaction.status;
   const oldAmount = transaction.amount;
-  
+
   transaction.status = status;
   transaction.processedAt = new Date();
-  
+
   if (status === 'Failed' && failureReason) {
     transaction.failureReason = failureReason;
   }
-  
+
   // If transaction status changed from Pending to Completed, update balances
   if (oldStatus === 'Pending' && status === 'Completed') {
-    if (transaction.type === 'payment' || transaction.type === 'bonus' || transaction.type === 'refund' || transaction.type === 'earning_addon') {
+    if (transaction.type === 'payment' || transaction.type === 'bonus' || transaction.type === 'refund' || transaction.type === 'earning_addon' || transaction.type === 'tip') {
       this.totalBalance += oldAmount;
       this.totalEarned += oldAmount;
-      
+
       if (transaction.paymentCollected) {
         this.cashInHand += oldAmount;
       }
     } else if (transaction.type === 'withdrawal') {
       this.totalBalance -= oldAmount;
       this.totalWithdrawn += oldAmount;
-      
+
       if (transaction.paymentCollected) {
         this.cashInHand = Math.max(0, this.cashInHand - oldAmount);
       }
@@ -264,13 +264,13 @@ deliveryWalletSchema.methods.updateTransactionStatus = function(transactionId, s
       this.cashInHand = Math.max(0, this.cashInHand - oldAmount);
     }
   }
-  
+
   // If transaction status changed from Completed to Failed/Cancelled, reverse balances
   if (oldStatus === 'Completed' && (status === 'Failed' || status === 'Cancelled')) {
-    if (transaction.type === 'payment' || transaction.type === 'bonus' || transaction.type === 'refund' || transaction.type === 'earning_addon') {
+    if (transaction.type === 'payment' || transaction.type === 'bonus' || transaction.type === 'refund' || transaction.type === 'earning_addon' || transaction.type === 'tip') {
       this.totalBalance = Math.max(0, this.totalBalance - oldAmount);
       this.totalEarned = Math.max(0, this.totalEarned - oldAmount);
-      
+
       if (transaction.paymentCollected) {
         this.cashInHand = Math.max(0, this.cashInHand - oldAmount);
       }
@@ -281,35 +281,35 @@ deliveryWalletSchema.methods.updateTransactionStatus = function(transactionId, s
       this.cashInHand = (this.cashInHand || 0) + oldAmount;
     }
   }
-  
+
   return transaction;
 };
 
 // Method to collect payment (mark payment as collected and update cashInHand)
-deliveryWalletSchema.methods.collectPayment = function(orderId, amount) {
+deliveryWalletSchema.methods.collectPayment = function (orderId, amount) {
   const paymentTransaction = this.transactions.find(
-    t => t.orderId && t.orderId.toString() === orderId.toString() && 
-         t.type === 'payment' && t.status === 'Completed'
+    t => t.orderId && t.orderId.toString() === orderId.toString() &&
+      t.type === 'payment' && t.status === 'Completed'
   );
-  
+
   if (!paymentTransaction) {
     throw new Error('Payment transaction not found for this order');
   }
-  
+
   if (paymentTransaction.paymentCollected) {
     throw new Error('Payment already collected');
   }
-  
+
   paymentTransaction.paymentCollected = true;
   this.cashInHand += amount || paymentTransaction.amount;
-  
+
   return paymentTransaction;
 };
 
 // Static method to get wallet by delivery ID or create if doesn't exist
-deliveryWalletSchema.statics.findOrCreateByDeliveryId = async function(deliveryId) {
+deliveryWalletSchema.statics.findOrCreateByDeliveryId = async function (deliveryId) {
   let wallet = await this.findOne({ deliveryId });
-  
+
   if (!wallet) {
     wallet = await this.create({
       deliveryId,
@@ -319,7 +319,7 @@ deliveryWalletSchema.statics.findOrCreateByDeliveryId = async function(deliveryI
       totalEarned: 0
     });
   }
-  
+
   return wallet;
 };
 

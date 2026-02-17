@@ -11,7 +11,7 @@ function calculateHaversineDistance(lat1, lng1, lat2, lng2) {
   const R = 6371000; // Earth radius in meters
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = 
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLng / 2) * Math.sin(dLng / 2);
@@ -19,9 +19,9 @@ function calculateHaversineDistance(lat1, lng1, lat2, lng2) {
   return R * c;
 }
 
-const DeliveryTrackingMap = ({ 
-  orderId, 
-  restaurantCoords, 
+const DeliveryTrackingMap = ({
+  orderId,
+  restaurantCoords,
   customerCoords,
   userLiveCoords = null,
   userLocationAccuracy = null,
@@ -36,7 +36,7 @@ const DeliveryTrackingMap = ({
   const socketRef = useRef(null);
   const directionsServiceRef = useRef(null);
   const directionsRendererRef = useRef(null);
-  
+
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState(null);
@@ -52,7 +52,7 @@ const DeliveryTrackingMap = ({
 
   const backendUrl = API_BASE_URL.replace('/api', '');
   const [GOOGLE_MAPS_API_KEY, setGOOGLE_MAPS_API_KEY] = useState("");
-  
+
   // Load Google Maps API key from backend
   useEffect(() => {
     import('@/lib/utils/googleMapsApiKey.js').then(({ getGoogleMapsApiKey }) => {
@@ -86,7 +86,7 @@ const DeliveryTrackingMap = ({
 
     // Check if coordinates are within valid range
     if (startLat < -90 || startLat > 90 || endLat < -90 || endLat > 90 ||
-        startLng < -180 || startLng > 180 || endLng < -180 || endLng > 180) {
+      startLng < -180 || startLng > 180 || endLng < -180 || endLng > 180) {
       console.warn('Invalid coordinates: coordinates are out of valid range', { start, end });
       return;
     }
@@ -100,7 +100,7 @@ const DeliveryTrackingMap = ({
     // Round coordinates to 4 decimal places (~11 meters) for cache key
     const roundCoord = (coord) => Math.round(coord * 10000) / 10000;
     const cacheKey = `${roundCoord(startLat)},${roundCoord(startLng)}|${roundCoord(endLat)},${roundCoord(endLng)}`;
-    
+
     // Check cache first (cache valid for 5 minutes)
     const cached = directionsCacheRef.current.get(cacheKey);
     const now = Date.now();
@@ -110,11 +110,11 @@ const DeliveryTrackingMap = ({
       if (cached.result && cached.result.routes && cached.result.routes[0]) {
         directionsRendererRef.current.setOptions({ preserveViewport: true });
         directionsRendererRef.current.setDirections(cached.result);
-        
+
         const polylinePoints = extractPolylineFromDirections(cached.result);
         if (polylinePoints && polylinePoints.length > 0) {
           routePolylinePointsRef.current = polylinePoints;
-          
+
           if (bikeMarkerRef.current && !animationControllerRef.current) {
             animationControllerRef.current = new RouteBasedAnimationController(
               bikeMarkerRef.current,
@@ -122,12 +122,12 @@ const DeliveryTrackingMap = ({
             );
           }
         }
-        
+
         if (cached.result.routes && cached.result.routes[0] && cached.result.routes[0].overview_path) {
           if (routePolylineRef.current) {
             routePolylineRef.current.setMap(null);
           }
-          
+
           routePolylineRef.current = new window.google.maps.Polyline({
             path: cached.result.routes[0].overview_path,
             geodesic: true,
@@ -155,12 +155,12 @@ const DeliveryTrackingMap = ({
 
     // Throttle: Don't make API call if same route was requested within last 2 seconds
     const lastRequest = lastRouteRequestRef.current;
-    if (lastRequest.start && lastRequest.end && 
-        Math.abs(lastRequest.start.lat - startLat) < 0.0001 &&
-        Math.abs(lastRequest.start.lng - startLng) < 0.0001 &&
-        Math.abs(lastRequest.end.lat - endLat) < 0.0001 &&
-        Math.abs(lastRequest.end.lng - endLng) < 0.0001 &&
-        (now - lastRequest.timestamp) < 2000) {
+    if (lastRequest.start && lastRequest.end &&
+      Math.abs(lastRequest.start.lat - startLat) < 0.0001 &&
+      Math.abs(lastRequest.start.lng - startLng) < 0.0001 &&
+      Math.abs(lastRequest.end.lat - endLat) < 0.0001 &&
+      Math.abs(lastRequest.end.lng - endLng) < 0.0001 &&
+      (now - lastRequest.timestamp) < 2000) {
       console.log('⏭️ Skipping duplicate route request (throttled)');
       return;
     }
@@ -183,7 +183,7 @@ const DeliveryTrackingMap = ({
             result: result,
             timestamp: now
           });
-          
+
           // Clean old cache entries (older than 10 minutes)
           const tenMinutesAgo = now - 600000;
           for (const [key, value] of directionsCacheRef.current.entries()) {
@@ -191,17 +191,17 @@ const DeliveryTrackingMap = ({
               directionsCacheRef.current.delete(key);
             }
           }
-          
+
           // Ensure viewport doesn't change when route is set
           directionsRendererRef.current.setOptions({ preserveViewport: true });
           directionsRendererRef.current.setDirections(result);
-          
+
           // Extract polyline points for route-based animation (Rapido style)
           const polylinePoints = extractPolylineFromDirections(result);
           if (polylinePoints && polylinePoints.length > 0) {
             routePolylinePointsRef.current = polylinePoints;
             console.log('✅ Extracted', polylinePoints.length, 'polyline points for route-based animation');
-            
+
             // Initialize animation controller if bike marker exists
             if (bikeMarkerRef.current && !animationControllerRef.current) {
               animationControllerRef.current = new RouteBasedAnimationController(
@@ -211,14 +211,14 @@ const DeliveryTrackingMap = ({
               console.log('✅ Route-based animation controller initialized');
             }
           }
-          
+
           // Create dashed polyline overlay for better visibility
           if (result.routes && result.routes[0] && result.routes[0].overview_path) {
             // Remove existing custom polyline if any
             if (routePolylineRef.current) {
               routePolylineRef.current.setMap(null);
             }
-            
+
             // Create dashed polyline
             routePolylineRef.current = new window.google.maps.Polyline({
               path: result.routes[0].overview_path,
@@ -241,7 +241,7 @@ const DeliveryTrackingMap = ({
               zIndex: 1
             });
           }
-          
+
         } else {
           // Silently handle errors - don't log UNKNOWN_ERROR as it's often a temporary API issue
           if (status !== 'UNKNOWN_ERROR') {
@@ -259,19 +259,19 @@ const DeliveryTrackingMap = ({
   const hasDeliveryPartner = useMemo(() => {
     const deliveryStateStatus = order?.deliveryState?.status;
     const currentPhase = order?.deliveryState?.currentPhase;
-    
+
     // Check if delivery partner has accepted (key condition)
     const hasAccepted = deliveryStateStatus === 'accepted';
-    const hasPartner = !!(order?.deliveryPartnerId || 
-              order?.deliveryPartner || 
-              order?.assignmentInfo?.deliveryPartnerId ||
-              hasAccepted ||
-              (deliveryStateStatus && deliveryStateStatus !== 'pending') ||
-              (currentPhase && currentPhase !== 'assigned' && currentPhase !== 'pending') ||
-              (currentPhase === 'en_route_to_pickup') ||
-              (currentPhase === 'at_pickup') ||
-              (currentPhase === 'en_route_to_delivery'));
-    
+    const hasPartner = !!(order?.deliveryPartnerId ||
+      order?.deliveryPartner ||
+      order?.assignmentInfo?.deliveryPartnerId ||
+      hasAccepted ||
+      (deliveryStateStatus && deliveryStateStatus !== 'pending') ||
+      (currentPhase && currentPhase !== 'assigned' && currentPhase !== 'pending') ||
+      (currentPhase === 'en_route_to_pickup') ||
+      (currentPhase === 'at_pickup') ||
+      (currentPhase === 'en_route_to_delivery'));
+
     console.log('🔍 hasDeliveryPartner check:', {
       hasPartner,
       hasAccepted,
@@ -281,7 +281,7 @@ const DeliveryTrackingMap = ({
       deliveryStateStatus,
       deliveryStatePhase: currentPhase
     });
-    
+
     return hasPartner;
   }, [order?.deliveryPartnerId, order?.deliveryPartner, order?.assignmentInfo?.deliveryPartnerId, order?.deliveryState?.status, order?.deliveryState?.currentPhase]);
 
@@ -297,25 +297,25 @@ const DeliveryTrackingMap = ({
 
     // Phase 1: Delivery boy going to restaurant (en_route_to_pickup)
     if (currentPhase === 'en_route_to_pickup' || status === 'accepted') {
-      return { 
-        start: { lat: deliveryBoyLocation.lat, lng: deliveryBoyLocation.lng }, 
-        end: restaurantCoords 
+      return {
+        start: { lat: deliveryBoyLocation.lat, lng: deliveryBoyLocation.lng },
+        end: restaurantCoords
       };
     }
 
     // Phase 2: Delivery boy at restaurant (at_pickup) - show route to customer
     if (currentPhase === 'at_pickup' || status === 'reached_pickup' || status === 'order_confirmed') {
-      return { 
-        start: restaurantCoords, 
-        end: customerCoords 
+      return {
+        start: restaurantCoords,
+        end: customerCoords
       };
     }
 
     // Phase 3: Delivery boy going to customer (en_route_to_delivery)
     if (currentPhase === 'en_route_to_delivery' || status === 'en_route_to_delivery' || order.status === 'out_for_delivery') {
-      return { 
-        start: { lat: deliveryBoyLocation.lat, lng: deliveryBoyLocation.lng }, 
-        end: customerCoords 
+      return {
+        start: { lat: deliveryBoyLocation.lat, lng: deliveryBoyLocation.lng },
+        end: customerCoords
       };
     }
 
@@ -349,7 +349,7 @@ const DeliveryTrackingMap = ({
         console.log('🚴🚴🚴 Creating bike marker with logo path:', bikeLogo);
         console.log('🚴 Map instance:', !!mapInstance.current);
         console.log('🚴 Position:', { lat, lng, heading });
-        
+
         // Create bike icon configuration
         let bikeIcon = {
           url: bikeLogo,
@@ -379,7 +379,7 @@ const DeliveryTrackingMap = ({
             }
           };
           img.src = bikeLogo;
-          
+
           bikeMarkerRef.current = new window.google.maps.Marker({
             position: position,
             map: mapInstance.current,
@@ -393,7 +393,7 @@ const DeliveryTrackingMap = ({
 
           // Force marker to be visible
           bikeMarkerRef.current.setVisible(true);
-          
+
           // Initialize route-based animation controller if polyline is available
           if (routePolylinePointsRef.current && routePolylinePointsRef.current.length > 0) {
             animationControllerRef.current = new RouteBasedAnimationController(
@@ -402,15 +402,15 @@ const DeliveryTrackingMap = ({
             );
             console.log('✅ Route-based animation controller initialized with bike marker');
           }
-          
+
           // Verify marker is on map
           const markerMap = bikeMarkerRef.current.getMap();
           const markerVisible = bikeMarkerRef.current.getVisible();
           const markerPosition = bikeMarkerRef.current.getPosition();
-          
-          console.log('✅✅✅ Bike marker created and visible at:', { 
-            lat, 
-            lng, 
+
+          console.log('✅✅✅ Bike marker created and visible at:', {
+            lat,
+            lng,
             heading,
             marker: bikeMarkerRef.current,
             isVisible: markerVisible,
@@ -420,7 +420,7 @@ const DeliveryTrackingMap = ({
             mapBounds: markerMap ? markerMap.getBounds() : null,
             hasRouteAnimation: !!animationControllerRef.current
           });
-          
+
           if (!markerMap) {
             console.error('❌ Bike marker created but not on map! Re-adding...');
             bikeMarkerRef.current.setMap(mapInstance.current);
@@ -429,7 +429,7 @@ const DeliveryTrackingMap = ({
             console.error('❌ Bike marker created but not visible! Making visible...');
             bikeMarkerRef.current.setVisible(true);
           }
-          
+
           // Double check after a moment
           setTimeout(() => {
             if (bikeMarkerRef.current) {
@@ -473,11 +473,11 @@ const DeliveryTrackingMap = ({
           // Find nearest point on polyline (ensures marker stays on road)
           // Note: findNearestPointOnPolyline takes (polyline, riderPosition)
           const nearest = findNearestPointOnPolyline(routePolylinePointsRef.current, { lat, lng });
-          
+
           if (nearest && nearest.nearestPoint) {
             // Calculate progress on route (0 to 1) based on distance traveled
             const totalPoints = routePolylinePointsRef.current.length;
-            
+
             // Calculate cumulative distance to nearest point for accurate progress
             let distanceToNearest = 0;
             for (let i = 0; i < nearest.segmentIndex; i++) {
@@ -485,14 +485,14 @@ const DeliveryTrackingMap = ({
               const p2 = routePolylinePointsRef.current[i + 1];
               distanceToNearest += calculateHaversineDistance(p1.lat, p1.lng, p2.lat, p2.lng);
             }
-            
+
             // Add distance within current segment
             const segmentStart = routePolylinePointsRef.current[nearest.segmentIndex];
             const segmentEnd = routePolylinePointsRef.current[nearest.segmentIndex + 1] || segmentStart;
             const segmentDistance = calculateHaversineDistance(segmentStart.lat, segmentStart.lng, segmentEnd.lat, segmentEnd.lng);
             const segmentProgress = calculateHaversineDistance(segmentStart.lat, segmentStart.lng, nearest.nearestPoint.lat, nearest.nearestPoint.lng) / (segmentDistance || 1);
             distanceToNearest += segmentDistance * segmentProgress;
-            
+
             // Calculate total route distance
             let totalDistance = 0;
             for (let i = 0; i < routePolylinePointsRef.current.length - 1; i++) {
@@ -500,10 +500,10 @@ const DeliveryTrackingMap = ({
               const p2 = routePolylinePointsRef.current[i + 1];
               totalDistance += calculateHaversineDistance(p1.lat, p1.lng, p2.lat, p2.lng);
             }
-            
+
             // Calculate progress (0 to 1)
             let progress = totalDistance > 0 ? Math.min(1, Math.max(0, distanceToNearest / totalDistance)) : 0;
-            
+
             // Ensure progress doesn't go backwards (only forward movement) - Rapido/Zomato style
             if (animationControllerRef.current && animationControllerRef.current.lastProgress !== undefined) {
               const lastProgress = animationControllerRef.current.lastProgress;
@@ -516,11 +516,11 @@ const DeliveryTrackingMap = ({
                 progress = lastProgress;
               }
             }
-            
+
             // Use route-based animation controller if available
             if (animationControllerRef.current) {
-              console.log('🛵 Route-based animation (Rapido/Zomato style):', { 
-                progress, 
+              console.log('🛵 Route-based animation (Rapido/Zomato style):', {
+                progress,
                 segmentIndex: nearest.segmentIndex,
                 onRoute: true,
                 snappedToRoad: true
@@ -563,10 +563,10 @@ const DeliveryTrackingMap = ({
           // This prevents bike from jumping to buildings/footpaths
           return; // Exit early - don't update marker
         }
-        
+
         // Ensure bike is visible
         bikeMarkerRef.current.setVisible(true);
-        
+
         // Verify bike is on map
         if (!bikeMarkerRef.current.getMap()) {
           console.log('⚠️ Bike marker not on map, re-adding...');
@@ -598,14 +598,14 @@ const DeliveryTrackingMap = ({
       socketRef.current.emit('join-order-tracking', orderId);
       socketRef.current.emit('request-current-location', orderId);
       console.log('📡 Requested current location for order:', orderId);
-      
+
       // Also request location updates periodically
       const locationRequestInterval = setInterval(() => {
         if (socketRef.current && socketRef.current.connected) {
           socketRef.current.emit('request-current-location', orderId);
         }
       }, 5000); // Request every 5 seconds
-      
+
       // Store interval ID for cleanup
       socketRef.current._locationRequestInterval = locationRequestInterval;
     });
@@ -621,7 +621,7 @@ const DeliveryTrackingMap = ({
         console.log('✅✅✅ Updating bike to REAL delivery boy location:', location);
         setCurrentLocation(location);
         setDeliveryBoyLocation(location);
-        
+
         // RAPIDO-STYLE: Use route-based animation if progress is available
         if (isMapLoaded && mapInstance.current) {
           if (data.progress !== undefined && animationControllerRef.current && routePolylinePointsRef.current) {
@@ -650,7 +650,7 @@ const DeliveryTrackingMap = ({
         console.log('✅✅✅ Updating bike to REAL current delivery boy location:', location);
         setCurrentLocation(location);
         setDeliveryBoyLocation(location);
-        
+
         // RAPIDO-STYLE: Use route-based animation if progress is available
         if (isMapLoaded && mapInstance.current) {
           if (data.progress !== undefined && animationControllerRef.current && routePolylinePointsRef.current) {
@@ -671,13 +671,13 @@ const DeliveryTrackingMap = ({
         console.warn('⚠️ Invalid current location data received:', data);
       }
     });
-    
+
     // Listen for route initialization from backend
     socketRef.current.on(`route-initialized-${orderId}`, (data) => {
       console.log('🛣️ Route initialized from backend:', data);
       if (data.points && Array.isArray(data.points) && data.points.length > 0) {
         routePolylinePointsRef.current = data.points;
-        
+
         // Initialize animation controller if bike marker exists
         if (bikeMarkerRef.current && !animationControllerRef.current) {
           animationControllerRef.current = new RouteBasedAnimationController(
@@ -695,7 +695,7 @@ const DeliveryTrackingMap = ({
     // Listen for order status updates (e.g., "Delivery partner on the way")
     socketRef.current.on('order_status_update', (data) => {
       console.log('📢 Received order status update:', data);
-      
+
       // Trigger custom event so OrderTracking component can handle notification
       // This avoids circular dependencies and keeps notification logic in OrderTracking
       if (window.dispatchEvent && data.message) {
@@ -729,7 +729,7 @@ const DeliveryTrackingMap = ({
         console.log('⏳ Waiting for Google Maps API to load...');
         let attempts = 0;
         const maxAttempts = 50; // 5 seconds max wait
-        
+
         while (!window.google && attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
@@ -746,7 +746,8 @@ const DeliveryTrackingMap = ({
               const loader = new Loader({
                 apiKey: apiKey,
                 version: "weekly",
-                libraries: ["places", "geometry", "drawing"]
+                libraries: ["places", "geometry", "drawing"],
+                loading: "async"
               });
               await loader.load();
               console.log('✅ Google Maps loaded manually');
@@ -914,7 +915,7 @@ const DeliveryTrackingMap = ({
             strokeOpacity: 0
           }
         });
-        
+
         // Ensure viewport never changes automatically - map stays stable
         directionsRendererRef.current.setOptions({ preserveViewport: true });
 
@@ -929,7 +930,7 @@ const DeliveryTrackingMap = ({
               <path d="M16 24 L16 20 L20 17 L24 20 L24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           `);
-          
+
           mapInstance.current._restaurantMarker = new window.google.maps.Marker({
             position: { lat: restaurantCoords.lat, lng: restaurantCoords.lng },
             map: mapInstance.current,
@@ -954,7 +955,7 @@ const DeliveryTrackingMap = ({
               <path d="M18 18 L18 14 L22 10" fill="none" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           `);
-          
+
           mapInstance.current._customerMarker = new window.google.maps.Marker({
             position: { lat: customerCoords.lat, lng: customerCoords.lng },
             map: mapInstance.current,
@@ -1010,7 +1011,7 @@ const DeliveryTrackingMap = ({
         // Draw route based on order phase
         mapInstance.current.addListener('tilesloaded', () => {
           setIsMapLoaded(true);
-          
+
           // Hide Google Maps footer elements (Keyboard shortcuts, Map data, Terms)
           const hideGoogleFooter = () => {
             const footerElements = mapRef.current?.querySelectorAll?.('.gm-style-cc, a[href*="keyboard"], a[href*="terms"]');
@@ -1020,32 +1021,32 @@ const DeliveryTrackingMap = ({
               }
             });
           };
-          
+
           // Hide immediately and also set interval to catch dynamically added elements
           hideGoogleFooter();
           const footerHideInterval = setInterval(() => {
             hideGoogleFooter();
           }, 500);
-          
+
           // Clear interval after 5 seconds
           setTimeout(() => clearInterval(footerHideInterval), 5000);
-          
+
           // Check if delivery partner is assigned and show bike immediately
           const currentPhase = order?.deliveryState?.currentPhase;
           const deliveryStateStatus = order?.deliveryState?.status;
-          const hasDeliveryPartnerOnLoad = currentPhase === 'en_route_to_pickup' || 
-                                    currentPhase === 'at_pickup' || 
-                                    currentPhase === 'en_route_to_delivery' ||
-                                    deliveryStateStatus === 'accepted' ||
-                                    (deliveryStateStatus && deliveryStateStatus !== 'pending');
-          
+          const hasDeliveryPartnerOnLoad = currentPhase === 'en_route_to_pickup' ||
+            currentPhase === 'at_pickup' ||
+            currentPhase === 'en_route_to_delivery' ||
+            deliveryStateStatus === 'accepted' ||
+            (deliveryStateStatus && deliveryStateStatus !== 'pending');
+
           console.log('🚴 Map tiles loaded - Checking for delivery partner:', {
             currentPhase,
             deliveryStateStatus,
             hasDeliveryPartnerOnLoad,
             hasBikeMarker: !!bikeMarkerRef.current
           });
-          
+
           // DO NOT create bike at restaurant on map load
           // Wait for real location from socket - bike will be created when real location is received
           if (hasDeliveryPartnerOnLoad && !bikeMarkerRef.current) {
@@ -1057,7 +1058,7 @@ const DeliveryTrackingMap = ({
             }
             // Don't create bike at restaurant - wait for real location
           }
-          
+
           // DO NOT draw default route - only draw when delivery partner is assigned
           // Route will be drawn when delivery partner accepts or when location updates arrive
         });
@@ -1080,13 +1081,13 @@ const DeliveryTrackingMap = ({
   // Update route when delivery boy location or order phase changes
   useEffect(() => {
     if (!isMapLoaded) return;
-    
+
     // Check if delivery partner is assigned based on phase
     const currentPhase = order?.deliveryState?.currentPhase;
-    const hasDeliveryPartnerByPhase = currentPhase === 'en_route_to_pickup' || 
-                                     currentPhase === 'at_pickup' || 
-                                     currentPhase === 'en_route_to_delivery';
-    
+    const hasDeliveryPartnerByPhase = currentPhase === 'en_route_to_pickup' ||
+      currentPhase === 'at_pickup' ||
+      currentPhase === 'en_route_to_delivery';
+
     // If delivery partner is assigned but bike marker doesn't exist, create it
     if (hasDeliveryPartnerByPhase && !bikeMarkerRef.current && mapInstance.current) {
       console.log('🚴 Delivery partner detected by phase, creating bike marker:', currentPhase);
@@ -1097,22 +1098,22 @@ const DeliveryTrackingMap = ({
         socketRef.current.emit('request-current-location', orderId);
       }
     }
-    
+
     // Throttle route updates to avoid too many API calls
     const now = Date.now();
     if (lastRouteUpdateRef.current && (now - lastRouteUpdateRef.current) < 10000) {
       return; // Skip if updated less than 10 seconds ago
     }
-    
+
     // Only draw route if delivery partner is assigned
     const routePhase = order?.deliveryState?.currentPhase;
     const routeStatus = order?.deliveryState?.status;
     const hasDeliveryPartnerForRoute = routeStatus === 'accepted' ||
-                                      routePhase === 'en_route_to_pickup' ||
-                                      routePhase === 'at_pickup' ||
-                                      routePhase === 'en_route_to_delivery' ||
-                                      (routeStatus && routeStatus !== 'pending');
-    
+      routePhase === 'en_route_to_pickup' ||
+      routePhase === 'at_pickup' ||
+      routePhase === 'en_route_to_delivery' ||
+      (routeStatus && routeStatus !== 'pending');
+
     // Only draw route if delivery partner is assigned
     if (!hasDeliveryPartnerForRoute) {
       // Clear any existing route if delivery partner is not assigned
@@ -1125,7 +1126,7 @@ const DeliveryTrackingMap = ({
       }
       return;
     }
-    
+
     const route = getRouteToShow();
     if (route.start && route.end) {
       lastRouteUpdateRef.current = now;
@@ -1137,7 +1138,7 @@ const DeliveryTrackingMap = ({
         to: route.end,
         hasBikeMarker: !!bikeMarkerRef.current
       });
-      
+
       // Force show bike if delivery partner is assigned but bike marker doesn't exist
       if (hasDeliveryPartnerByPhase && !bikeMarkerRef.current && mapInstance.current) {
         console.log('🚴🚴🚴 FORCING bike marker creation after route update!', {
@@ -1146,7 +1147,7 @@ const DeliveryTrackingMap = ({
           routeEnd: route.end,
           restaurantCoords
         });
-        
+
         // ONLY use real delivery boy location - NEVER use restaurant
         // Priority 1: Use delivery boy's REAL location from socket/state
         if (deliveryBoyLat && deliveryBoyLng) {
@@ -1199,23 +1200,23 @@ const DeliveryTrackingMap = ({
       console.log('⏳ Map not loaded yet, waiting...');
       return;
     }
-    
+
     // Also check phase directly as fallback
     const currentPhase = order?.deliveryState?.currentPhase;
     const deliveryStateStatus = order?.deliveryState?.status;
-    
+
     // Key check: If status is 'accepted', definitely show bike
     const isAccepted = deliveryStateStatus === 'accepted';
     const hasPartnerByPhase = isAccepted ||
-                              currentPhase === 'en_route_to_pickup' || 
-                              currentPhase === 'at_pickup' || 
-                              currentPhase === 'en_route_to_delivery' ||
-                              deliveryStateStatus === 'reached_pickup' ||
-                              deliveryStateStatus === 'order_confirmed' ||
-                              deliveryStateStatus === 'en_route_to_delivery';
-    
+      currentPhase === 'en_route_to_pickup' ||
+      currentPhase === 'at_pickup' ||
+      currentPhase === 'en_route_to_delivery' ||
+      deliveryStateStatus === 'reached_pickup' ||
+      deliveryStateStatus === 'order_confirmed' ||
+      deliveryStateStatus === 'en_route_to_delivery';
+
     const shouldShowBike = hasDeliveryPartner || hasPartnerByPhase;
-    
+
     console.log('🚴🚴🚴 BIKE VISIBILITY CHECK:', {
       shouldShowBike,
       isAccepted,
@@ -1225,7 +1226,7 @@ const DeliveryTrackingMap = ({
       currentPhase,
       hasBikeMarker: !!bikeMarkerRef.current
     });
-    
+
     console.log('🔍 Checking delivery partner assignment:', {
       hasDeliveryPartner,
       hasPartnerByPhase,
@@ -1242,16 +1243,16 @@ const DeliveryTrackingMap = ({
       mapInstance: !!mapInstance.current,
       isMapLoaded
     });
-    
+
     if (shouldShowBike && !bikeMarkerRef.current) {
       console.log('🚴🚴🚴 CREATING BIKE MARKER - Delivery partner accepted!');
       console.log('🚴 Full order state:', JSON.stringify(order?.deliveryState, null, 2));
-      
+
       // Priority 1: ALWAYS use delivery boy's REAL location if available (from socket)
       if (deliveryBoyLat && deliveryBoyLng) {
         console.log('✅✅✅ Creating bike at REAL delivery boy location:', { lat: deliveryBoyLat, lng: deliveryBoyLng, heading: deliveryBoyHeading });
         moveBikeSmoothly(deliveryBoyLat, deliveryBoyLng, deliveryBoyHeading || 0);
-      } 
+      }
       // Priority 2: DO NOT show at restaurant - ONLY wait for real location from socket
       // Bike should ONLY show at real delivery boy location, NEVER at restaurant
       else if (restaurantLat && restaurantLng) {
@@ -1264,7 +1265,7 @@ const DeliveryTrackingMap = ({
         // DO NOT show at restaurant - only wait for real location
         // Real location will come via socket and bike will be created then
         console.log('✅ Bike will be created when real location is received from socket');
-      } 
+      }
       // Priority 3: Use customer location as last resort
       else if (customerCoords && customerCoords.lat && customerCoords.lng) {
         console.log('📍 Creating bike at customer location (fallback):', customerCoords);
@@ -1276,7 +1277,7 @@ const DeliveryTrackingMap = ({
           deliveryBoyLocation
         });
       }
-      
+
       // Verify marker was created after a short delay
       setTimeout(() => {
         if (bikeMarkerRef.current) {
@@ -1284,18 +1285,18 @@ const DeliveryTrackingMap = ({
           const markerPosition = marker.getPosition();
           const markerVisible = marker.getVisible();
           const markerMap = marker.getMap();
-          
+
           console.log('✅✅✅ BIKE MARKER VERIFICATION:', {
             exists: true,
             visible: markerVisible,
             onMap: !!markerMap,
-            position: markerPosition ? { 
-              lat: markerPosition.lat(), 
-              lng: markerPosition.lng() 
+            position: markerPosition ? {
+              lat: markerPosition.lat(),
+              lng: markerPosition.lng()
             } : null,
             iconUrl: bikeLogo
           });
-          
+
           // Force visibility if needed
           if (!markerVisible) {
             console.warn('⚠️ Bike marker not visible, forcing visibility...');

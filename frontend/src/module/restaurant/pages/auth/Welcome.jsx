@@ -94,7 +94,7 @@ export default function RestaurantWelcome() {
         setCurrentIndex((prev) => prev - 1)
       }
     }
-    
+
     // Reset touch values
     setTouchStart(null)
     setTouchEnd(null)
@@ -153,7 +153,7 @@ export default function RestaurantWelcome() {
         setCurrentIndex((prev) => prev - 1)
       }
     }
-    
+
     setMouseStart(null)
     setMouseEnd(null)
   }
@@ -173,7 +173,7 @@ export default function RestaurantWelcome() {
       setDirection(1) // Always go forward
       setCurrentIndex((prev) => (prev + 1) % carouselData.length)
     }, 5000) // 5 seconds
- 
+
     return () => clearInterval(interval)
   }, [carouselData.length])
 
@@ -202,7 +202,7 @@ export default function RestaurantWelcome() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ 
+                transition={{
                   duration: 0.5,
                   ease: "easeInOut"
                 }}
@@ -215,7 +215,7 @@ export default function RestaurantWelcome() {
                     alt={`Carousel ${item.id}`}
                     className="w-full h-full object-cover"
                   />
-                  
+
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/80" />
 
@@ -228,16 +228,16 @@ export default function RestaurantWelcome() {
                       transition={{ delay: 0.2, duration: 0.5 }}
                       className="mb-3"
                     >
-                       <h1 
-            className="text-3xl italic md:text-4xl tracking-wide font-extrabold text-white"
-            style={{
-              WebkitTextStroke: "0.5px white",
-              textStroke: "0.5px white"
-            }}
-          >
-            appzeto food
-          </h1>
-        
+                      <h1
+                        className="text-3xl italic md:text-4xl tracking-wide font-extrabold text-white"
+                        style={{
+                          WebkitTextStroke: "0.5px white",
+                          textStroke: "0.5px white"
+                        }}
+                      >
+                        Grha Poch
+                      </h1>
+
                       <div className="w-12 h-[0.1px] bg-white mt-0 mb-3" />
                       {/* <p className="text-sm md:text-base text-white/90 font-medium">
                         restaurant partner
@@ -269,11 +269,10 @@ export default function RestaurantWelcome() {
                 setDirection(index > currentIndex ? 1 : -1)
                 setCurrentIndex(index)
               }}
-              className={`transition-all duration-300 rounded-full ${
-                index === currentIndex
+              className={`transition-all duration-300 rounded-full ${index === currentIndex
                   ? "w-2.5 h-2.5 bg-white"
                   : "w-1.5 h-1.5 bg-white/50"
-              }`}
+                }`}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}

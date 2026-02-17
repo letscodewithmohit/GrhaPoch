@@ -28,10 +28,10 @@ export const fetchDeliveryWallet = async () => {
     console.log('🔍 Response Status:', response?.status)
     console.log('🔍 Response Data:', response?.data)
     console.log('🔍 Response Data Type:', typeof response?.data)
-    
+
     // Check multiple possible response structures
     let walletData = null
-    
+
     if (response?.data?.success && response?.data?.data?.wallet) {
       walletData = response.data.data.wallet
       console.log('✅ Found wallet in: response.data.data.wallet')
@@ -45,7 +45,7 @@ export const fetchDeliveryWallet = async () => {
       walletData = response.data
       console.log('✅ Found wallet in: response.data')
     }
-    
+
     if (walletData) {
       console.log('💰 Wallet Data from API:', JSON.stringify(walletData, null, 2))
       console.log('💰 Total Balance:', walletData.totalBalance)
@@ -53,7 +53,7 @@ export const fetchDeliveryWallet = async () => {
       console.log('💰 Total Earned:', walletData.totalEarned)
       console.log('💰 Transactions Count:', walletData.transactions?.length || walletData.recentTransactions?.length || 0)
       console.log('💰 Transactions:', walletData.transactions || walletData.recentTransactions || [])
-      
+
       // Transform API response to match expected format (support both camelCase and snake_case)
       const transformedData = {
         totalBalance: Number(walletData.totalBalance) || 0,
@@ -72,7 +72,7 @@ export const fetchDeliveryWallet = async () => {
         transactions: walletData.transactions || walletData.recentTransactions || [],
         totalTransactions: walletData.totalTransactions || 0
       }
-      
+
       console.log('✅ Transformed Wallet Data:', JSON.stringify(transformedData, null, 2))
       return transformedData
     } else {
@@ -80,7 +80,7 @@ export const fetchDeliveryWallet = async () => {
       console.warn('⚠️ Response structure:', Object.keys(response?.data || {}))
       console.warn('⚠️ Full response:', response)
     }
-    
+
     console.log('⚠️ Returning empty wallet state')
     return EMPTY_WALLET_STATE
   } catch (error) {
@@ -123,7 +123,7 @@ export const setDeliveryWalletState = (state) => {
  */
 export const calculateDeliveryBalances = (state) => {
   console.log('📊 calculateDeliveryBalances called with state:', state)
-  
+
   if (!state) {
     console.warn('⚠️ No state provided to calculateDeliveryBalances')
     return {
@@ -134,16 +134,16 @@ export const calculateDeliveryBalances = (state) => {
       totalEarnings: 0
     }
   }
-  
+
   // ALWAYS use totalBalance directly from state (backend calculated value)
   // Don't recalculate from transactions as backend is source of truth
   const totalBalance = state.totalBalance || 0
   const cashInHand = state.cashInHand || 0
   const totalWithdrawn = state.totalWithdrawn || 0
   const totalEarned = state.totalEarned || 0
-  
+
   console.log('📊 Balance values:', { totalBalance, cashInHand, totalWithdrawn, totalEarned })
-  
+
   // Calculate pending withdrawals from transactions if available
   let pendingWithdrawals = state.pendingWithdrawals || 0
   if (state.transactions && Array.isArray(state.transactions)) {
@@ -154,18 +154,18 @@ export const calculateDeliveryBalances = (state) => {
       pendingWithdrawals = pendingFromTransactions
     }
   }
-  
+
   // Calculate total earnings from transactions for display purposes
   let totalEarningsFromTransactions = totalEarned
   if (state.transactions && Array.isArray(state.transactions)) {
     const earningsFromTransactions = state.transactions
-      .filter(t => t.type === 'payment' && t.status === 'Completed') // Exclude bonus from earnings
+      .filter(t => (t.type === 'payment' || t.type === 'tip') && t.status === 'Completed') // Include tips in earnings, exclude bonus
       .reduce((sum, t) => sum + (t.amount || 0), 0)
     if (earningsFromTransactions > 0) {
       totalEarningsFromTransactions = earningsFromTransactions
     }
   }
-  
+
   const balances = {
     totalBalance: totalBalance,
     cashInHand: cashInHand,
@@ -173,7 +173,7 @@ export const calculateDeliveryBalances = (state) => {
     pendingWithdrawals: pendingWithdrawals,
     totalEarnings: totalEarningsFromTransactions || totalEarned || totalBalance || 0
   }
-  
+
   console.log('📊 Calculated balances:', balances)
   return balances
 }
@@ -191,7 +191,7 @@ export const calculatePeriodEarnings = (state, period) => {
 
   const now = new Date()
   let startDate = new Date()
-  
+
   switch (period) {
     case 'today':
       startDate.setHours(0, 0, 0, 0)
@@ -207,16 +207,16 @@ export const calculatePeriodEarnings = (state, period) => {
     default:
       return 0
   }
-  
+
   return state.transactions
     .filter(t => {
-      // Include both payment and earning_addon transactions in earnings
-      if (t.type !== 'payment' && t.type !== 'earning_addon') return false
+      // Include payment, earning_addon, and tip transactions in earnings
+      if (t.type !== 'payment' && t.type !== 'earning_addon' && t.type !== 'tip') return false
       if (t.status !== 'Completed') return false
-      
+
       const transactionDate = t.date ? new Date(t.date) : (t.createdAt ? new Date(t.createdAt) : null)
       if (!transactionDate) return false
-      
+
       return transactionDate >= startDate && transactionDate <= now
     })
     .reduce((sum, t) => sum + (t.amount || 0), 0)

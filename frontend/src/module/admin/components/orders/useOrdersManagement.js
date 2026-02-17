@@ -24,6 +24,7 @@ export function useOrdersManagement(orders, statusKey, title) {
     restaurant: true,
     foodItems: true,
     totalAmount: true,
+    tip: true,
     paymentType: true,
     paymentCollectionStatus: true,
     orderStatus: true,
@@ -42,12 +43,13 @@ export function useOrdersManagement(orders, statusKey, title) {
     // Apply search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      result = result.filter(order => 
+      result = result.filter(order =>
         order.orderId.toLowerCase().includes(query) ||
         order.customerName.toLowerCase().includes(query) ||
         order.restaurant.toLowerCase().includes(query) ||
         order.customerPhone.includes(query) ||
-        order.totalAmount.toString().includes(query)
+        (order.totalAmount && order.totalAmount.toString().includes(query)) ||
+        (order.tipAmount && order.tipAmount.toString().includes(query))
       )
     }
 
@@ -161,7 +163,7 @@ export function useOrdersManagement(orders, statusKey, title) {
       // Dynamic import of jsPDF and autoTable for instant PDF download
       const { default: jsPDF } = await import('jspdf')
       const { default: autoTable } = await import('jspdf-autotable')
-      
+
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -172,27 +174,27 @@ export function useOrdersManagement(orders, statusKey, title) {
       doc.setFontSize(18)
       doc.setTextColor(30, 30, 30)
       doc.text('Order Invoice', 105, 20, { align: 'center' })
-      
+
       // Order ID
       doc.setFontSize(12)
       doc.setTextColor(100, 100, 100)
       const orderId = order.orderId || order.id || order.subscriptionId || 'N/A'
       doc.text(`Order ID: ${orderId}`, 105, 28, { align: 'center' })
-      
+
       // Date
       doc.setFontSize(10)
       const orderDate = order.date && order.time ? `${order.date}, ${order.time}` : (order.date || new Date().toLocaleDateString())
       doc.text(`Date: ${orderDate}`, 105, 34, { align: 'center' })
-      
+
       let startY = 45
-      
+
       // Customer Information
       if (order.customerName || order.customerPhone) {
         doc.setFontSize(12)
         doc.setTextColor(30, 30, 30)
         doc.text('Customer Information', 14, startY)
         startY += 8
-        
+
         doc.setFontSize(10)
         doc.setTextColor(60, 60, 60)
         if (order.customerName) {
@@ -205,27 +207,27 @@ export function useOrdersManagement(orders, statusKey, title) {
         }
         startY += 5
       }
-      
+
       // Restaurant Information
       if (order.restaurant) {
         doc.setFontSize(12)
         doc.setTextColor(30, 30, 30)
         doc.text('Restaurant', 14, startY)
         startY += 8
-        
+
         doc.setFontSize(10)
         doc.setTextColor(60, 60, 60)
         doc.text(order.restaurant, 14, startY)
         startY += 10
       }
-      
+
       // Delivery Type
       if (order.deliveryType) {
         doc.setFontSize(10)
         doc.text(`Delivery Type: ${order.deliveryType}`, 14, startY)
         startY += 8
       }
-      
+
       // Order Items Table
       if (order.items && Array.isArray(order.items) && order.items.length > 0) {
         const tableData = order.items.map((item) => [
@@ -234,7 +236,7 @@ export function useOrdersManagement(orders, statusKey, title) {
           `₹${(item.price || 0).toFixed(2)}`,
           `₹${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
         ])
-        
+
         autoTable(doc, {
           startY: startY,
           head: [['Qty', 'Item Name', 'Price', 'Total']],
@@ -266,10 +268,10 @@ export function useOrdersManagement(orders, statusKey, title) {
           },
           margin: { left: 14, right: 14 }
         })
-        
+
         startY = doc.lastAutoTable.finalY + 10
       }
-      
+
       // Total Amount
       if (order.totalAmount) {
         doc.setFontSize(14)
@@ -279,7 +281,7 @@ export function useOrdersManagement(orders, statusKey, title) {
         doc.text(`Total Amount: ₹${totalAmount}`, 14, startY)
         startY += 8
       }
-      
+
       // Payment Status
       if (order.paymentStatus) {
         doc.setFontSize(10)
@@ -288,13 +290,13 @@ export function useOrdersManagement(orders, statusKey, title) {
         doc.text(`Payment Status: ${order.paymentStatus}`, 14, startY)
         startY += 6
       }
-      
+
       // Order Status
       if (order.orderStatus) {
         doc.setFontSize(10)
         doc.text(`Order Status: ${order.orderStatus}`, 14, startY)
       }
-      
+
       // Save the PDF instantly
       const filename = `Invoice_${orderId}_${new Date().toISOString().split("T")[0]}.pdf`
       doc.save(filename)
@@ -320,6 +322,7 @@ export function useOrdersManagement(orders, statusKey, title) {
       restaurant: true,
       foodItems: true,
       totalAmount: true,
+      tip: true,
       paymentType: true,
       paymentCollectionStatus: true,
       orderStatus: true,

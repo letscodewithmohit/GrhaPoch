@@ -53,6 +53,7 @@ export const calculateOrderSettlement = async (orderId) => {
       gst: order.pricing.tax || 0,
       fixedFee: order.pricing.fixedFee || 0,
       packagingFee: 0, // Can be added later if needed
+      tip: order.pricing.tip || 0,
       total: order.pricing.total || 0
     };
 
@@ -85,7 +86,8 @@ export const calculateOrderSettlement = async (orderId) => {
       distanceCommission: 0,
       surgeMultiplier: 1,
       surgeAmount: 0,
-      totalEarning: 0,
+      tip: userPayment.tip,
+      totalEarning: userPayment.tip,
       status: 'pending'
     };
 
@@ -105,15 +107,21 @@ export const calculateOrderSettlement = async (orderId) => {
         distanceCommission: deliveryCommission.breakdown.distanceCommission,
         surgeMultiplier: surgeMultiplier,
         surgeAmount: surgeAmount,
-        totalEarning: baseEarning + surgeAmount,
+        tip: userPayment.tip,
+        totalEarning: baseEarning + surgeAmount + userPayment.tip,
         status: 'pending'
       };
+    } else if (userPayment.tip > 0) {
+      // Even if no partner assigned yet, track the tip
+      deliveryPartnerEarning.tip = userPayment.tip;
+      deliveryPartnerEarning.totalEarning = userPayment.tip;
     }
 
     // Calculate admin/platform earnings
     // Admin gets: Restaurant commission + Platform fee + Delivery fee + GST + Fixed Fee
     // Note: Even if delivery is free for user, delivery fee amount still goes to admin
-    const deliveryMargin = userPayment.deliveryFee - deliveryPartnerEarning.totalEarning;
+    const deliveryPartnerBaseEarning = deliveryPartnerEarning.totalEarning - userPayment.tip;
+    const deliveryMargin = userPayment.deliveryFee - deliveryPartnerBaseEarning;
 
     const adminCommission = Math.round(restaurantEarning.commission * 100) / 100;
     const adminPlatformFee = Math.round(userPayment.platformFee * 100) / 100;

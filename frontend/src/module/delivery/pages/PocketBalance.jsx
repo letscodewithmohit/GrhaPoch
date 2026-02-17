@@ -82,59 +82,69 @@ export default function PocketBalancePage() {
   }, [])
 
   const balances = calculateDeliveryBalances(walletState)
-  
+
   // Calculate weekly earnings for the current week (excludes bonus)
   const weeklyEarnings = calculatePeriodEarnings(walletState, 'week')
-  
+
   // Calculate total bonus amount from all bonus transactions
   const totalBonus = walletState?.transactions
     ?.filter(t => t.type === 'bonus' && t.status === 'Completed')
     .reduce((sum, t) => sum + (t.amount || 0), 0) || 0
-  
+
+  // Calculate total tips from transactions
+  const totalTips = walletState?.transactions
+    ?.filter(t => t.type === 'tip' && t.status === 'Completed')
+    .reduce((sum, t) => sum + (t.amount || 0), 0) || 0
+
   // Calculate total withdrawn (needed for pocket balance calculation)
   const totalWithdrawn = balances.totalWithdrawn || 0
-  
-  // Pocket balance = total balance (includes bonus + earnings)
-  // Formula: Pocket Balance = Earnings + Bonus - Withdrawals
+
+  // Pocket balance = total balance (includes bonus + tips + earnings)
+  // Formula: Pocket Balance = Earnings + Bonus + Tips - Withdrawals
   // Use walletState.pocketBalance if available, otherwise calculate from totalBalance
-  let pocketBalance = walletState?.pocketBalance !== undefined 
-    ? walletState.pocketBalance 
+  let pocketBalance = walletState?.pocketBalance !== undefined
+    ? walletState.pocketBalance
     : (walletState?.totalBalance || balances.totalBalance || 0)
-  
-  // IMPORTANT: Ensure pocket balance includes bonus
-  // If backend totalBalance is 0 but we have bonus, calculate it manually
-  // This ensures bonus is always reflected in pocket balance and withdrawable amount
-  if (pocketBalance === 0 && totalBonus > 0) {
-    // If totalBalance is 0 but we have bonus, pocket balance = bonus
-    pocketBalance = totalBonus
-  } else if (pocketBalance > 0 && totalBonus > 0) {
-    // Verify pocket balance includes bonus
-    // Calculate expected: Earnings + Bonus - Withdrawals
-    const expectedBalance = weeklyEarnings + totalBonus - totalWithdrawn
-    // Use the higher value to ensure bonus is included
+
+  // Calculate total earnings (all-time, not just weekly)
+  const totalEarnings = walletState?.transactions
+    ?.filter(t => t.type === 'payment' && t.status === 'Completed')
+    .reduce((sum, t) => sum + (t.amount || 0), 0) || 0
+
+  // IMPORTANT: Ensure pocket balance includes bonus and tips
+  // If backend totalBalance is 0 but we have bonus/tips/earnings, calculate it manually
+  // This ensures bonus, tips, and earnings are always reflected in pocket balance and withdrawable amount
+  if (pocketBalance === 0 && (totalBonus > 0 || totalTips > 0 || totalEarnings > 0)) {
+    // If totalBalance is 0 but we have earnings/bonus/tips, pocket balance = earnings + bonus + tips
+    pocketBalance = totalEarnings + totalBonus + totalTips - totalWithdrawn
+  } else if (pocketBalance > 0 && (totalBonus > 0 || totalTips > 0 || totalEarnings > 0)) {
+    // Verify pocket balance includes bonus, tips, and all earnings
+    // Calculate expected: Total Earnings (all-time) + Bonus + Tips - Withdrawals
+    const expectedBalance = totalEarnings + totalBonus + totalTips - totalWithdrawn
+    // Use the higher value to ensure bonus, tips, and all earnings are included
     if (expectedBalance > pocketBalance) {
       pocketBalance = expectedBalance
     }
   }
-  
+
   // Calculate cash collected (cash in hand)
   const cashCollected = balances.cashInHand || 0
-  
+
   // Deductions = actual deductions only (fees, penalties). Pending withdrawal is NOT a deduction.
   const deductions = 0
-  
+
   // Amount withdrawn = approved + pending (requested) withdrawals. Withdraw ki hui amount yahin dikhegi.
   const amountWithdrawnDisplay = (balances.totalWithdrawn || 0) + (balances.pendingWithdrawals || 0)
-  
+
   // Withdrawal limit from admin (min amount above which withdrawal is allowed)
   const withdrawalLimit = Number(walletState?.deliveryWithdrawalLimit) || 100
-  
+
   // Withdrawable amount = pocket balance (includes bonus + earnings)
   const withdrawableAmount = pocketBalance > 0 ? pocketBalance : 0
-  
+
   // Withdrawal allowed only when withdrawable amount >= withdrawal limit
   const canWithdraw = withdrawableAmount >= withdrawalLimit && withdrawableAmount > 0
-  
+
   // Debug logging (cashInHand = Cash collected from backend)
   console.log('💰 PocketBalance Page Calculations:', {
     walletStateCashInHand: walletState?.cashInHand,
@@ -145,6 +155,7 @@ export default function PocketBalancePage() {
     balancesTotalBalance: balances.totalBalance,
     calculatedPocketBalance: pocketBalance,
     totalBonus: totalBonus,
+    totalTips: totalTips,
     weeklyEarnings: weeklyEarnings,
     withdrawableAmount: withdrawableAmount,
     withdrawalLimit,
@@ -271,11 +282,10 @@ export default function PocketBalancePage() {
         <button
           disabled={!canWithdraw}
           onClick={() => canWithdraw && openWithdrawModal()}
-          className={`w-full font-medium py-3 rounded-lg ${
-            canWithdraw
-              ? "bg-black text-white hover:bg-gray-800"
-              : "bg-gray-200 text-gray-500 cursor-not-allowed"
-          }`}
+          className={`w-full font-medium py-3 rounded-lg ${canWithdraw
+            ? "bg-black text-white hover:bg-gray-800"
+            : "bg-gray-200 text-gray-500 cursor-not-allowed"
+            }`}
         >
           Withdraw
         </button>
@@ -339,8 +349,9 @@ export default function PocketBalancePage() {
       {/* Detail Rows */}
       <div className="px-4 pt-2">
 
-        <DetailRow label="Earnings" value={formatCurrency(weeklyEarnings)} />
+        <DetailRow label="Earnings" value={formatCurrency(totalEarnings)} />
         <DetailRow label="Bonus" value={formatCurrency(totalBonus)} />
+        <DetailRow label="Tips" value={formatCurrency(totalTips)} />
         <DetailRow label="Amount withdrawn" value={formatCurrency(totalWithdrawn)} />
         <DetailRow label="Cash collected" value={formatCurrency(cashCollected)} />
         <DetailRow label="Deductions" value={formatCurrency(deductions)} />

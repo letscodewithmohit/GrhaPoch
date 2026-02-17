@@ -9,7 +9,7 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['commission', 'platform_fee', 'delivery_fee', 'gst', 'refund', 'withdrawal', 'bonus', 'deduction'],
+    enum: ['commission', 'platform_fee', 'delivery_fee', 'gst', 'refund', 'withdrawal', 'bonus', 'deduction', 'donation'],
     required: true
   },
   status: {
@@ -76,6 +76,12 @@ const adminWalletSchema = new mongoose.Schema({
     min: 0,
     comment: 'Total GST collected'
   },
+  totalDonations: {
+    type: Number,
+    default: 0,
+    min: 0,
+    comment: 'Total donations collected'
+  },
   totalWithdrawn: {
     type: Number,
     default: 0,
@@ -102,20 +108,20 @@ adminWalletSchema.index({ 'transactions.createdAt': -1 });
 adminWalletSchema.index({ lastTransactionAt: -1 });
 
 // Virtual for pending balance
-adminWalletSchema.virtual('pendingBalance').get(function() {
+adminWalletSchema.virtual('pendingBalance').get(function () {
   return this.totalBalance - this.totalWithdrawn;
 });
 
 // Method to add transaction and update balances
-adminWalletSchema.methods.addTransaction = function(transactionData) {
+adminWalletSchema.methods.addTransaction = function (transactionData) {
   const transaction = {
     ...transactionData,
     createdAt: new Date(),
     processedAt: transactionData.processedAt || new Date()
   };
-  
+
   this.transactions.push(transaction);
-  
+
   // Update balances based on transaction type and status
   if (transaction.status === 'Completed') {
     if (transaction.type === 'commission') {
@@ -130,6 +136,9 @@ adminWalletSchema.methods.addTransaction = function(transactionData) {
     } else if (transaction.type === 'gst') {
       this.totalBalance += transaction.amount;
       this.totalGST += transaction.amount;
+    } else if (transaction.type === 'donation') {
+      this.totalBalance += transaction.amount;
+      this.totalDonations += transaction.amount;
     } else if (transaction.type === 'withdrawal') {
       this.totalBalance -= transaction.amount;
       this.totalWithdrawn += transaction.amount;
@@ -140,16 +149,16 @@ adminWalletSchema.methods.addTransaction = function(transactionData) {
       this.totalBalance = Math.max(0, this.totalBalance - transaction.amount);
     }
   }
-  
+
   this.lastTransactionAt = new Date();
-  
+
   return transaction;
 };
 
 // Static method to get or create admin wallet (singleton)
-adminWalletSchema.statics.findOrCreate = async function() {
+adminWalletSchema.statics.findOrCreate = async function () {
   let wallet = await this.findOne({});
-  
+
   if (!wallet) {
     wallet = await this.create({
       totalBalance: 0,
@@ -160,7 +169,7 @@ adminWalletSchema.statics.findOrCreate = async function() {
       totalWithdrawn: 0
     });
   }
-  
+
   return wallet;
 };
 

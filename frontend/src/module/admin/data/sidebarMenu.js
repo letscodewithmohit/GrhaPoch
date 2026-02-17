@@ -305,6 +305,12 @@ export const sidebarMenuData = [
         icon: "Settings",
       },
       {
+        type: "link",
+        label: "Donation Management",
+        path: "/admin/donation-management",
+        icon: "Heart",
+      },
+      {
         type: "expandable",
         label: "Pages & Social Media",
         icon: "Link",

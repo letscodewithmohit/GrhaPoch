@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import AnimatedPage from "../../components/AnimatedPage"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import grhaPochLogo from "@/assets/appzetologo.png"
+import grhaPochLogo from "@/assets/grhapochlogo.png"
 import api from "@/lib/api"
 import { API_ENDPOINTS } from "@/lib/api/config"
 

@@ -120,6 +120,11 @@ const orderSchema = new mongoose.Schema({
       required: true,
       min: 0
     },
+    tip: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     couponCode: {
       type: String
     }
@@ -127,7 +132,7 @@ const orderSchema = new mongoose.Schema({
   payment: {
     method: {
       type: String,
-      enum: ['razorpay', 'cash', 'wallet', 'upi', 'card'],
+      enum: ['razorpay', 'cash', 'wallet', 'upi', 'card', 'razorpay_tip'],
       required: true
     },
     status: {

@@ -34,7 +34,7 @@ export const getEarnings = asyncHandler(async (req, res) => {
 
     // If date is provided, use it as base date for period calculation
     const baseDate = date ? new Date(date) : new Date();
-    
+
     switch (period) {
       case 'today':
         startDate = new Date(baseDate);
@@ -71,31 +71,31 @@ export const getEarnings = asyncHandler(async (req, res) => {
     const wallet = await DeliveryWallet.findOrCreateByDeliveryId(delivery._id);
 
     // Filter transactions based on period and type
-    let transactions = wallet.transactions || [];
-    
-    // Filter by transaction type (only 'payment' type for earnings)
-    transactions = transactions.filter(t => 
-      t.type === 'payment' && 
+    let allTransactions = wallet.transactions || [];
+
+    // Filter by transaction type (payment and tip for earnings)
+    let earningsTransactions = allTransactions.filter(t =>
+      (t.type === 'payment' || t.type === 'tip') &&
       t.status === 'Completed'
     );
 
     // Filter by date range if period is specified
     if (startDate) {
-      transactions = transactions.filter(t => {
+      earningsTransactions = earningsTransactions.filter(t => {
         const transactionDate = t.createdAt || t.processedAt || new Date();
         return transactionDate >= startDate && transactionDate <= endDate;
       });
     }
 
     // Sort by date (newest first)
-    transactions.sort((a, b) => {
+    earningsTransactions.sort((a, b) => {
       const dateA = a.createdAt || a.processedAt || new Date(0);
       const dateB = b.createdAt || b.processedAt || new Date(0);
       return dateB - dateA;
     });
 
     // Get order details for each transaction
-    const orderIds = transactions
+    const orderIds = earningsTransactions
       .filter(t => t.orderId)
       .map(t => t.orderId);
 
@@ -113,13 +113,14 @@ export const getEarnings = asyncHandler(async (req, res) => {
     });
 
     // Combine transaction and order data
-    const earnings = transactions.map(transaction => {
+    const earnings = earningsTransactions.map(transaction => {
       const order = transaction.orderId ? orderMap[transaction.orderId.toString()] : null;
       return {
         transactionId: transaction._id?.toString(),
         orderId: order?.orderId || transaction.orderId?.toString() || 'Unknown',
         restaurantName: order?.restaurantName || 'Unknown Restaurant',
         amount: transaction.amount || 0,
+        type: transaction.type,
         description: transaction.description || '',
         deliveredAt: order?.deliveredAt || transaction.createdAt || transaction.processedAt,
         createdAt: transaction.createdAt || transaction.processedAt,
@@ -128,18 +129,28 @@ export const getEarnings = asyncHandler(async (req, res) => {
     });
 
     // Calculate pagination
-    const totalEarnings = earnings.length;
+    const totalEarningsCount = earnings.length;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const paginatedEarnings = earnings.slice(skip, skip + parseInt(limit));
 
     // Calculate summary statistics
-    const totalAmount = earnings.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const totalOrders = earnings.length;
-    
+    let orderEarning = 0;
+    let tipEarning = 0;
+
+    earnings.forEach(e => {
+      if (e.type === 'tip') {
+        tipEarning += e.amount || 0;
+      } else if (e.type === 'payment') {
+        orderEarning += e.amount || 0;
+      }
+    });
+
+    const totalAmount = orderEarning + tipEarning;
+    const totalOrders = earnings.filter(e => e.type === 'payment').length;
+
     // Calculate time on orders (difference between order creation and delivery)
     let totalTimeMinutes = 0;
-    earnings.forEach(e => {
-      // Find order by orderId string (e.orderId is string like "ORD-123-456")
+    earnings.filter(e => e.type === 'payment').forEach(e => {
       const order = orders.find(o => o.orderId === e.orderId);
       if (order && order.createdAt && order.deliveredAt) {
         const timeDiff = new Date(order.deliveredAt) - new Date(order.createdAt);
@@ -150,10 +161,8 @@ export const getEarnings = asyncHandler(async (req, res) => {
     const totalHours = Math.floor(totalTimeMinutes / 60);
     const totalMinutesRemainder = totalTimeMinutes % 60;
 
-    // Calculate breakdown
-    const orderEarning = totalAmount; // All payments are order earnings
-    const incentive = 0; // Can be added from bonus transactions separately if needed
-    const otherEarnings = 0; // Can include tips, bonuses, etc.
+    const incentive = 0; // Can be added from bonus transactions if needed
+    const otherEarnings = tipEarning; // Include tips in other earnings
 
     return successResponse(res, 200, 'Earnings retrieved successfully', {
       earnings: paginatedEarnings,
@@ -172,8 +181,8 @@ export const getEarnings = asyncHandler(async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: totalEarnings,
-        pages: Math.ceil(totalEarnings / parseInt(limit))
+        total: totalEarningsCount,
+        pages: Math.ceil(totalEarningsCount / parseInt(limit))
       }
     });
   } catch (error) {
@@ -217,7 +226,7 @@ export const getActiveEarningAddons = asyncHandler(async (req, res) => {
           // Count orders from when offer was created (or start date, whichever is later)
           const countFromDate = offerCreatedAt > offerStartDate ? offerCreatedAt : offerStartDate;
           const endDate = new Date(addon.endDate);
-          
+
           // Calculate delivery partner's order count AFTER offer creation
           // Count orders from offer creation/start date to now (or end date if offer hasn't started)
           const countStartDate = now > countFromDate ? countFromDate : now;

@@ -10,9 +10,9 @@ import mongoose from 'mongoose';
  */
 export const getOrders = asyncHandler(async (req, res) => {
   try {
-    const { 
-      status, 
-      page = 1, 
+    const {
+      status,
+      page = 1,
       limit = 50,
       search,
       fromDate,
@@ -44,23 +44,23 @@ export const getOrders = asyncHandler(async (req, res) => {
         'dine-in': 'dine_in',
         'offline-payments': 'pending' // Offline payment orders
       };
-      
+
       const mappedStatus = statusMap[status] || status;
       query.status = mappedStatus;
-      
+
       // If restaurant-cancelled, filter by cancellation reason
       if (status === 'restaurant-cancelled') {
-        query.cancellationReason = { 
-          $regex: /rejected by restaurant|restaurant rejected|restaurant cancelled/i 
+        query.cancellationReason = {
+          $regex: /rejected by restaurant|restaurant rejected|restaurant cancelled/i
         };
       }
     }
-    
+
     // Also handle cancelledBy query parameter (if passed separately)
     if (cancelledBy === 'restaurant') {
       query.status = 'cancelled';
-      query.cancellationReason = { 
-        $regex: /rejected by restaurant|restaurant rejected|restaurant cancelled/i 
+      query.cancellationReason = {
+        $regex: /rejected by restaurant|restaurant rejected|restaurant cancelled/i
       };
     }
 
@@ -190,7 +190,7 @@ export const getOrders = asyncHandler(async (req, res) => {
       const settlements = await OrderSettlement.find({ orderId: { $in: orderIds } })
         .select('orderId userPayment.platformFee cancellationDetails.refundStatus')
         .lean();
-      
+
       // Create maps for quick lookup
       settlements.forEach(s => {
         if (s.orderId) {
@@ -209,15 +209,15 @@ export const getOrders = asyncHandler(async (req, res) => {
     // Transform orders to match frontend format
     const transformedOrders = orders.map((order, index) => {
       const orderDate = new Date(order.createdAt);
-      const dateStr = orderDate.toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
+      const dateStr = orderDate.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
       }).toUpperCase();
-      const timeStr = orderDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      const timeStr = orderDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       }).toUpperCase();
 
       // Get customer phone (unmasked - show full number for admin)
@@ -263,8 +263,8 @@ export const getOrders = asyncHandler(async (req, res) => {
       }
 
       // Determine delivery type
-      const deliveryType = order.deliveryFleet === 'standard' ? 
-        'Home Delivery' : 
+      const deliveryType = order.deliveryFleet === 'standard' ?
+        'Home Delivery' :
         (order.deliveryFleet === 'fast' ? 'Fast Delivery' : 'Home Delivery');
 
       // Calculate report-specific fields
@@ -273,13 +273,13 @@ export const getOrders = asyncHandler(async (req, res) => {
       const deliveryFee = order.pricing?.deliveryFee || 0;
       const tax = order.pricing?.tax || 0;
       const couponCode = order.pricing?.couponCode || null;
-      
+
       // Get platform fee - check if it exists in pricing, otherwise get from settlement map
       let platformFee = order.pricing?.platformFee;
       if (platformFee === undefined || platformFee === null) {
         // Get from settlement map (batch fetched above)
         platformFee = settlementMap.get(order._id.toString());
-        
+
         // If still not found, calculate from total (fallback for old orders)
         if (platformFee === undefined || platformFee === null) {
           const calculatedTotal = (order.pricing?.subtotal || 0) - (order.pricing?.discount || 0) + (order.pricing?.deliveryFee || 0) + (order.pricing?.tax || 0);
@@ -289,7 +289,7 @@ export const getOrders = asyncHandler(async (req, res) => {
           platformFee = (difference > 0 && difference <= 50) ? difference : 0;
         }
       }
-      
+
       // For report: itemDiscount is the discount applied to items
       const itemDiscount = discount;
       // Discounted amount is subtotal after discount
@@ -306,6 +306,8 @@ export const getOrders = asyncHandler(async (req, res) => {
       const totalItemAmount = subtotal;
       // Order amount (final total)
       const orderAmount = order.pricing?.total || 0;
+      // Tip amount
+      const tipAmount = order.pricing?.tip || 0;
 
       return {
         sl: skip + index + 1,
@@ -327,6 +329,7 @@ export const getOrders = asyncHandler(async (req, res) => {
         vatTax: vatTax,
         deliveryCharge: deliveryCharge,
         platformFee: platformFee,
+        tipAmount: tipAmount,
         totalAmount: orderAmount,
         // Original fields
         paymentStatus: paymentStatusDisplay,
@@ -392,7 +395,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     let order = null;
-    
+
     // Try MongoDB _id first
     if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
       order = await Order.findById(id)
@@ -401,7 +404,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
         .populate('deliveryPartnerId', 'name phone availability')
         .lean();
     }
-    
+
     // If not found, try by orderId
     if (!order) {
       order = await Order.findOne({ orderId: id })
@@ -432,12 +435,12 @@ export const getOrderById = asyncHandler(async (req, res) => {
 export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
   try {
     console.log('🔍 Fetching searching deliveryman orders...');
-    const { 
-      page = 1, 
+    const {
+      page = 1,
       limit = 50,
       search
     } = req.query;
-    
+
     console.log('📋 Query params:', { page, limit, search });
 
     // Build base conditions for orders that are ready but don't have delivery partner assigned
@@ -489,7 +492,7 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
     }
 
     // Combine all conditions
-    const finalQuery = searchConditions 
+    const finalQuery = searchConditions
       ? { $and: [baseConditions, searchConditions] }
       : baseConditions;
 
@@ -509,21 +512,21 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
 
     // Get total count
     const total = await Order.countDocuments(finalQuery);
-    
+
     console.log(`✅ Found ${orders.length} orders (total: ${total})`);
 
     // Transform orders to match frontend format
     const transformedOrders = orders.map((order, index) => {
       const orderDate = new Date(order.createdAt);
-      const dateStr = orderDate.toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
+      const dateStr = orderDate.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
       }).toUpperCase();
-      const timeStr = orderDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      const timeStr = orderDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       }).toUpperCase();
 
       // Get customer phone (masked for display)
@@ -560,8 +563,8 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
       const orderStatusDisplay = statusMap[order.status] || 'Pending';
 
       // Determine delivery type
-      const deliveryType = order.deliveryFleet === 'standard' ? 
-        'Home Delivery' : 
+      const deliveryType = order.deliveryFleet === 'standard' ?
+        'Home Delivery' :
         (order.deliveryFleet === 'fast' ? 'Fast Delivery' : 'Home Delivery');
 
       // Format total amount
@@ -618,12 +621,12 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
 export const getOngoingOrders = asyncHandler(async (req, res) => {
   try {
     console.log('🔍 Fetching ongoing orders...');
-    const { 
-      page = 1, 
+    const {
+      page = 1,
       limit = 50,
       search
     } = req.query;
-    
+
     console.log('📋 Query params:', { page, limit, search });
 
     // Build base conditions for ongoing orders
@@ -672,7 +675,7 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
     }
 
     // Combine all conditions
-    const finalQuery = searchConditions 
+    const finalQuery = searchConditions
       ? { $and: [baseConditions, searchConditions] }
       : baseConditions;
 
@@ -693,21 +696,21 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
 
     // Get total count
     const total = await Order.countDocuments(finalQuery);
-    
+
     console.log(`✅ Found ${orders.length} ongoing orders (total: ${total})`);
 
     // Transform orders to match frontend format
     const transformedOrders = orders.map((order, index) => {
       const orderDate = new Date(order.createdAt);
-      const dateStr = orderDate.toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
+      const dateStr = orderDate.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
       }).toUpperCase();
-      const timeStr = orderDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      const timeStr = orderDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       }).toUpperCase();
 
       // Get customer phone (masked for display)
@@ -741,22 +744,22 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
         'scheduled': { text: 'Scheduled', color: 'bg-purple-50 text-purple-600' },
         'dine_in': { text: 'Dine In', color: 'bg-indigo-50 text-indigo-600' }
       };
-      
+
       // Check for handover status (when delivery partner has reached pickup)
       let orderStatusDisplay = statusMap[order.status]?.text || 'Pending';
       let orderStatusColor = statusMap[order.status]?.color || 'bg-gray-100 text-gray-600';
-      
+
       // If delivery partner has reached pickup, show as "Handover"
-      if (order.deliveryState?.currentPhase === 'at_pickup' || 
-          order.deliveryState?.currentPhase === 'en_route_to_delivery' ||
-          order.deliveryState?.currentPhase === 'at_delivery') {
+      if (order.deliveryState?.currentPhase === 'at_pickup' ||
+        order.deliveryState?.currentPhase === 'en_route_to_delivery' ||
+        order.deliveryState?.currentPhase === 'at_delivery') {
         orderStatusDisplay = 'Handover';
         orderStatusColor = 'bg-blue-50 text-blue-600';
       }
 
       // Determine delivery type
-      const deliveryType = order.deliveryFleet === 'standard' ? 
-        'Home Delivery' : 
+      const deliveryType = order.deliveryFleet === 'standard' ?
+        'Home Delivery' :
         (order.deliveryFleet === 'fast' ? 'Fast Delivery' : 'Home Delivery');
 
       // Format total amount
@@ -816,8 +819,8 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
 export const getTransactionReport = asyncHandler(async (req, res) => {
   try {
     console.log('🔍 Fetching transaction report...');
-    const { 
-      page = 1, 
+    const {
+      page = 1,
       limit = 50,
       search,
       zone,
@@ -825,7 +828,7 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
       fromDate,
       toDate
     } = req.query;
-    
+
     console.log('📋 Query params:', { page, limit, search, zone, restaurant, fromDate, toDate });
 
     // Build query for orders
@@ -896,7 +899,7 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
 
     // Calculate summary statistics
     const AdminCommission = (await import('../models/AdminCommission.js')).default;
-    
+
     // Build date query for summary stats
     const summaryDateQuery = {};
     if (fromDate || toDate) {
@@ -938,18 +941,18 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
       .lean();
 
     // Calculate completed transactions (delivered orders)
-    const completedOrders = allOrdersForSummary.filter(order => 
+    const completedOrders = allOrdersForSummary.filter(order =>
       order.status === 'delivered' && order.payment?.status === 'completed'
     );
-    const completedTransaction = completedOrders.reduce((sum, order) => 
+    const completedTransaction = completedOrders.reduce((sum, order) =>
       sum + (order.pricing?.total || 0), 0
     );
 
     // Calculate refunded transactions
-    const refundedOrders = allOrdersForSummary.filter(order => 
+    const refundedOrders = allOrdersForSummary.filter(order =>
       order.payment?.status === 'refunded' || order.status === 'cancelled'
     );
-    const refundedTransaction = refundedOrders.reduce((sum, order) => 
+    const refundedTransaction = refundedOrders.reduce((sum, order) =>
       sum + (order.pricing?.total || 0), 0
     );
 
@@ -982,7 +985,7 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
       const deliveryFee = order.pricing?.deliveryFee || 0;
       const tax = order.pricing?.tax || 0;
       const couponCode = order.pricing?.couponCode || null;
-      
+
       // For report: itemDiscount is the discount applied to items
       const itemDiscount = discount;
       // Discounted amount is subtotal after discount
@@ -1047,14 +1050,14 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
 export const getRestaurantReport = asyncHandler(async (req, res) => {
   try {
     console.log('🔍 Fetching restaurant report...');
-    const { 
+    const {
       zone,
       all,
       type,
       time,
       search
     } = req.query;
-    
+
     console.log('📋 Query params:', { zone, all, type, time, search });
 
     const Restaurant = (await import('../../restaurant/models/Restaurant.js')).default;
@@ -1122,7 +1125,7 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
     if (time && time !== 'All Time') {
       const now = new Date();
       dateQuery.createdAt = {};
-      
+
       if (time === 'Today') {
         const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -1168,19 +1171,19 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
 
         // Calculate statistics
         const totalOrder = orders.length;
-        
+
         // Total order amount
-        const totalOrderAmount = orders.reduce((sum, order) => 
+        const totalOrderAmount = orders.reduce((sum, order) =>
           sum + (order.pricing?.total || 0), 0
         );
 
         // Total discount given
-        const totalDiscountGiven = orders.reduce((sum, order) => 
+        const totalDiscountGiven = orders.reduce((sum, order) =>
           sum + (order.pricing?.discount || 0), 0
         );
 
         // Total VAT/TAX
-        const totalVATTAX = orders.reduce((sum, order) => 
+        const totalVATTAX = orders.reduce((sum, order) =>
           sum + (order.pricing?.tax || 0), 0
         );
 
@@ -1198,8 +1201,8 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
         const totalFood = uniqueItemIds.size;
 
         // Get admin commission for this restaurant
-        const restaurantObjectId = restaurant._id instanceof mongoose.Types.ObjectId 
-          ? restaurant._id 
+        const restaurantObjectId = restaurant._id instanceof mongoose.Types.ObjectId
+          ? restaurant._id
           : new mongoose.Types.ObjectId(restaurant._id);
 
         const commissionQuery = {
@@ -1212,7 +1215,7 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
         }
 
         const commissions = await AdminCommission.find(commissionQuery).lean();
-        const totalAdminCommission = commissions.reduce((sum, comm) => 
+        const totalAdminCommission = commissions.reduce((sum, comm) =>
           sum + (comm.commissionAmount || 0), 0
         );
 
@@ -1301,9 +1304,9 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
     console.log('Request URL:', req.url);
     console.log('Request method:', req.method);
     console.log('Request query:', req.query);
-    
-    const { 
-      page = 1, 
+
+    const {
+      page = 1,
       limit = 50,
       search,
       fromDate,
@@ -1316,11 +1319,11 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
     // Build query for restaurant cancelled orders with pending refunds
     const query = {
       status: 'cancelled',
-      cancellationReason: { 
-        $regex: /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|outside delivery area|kitchen closing|technical issue/i 
+      cancellationReason: {
+        $regex: /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|outside delivery area|kitchen closing|technical issue/i
       }
     };
-    
+
     console.log('📋 Initial query:', JSON.stringify(query, null, 2));
 
     // Restaurant filter
@@ -1407,7 +1410,7 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
         .limit(parseInt(limit))
         .skip(skip)
         .lean();
-      
+
       // Filter out orders where restaurantId population failed (null)
       orders = orders.filter(order => order.restaurantId !== null || order.restaurantName);
     } catch (error) {
@@ -1426,7 +1429,7 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
       console.error('Error importing OrderSettlement:', error);
       OrderSettlement = null;
     }
-    
+
     const transformedOrders = await Promise.all(orders.map(async (order, index) => {
       let settlement = null;
       if (OrderSettlement) {
@@ -1436,21 +1439,21 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
           console.error(`Error fetching settlement for order ${order._id}:`, error);
         }
       }
-      
+
       const orderDate = new Date(order.createdAt);
-      const dateStr = orderDate.toLocaleDateString('en-GB', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
+      const dateStr = orderDate.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
       }).toUpperCase();
-      const timeStr = orderDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      const timeStr = orderDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       }).toUpperCase();
 
       const customerPhone = order.userId?.phone || '';
-      
+
       // Check refund status from settlement
       const refundStatus = settlement?.cancellationDetails?.refundStatus || 'pending';
       const refundAmount = settlement?.cancellationDetails?.refundAmount || 0;
@@ -1483,7 +1486,7 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
     }));
 
     console.log(`✅ Returning ${transformedOrders.length} refund requests`);
-    
+
     return successResponse(res, 200, 'Refund requests retrieved successfully', {
       orders: transformedOrders || [],
       pagination: {
@@ -1544,12 +1547,12 @@ export const processRefund = asyncHandler(async (req, res) => {
 
     // Find order in database - try both MongoDB _id and orderId string
     let order = null;
-    
+
     console.log('🔍 [processRefund] Searching order in database...', {
       searchId: orderId,
       isObjectId: mongoose.Types.ObjectId.isValid(orderId) && orderId.length === 24
     });
-    
+
     // First try MongoDB _id if it's a valid ObjectId
     if (mongoose.Types.ObjectId.isValid(orderId) && orderId.length === 24) {
       console.log('🔍 [processRefund] Searching by MongoDB _id:', orderId);
@@ -1558,7 +1561,7 @@ export const processRefund = asyncHandler(async (req, res) => {
         .lean();
       console.log('🔍 [processRefund] Order found by _id:', order ? 'Yes' : 'No');
     }
-    
+
     // If not found by _id, try orderId string
     if (!order) {
       console.log('🔍 [processRefund] Searching by orderId string:', orderId);
@@ -1576,7 +1579,7 @@ export const processRefund = asyncHandler(async (req, res) => {
         orderIdType: typeof orderId,
         orderIdLength: orderId?.length
       });
-      
+
       // Try to find any order with similar orderId (for debugging)
       try {
         const similarOrders = await Order.find({
@@ -1585,10 +1588,10 @@ export const processRefund = asyncHandler(async (req, res) => {
             { orderId: { $regex: orderId.substring(0, 10), $options: 'i' } }
           ]
         })
-        .select('_id orderId status')
-        .limit(5)
-        .lean();
-        
+          .select('_id orderId status')
+          .limit(5)
+          .lean();
+
         if (similarOrders.length > 0) {
           console.log('💡 [processRefund] Found similar orders:', similarOrders.map(o => ({
             mongoId: o._id.toString(),
@@ -1599,7 +1602,7 @@ export const processRefund = asyncHandler(async (req, res) => {
       } catch (debugError) {
         console.error('Error searching for similar orders:', debugError.message);
       }
-      
+
       // Check total orders count
       try {
         const totalOrders = await Order.countDocuments();
@@ -1607,10 +1610,10 @@ export const processRefund = asyncHandler(async (req, res) => {
       } catch (countError) {
         console.error('Error counting orders:', countError.message);
       }
-      
+
       return errorResponse(res, 404, `Order not found (ID: ${orderId}). Please check if the order exists.`);
     }
-    
+
     // Verify order exists and log complete details
     console.log('✅✅✅ [processRefund] ORDER FOUND IN DATABASE ✅✅✅');
     console.log('📋 [processRefund] Complete Order Details:', {
@@ -1631,10 +1634,10 @@ export const processRefund = asyncHandler(async (req, res) => {
     }
 
     // Check if it's a cancelled order (by restaurant or user)
-    const isRestaurantCancelled = order.cancelledBy === 'restaurant' || 
-      (order.cancellationReason && 
-       /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|outside delivery area|kitchen closing|technical issue/i.test(order.cancellationReason));
-    
+    const isRestaurantCancelled = order.cancelledBy === 'restaurant' ||
+      (order.cancellationReason &&
+        /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|outside delivery area|kitchen closing|technical issue/i.test(order.cancellationReason));
+
     const isUserCancelled = order.cancelledBy === 'user';
 
     if (!isRestaurantCancelled && !isUserCancelled) {
@@ -1643,11 +1646,11 @@ export const processRefund = asyncHandler(async (req, res) => {
 
     // Check payment method - wallet payments don't use Razorpay
     const paymentMethod = order.payment?.method;
-    
+
     if (!paymentMethod) {
       return errorResponse(res, 400, 'Payment method not found for this order');
     }
-    
+
     // For wallet payments, allow refund regardless of delivery type (no Razorpay involved)
     // For other payments (Razorpay), only allow refund for Home Delivery orders
     // Note: Order model uses deliveryFleet, not deliveryType
@@ -1666,19 +1669,19 @@ export const processRefund = asyncHandler(async (req, res) => {
     // For wallet payments, if settlement doesn't exist, create a proper one with all required fields
     if (!settlement && paymentMethod === 'wallet') {
       console.log('📝 [processRefund] Settlement not found for wallet order, creating settlement with order data...');
-      
+
       const pricing = order.pricing || {};
       const subtotal = pricing.subtotal || 0;
       const deliveryFee = pricing.deliveryFee || 0;
       const platformFee = pricing.platformFee || 0;
       const tax = pricing.tax || 0;
       const total = pricing.total || 0;
-      
+
       // Calculate earnings (simplified for wallet refunds - we just need the structure)
       const foodPrice = subtotal;
       const commission = 0; // For wallet refunds, we don't need actual commission
       const netEarning = foodPrice; // Simplified
-      
+
       settlement = new OrderSettlement({
         orderId: order._id,
         orderNumber: order.orderId,
@@ -1737,8 +1740,8 @@ export const processRefund = asyncHandler(async (req, res) => {
     }
 
     // Check if refund already processed
-    if (settlement.cancellationDetails?.refundStatus === 'processed' || 
-        settlement.cancellationDetails?.refundStatus === 'initiated') {
+    if (settlement.cancellationDetails?.refundStatus === 'processed' ||
+      settlement.cancellationDetails?.refundStatus === 'initiated') {
       return errorResponse(res, 400, 'Refund already processed or initiated for this order');
     }
 
@@ -1749,7 +1752,7 @@ export const processRefund = asyncHandler(async (req, res) => {
       // For wallet payments, use provided refundAmount or calculate from order
       const orderTotal = order.pricing?.total || settlement.userPayment?.total || 0;
       let finalRefundAmount = 0;
-      
+
       // If refundAmount is provided in request body, use it (validate it)
       if (refundAmount !== undefined && refundAmount !== null && refundAmount !== '') {
         const requestedAmount = parseFloat(refundAmount);
@@ -1759,7 +1762,7 @@ export const processRefund = asyncHandler(async (req, res) => {
           isNaN: isNaN(requestedAmount),
           orderTotal: orderTotal
         });
-        
+
         if (isNaN(requestedAmount) || requestedAmount <= 0) {
           console.error('❌ [processRefund] Invalid refund amount:', requestedAmount);
           return errorResponse(res, 400, `Invalid refund amount provided: ${refundAmount}. Please provide a valid positive number.`);
@@ -1776,7 +1779,7 @@ export const processRefund = asyncHandler(async (req, res) => {
       } else {
         // If no amount provided, use calculated refund or order total
         const calculatedRefund = settlement.cancellationDetails?.refundAmount || 0;
-        
+
         // For wallet, always use order total if calculated refund is 0
         if (calculatedRefund <= 0 && orderTotal > 0) {
           console.log('💰 [processRefund] Wallet payment - using full order total for refund:', orderTotal);
@@ -1787,14 +1790,14 @@ export const processRefund = asyncHandler(async (req, res) => {
           return errorResponse(res, 400, 'No refund amount found for this order');
         }
       }
-      
+
       // Update settlement with refund amount
       if (!settlement.cancellationDetails) {
         settlement.cancellationDetails = {};
       }
       settlement.cancellationDetails.refundAmount = finalRefundAmount;
       await settlement.save();
-      
+
       // Process wallet refund (add to user wallet) with the specified amount
       const { processWalletRefund } = await import('../../order/services/cancellationRefundService.js');
       refundResult = await processWalletRefund(order._id, adminId, finalRefundAmount);
@@ -1804,7 +1807,7 @@ export const processRefund = asyncHandler(async (req, res) => {
       if (refundAmount <= 0) {
         return errorResponse(res, 400, 'No refund amount calculated for this order');
       }
-      
+
       // Process Razorpay refund
       const { processRazorpayRefund } = await import('../../order/services/cancellationRefundService.js');
       refundResult = await processRazorpayRefund(order._id, adminId);

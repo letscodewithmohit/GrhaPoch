@@ -5,7 +5,10 @@ import {
   getUserOrders,
   getOrderDetails,
   calculateOrder,
-  cancelOrder
+  cancelOrder,
+  addTipToOrder,
+  initiateTipPayment,
+  verifyTipPayment
 } from '../controllers/orderController.js';
 import { authenticate } from '../../auth/middleware/auth.js';
 
@@ -32,6 +35,13 @@ router.get('/:id', getOrderDetails);
 
 // Cancel order
 router.patch('/:id/cancel', cancelOrder);
+
+// Add tip to order
+router.patch('/:id/tip', addTipToOrder);
+
+// Razorpay Tip Payment Flow
+router.post('/:id/tip/initiate', initiateTipPayment);
+router.post('/tip/verify', verifyTipPayment);
 
 export default router;
 

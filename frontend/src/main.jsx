@@ -26,13 +26,13 @@ window.__googleMapsLoaded = window.__googleMapsLoaded || false;
     window.__googleMapsLoaded = true;
     return;
   }
-  
+
   // Check if script is already being loaded
   const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
   if (existingScript) {
     console.log('✅ Google Maps script already exists, waiting for it to load...');
     window.__googleMapsLoading = true;
-    
+
     // Wait for script to load
     existingScript.addEventListener('load', () => {
       window.__googleMapsLoaded = true;
@@ -40,22 +40,23 @@ window.__googleMapsLoaded = window.__googleMapsLoaded || false;
     });
     return;
   }
-  
+
   // Check if Loader is already loading
   if (window.__googleMapsLoading) {
     console.log('✅ Google Maps is already being loaded, waiting...');
     return;
   }
-  
+
   window.__googleMapsLoading = true;
-  
+
   try {
     const googleMapsApiKey = await getGoogleMapsApiKey()
     if (googleMapsApiKey) {
       const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places,geometry,drawing`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places,geometry,drawing&loading=async`
       script.async = true
       script.defer = true
+      script.loading = 'async' // Add this for modern browsers
       script.onload = () => {
         console.log('✅ Google Maps API loaded via script tag');
         window.__googleMapsLoaded = true;
@@ -89,19 +90,19 @@ if (savedTheme === 'dark') {
 const originalError = console.error
 console.error = (...args) => {
   const errorStr = args.join(' ')
-  
+
   // Suppress browser extension errors
   if (
     typeof args[0] === 'string' &&
     (args[0].includes('chrome-extension://') ||
-     args[0].includes('_$initialUrl') ||
-     args[0].includes('_$onReInit') ||
-     args[0].includes('_$bindListeners'))
+      args[0].includes('_$initialUrl') ||
+      args[0].includes('_$onReInit') ||
+      args[0].includes('_$bindListeners'))
   ) {
     return // Suppress browser extension errors
   }
-  
-  
+
+
   // Suppress geolocation errors (non-critical, will retry or use fallback)
   if (
     errorStr.includes('Timeout expired') ||
@@ -114,7 +115,7 @@ console.error = (...args) => {
   ) {
     return // Silently ignore geolocation errors (permission denied, timeout, etc.)
   }
-  
+
   // Suppress duplicate network error messages (handled by axios interceptor with cooldown)
   // Check if any argument is an AxiosError with network error
   const hasNetworkError = args.some(arg => {
@@ -130,13 +131,13 @@ console.error = (...args) => {
     }
     return false
   })
-  
+
   // If we have a network error object, suppress it regardless of the message prefix
   if (hasNetworkError) {
     // The axios interceptor already handles throttling and shows toast notifications
     return
   }
-  
+
   // Check error string for network error patterns (for string-based error messages)
   if (
     errorStr.includes('🌐 Network Error') ||
@@ -154,7 +155,7 @@ console.error = (...args) => {
     // The axios interceptor already handles throttling
     return
   }
-  
+
   // Suppress timeout errors (handled by axios interceptor)
   if (
     errorStr.includes('timeout of') ||
@@ -164,7 +165,7 @@ console.error = (...args) => {
     // Timeout errors are handled by axios interceptor with proper error handling
     return
   }
-  
+
   // Suppress OTP verification errors (handled by UI error messages)
   if (
     errorStr.includes('OTP Verification Error:') ||
@@ -197,7 +198,7 @@ window.addEventListener('unhandledrejection', (event) => {
   const errorMsg = error?.message || String(error) || ''
   const errorName = error?.name || ''
   const errorStr = String(error) || ''
-  
+
   // Suppress geolocation errors (permission denied, timeout, etc.)
   if (
     errorMsg.includes('Timeout expired') ||
@@ -210,7 +211,7 @@ window.addEventListener('unhandledrejection', (event) => {
     event.preventDefault() // Prevent error from showing in console
     return
   }
-  
+
   // Suppress refund processing errors that are already handled by the component
   // These errors are logged with console.error in the component's catch block
   if (

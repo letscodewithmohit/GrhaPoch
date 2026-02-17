@@ -23,7 +23,7 @@ const logger = winston.createLogger({
  */
 export const getDeliveryEarnings = asyncHandler(async (req, res) => {
   try {
-    const { 
+    const {
       deliveryPartnerId,
       period = 'all',
       page = 1,
@@ -65,7 +65,7 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
     console.log(`👥 Found ${deliveries.length} delivery partners`);
 
     const deliveryIds = deliveries.map(d => d._id);
-    
+
     if (deliveryIds.length === 0) {
       console.warn('⚠️ No delivery partners found matching query');
     }
@@ -141,7 +141,7 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
 
     // Get all earnings transactions
     let allEarnings = [];
-    
+
     for (const wallet of wallets) {
       // Match wallet.deliveryId with delivery._id
       const delivery = deliveries.find(d => {
@@ -149,17 +149,17 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
         const walletDeliveryId = wallet.deliveryId?.toString();
         return deliveryId === walletDeliveryId;
       });
-      
+
       if (!delivery) {
         console.warn(`⚠️ No delivery found for wallet with deliveryId: ${wallet.deliveryId}`);
         continue;
       }
 
       let transactions = wallet.transactions || [];
-      
+
       // Filter by payment type and completed status
-      transactions = transactions.filter(t => 
-        t.type === 'payment' && 
+      transactions = transactions.filter(t =>
+        t.type === 'payment' &&
         t.status === 'Completed'
       );
 
@@ -199,9 +199,9 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
           orders = await Order.find({
             _id: { $in: orderIds }
           })
-            .select('orderId status createdAt deliveredAt pricing.total pricing.deliveryFee restaurantName address')
+            .select('orderId status createdAt deliveredAt pricing.total pricing.deliveryFee pricing.tip restaurantName address')
             .lean();
-          
+
           console.log(`📦 Found ${orders.length} orders for ${orderIds.length} order IDs`);
         } catch (orderError) {
           console.error(`❌ Error fetching orders:`, orderError);
@@ -223,6 +223,7 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
         allEarnings.push({
           deliveryPartnerId: delivery._id.toString(),
           deliveryPartnerName: delivery.name || 'Unknown',
+          deliveryPartnerName: delivery.name || 'Unknown',
           deliveryPartnerPhone: delivery.phone || 'N/A',
           deliveryPartnerEmail: delivery.email || 'N/A',
           deliveryId: delivery.deliveryId || 'N/A',
@@ -230,6 +231,7 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
           orderId: order?.orderId || 'N/A',
           orderMongoId: transaction.orderId?.toString() || null,
           amount: transaction.amount || 0,
+          tipAmount: order?.pricing?.tip || 0,
           status: transaction.status || 'Completed',
           createdAt: transactionDate,
           deliveredAt: order?.deliveredAt || null,
@@ -253,10 +255,11 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
 
     // Calculate summary
     const totalEarnings = allEarnings.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalTips = allEarnings.reduce((sum, e) => sum + (e.tipAmount || 0), 0);
     const totalOrders = allEarnings.length;
     const uniqueDeliveryPartners = new Set(allEarnings.map(e => e.deliveryPartnerId?.toString()).filter(Boolean)).size;
 
-    console.log(`✅ Summary: Total earnings: ₹${totalEarnings}, Total orders: ${totalOrders}, Unique delivery partners: ${uniqueDeliveryPartners}`);
+    console.log(`✅ Summary: Total earnings: ₹${totalEarnings}, Total tips: ₹${totalTips}, Total orders: ${totalOrders}, Unique delivery partners: ${uniqueDeliveryPartners}`);
 
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -272,6 +275,7 @@ export const getDeliveryEarnings = asyncHandler(async (req, res) => {
         endDate: endDate ? endDate.toISOString() : null,
         totalDeliveryPartners: uniqueDeliveryPartners,
         totalEarnings,
+        totalTips,
         totalOrders
       },
       pagination: {

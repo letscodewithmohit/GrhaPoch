@@ -21,7 +21,7 @@ export default function ShareFeedback() {
 
   const handleContinue = async () => {
     if (rating === null) return
-    
+
     try {
       setIsSubmitting(true)
       // Save feedback experience to backend (public route)
@@ -63,7 +63,7 @@ export default function ShareFeedback() {
         <div className="mt-6 mb-6">
           <p className="text-sm text-gray-700 mb-1">Tell us about your</p>
           <p className="text-lg font-semibold text-gray-900">
-            Overall experience with Appzeto food
+            Overall experience with Grha Poch
           </p>
         </div>
 
@@ -84,11 +84,10 @@ export default function ShareFeedback() {
                   whileTap={{ scale: 0.96 }}
                   animate={{ scale }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                  className={`py-2 text-xs font-medium border-l border-gray-200 first:border-l-0 focus:outline-none ${
-                    isActive
+                  className={`py-2 text-xs font-medium border-l border-gray-200 first:border-l-0 focus:outline-none ${isActive
                       ? "bg-black text-white"
                       : "bg-white text-gray-900 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   {num}
                 </motion.button>
@@ -135,11 +134,10 @@ export default function ShareFeedback() {
           type="button"
           onClick={handleContinue}
           disabled={rating === null}
-          className={`w-full py-3 rounded-full text-sm font-medium transition-colors ${
-            rating === null
+          className={`w-full py-3 rounded-full text-sm font-medium transition-colors ${rating === null
               ? "bg-gray-200 text-gray-500"
               : "bg-black text-white hover:bg-gray-900"
-          }`}
+            }`}
           whileTap={rating !== null ? { scale: 0.98 } : undefined}
         >
           Continue
@@ -175,7 +173,7 @@ export default function ShareFeedback() {
                   Thanks for your feedback
                 </h2>
                 <p className="text-xs text-gray-600 mb-4">
-                  It helps us improve your experience with Appzeto food.
+                  It helps us improve your experience with Grha Poch.
                 </p>
                 <button
                   type="button"

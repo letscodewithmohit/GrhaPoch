@@ -17,6 +17,8 @@ export const getBusinessSettingsPublic = asyncHandler(async (req, res) => {
       companyName: settings?.companyName || 'GrhaPoch',
       logo: settings?.logo || { url: '', publicId: '' },
       favicon: settings?.favicon || { url: '', publicId: '' },
+      donationAmounts: settings?.donationAmounts || [20, 50, 100],
+      deliveryTipAmounts: settings?.deliveryTipAmounts || [10, 20, 30, 50],
     });
   } catch (error) {
     console.error('Error fetching public business settings:', error);
@@ -25,6 +27,8 @@ export const getBusinessSettingsPublic = asyncHandler(async (req, res) => {
       companyName: 'GrhaPoch',
       logo: { url: '', publicId: '' },
       favicon: { url: '', publicId: '' },
+      donationAmounts: [20, 50, 100],
+      deliveryTipAmounts: [10, 20, 30, 50],
     });
   }
 });
@@ -57,7 +61,9 @@ export const updateBusinessSettings = asyncHandler(async (req, res) => {
       address,
       state,
       pincode,
-      maintenanceMode
+      maintenanceMode,
+      donationAmounts,
+      deliveryTipAmounts
     } = req.body;
 
     // Get existing settings
@@ -90,6 +96,21 @@ export const updateBusinessSettings = asyncHandler(async (req, res) => {
       }
       if (maintenanceMode.endDate) {
         settings.maintenanceMode.endDate = new Date(maintenanceMode.endDate);
+      }
+    }
+    if (donationAmounts !== undefined) {
+      if (Array.isArray(donationAmounts)) {
+        settings.donationAmounts = donationAmounts.map(val => Number(val)).filter(n => !isNaN(n));
+      } else if (typeof donationAmounts === 'string') {
+        // Handle both single value and comma-separated values
+        settings.donationAmounts = donationAmounts.split(',').map(val => Number(val.trim())).filter(n => !isNaN(n));
+      }
+    }
+    if (deliveryTipAmounts !== undefined) {
+      if (Array.isArray(deliveryTipAmounts)) {
+        settings.deliveryTipAmounts = deliveryTipAmounts.map(val => Number(val)).filter(n => !isNaN(n));
+      } else if (typeof deliveryTipAmounts === 'string') {
+        settings.deliveryTipAmounts = deliveryTipAmounts.split(',').map(val => Number(val.trim())).filter(n => !isNaN(n));
       }
     }
 

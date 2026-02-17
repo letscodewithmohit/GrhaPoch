@@ -22,6 +22,12 @@ import { getOutletTimingsByRestaurantId } from './controllers/outletTimingsContr
 
 const router = express.Router();
 
+// Debug middleware
+router.use((req, res, next) => {
+    console.log(`[Restaurant Module] ${req.method} ${req.url} (baseUrl: ${req.baseUrl})`);
+    next();
+});
+
 // Restaurant authentication routes
 router.use('/auth', restaurantAuthRoutes);
 
@@ -75,7 +81,7 @@ router.put('/staff/:id', authenticate, updateStaff);
 router.delete('/staff/:id', authenticate, deleteStaff);
 
 // Order routes (authenticated - for restaurant module)
-// Must come BEFORE /:id route to avoid route conflicts (/:id would match /orders)
+// Must come BEFORE /:id route to avoid route conflicts
 router.use('/', restaurantOrderRoutes);
 
 // Complaint routes (authenticated - for restaurant module)

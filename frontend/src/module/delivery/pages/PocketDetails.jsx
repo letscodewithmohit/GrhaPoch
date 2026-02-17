@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { 
+import {
   ArrowLeft,
   Loader2,
   Package,
@@ -31,6 +31,7 @@ export default function PocketDetails() {
   const [orders, setOrders] = useState([])
   const [paymentTransactions, setPaymentTransactions] = useState([])
   const [bonusTransactions, setBonusTransactions] = useState([])
+  const [tipTransactions, setTipTransactions] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Load trips (orders), payment transactions, and bonus for selected week
@@ -59,7 +60,7 @@ export default function PocketDetails() {
 
         // 2) Fetch payment transactions (earnings) for mapping by orderId
         const payments = await fetchWalletTransactions({ type: "payment", limit: 1000 })
-        
+
         // Filter payments within the selected week range
         const filteredPayments = payments.filter((p) => {
           const paymentDate = p.date || p.createdAt
@@ -68,20 +69,21 @@ export default function PocketDetails() {
           return d >= weekRange.start && d <= weekRange.end && p.status === "Completed"
         })
 
-        // 3) Fetch bonus transactions for mapping by orderId
-        const bonus = await fetchWalletTransactions({ type: "bonus", limit: 1000 })
-        
-        // Filter bonuses within the selected week range
-        const filteredBonuses = bonus.filter((b) => {
-          const bonusDate = b.date || b.createdAt
-          if (!bonusDate) return false
-          const d = new Date(bonusDate)
-          return d >= weekRange.start && d <= weekRange.end && b.status === "Completed"
+        // 4) Fetch tip transactions for mapping by orderId
+        const tips = await fetchWalletTransactions({ type: "tip", limit: 1000 })
+
+        // Filter tips within the selected week range
+        const filteredTipsTransactions = tips.filter((t) => {
+          const tipDate = t.date || t.createdAt
+          if (!tipDate) return false
+          const d = new Date(tipDate)
+          return d >= weekRange.start && d <= weekRange.end && t.status === "Completed"
         })
 
         setOrders(filteredTrips)
         setPaymentTransactions(filteredPayments)
         setBonusTransactions(filteredBonuses)
+        setTipTransactions(filteredTipsTransactions)
       } catch (error) {
         console.error("Error loading pocket details data:", error)
         setOrders([])
@@ -99,6 +101,7 @@ export default function PocketDetails() {
   const summary = useMemo(() => {
     let totalEarning = 0
     let totalBonus = 0
+    let totalTip = 0
 
     // Calculate total earning from payment transactions
     paymentTransactions.forEach((p) => {
@@ -110,10 +113,16 @@ export default function PocketDetails() {
       totalBonus += b.amount || 0
     })
 
+    // Total tips for this week
+    tipTransactions.forEach((t) => {
+      totalTip += t.amount || 0
+    })
+
     return {
       totalEarning,
       totalBonus,
-      grandTotal: totalEarning + totalBonus
+      totalTip,
+      grandTotal: totalEarning + totalBonus + totalTip
     }
   }, [paymentTransactions, bonusTransactions])
 
@@ -126,7 +135,7 @@ export default function PocketDetails() {
       return paymentOrderId && String(paymentOrderId) === String(orderId)
     })
     if (payment) return payment.amount || 0
-    
+
     // Fallback: try to match by date (same day)
     const order = orders.find(o => {
       const oId = o.orderId || o._id || o.id
@@ -142,7 +151,7 @@ export default function PocketDetails() {
         })
         if (matchingPayment) return matchingPayment.amount || 0
       }
-      
+
       // Last fallback: use order's own earning field
       return (
         order.deliveryEarning ||
@@ -156,16 +165,16 @@ export default function PocketDetails() {
     return 0
   }
 
-  // Helper: Get bonus for a specific order
-  const getOrderBonus = (orderId) => {
+  // Helper: Get tip for a specific order
+  const getOrderTip = (orderId) => {
     if (!orderId) return 0
-    // Try to find bonus transaction by orderId
-    const bonus = bonusTransactions.find((b) => {
-      const bonusOrderId = b.orderId || b.metadata?.orderId
-      return bonusOrderId && String(bonusOrderId) === String(orderId)
+    // Try to find tip transaction by orderId
+    const tip = tipTransactions.find((t) => {
+      const tipOrderId = t.orderId || t.metadata?.orderId
+      return tipOrderId && String(tipOrderId) === String(orderId)
     })
-    if (bonus) return bonus.amount || 0
-    
+    if (tip) return tip.amount || 0
+
     // Fallback: try to match by date (same day)
     const order = orders.find(o => {
       const oId = o.orderId || o._id || o.id
@@ -175,11 +184,11 @@ export default function PocketDetails() {
       const orderDate = order.deliveredAt || order.completedAt || order.createdAt || order.date
       if (orderDate) {
         const orderDateObj = new Date(orderDate)
-        const matchingBonus = bonusTransactions.find((b) => {
-          const bonusDate = new Date(b.date || b.createdAt)
-          return bonusDate.toDateString() === orderDateObj.toDateString()
+        const matchingTip = tipTransactions.find((t) => {
+          const tipDate = new Date(t.date || t.createdAt)
+          return tipDate.toDateString() === orderDateObj.toDateString()
         })
-        if (matchingBonus) return matchingBonus.amount || 0
+        if (matchingTip) return matchingTip.amount || 0
       }
     }
     return 0
@@ -221,15 +230,15 @@ export default function PocketDetails() {
   // Get payment method for order
   const getPaymentMethod = (order) => {
     // Try multiple possible fields for payment method
-    const paymentMethod = order.paymentMethod || 
-                         order.payment?.method || 
-                         (order.payment && typeof order.payment === 'object' ? order.payment.method : null)
-    
+    const paymentMethod = order.paymentMethod ||
+      order.payment?.method ||
+      (order.payment && typeof order.payment === 'object' ? order.payment.method : null)
+
     if (!paymentMethod) {
       // Default to Online if not found
       return { type: 'Online', label: 'Online', color: 'text-green-600' }
     }
-    
+
     const method = String(paymentMethod).toLowerCase().trim()
     // Check if it's COD (cash or cod)
     if (method === 'cash' || method === 'cod') {
@@ -244,7 +253,7 @@ export default function PocketDetails() {
     <div className="min-h-screen bg-gray-50 overflow-x-hidden pb-24 md:pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4 md:py-3 flex items-center gap-4">
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
@@ -257,7 +266,7 @@ export default function PocketDetails() {
       <div className="px-4 py-6">
         {/* Week Selector */}
         <div className="mb-6">
-          <WeekSelector 
+          <WeekSelector
             onChange={(range) => setWeekRange(range)}
             weekStartsOn={0}
           />
@@ -274,6 +283,10 @@ export default function PocketDetails() {
             <div className="flex justify-between items-center">
               <span className="text-gray-600 text-sm">Bonus</span>
               <span className="text-green-600 font-semibold">+{formatCurrency(summary.totalBonus)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 text-sm">Customer Tips</span>
+              <span className="text-green-600 font-semibold">+{formatCurrency(summary.totalTip)}</span>
             </div>
             <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
               <span className="text-gray-900 font-semibold">Total (Pocket)</span>
@@ -295,6 +308,7 @@ export default function PocketDetails() {
               const orderId = getOrderId(order)
               const earning = getOrderEarning(orderId)
               const bonus = getOrderBonus(orderId)
+              const tip = getOrderTip(orderId)
               const restaurantName = getRestaurantName(order)
               const orderDate = order.deliveredAt || order.completedAt || order.createdAt || order.date
               const paymentInfo = getPaymentMethod(order)
@@ -341,9 +355,20 @@ export default function PocketDetails() {
                         <span className="text-green-600 font-semibold">+{formatCurrency(bonus)}</span>
                       </div>
                     )}
+                    {tip > 0 && (
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 h-4 flex items-center justify-center bg-green-100 rounded-full">
+                            <span className="text-[10px] text-green-600">₹</span>
+                          </span>
+                          <span className="text-gray-600 text-sm">Tip</span>
+                        </div>
+                        <span className="text-green-600 font-semibold">+{formatCurrency(tip)}</span>
+                      </div>
+                    )}
                     <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
                       <span className="text-gray-700 font-medium text-sm">Total</span>
-                      <span className="text-gray-900 font-bold">{formatCurrency(earning + bonus)}</span>
+                      <span className="text-gray-900 font-bold">{formatCurrency(earning + bonus + tip)}</span>
                     </div>
                   </div>
                 </div>

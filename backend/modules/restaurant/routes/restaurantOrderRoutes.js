@@ -5,9 +5,9 @@ import {
   acceptOrder,
   rejectOrder,
   markOrderPreparing,
-  markOrderReady
+  markOrderReady,
+  resendDeliveryNotification
 } from '../controllers/restaurantOrderController.js';
-import { resendDeliveryNotification } from '../controllers/resendDeliveryNotification.js';
 import {
   getRestaurantReviews,
   getReviewByOrderId

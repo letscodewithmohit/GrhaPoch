@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { ArrowLeft } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -130,48 +131,63 @@ export default function DeliverySignIn() {
 
   return (
     <div className="max-h-screen h-screen bg-white flex flex-col">
+      {/* Header with Back Button */}
+      <div className="relative flex items-center justify-center py-4 px-4 mt-2">
+        <button
+          onClick={() => navigate("/delivery/welcome")}
+          className="absolute left-4 top-4"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-5 w-5 text-black" />
+        </button>
+      </div>
+
       {/* Top Section - Logo and Badge */}
-      <div className="flex flex-col items-center pt-8 pb-6 px-6">
-        {/* Appzeto Logo */}
+      <div className="flex flex-col items-center pt-8 pb-8 px-6">
+        {/* Logo */}
         <div>
-          <h1 className="text-3xl text-black font-extrabold italic lowercase tracking-tight">
-            appzeto
+          <h1
+            className="text-3xl italic md:text-4xl tracking-wide font-extrabold text-black"
+            style={{
+              WebkitTextStroke: "0.5px black",
+              textStroke: "0.5px black"
+            }}
+          >
+            Grha Poch
           </h1>
         </div>
-        
-        {/* DELIVERY Badge */}
-        <div className="bg-black px-6 py-2 rounded mt-2">
-          <span className="text-white font-semibold text-sm uppercase tracking-wide">
-            DELIVERY
+
+        {/* Delivery Partner Badge */}
+        <div className="">
+          <span className="text-gray-600 font-light text-sm tracking-wide block text-center">
+            — delivery partner —
           </span>
         </div>
       </div>
 
       {/* Main Content - Form Section */}
-      <div className="flex-1 flex flex-col px-6">
-        <div className="w-full max-w-md mx-auto space-y-6">
-          {/* Sign In Heading */}
-          <div className="space-y-2 text-center">
-            <h2 className="text-2xl font-bold text-black">
-              Sign in to your account
-            </h2>
-            <p className="text-base text-gray-600">
-              Login or create an account
+      <div className="flex-1 flex flex-col px-6 overflow-y-auto">
+        <div className="w-full max-w-md mx-auto space-y-6 py-4">
+          {/* Instruction Text */}
+          <div className="text-center">
+            <p className="text-base text-gray-700 leading-relaxed">
+              Enter your registered phone number and we will send an OTP to continue
             </p>
           </div>
 
-          {/* Mobile Number Input */}
-          <div className="space-y-2 w-full">
+          {/* Phone Number Input */}
+          <div className="space-y-4">
             <div className="flex gap-2 items-stretch w-full">
+              {/* Country Code Selector */}
               <Select
                 value={formData.countryCode}
                 onValueChange={handleCountryCodeChange}
               >
-                <SelectTrigger className="w-[100px] !h-12 border-gray-300 rounded-lg flex items-center shrink-0" size="default">
+                <SelectTrigger className="w-[100px] h-12 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center shrink-0">
                   <SelectValue>
-                    <span className="flex items-center gap-2">
-                      <span>{selectedCountry.flag}</span>
-                      <span>{selectedCountry.code}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-base">{selectedCountry.flag}</span>
+                      <span className="text-sm font-medium text-gray-900">{selectedCountry.code}</span>
                     </span>
                   </SelectValue>
                 </SelectTrigger>
@@ -186,60 +202,55 @@ export default function DeliverySignIn() {
                   ))}
                 </SelectContent>
               </Select>
-              <input
-                type="tel"
-                inputMode="numeric"
-                placeholder="Enter mobile number"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                autoComplete="off"
-                autoFocus={false}
-                className={`flex-1 h-12 px-4 text-gray-900 placeholder-gray-400 focus:outline-none text-base border rounded-lg min-w-0 ${
-                  error ? "border-red-500" : "border-gray-300"
-                }`}
-              />
+
+              {/* Phone Number Input */}
+              <div className="flex-1 flex flex-col">
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="Enter phone number"
+                  value={formData.phone}
+                  onChange={handlePhoneChange}
+                  autoComplete="off"
+                  autoFocus={false}
+                  className={`w-full px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 text-base border rounded-lg min-w-0 bg-white ${error && formData.phone.length > 0
+                      ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                    }`}
+                  style={{ height: '48px' }}
+                />
+                {error && formData.phone.length > 0 && (
+                  <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>
+                )}
+              </div>
             </div>
 
-            {/* Hint Text */}
-            <p className="text-sm text-gray-500">
-              Enter a valid 10 digit mobile number
-            </p>
-
-            {error && (
-              <p className="text-sm text-red-500">
-                {error}
-              </p>
-            )}
+            {/* Send OTP Button */}
+            <button
+              onClick={handleSendOTP}
+              disabled={!isValid || isSending}
+              className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${isValid && !isSending
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+            >
+              {isSending ? "Sending OTP..." : "Send OTP"}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Bottom Section - Continue Button and Terms */}
+      {/* Bottom Section - Terms and Conditions */}
       <div className="px-6 pb-8 pt-4">
-        <div className="w-full max-w-md mx-auto space-y-4">
-          {/* Continue Button */}
-          <button
-            onClick={handleSendOTP}
-            disabled={!isValid || isSending}
-            className={`w-full py-4 rounded-lg font-bold text-base transition-colors ${
-              isValid && !isSending
-                ? "bg-[#00B761] hover:bg-[#00A055] active:bg-[#009049] text-white"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {isSending ? "Sending OTP..." : "Continue"}
-          </button>
-
-          {/* Terms and Conditions */}
-          <p className="text-xs text-center text-gray-600 px-4">
-            By continuing, you agree to our{" "}
-            <a href="#" className="text-blue-600 hover:underline">
-              Terms and Conditions
-            </a>
+        <div className="w-full max-w-md mx-auto">
+          <p className="text-xs text-center text-gray-600 leading-relaxed">
+            By continuing, you agree to our
+          </p>
+          <p className="text-xs text-center text-gray-600 underline mt-1">
+            Terms of Service | Privacy Policy | Code of Conduct
           </p>
         </div>
       </div>
     </div>
   )
 }
-

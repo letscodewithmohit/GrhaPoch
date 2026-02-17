@@ -1,6 +1,7 @@
 import Donation from '../models/Donation.js';
 import * as razorpayService from '../../payment/services/razorpayService.js';
 import { getRazorpayCredentials } from '../../../shared/utils/envService.js';
+import AdminWallet from '../../admin/models/AdminWallet.js';
 
 /**
  * @desc Create a donation order
@@ -107,6 +108,25 @@ export const verifyDonation = async (req, res) => {
             });
         }
 
+        // 3. Add to Admin Wallet
+        try {
+            const adminWallet = await AdminWallet.findOrCreate();
+            await adminWallet.addTransaction({
+                amount: donation.amount,
+                type: 'donation',
+                status: 'Completed',
+                description: `Donation from user ${donation.userId}`,
+                metadata: {
+                    donationId: donation._id,
+                    razorpayPaymentId
+                }
+            });
+            await adminWallet.save();
+        } catch (walletError) {
+            console.error('Error updating admin wallet for donation:', walletError);
+            // We don't fail the verification if wallet update fails, but we log it
+        }
+
         res.status(200).json({
             success: true,
             message: 'Donation successful! Thank you.',
@@ -114,6 +134,36 @@ export const verifyDonation = async (req, res) => {
         });
     } catch (error) {
         console.error('Error verifying donation:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+/**
+ * @desc Get all donations (Admin only)
+ * @route GET /api/admin/donations
+ * @access Private/Admin
+ */
+export const getAllDonations = async (req, res) => {
+    try {
+        const donations = await Donation.find({ paymentStatus: 'completed' })
+            .populate('userId', 'name email phone')
+            .sort({ donatedAt: -1 });
+
+        // Calculate total from donations (more reliable for history)
+        const totalAmount = donations.reduce((sum, donation) => sum + donation.amount, 0);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                donations,
+                totalAmount
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching donations:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'

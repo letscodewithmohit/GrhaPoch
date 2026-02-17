@@ -1,3 +1,5 @@
+
+
 import { asyncHandler } from '../../../shared/middleware/asyncHandler.js';
 import { successResponse, errorResponse } from '../../../shared/utils/response.js';
 import Order from '../../order/models/Order.js';
@@ -24,18 +26,18 @@ const logger = winston.createLogger({
 export const getTripHistory = asyncHandler(async (req, res) => {
   try {
     const delivery = req.delivery;
-    const { 
-      period = 'daily', 
-      date, 
+    const {
+      period = 'daily',
+      date,
       status,
-      page = 1, 
-      limit = 50 
+      page = 1,
+      limit = 50
     } = req.query;
 
     // Build date range based on period
     let startDate, endDate;
     const selectedDate = date ? new Date(date) : new Date();
-    
+
     // Set time to start of day
     selectedDate.setHours(0, 0, 0, 0);
 
@@ -104,13 +106,13 @@ export const getTripHistory = asyncHandler(async (req, res) => {
 
     // Get order IDs for Payment collection lookup
     const orderIds = orders.map(o => o._id);
-    
+
     // Fetch payment records for COD fallback check
     const codOrderIds = new Set();
     try {
-      const codPayments = await Payment.find({ 
-        orderId: { $in: orderIds }, 
-        method: 'cash' 
+      const codPayments = await Payment.find({
+        orderId: { $in: orderIds },
+        method: 'cash'
       }).select('orderId').lean();
       codPayments.forEach(p => codOrderIds.add(p.orderId?.toString()));
     } catch (e) {
@@ -189,9 +191,9 @@ export const getTripHistory = asyncHandler(async (req, res) => {
       let restaurantName = order.restaurantName;
       if (!restaurantName || restaurantName === 'Unknown Restaurant' || restaurantName.trim() === '') {
         // Try to get from lookup map
-        restaurantName = restaurantNameMap.get(order.restaurantId) || 
-                        restaurantNameMap.get(order.restaurantId?.toString()) ||
-                        'Unknown Restaurant';
+        restaurantName = restaurantNameMap.get(order.restaurantId) ||
+          restaurantNameMap.get(order.restaurantId?.toString()) ||
+          'Unknown Restaurant';
       }
 
       // Get order amount (delivery fee or total)
@@ -204,6 +206,9 @@ export const getTripHistory = asyncHandler(async (req, res) => {
         paymentMethod = 'cash';
       }
 
+      // Get tip amount
+      const tip = order.pricing?.tip || 0;
+
       return {
         id: order._id.toString(),
         orderId: order.orderId,
@@ -213,6 +218,7 @@ export const getTripHistory = asyncHandler(async (req, res) => {
         status: displayStatus,
         time,
         amount,
+        tip, // Include tip amount
         paymentMethod: paymentMethod,
         payment: {
           method: paymentMethod

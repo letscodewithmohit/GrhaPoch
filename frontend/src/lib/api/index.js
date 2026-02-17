@@ -223,6 +223,13 @@ export const userAPI = {
   },
 };
 
+// Export public settings API helper functions
+export const publicAPI = {
+  getBusinessSettings: () => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.BUSINESS_SETTINGS_PUBLIC);
+  },
+};
+
 // Export location API helper functions
 export const locationAPI = {
   // Reverse geocode coordinates to address
@@ -1177,13 +1184,21 @@ export const adminAPI = {
     return apiClient.get(API_ENDPOINTS.ADMIN.BUSINESS_SETTINGS);
   },
 
+  getPublicBusinessSettings: () => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.BUSINESS_SETTINGS + '/public');
+  },
+
   updateBusinessSettings: (data, files = {}) => {
     const formData = new FormData();
 
     // Add text fields
     Object.keys(data).forEach(key => {
       if (key !== 'logo' && key !== 'favicon') {
-        formData.append(key, data[key]);
+        if (Array.isArray(data[key])) {
+          data[key].forEach(val => formData.append(key, val));
+        } else {
+          formData.append(key, data[key]);
+        }
       }
     });
 
@@ -1480,6 +1495,11 @@ export const adminAPI = {
   deleteFeedbackExperience: (id) => {
     return apiClient.delete(API_ENDPOINTS.ADMIN.FEEDBACK_EXPERIENCE_BY_ID.replace(':id', id));
   },
+
+  // Donation Management
+  getDonations: (params = {}) => {
+    return apiClient.get('/admin/donations', { params });
+  },
 };
 
 // Upload / media helper functions
@@ -1545,6 +1565,17 @@ export const orderAPI = {
   // Cancel order
   cancelOrder: (orderId, reason) => {
     return apiClient.patch(API_ENDPOINTS.ORDER.CANCEL.replace(':id', orderId), { reason });
+  },
+
+  // Add tip to order
+  addOrderTip: (orderId, tip) => {
+    return apiClient.patch(`/order/${orderId}/tip`, { tip });
+  },
+  initiateTipPayment: (orderId, tip) => {
+    return apiClient.post(`/order/${orderId}/tip/initiate`, { tip });
+  },
+  verifyTipPayment: (paymentData) => {
+    return apiClient.post(`/order/tip/verify`, paymentData);
   },
 };
 

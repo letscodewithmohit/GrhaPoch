@@ -37,7 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { authAPI } from "@/lib/api"
+import { authAPI, publicAPI } from "@/lib/api"
 import { firebaseAuth } from "@/lib/firebase"
 import { clearModuleAuth } from "@/lib/utils/auth"
 
@@ -52,12 +52,29 @@ export default function Profile() {
   const [donationOpen, setDonationOpen] = useState(false)
   const [donationAmount, setDonationAmount] = useState("")
   const [isDonating, setIsDonating] = useState(false)
+  const [donationAmounts, setDonationAmounts] = useState([20, 50, 100])
 
   // Settings states
   const [appearance, setAppearance] = useState(() => {
     // Load theme from localStorage or default to 'light'
     return localStorage.getItem('appTheme') || 'light'
   })
+
+  // Fetch business settings for donation amounts
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await publicAPI.getBusinessSettings()
+        const settings = response?.data?.data || response?.data
+        if (settings?.donationAmounts) {
+          setDonationAmounts(settings.donationAmounts.sort((a, b) => a - b))
+        }
+      } catch (error) {
+        console.warn("Failed to fetch donation settings, using defaults:", error)
+      }
+    }
+    fetchSettings()
+  }, [])
 
   // Apply theme to document
   useEffect(() => {
@@ -943,7 +960,7 @@ export default function Profile() {
 
           <div className="p-6 space-y-6 bg-white dark:bg-[#1a1a1a]">
             <div className="grid grid-cols-3 gap-3">
-              {[20, 50, 100].map((amount) => (
+              {donationAmounts.map((amount) => (
                 <button
                   key={amount}
                   onClick={() => handleDonation(amount)}

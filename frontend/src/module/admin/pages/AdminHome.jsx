@@ -78,7 +78,7 @@ export default function AdminHome() {
         { label: "Pending", value: 0, color: "#10b981" },
       ]
     }
-    
+
     const byStatus = dashboardData.orders.byStatus
     return [
       { label: "Delivered", value: byStatus.delivered || 0, color: "#0ea5e9" },
@@ -95,7 +95,7 @@ export default function AdminHome() {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
       return monthNames.map(month => ({ month, commission: 0, revenue: 0, orders: 0 }))
     }
-    
+
     // Use real monthly data from backend
     return dashboardData.monthlyData.map(item => ({
       month: item.month,
@@ -115,9 +115,10 @@ export default function AdminHome() {
   const platformFeeTotal = dashboardData?.platformFee?.total || 0
   const deliveryFeeTotal = dashboardData?.deliveryFee?.total || 0
   const gstTotal = dashboardData?.gst?.total || 0
+  const tipsTotal = dashboardData?.tips?.total || 0
   // Total revenue = Commission + Platform Fee + Delivery Fee + GST
   const totalAdminEarnings = commissionTotal + platformFeeTotal + deliveryFeeTotal + gstTotal
-  
+
   // Additional stats
   const totalRestaurants = dashboardData?.restaurants?.total || 0
   const pendingRestaurantRequests = dashboardData?.restaurants?.pendingRequests || 0
@@ -228,6 +229,13 @@ export default function AdminHome() {
               helper="Total GST collected"
               icon={<Receipt className="h-5 w-5 text-orange-600" />}
               accent="bg-orange-200/40"
+            />
+            <MetricCard
+              title="Tips collected"
+              value={`₹${tipsTotal.toLocaleString("en-IN")}`}
+              helper="Total tips for delivery partners"
+              icon={<Plus className="h-5 w-5 text-orange-500" />}
+              accent="bg-orange-100/30"
             />
             <MetricCard
               title="Total revenue"

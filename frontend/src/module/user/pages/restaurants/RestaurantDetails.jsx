@@ -3110,7 +3110,7 @@ export default function RestaurantDetails() {
 
       {/* Add to Cart Animation Component */}
       <AddToCartAnimation
-        bottomOffset={150}
+        bottomOffset={30}
         linkTo="/cart"
         hideOnPages={true}
       />

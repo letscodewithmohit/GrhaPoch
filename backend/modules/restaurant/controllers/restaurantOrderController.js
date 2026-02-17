@@ -30,14 +30,14 @@ export const getRestaurantOrders = asyncHandler(async (req, res) => {
     // Query orders by restaurantId (stored as String in Order model)
     // Try multiple restaurantId formats to handle different storage formats
     const restaurantIdVariations = [restaurantIdString];
-    
+
     // Also add ObjectId string format if valid (both directions)
     if (mongoose.Types.ObjectId.isValid(restaurantIdString)) {
       const objectIdString = new mongoose.Types.ObjectId(restaurantIdString).toString();
       if (!restaurantIdVariations.includes(objectIdString)) {
         restaurantIdVariations.push(objectIdString);
       }
-      
+
       // Also try the original ObjectId if restaurantIdString is already a string
       try {
         const objectId = new mongoose.Types.ObjectId(restaurantIdString);
@@ -49,7 +49,7 @@ export const getRestaurantOrders = asyncHandler(async (req, res) => {
         // Ignore if not a valid ObjectId
       }
     }
-    
+
     // Also try direct match without ObjectId conversion
     restaurantIdVariations.push(restaurantIdString);
 
@@ -107,15 +107,15 @@ export const getRestaurantOrders = asyncHandler(async (req, res) => {
       total,
       restaurantId: restaurantIdString,
       queryUsed: JSON.stringify(query),
-      orders: orders.map(o => ({ 
-        orderId: o.orderId, 
-        status: o.status, 
+      orders: orders.map(o => ({
+        orderId: o.orderId,
+        status: o.status,
         restaurantId: o.restaurantId,
         restaurantIdType: typeof o.restaurantId,
         createdAt: o.createdAt
       }))
     });
-    
+
     // If no orders found, log a warning with more details
     if (orders.length === 0 && total === 0) {
       console.warn('⚠️ No orders found for restaurant:', {
@@ -124,11 +124,11 @@ export const getRestaurantOrders = asyncHandler(async (req, res) => {
         variationsTried: restaurantIdVariations,
         query: JSON.stringify(query)
       });
-      
+
       // Try to find ANY orders in database for debugging
       const allOrdersCount = await Order.countDocuments({});
       console.log(`📊 Total orders in database: ${allOrdersCount}`);
-      
+
       // Check if orders exist with similar restaurantId
       const sampleOrders = await Order.find({}).limit(5).select('orderId restaurantId status').lean();
       if (sampleOrders.length > 0) {
@@ -262,20 +262,20 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     if (preparationTime) {
       const restaurantPrepTime = parseInt(preparationTime, 10);
       const initialPrepTime = order.preparationTime || 0;
-      
+
       // Calculate additional time restaurant is adding
       const additionalTime = Math.max(0, restaurantPrepTime - initialPrepTime);
-      
+
       // Update ETA with additional time (add to both min and max)
       if (order.eta) {
         const currentMin = order.eta.min || 0;
         const currentMax = order.eta.max || 0;
-        
+
         order.eta.min = currentMin + additionalTime;
         order.eta.max = currentMax + additionalTime;
         order.eta.additionalTime = (order.eta.additionalTime || 0) + additionalTime;
         order.eta.lastUpdated = new Date();
-        
+
         // Update estimated delivery time to average of new min and max
         order.estimatedDeliveryTime = Math.ceil((order.eta.min + order.eta.max) / 2);
       } else {
@@ -288,7 +288,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
         };
         order.estimatedDeliveryTime = Math.ceil((order.eta.min + order.eta.max) / 2);
       }
-      
+
       console.log(`📋 Restaurant updated preparation time:`, {
         initialPrepTime,
         restaurantPrepTime,
@@ -354,11 +354,12 @@ export const acceptOrder = asyncHandler(async (req, res) => {
             console.log(`⚠️ Order ${order.orderId} already has delivery partner: ${freshOrder.deliveryPartnerId}`);
           } else {
             // Step 1: Find nearest delivery boys (within 5km priority distance)
-            const priorityDeliveryBoys = await findNearestDeliveryBoys(restaurantLat, restaurantLng, restaurantId, 5);
-            
+            const isCod = order.payment?.method === 'cash' || order.payment?.method === 'cod';
+            const priorityDeliveryBoys = await findNearestDeliveryBoys(restaurantLat, restaurantLng, restaurantId, 5, null, isCod);
+
             if (priorityDeliveryBoys && priorityDeliveryBoys.length > 0) {
               console.log(`✅ Found ${priorityDeliveryBoys.length} priority delivery partners within 5km`);
-              
+
               // Store priority notification info in order
               freshOrder.assignmentInfo = {
                 priorityNotifiedAt: new Date(),
@@ -390,14 +391,16 @@ export const acceptOrder = asyncHandler(async (req, res) => {
                     }
 
                     console.log(`⏰ 30 seconds passed, expanding notification to other delivery partners for order ${order.orderId}`);
-                    
+
                     // Find all other delivery boys (excluding already notified priority ones)
                     // Get all delivery boys within 50km, excluding priority ones
                     const allDeliveryBoys = await findNearestDeliveryBoys(
-                      restaurantLat, 
-                      restaurantLng, 
-                      restaurantId, 
-                      50 // Max distance 50km
+                      restaurantLat,
+                      restaurantLng,
+                      restaurantId,
+                      50, // Max distance 50km
+                      null,
+                      isCod
                     );
 
                     // Filter out priority delivery boys
@@ -407,7 +410,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
                     if (expandedDeliveryBoys && expandedDeliveryBoys.length > 0) {
                       const expandedIds = expandedDeliveryBoys.map(db => db.deliveryPartnerId);
-                      
+
                       // Update assignment info
                       checkOrder.assignmentInfo = {
                         ...(checkOrder.assignmentInfo || {}),
@@ -439,8 +442,8 @@ export const acceptOrder = asyncHandler(async (req, res) => {
             } else {
               // No priority delivery boys found, immediately try to find any delivery boy
               console.log(`⚠️ No priority delivery partners found, searching for any available delivery partner`);
-              const anyDeliveryBoy = await findNearestDeliveryBoy(restaurantLat, restaurantLng, restaurantId, 50);
-              
+              const anyDeliveryBoy = await findNearestDeliveryBoy(restaurantLat, restaurantLng, restaurantId, 50, [], isCod);
+
               if (anyDeliveryBoy) {
                 const populatedOrder = await Order.findById(freshOrder._id)
                   .populate('userId', 'name phone')
@@ -662,14 +665,6 @@ export const markOrderPreparing = asyncHandler(async (req, res) => {
       } catch (notifError) {
         console.error('Error sending notification:', notifError);
       }
-    }
-
-    // CRITICAL: Don't assign delivery partner if order is cancelled
-    if (freshOrder.status === 'cancelled') {
-      console.log(`⚠️ Order ${freshOrder.orderId} is cancelled. Cannot assign delivery partner.`);
-      return successResponse(res, 200, 'Order is cancelled. Cannot assign delivery partner.', {
-        order: freshOrder
-      });
     }
 
     // Assign order to nearest delivery boy and notify them (if not already assigned)
@@ -951,22 +946,38 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
     // Try to find order by MongoDB _id or orderId
     let order = null;
 
+    console.log(`🔍 [ResendNotification] Searching for order: ${id} (Restaurant: ${restaurantId})`);
+
     if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
       order = await Order.findOne({
         _id: id,
-        restaurantId
+        $or: [
+          { restaurantId: restaurantId },
+          { restaurantId: restaurant.restaurantId }
+        ].filter(Boolean)
       });
+      if (order) console.log(`✅ [ResendNotification] Found order by _id: ${order.orderId}`);
     }
 
     if (!order) {
       order = await Order.findOne({
         orderId: id,
-        restaurantId
+        $or: [
+          { restaurantId: restaurantId },
+          { restaurantId: restaurant.restaurantId }
+        ].filter(Boolean)
       });
+      if (order) console.log(`✅ [ResendNotification] Found order by orderId: ${order.orderId}`);
     }
 
     if (!order) {
-      return errorResponse(res, 404, 'Order not found');
+      console.warn(`❌ [ResendNotification] Order not found: ${id} for restaurant ${restaurantId}`);
+      // Debug: see if order exists at all
+      const exists = await Order.findById(id).lean();
+      if (exists) {
+        console.warn(`💡 [ResendNotification] Order exists but restaurantId mismatch: Order.restaurantId=${exists.restaurantId}, Auth.restaurantId=${restaurantId}`);
+      }
+      return errorResponse(res, 404, 'Order not found or access denied');
     }
 
     // Check if order is in valid status (preparing or ready)
@@ -986,12 +997,14 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
     const [restaurantLng, restaurantLat] = restaurantDoc.location.coordinates;
 
     // Find nearest delivery boys
+    const isCod = order.payment?.method === 'cash' || order.payment?.method === 'cod';
     const priorityDeliveryBoys = await findNearestDeliveryBoys(
       restaurantLat,
       restaurantLng,
       restaurantId,
       20, // 20km radius for priority
-      10  // Top 10 nearest
+      10, // Top 10 nearest
+      isCod
     );
 
     if (!priorityDeliveryBoys || priorityDeliveryBoys.length === 0) {
@@ -1001,7 +1014,8 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
         restaurantLng,
         restaurantId,
         50, // 50km radius
-        20  // Top 20 nearest
+        20, // Top 20 nearest
+        isCod
       );
 
       if (!allDeliveryBoys || allDeliveryBoys.length === 0) {
@@ -1016,7 +1030,7 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
 
       if (populatedOrder) {
         const deliveryPartnerIds = allDeliveryBoys.map(db => db.deliveryPartnerId);
-        
+
         // Update assignment info
         await Order.findByIdAndUpdate(order._id, {
           $set: {
@@ -1027,7 +1041,7 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
         });
 
         await notifyMultipleDeliveryBoys(populatedOrder, deliveryPartnerIds, 'priority');
-        
+
         console.log(`✅ Resent notification to ${deliveryPartnerIds.length} delivery partners for order ${order.orderId}`);
 
         return successResponse(res, 200, `Notification sent to ${deliveryPartnerIds.length} delivery partners`, {
@@ -1044,7 +1058,7 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
 
       if (populatedOrder) {
         const priorityIds = priorityDeliveryBoys.map(db => db.deliveryPartnerId);
-        
+
         // Update assignment info
         await Order.findByIdAndUpdate(order._id, {
           $set: {
@@ -1055,7 +1069,7 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
         });
 
         await notifyMultipleDeliveryBoys(populatedOrder, priorityIds, 'priority');
-        
+
         console.log(`✅ Resent notification to ${priorityIds.length} priority delivery partners for order ${order.orderId}`);
 
         return successResponse(res, 200, `Notification sent to ${priorityIds.length} delivery partners`, {

@@ -11,9 +11,9 @@ const formatCurrency = (amount) => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-IN', { 
-    day: '2-digit', 
-    month: 'short', 
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
@@ -56,7 +56,7 @@ export default function DeliveryEarnings() {
     try {
       setLoading(true)
       setError(null)
-      
+
       const params = {
         page: pagination.page,
         limit: pagination.limit,
@@ -68,7 +68,7 @@ export default function DeliveryEarnings() {
       }
 
       const response = await adminAPI.getDeliveryEarnings(params)
-      
+
       if (response.data?.success) {
         setEarnings(response.data.data.earnings || [])
         setSummary(response.data.data.summary || {})
@@ -118,6 +118,7 @@ export default function DeliveryEarnings() {
       { key: "orderId", label: "Order ID" },
       { key: "restaurantName", label: "Restaurant" },
       { key: "amount", label: "Earning" },
+      { key: "tipAmount", label: "Tip" },
       { key: "orderTotal", label: "Order Total" },
       { key: "deliveryFee", label: "Delivery Fee" },
       { key: "orderStatus", label: "Status" },
@@ -131,6 +132,7 @@ export default function DeliveryEarnings() {
       orderId: earning.orderId || 'N/A',
       restaurantName: earning.restaurantName || 'N/A',
       amount: formatCurrency(earning.amount),
+      tipAmount: formatCurrency(earning.tipAmount),
       orderTotal: formatCurrency(earning.orderTotal),
       deliveryFee: formatCurrency(earning.deliveryFee),
       orderStatus: earning.orderStatus || 'N/A',
@@ -200,7 +202,7 @@ export default function DeliveryEarnings() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -208,7 +210,7 @@ export default function DeliveryEarnings() {
                 <p className="text-2xl font-bold text-slate-900">{summary.totalDeliveryPartners || 0}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-blue-600" />
+                <Users className="w-6 h-6 text-blue-600" />
               </div>
             </div>
           </div>
@@ -220,6 +222,17 @@ export default function DeliveryEarnings() {
               </div>
               <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 mb-1">Total Tips</p>
+                <p className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalTips || 0)}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-orange-600" />
               </div>
             </div>
           </div>
@@ -348,6 +361,7 @@ export default function DeliveryEarnings() {
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Order ID</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Restaurant</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Earning</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Tip</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Order Total</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Date</th>
@@ -356,7 +370,7 @@ export default function DeliveryEarnings() {
               <tbody className="divide-y divide-slate-100">
                 {earnings.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center">
+                    <td colSpan={10} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Earnings Found</p>
                         <p className="text-sm text-slate-500">No earnings match your filters</p>
@@ -384,15 +398,17 @@ export default function DeliveryEarnings() {
                       <td className="px-4 py-3 text-sm font-semibold text-green-600">
                         {formatCurrency(earning.amount)}
                       </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-orange-600">
+                        {formatCurrency(earning.tipAmount)}
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-700">
                         {formatCurrency(earning.orderTotal)}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          earning.orderStatus === 'delivered' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${earning.orderStatus === 'delivered'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                          }`}>
                           {earning.orderStatus || 'N/A'}
                         </span>
                       </td>
@@ -421,21 +437,20 @@ export default function DeliveryEarnings() {
                   Previous
                 </button>
                 {Array.from({ length: Math.min(5, pagination.pages) }).map((_, idx) => {
-                  const pageNum = pagination.page <= 3 
-                    ? idx + 1 
-                    : pagination.page >= pagination.pages - 2 
-                      ? pagination.pages - 4 + idx 
+                  const pageNum = pagination.page <= 3
+                    ? idx + 1
+                    : pagination.page >= pagination.pages - 2
+                      ? pagination.pages - 4 + idx
                       : pagination.page - 2 + idx
                   if (pageNum < 1 || pageNum > pagination.pages) return null
                   return (
                     <button
                       key={idx}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-1 text-sm rounded border ${
-                        pagination.page === pageNum
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : "border-slate-300 text-slate-700 hover:bg-slate-50"
-                      }`}
+                      className={`px-3 py-1 text-sm rounded border ${pagination.page === pageNum
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
                     >
                       {pageNum}
                     </button>

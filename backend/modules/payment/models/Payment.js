@@ -30,7 +30,7 @@ const paymentSchema = new mongoose.Schema({
   },
   method: {
     type: String,
-    enum: ['razorpay', 'cash', 'wallet', 'upi', 'card'],
+    enum: ['razorpay', 'cash', 'wallet', 'upi', 'card', 'razorpay_tip'],
     required: true
   },
   status: {
@@ -141,21 +141,21 @@ paymentSchema.index({ 'razorpay.orderId': 1 });
 paymentSchema.index({ 'razorpay.paymentId': 1 });
 
 // Add log entry before status change
-paymentSchema.pre('save', function(next) {
+paymentSchema.pre('save', function (next) {
   if (this.isModified('status')) {
     const newStatus = this.status;
-    
+
     // Determine previous status:
     // - If new document, previous status is null (document is being created)
     // - If existing document, we can't reliably get the original value in pre-save
     //   so we'll use null and let the log show the new status
     const previousStatus = this.isNew ? null : null;
-    
+
     // Initialize logs array if it doesn't exist
     if (!this.logs) {
       this.logs = [];
     }
-    
+
     // Log the status change
     this.logs.push({
       action: newStatus,

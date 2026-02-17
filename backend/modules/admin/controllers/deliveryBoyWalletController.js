@@ -41,6 +41,35 @@ export const getDeliveryBoyWallets = asyncHandler(async (req, res) => {
     const cashCollected = Number(wallet.cashInHand) || 0;
     const remainingCashLimit = Math.max(0, availableCashLimit - cashCollected);
 
+    // Calculate total tips from transactions
+    const tipsTotal = (wallet.transactions || [])
+      .filter(t => t.type === 'payment' && t.status === 'Completed')
+      .reduce((sum, t) => {
+        let currentTip = 0;
+
+        // Try to get from metadata
+        if (t.metadata) {
+          // Handle Mongoose Map (if accessed directly from document)
+          if (typeof t.metadata.get === 'function') {
+            currentTip = Number(t.metadata.get('tip')) || 0;
+          }
+          // Handle plain object (if accessed via lean() or already transformed)
+          else {
+            currentTip = Number(t.metadata.tip) || 0;
+          }
+        }
+
+        // Fallback: parse from description if metadata tip is 0 (old records)
+        if (currentTip === 0) {
+          const tipMatch = t.description?.match(/Tip: ₹(\d+(?:\.\d+)?)/i);
+          if (tipMatch && tipMatch[1]) {
+            currentTip = Number(tipMatch[1]);
+          }
+        }
+
+        return sum + currentTip;
+      }, 0);
+
     rows.push({
       deliveryId: d._id,
       name: d.name || '—',
@@ -53,6 +82,7 @@ export const getDeliveryBoyWallets = asyncHandler(async (req, res) => {
       cashCollected,
       totalEarning: Number(wallet.totalEarned) || 0,
       bonus: bonusTotal,
+      tips: tipsTotal,
       totalWithdrawn: Number(wallet.totalWithdrawn) || 0
     });
   }

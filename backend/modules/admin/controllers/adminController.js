@@ -46,11 +46,21 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         $group: {
           _id: null,
           totalRevenue: { $sum: '$pricing.total' },
+          totalTips: { $sum: { $ifNull: ['$pricing.tip', 0] } },
           last30DaysRevenue: {
             $sum: {
               $cond: [
                 { $gte: ['$createdAt', last30Days] },
                 '$pricing.total',
+                0
+              ]
+            }
+          },
+          last30DaysTips: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', last30Days] },
+                { $ifNull: ['$pricing.tip', 0] },
                 0
               ]
             }
@@ -60,20 +70,20 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     ]);
 
     // Get revenue data from aggregation result
-    const revenueData = revenueStats[0] || { totalRevenue: 0, last30DaysRevenue: 0 };
+    const revenueData = revenueStats[0] || { totalRevenue: 0, totalTips: 0, last30DaysRevenue: 0, last30DaysTips: 0 };
 
     // Get all settlements for delivered orders only (to match with revenue calculation)
     // First get delivered order IDs
     const deliveredOrderIds = await Order.find({ status: 'delivered' }).select('_id').lean();
     const deliveredOrderIdArray = deliveredOrderIds.map(o => o._id);
-    
+
     // Get settlements only for delivered orders
     const allSettlements = await OrderSettlement.find({
       orderId: { $in: deliveredOrderIdArray }
     }).lean();
-    
+
     console.log(`📊 Dashboard Stats - Total settlements found: ${allSettlements.length}`);
-    
+
     // Debug: Log first settlement to see actual structure
     if (allSettlements.length > 0) {
       const firstSettlement = allSettlements[0];
@@ -83,37 +93,37 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         userPayment: firstSettlement.userPayment
       });
     }
-    
+
     // Calculate totals from all settlements - use adminEarning fields
     let totalCommission = 0;
     let totalPlatformFee = 0;
     let totalDeliveryFee = 0;
     let totalGST = 0;
-    
+
     allSettlements.forEach((s, index) => {
       const commission = s.adminEarning?.commission || 0;
       const platformFee = s.adminEarning?.platformFee || 0;
       const deliveryFee = s.adminEarning?.deliveryFee || 0;
       const gst = s.adminEarning?.gst || 0;
-      
+
       totalCommission += commission;
       totalPlatformFee += platformFee;
       totalDeliveryFee += deliveryFee;
       totalGST += gst;
-      
+
       // Log each settlement for debugging
       if (index < 5) { // Log first 5 settlements
         console.log(`📦 Settlement ${index + 1} (${s.orderNumber}): Commission: ₹${commission}, Platform: ₹${platformFee}, Delivery: ₹${deliveryFee}, GST: ₹${gst}`);
       }
     });
-    
+
     totalCommission = Math.round(totalCommission * 100) / 100;
     totalPlatformFee = Math.round(totalPlatformFee * 100) / 100;
     totalDeliveryFee = Math.round(totalDeliveryFee * 100) / 100;
     totalGST = Math.round(totalGST * 100) / 100;
-    
+
     console.log(`💰 Final calculated totals - Commission: ₹${totalCommission}, Platform Fee: ₹${totalPlatformFee}, Delivery Fee: ₹${totalDeliveryFee}, GST: ₹${totalGST}`);
-    
+
     // Get last 30 days data from OrderSettlement
     const last30DaysSettlements = await OrderSettlement.find({
       createdAt: { $gte: last30Days, $lte: now }
@@ -145,17 +155,17 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     const activeRestaurants = await Restaurant.countDocuments({ isActive: true });
     // Note: Delivery partners are stored in User model
     const User = (await import('../../auth/models/User.js')).default;
-    const activeDeliveryPartners = await User.countDocuments({ 
-      role: 'delivery', 
-      isActive: true 
+    const activeDeliveryPartners = await User.countDocuments({
+      role: 'delivery',
+      isActive: true
     });
     const activePartners = activeRestaurants + activeDeliveryPartners;
-    
+
     // Get additional stats
     // Total restaurants (only active/approved restaurants)
     // This matches the admin restaurants list which shows only active restaurants by default
     const totalRestaurants = await Restaurant.countDocuments({ isActive: true });
-    
+
     // Restaurant requests pending (inactive restaurants with completed onboarding, no rejection)
     const pendingRestaurantRequestsQuery = {
       isActive: false,
@@ -183,10 +193,10 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       ]
     };
     const pendingRestaurantRequests = await Restaurant.countDocuments(pendingRestaurantRequestsQuery);
-    
+
     // Total delivery boys (all delivery users)
     const totalDeliveryBoys = await User.countDocuments({ role: 'delivery' });
-    
+
     // Delivery boy requests pending (delivery users with isActive: false or verification pending)
     // Assuming deliveryStatus field exists, if not we'll use isActive: false
     const pendingDeliveryBoyRequests = await User.countDocuments({
@@ -196,7 +206,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         { deliveryStatus: 'pending' }
       ]
     });
-    
+
     // Total foods (Menu items) - Count all individual menu items from active menus
     // Count ALL items (including disabled sections, unavailable items, pending/approved, excluding only rejected)
     const Menu = (await import('../../restaurant/models/Menu.js')).default;
@@ -207,7 +217,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       if (menu.sections && Array.isArray(menu.sections)) {
         menu.sections.forEach(section => {
           // Count items from ALL sections (enabled and disabled)
-          
+
           // Count items directly in section (all items, excluding only rejected)
           if (section.items && Array.isArray(section.items)) {
             totalFoods += section.items.filter(item => {
@@ -237,7 +247,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         });
       }
     });
-    
+
     // Total addons - Count all addons from active menus
     // Count ALL addons (including unavailable, pending/approved, excluding only rejected)
     let totalAddons = 0;
@@ -247,7 +257,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       if (!menu.addons || !Array.isArray(menu.addons) || menu.addons.length === 0) {
         return;
       }
-      
+
       totalAddons += menu.addons.filter(addon => {
         // Only count if addon exists and has required fields (id and name are mandatory)
         if (!addon || typeof addon !== 'object') return false;
@@ -259,7 +269,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         return true;
       }).length;
     });
-    
+
     // Total customers (users with role 'user' or no role specified)
     const totalCustomers = await User.countDocuments({
       $or: [
@@ -268,10 +278,10 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         { role: null }
       ]
     });
-    
+
     // Pending orders (already in orderStatusMap)
     const pendingOrders = orderStatusMap.pending || 0;
-    
+
     // Completed orders (delivered orders)
     const completedOrders = orderStatusMap.delivered || 0;
 
@@ -289,39 +299,39 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     // Use aggregation to match orders with settlements by orderId and use order's deliveredAt
     const monthlyData = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+
     for (let i = 11; i >= 0; i--) {
       const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-      
+
       // Get orders delivered in this month
       const monthOrders = await Order.find({
         status: 'delivered',
         deliveredAt: { $gte: monthStart, $lte: monthEnd }
       }).select('_id pricing deliveredAt').lean();
-      
+
       // Get order IDs for this month
       const monthOrderIds = monthOrders.map(o => o._id);
-      
+
       // Get settlements for these orders (match by orderId, not by createdAt)
       const monthSettlements = await OrderSettlement.find({
         orderId: { $in: monthOrderIds }
       }).select('orderId adminEarning').lean();
-      
+
       // Create a map of orderId to settlement for quick lookup
       const settlementMap = new Map();
       monthSettlements.forEach(s => {
         settlementMap.set(s.orderId.toString(), s);
       });
-      
+
       // Calculate revenue and commission from orders and their settlements
       let monthRevenue = 0;
       let monthCommission = 0;
-      
+
       monthOrders.forEach(order => {
         // Add revenue from order
         monthRevenue += order.pricing?.total || 0;
-        
+
         // Get commission from matching settlement
         const settlement = settlementMap.get(order._id.toString());
         if (settlement && settlement.adminEarning) {
@@ -329,9 +339,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
           monthCommission += settlement.adminEarning.commission || 0;
         }
       });
-      
+
       const monthOrdersCount = monthOrders.length;
-      
+
       monthlyData.push({
         month: monthNames[monthStart.getMonth()],
         revenue: Math.round(monthRevenue * 100) / 100,
@@ -364,6 +374,11 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       gst: {
         total: totalGST,
         last30Days: last30DaysGST,
+        currency: 'INR'
+      },
+      tips: {
+        total: revenueData.totalTips || 0,
+        last30Days: revenueData.last30DaysTips || 0,
         currency: 'INR'
       },
       totalAdminEarnings: {
@@ -434,7 +449,7 @@ export const getAdmins = asyncHandler(async (req, res) => {
     const { limit = 50, offset = 0, search } = req.query;
 
     const query = {};
-    
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -535,11 +550,11 @@ export const createAdmin = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     logger.error(`Error creating admin: ${error.message}`);
-    
+
     if (error.code === 11000) {
       return errorResponse(res, 400, 'Admin with this email already exists');
     }
-    
+
     return errorResponse(res, 500, 'Failed to create admin');
   }
 });
@@ -582,11 +597,11 @@ export const updateAdmin = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     logger.error(`Error updating admin: ${error.message}`);
-    
+
     if (error.code === 11000) {
       return errorResponse(res, 400, 'Admin with this email already exists');
     }
-    
+
     return errorResponse(res, 500, 'Failed to update admin');
   }
 });
@@ -662,12 +677,12 @@ export const updateAdminProfile = asyncHandler(async (req, res) => {
     if (name !== undefined && name !== null) {
       admin.name = name.trim();
     }
-    
+
     if (phone !== undefined) {
       // Allow empty string to clear phone number
       admin.phone = phone ? phone.trim() : null;
     }
-    
+
     if (profileImage !== undefined) {
       // Allow empty string to clear profile image
       admin.profileImage = profileImage || null;
@@ -754,7 +769,7 @@ export const getUsers = asyncHandler(async (req, res) => {
 
     // Build query
     const query = { role: 'user' }; // Only get users, not restaurants/delivery/admins
-    
+
     // Search filter
     if (search) {
       query.$or = [
@@ -819,7 +834,7 @@ export const getUsers = asyncHandler(async (req, res) => {
     // Format users with order statistics
     const formattedUsers = users.map((user, index) => {
       const stats = statsMap[user._id.toString()] || { totalOrder: 0, totalOrderAmount: 0 };
-      
+
       // Format joining date
       const joiningDate = new Date(user.createdAt);
       const formattedDate = joiningDate.toLocaleDateString('en-GB', {
@@ -1004,8 +1019,8 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
  */
 export const getRestaurants = asyncHandler(async (req, res) => {
   try {
-    const { 
-      page = 1, 
+    const {
+      page = 1,
       limit = 1000, // Increased default limit to show more restaurants
       search,
       status,
@@ -1131,16 +1146,16 @@ export const updateRestaurantStatus = asyncHandler(async (req, res) => {
  */
 export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
   try {
-    const { 
-      status = 'pending', 
-      page = 1, 
+    const {
+      status = 'pending',
+      page = 1,
       limit = 50,
       search
     } = req.query;
 
     // Build query
     const query = {};
-    
+
     // Status filter
     // Pending = restaurants with ALL onboarding steps completed (step 4) but not yet active
     // Rejected = restaurants that have rejectionReason
@@ -1156,7 +1171,7 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
           ]
         }
       ];
-      
+
       // Only show restaurants that have completed ALL onboarding steps (all 4 steps)
       // Check if onboarding.completedSteps is 4, OR if restaurant has all required data filled
       // This handles both cases: restaurants with proper tracking AND restaurants that completed onboarding before tracking was added
@@ -1176,7 +1191,7 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
           }
         ]
       };
-      
+
       conditions.push(completionCheck);
       query.$and = conditions;
     } else if (status === 'rejected') {
@@ -1204,7 +1219,7 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
           { email: { $regex: search.trim(), $options: 'i' } }
         ]
       };
-      
+
       // If query already has $and, add search to it; otherwise create new $and
       if (query.$and) {
         query.$and.push(searchConditions);
@@ -1254,30 +1269,30 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
 
     // Get total count
     const total = await Restaurant.countDocuments(query);
-    
+
     console.log(`📊 Total count: ${total} restaurants`);
-    
+
     // Also log a sample of ALL inactive restaurants (for debugging)
     if (status === 'pending' && restaurants.length === 0) {
-      const allInactive = await Restaurant.find({ 
+      const allInactive = await Restaurant.find({
         isActive: false,
         $or: [
           { 'rejectionReason': { $exists: false } },
           { 'rejectionReason': null }
         ]
       })
-      .select('name isActive onboarding.completedSteps cuisines openDays estimatedDeliveryTime featuredDish')
-      .limit(10)
-      .lean();
-      
-      const totalInactive = await Restaurant.countDocuments({ 
+        .select('name isActive onboarding.completedSteps cuisines openDays estimatedDeliveryTime featuredDish')
+        .limit(10)
+        .lean();
+
+      const totalInactive = await Restaurant.countDocuments({
         isActive: false,
         $or: [
           { 'rejectionReason': { $exists: false } },
           { 'rejectionReason': null }
         ]
       });
-      
+
       console.log('⚠️ No restaurants found with query. Debugging inactive restaurants:', {
         totalInactive,
         queryUsed: JSON.stringify(query, null, 2),
@@ -1817,13 +1832,13 @@ export const createRestaurant = asyncHandler(async (req, res) => {
     return successResponse(res, 201, 'Restaurant created successfully', responseData);
   } catch (error) {
     logger.error(`Error creating restaurant: ${error.message}`, { error: error.stack });
-    
+
     // Handle duplicate key errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern || {})[0];
       return errorResponse(res, 400, `Restaurant with this ${field} already exists`);
     }
-    
+
     return errorResponse(res, 500, `Failed to create restaurant: ${error.message}`);
   }
 });
@@ -1870,8 +1885,8 @@ export const deleteRestaurant = asyncHandler(async (req, res) => {
  */
 export const getAllOffers = asyncHandler(async (req, res) => {
   try {
-    const { 
-      page = 1, 
+    const {
+      page = 1,
       limit = 50,
       search,
       status,
@@ -1880,11 +1895,11 @@ export const getAllOffers = asyncHandler(async (req, res) => {
 
     // Build query
     const query = {};
-    
+
     if (status) {
       query.status = status;
     }
-    
+
     if (restaurantId) {
       query.restaurant = restaurantId;
     }
@@ -1911,11 +1926,11 @@ export const getAllOffers = asyncHandler(async (req, res) => {
           // Apply search filter if provided
           if (search) {
             const searchLower = search.toLowerCase();
-            const matchesSearch = 
+            const matchesSearch =
               offer.restaurant?.name?.toLowerCase().includes(searchLower) ||
               item.itemName?.toLowerCase().includes(searchLower) ||
               item.couponCode?.toLowerCase().includes(searchLower);
-            
+
             if (!matchesSearch) {
               return; // Skip this item if it doesn't match search
             }
@@ -1972,13 +1987,13 @@ export const getAllOffers = asyncHandler(async (req, res) => {
 export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    
+
     logger.info(`Fetching restaurant analytics for: ${restaurantId}`);
-    
+
     if (!restaurantId) {
       return errorResponse(res, 400, 'Restaurant ID is required');
     }
-    
+
     if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
       logger.warn(`Invalid restaurant ID format: ${restaurantId}`);
       return errorResponse(res, 400, 'Invalid restaurant ID format');
@@ -1990,7 +2005,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       logger.warn(`Restaurant not found: ${restaurantId}`);
       return errorResponse(res, 404, 'Restaurant not found');
     }
-    
+
     logger.info(`Restaurant found: ${restaurant.name} (${restaurant.restaurantId})`);
 
     // Calculate date ranges
@@ -2005,7 +2020,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
     const restaurantIdString = restaurantId.toString();
     const restaurantIdField = restaurant?.restaurantId || restaurantIdString;
     const restaurantObjectIdString = restaurant._id.toString();
-    
+
     logger.info(`📊 Fetching order statistics for restaurant:`, {
       restaurantId: restaurantId,
       restaurantIdString: restaurantIdString,
@@ -2013,7 +2028,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       restaurantObjectIdString: restaurantObjectIdString,
       restaurantName: restaurant.name
     });
-    
+
     // Build query to match restaurantId in multiple formats
     const orderMatchQuery = {
       $or: [
@@ -2022,9 +2037,9 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
         { restaurantId: restaurantObjectIdString }
       ]
     };
-    
+
     logger.info(`🔍 Order query:`, orderMatchQuery);
-    
+
     const orderStats = await Order.aggregate([
       {
         $match: orderMatchQuery
@@ -2057,13 +2072,13 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       }
     });
 
-    const totalOrders = (orderStatusMap.delivered || 0) + (orderStatusMap.cancelled || 0) + 
-                       (orderStatusMap.pending || 0) + (orderStatusMap.confirmed || 0) +
-                       (orderStatusMap.preparing || 0) + (orderStatusMap.ready || 0) +
-                       (orderStatusMap.out_for_delivery || 0);
+    const totalOrders = (orderStatusMap.delivered || 0) + (orderStatusMap.cancelled || 0) +
+      (orderStatusMap.pending || 0) + (orderStatusMap.confirmed || 0) +
+      (orderStatusMap.preparing || 0) + (orderStatusMap.ready || 0) +
+      (orderStatusMap.out_for_delivery || 0);
     const completedOrders = orderStatusMap.delivered || 0;
     const cancelledOrders = orderStatusMap.cancelled || 0;
-    
+
     logger.info(`📊 Calculated order statistics:`, {
       totalOrders,
       completedOrders,
@@ -2121,43 +2136,43 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
     // Get commission and earnings data from OrderSettlement (more accurate)
     // Match settlements by restaurantId (ObjectId in OrderSettlement)
-    const restaurantIdForSettlement = restaurant._id instanceof mongoose.Types.ObjectId 
-      ? restaurant._id 
+    const restaurantIdForSettlement = restaurant._id instanceof mongoose.Types.ObjectId
+      ? restaurant._id
       : new mongoose.Types.ObjectId(restaurant._id);
-    
+
     // Get all settlements for this restaurant
     const allSettlements = await OrderSettlement.find({
       restaurantId: restaurantIdForSettlement
     }).lean();
-    
+
     // Calculate totals from settlements
     let totalCommission = 0;
     let totalRestaurantEarning = 0;
     let totalFoodPrice = 0;
-    
+
     allSettlements.forEach(s => {
       totalCommission += s.restaurantEarning?.commission || 0;
       totalRestaurantEarning += s.restaurantEarning?.netEarning || 0;
       totalFoodPrice += s.restaurantEarning?.foodPrice || 0;
     });
-    
+
     totalCommission = Math.round(totalCommission * 100) / 100;
     totalRestaurantEarning = Math.round(totalRestaurantEarning * 100) / 100;
     totalFoodPrice = Math.round(totalFoodPrice * 100) / 100;
-    
+
     // Get monthly settlements
     const monthlySettlements = await OrderSettlement.find({
       restaurantId: restaurantIdForSettlement,
       createdAt: { $gte: startOfMonth }
     }).lean();
-    
+
     let monthlyCommission = 0;
     let monthlyRestaurantEarning = 0;
     monthlySettlements.forEach(s => {
       monthlyCommission += s.restaurantEarning?.commission || 0;
       monthlyRestaurantEarning += s.restaurantEarning?.netEarning || 0;
     });
-    
+
     monthlyCommission = Math.round(monthlyCommission * 100) / 100;
     monthlyRestaurantEarning = Math.round(monthlyRestaurantEarning * 100) / 100;
     const monthlyProfit = monthlyRestaurantEarning; // Restaurant profit = net earning
@@ -2167,14 +2182,14 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       restaurantId: restaurantIdForSettlement,
       createdAt: { $gte: startOfYear }
     }).lean();
-    
+
     let yearlyCommission = 0;
     let yearlyRestaurantEarning = 0;
     yearlySettlements.forEach(s => {
       yearlyCommission += s.restaurantEarning?.commission || 0;
       yearlyRestaurantEarning += s.restaurantEarning?.netEarning || 0;
     });
-    
+
     yearlyCommission = Math.round(yearlyCommission * 100) / 100;
     yearlyRestaurantEarning = Math.round(yearlyRestaurantEarning * 100) / 100;
     const yearlyProfit = yearlyRestaurantEarning; // Restaurant profit = net earning
@@ -2185,7 +2200,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       restaurantId: restaurantIdForSettlement,
       createdAt: { $gte: last12MonthsStart }
     }).lean();
-    
+
     // Group by month
     const monthlyEarningsMap = new Map();
     last12MonthsSettlements.forEach(s => {
@@ -2193,35 +2208,35 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       const current = monthlyEarningsMap.get(monthKey) || 0;
       monthlyEarningsMap.set(monthKey, current + (s.restaurantEarning?.netEarning || 0));
     });
-    
+
     const avgMonthlyProfit = monthlyEarningsMap.size > 0
       ? Array.from(monthlyEarningsMap.values()).reduce((sum, val) => sum + val, 0) / monthlyEarningsMap.size
       : 0;
 
     // Get commission percentage from RestaurantCommission
     const RestaurantCommission = (await import('../models/RestaurantCommission.js')).default;
-    
+
     // Use restaurant._id directly - ensure it's an ObjectId
-    const restaurantIdForQuery = restaurant._id instanceof mongoose.Types.ObjectId 
-      ? restaurant._id 
+    const restaurantIdForQuery = restaurant._id instanceof mongoose.Types.ObjectId
+      ? restaurant._id
       : new mongoose.Types.ObjectId(restaurant._id);
-    
+
     logger.info(`🔍 Looking for commission config:`, {
       restaurantId: restaurantId,
       restaurantObjectId: restaurantIdForQuery.toString(),
       restaurantName: restaurant.name,
       restaurantIdString: restaurant.restaurantId
     });
-    
+
     // Try using the static method first
     let commissionConfig = await RestaurantCommission.getCommissionForRestaurant(restaurantIdForQuery);
-    
+
     if (commissionConfig) {
       // Convert to plain object if needed
       commissionConfig = commissionConfig.toObject ? commissionConfig.toObject() : commissionConfig;
       logger.info(`✅ Found commission using static method`);
     }
-    
+
     // If not found, try direct query
     if (!commissionConfig) {
       logger.info(`⚠️ Static method didn't find commission, trying direct query`);
@@ -2229,36 +2244,36 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
         restaurant: restaurantIdForQuery,
         status: true
       });
-      
+
       if (commissionConfig) {
         commissionConfig = commissionConfig.toObject ? commissionConfig.toObject() : commissionConfig;
       }
     }
-    
+
     // If still not found, try without status filter
     if (!commissionConfig) {
       logger.info(`⚠️ Trying without status filter`);
       commissionConfig = await RestaurantCommission.findOne({
         restaurant: restaurantIdForQuery
       });
-      
+
       if (commissionConfig) {
         commissionConfig = commissionConfig.toObject ? commissionConfig.toObject() : commissionConfig;
       }
     }
-    
+
     // Also try by restaurantId string field
     if (!commissionConfig && restaurant?.restaurantId) {
       logger.info(`🔄 Trying by restaurantId string: ${restaurant.restaurantId}`);
       commissionConfig = await RestaurantCommission.findOne({
         restaurantId: restaurant.restaurantId
       });
-      
+
       if (commissionConfig) {
         commissionConfig = commissionConfig.toObject ? commissionConfig.toObject() : commissionConfig;
       }
     }
-    
+
     // Final debug: List all commissions to see what's in DB
     if (!commissionConfig) {
       const allCommissions = await RestaurantCommission.find({}).lean();
@@ -2271,7 +2286,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
         status: c.status,
         defaultCommission: c.defaultCommission
       })));
-      
+
       // Check if restaurant ObjectId matches any commission
       const matching = allCommissions.filter(c => {
         const cRestaurantId = c.restaurant?.toString ? c.restaurant.toString() : String(c.restaurant);
@@ -2293,7 +2308,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
         defaultCommissionType: commissionConfig.defaultCommission?.type,
         defaultCommissionValue: commissionConfig.defaultCommission?.value
       });
-      
+
       if (commissionConfig.defaultCommission) {
         // Get default commission value - if type is percentage, show the percentage value
         logger.info(`📊 Processing defaultCommission:`, {
@@ -2301,11 +2316,11 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
           value: commissionConfig.defaultCommission.value,
           valueType: typeof commissionConfig.defaultCommission.value
         });
-        
+
         if (commissionConfig.defaultCommission.type === 'percentage') {
           const rawValue = commissionConfig.defaultCommission.value;
-          commissionPercentage = typeof rawValue === 'number' 
-            ? rawValue 
+          commissionPercentage = typeof rawValue === 'number'
+            ? rawValue
             : parseFloat(rawValue) || 0;
           logger.info(`✅ Found commission percentage: ${commissionPercentage}% for restaurant ${restaurantId} (raw value: ${rawValue})`);
         } else if (commissionConfig.defaultCommission.type === 'amount') {
@@ -2321,23 +2336,23 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       logger.warn(`⚠️ This restaurant may not have a commission configuration set up.`);
       logger.warn(`💡 To set up commission, go to Restaurant Commission page and add commission for this restaurant.`);
     }
-    
+
     // Log the final commission percentage being returned
     logger.info(`📊 Final commission percentage being returned: ${commissionPercentage}%`);
     logger.info(`📤 Sending response with commissionPercentage: ${commissionPercentage}`);
 
     // Get ratings from FeedbackExperience (restaurantId is ObjectId in FeedbackExperience)
     const FeedbackExperience = (await import('../models/FeedbackExperience.js')).default;
-    
-    const restaurantIdForRating = restaurant._id instanceof mongoose.Types.ObjectId 
-      ? restaurant._id 
+
+    const restaurantIdForRating = restaurant._id instanceof mongoose.Types.ObjectId
+      ? restaurant._id
       : new mongoose.Types.ObjectId(restaurant._id);
-    
+
     logger.info(`⭐ Fetching ratings for restaurant:`, {
       restaurantId: restaurantId,
       restaurantObjectId: restaurantIdForRating.toString()
     });
-    
+
     const ratingStats = await FeedbackExperience.aggregate([
       {
         $match: {
@@ -2358,7 +2373,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
     const averageRating = ratingStats[0]?.averageRating || 0;
     const totalRatings = ratingStats[0]?.totalRatings || 0;
-    
+
     logger.info(`⭐ Calculated ratings:`, {
       averageRating,
       totalRatings
@@ -2445,14 +2460,14 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 export const getCustomerWalletReport = asyncHandler(async (req, res) => {
   try {
     console.log('🔍 Fetching customer wallet report...');
-    const { 
+    const {
       fromDate,
       toDate,
       all,
       customer,
       search
     } = req.query;
-    
+
     console.log('📋 Query params:', { fromDate, toDate, all, customer, search });
 
     const UserWallet = (await import('../../user/models/UserWallet.js')).default;
@@ -2486,14 +2501,14 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
     let allTransactions = [];
     wallets.forEach(wallet => {
       if (!wallet.userId) return;
-      
+
       // Sort transactions by date (oldest first for balance calculation)
-      const sortedTransactions = [...wallet.transactions].sort((a, b) => 
+      const sortedTransactions = [...wallet.transactions].sort((a, b) =>
         new Date(a.createdAt) - new Date(b.createdAt)
       );
-      
+
       let runningBalance = 0;
-      
+
       sortedTransactions.forEach((transaction) => {
         // Update running balance if transaction is completed (before date filter)
         let balance = runningBalance;
@@ -2506,7 +2521,7 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
             balance = runningBalance;
           }
         }
-        
+
         // Apply date filter if provided
         if (fromDate || toDate) {
           const transDate = new Date(transaction.createdAt);
@@ -2570,7 +2585,7 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
 
     // Filter by customer
     if (customer && customer !== 'Select Customer') {
-      allTransactions = allTransactions.filter(t => 
+      allTransactions = allTransactions.filter(t =>
         t.customer.toLowerCase().includes(customer.toLowerCase())
       );
     }
@@ -2659,7 +2674,7 @@ export const getRestaurantMenu = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const Menu = (await import('../../restaurant/models/Menu.js')).default;
-    
+
     // Find restaurant by ID
     const restaurant = await Restaurant.findOne({
       $or: [
@@ -2674,7 +2689,7 @@ export const getRestaurantMenu = asyncHandler(async (req, res) => {
     }
 
     // Find menu
-    const menu = await Menu.findOne({ 
+    const menu = await Menu.findOne({
       restaurant: restaurant._id,
       isActive: true,
     });
@@ -2711,7 +2726,7 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
     const { sections } = req.body;
     const adminId = req.user._id;
     const Menu = (await import('../../restaurant/models/Menu.js')).default;
-    
+
     // Find restaurant by ID
     const restaurant = await Restaurant.findOne({
       $or: [
@@ -2760,7 +2775,7 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
 
     // Find or create menu
     let menu = await Menu.findOne({ restaurant: restaurant._id });
-    
+
     if (!menu) {
       menu = new Menu({
         restaurant: restaurant._id,

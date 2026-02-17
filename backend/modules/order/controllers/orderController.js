@@ -172,7 +172,7 @@ export const createOrder = async (req, res) => {
     // CRITICAL: Validate that restaurant's location (pin) is within an active zone
     const restaurantLat = restaurant.location?.latitude || restaurant.location?.coordinates?.[1];
     const restaurantLng = restaurant.location?.longitude || restaurant.location?.coordinates?.[0];
-    
+
     if (!restaurantLat || !restaurantLng) {
       logger.error('❌ Restaurant location not found:', {
         restaurantId: restaurant._id?.toString() || restaurant.restaurantId,
@@ -191,7 +191,7 @@ export const createOrder = async (req, res) => {
 
     for (const zone of activeZones) {
       if (!zone.coordinates || zone.coordinates.length < 3) continue;
-      
+
       let isInZone = false;
       if (typeof zone.containsPoint === 'function') {
         isInZone = zone.containsPoint(restaurantLat, restaurantLng);
@@ -205,16 +205,16 @@ export const createOrder = async (req, res) => {
           const yi = typeof coordI === 'object' ? (coordI.longitude || coordI.lng) : null;
           const xj = typeof coordJ === 'object' ? (coordJ.latitude || coordJ.lat) : null;
           const yj = typeof coordJ === 'object' ? (coordJ.longitude || coordJ.lng) : null;
-          
+
           if (xi === null || yi === null || xj === null || yj === null) continue;
-          
-          const intersect = ((yi > restaurantLng) !== (yj > restaurantLng)) && 
-                           (restaurantLat < (xj - xi) * (restaurantLng - yi) / (yj - yi) + xi);
+
+          const intersect = ((yi > restaurantLng) !== (yj > restaurantLng)) &&
+            (restaurantLat < (xj - xi) * (restaurantLng - yi) / (yj - yi) + xi);
           if (intersect) inside = !inside;
         }
         isInZone = inside;
       }
-      
+
       if (isInZone) {
         restaurantInZone = true;
         restaurantZone = zone;
@@ -244,10 +244,10 @@ export const createOrder = async (req, res) => {
 
     // CRITICAL: Validate user's zone matches restaurant's zone (strict zone matching)
     const { zoneId: userZoneId } = req.body; // User's zone ID from frontend
-    
+
     if (userZoneId) {
       const restaurantZoneId = restaurantZone._id.toString();
-      
+
       if (restaurantZoneId !== userZoneId) {
         logger.warn('⚠️ Zone mismatch - user and restaurant are in different zones:', {
           userZoneId,
@@ -260,7 +260,7 @@ export const createOrder = async (req, res) => {
           message: 'This restaurant is not available in your zone. Please select a restaurant from your current delivery zone.'
         });
       }
-      
+
       logger.info('✅ Zone match validated - user and restaurant are in the same zone:', {
         zoneId: userZoneId,
         restaurantId: restaurant._id?.toString() || restaurant.restaurantId
@@ -339,18 +339,18 @@ export const createOrder = async (req, res) => {
 
     // Calculate initial ETA
     try {
-      const restaurantLocation = restaurant.location 
+      const restaurantLocation = restaurant.location
         ? {
-            latitude: restaurant.location.latitude,
-            longitude: restaurant.location.longitude
-          }
+          latitude: restaurant.location.latitude,
+          longitude: restaurant.location.longitude
+        }
         : null;
 
       const userLocation = address.location?.coordinates
         ? {
-            latitude: address.location.coordinates[1],
-            longitude: address.location.coordinates[0]
-          }
+          latitude: address.location.coordinates[1],
+          longitude: address.location.coordinates[0]
+        }
         : null;
 
       if (restaurantLocation && userLocation) {
@@ -420,7 +420,7 @@ export const createOrder = async (req, res) => {
       try {
         // Find or create wallet
         const wallet = await UserWallet.findOrCreateByUserId(userId);
-        
+
         // Check if sufficient balance
         if (pricing.total > wallet.balance) {
           return res.status(400).json({
@@ -721,7 +721,7 @@ export const verifyOrderPayment = async (req, res) => {
           userId
         });
       }
-      
+
       // If not found, try by orderId string
       if (!order) {
         order = await Order.findOne({
@@ -804,10 +804,10 @@ export const verifyOrderPayment = async (req, res) => {
     try {
       // Calculate settlement breakdown
       await calculateOrderSettlement(order._id);
-      
+
       // Hold funds in escrow
       await holdEscrow(order._id, userId, order.pricing.total);
-      
+
       logger.info(`✅ Order settlement calculated and escrow held for order ${order.orderId}`);
     } catch (settlementError) {
       logger.error(`❌ Error calculating settlement for order ${order.orderId}:`, settlementError);
@@ -819,7 +819,7 @@ export const verifyOrderPayment = async (req, res) => {
     try {
       const restaurantId = order.restaurantId?.toString() || order.restaurantId;
       const restaurantName = order.restaurantName;
-      
+
       // CRITICAL: Log detailed info before notification
       logger.info('🔔 CRITICAL: Attempting to notify restaurant about confirmed order:', {
         orderId: order.orderId,
@@ -833,7 +833,7 @@ export const verifyOrderPayment = async (req, res) => {
         orderCreatedAt: order.createdAt,
         orderItems: order.items.map(item => ({ name: item.name, quantity: item.quantity }))
       });
-      
+
       // Verify order has restaurantId before notifying
       if (!restaurantId) {
         logger.error('❌ CRITICAL: Cannot notify restaurant - order.restaurantId is missing!', {
@@ -846,7 +846,7 @@ export const verifyOrderPayment = async (req, res) => {
         });
         throw new Error('Order restaurantId is missing');
       }
-      
+
       // Verify order has restaurantName before notifying
       if (!restaurantName) {
         logger.warn('⚠️ Order restaurantName is missing:', {
@@ -854,9 +854,9 @@ export const verifyOrderPayment = async (req, res) => {
           restaurantId: restaurantId
         });
       }
-      
+
       const notificationResult = await notifyRestaurantNewOrder(order, restaurantId);
-      
+
       logger.info(`✅ Successfully notified restaurant about confirmed order:`, {
         orderId: order.orderId,
         restaurantId: restaurantId,
@@ -932,7 +932,7 @@ export const getUserOrders = async (req, res) => {
     // But we'll try both formats to be safe
     const mongoose = (await import('mongoose')).default;
     const query = { userId };
-    
+
     // If userId is a string that looks like ObjectId, also try ObjectId format
     if (typeof userId === 'string' && mongoose.Types.ObjectId.isValid(userId)) {
       query.$or = [
@@ -941,7 +941,7 @@ export const getUserOrders = async (req, res) => {
       ];
       delete query.userId; // Remove direct userId since we're using $or
     }
-    
+
     // Add status filter if provided
     if (status) {
       if (query.$or) {
@@ -1004,7 +1004,7 @@ export const getOrderDetails = async (req, res) => {
 
     // Try to find order by MongoDB _id or orderId (custom order ID)
     let order = null;
-    
+
     // First try MongoDB _id if it's a valid ObjectId
     if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
       order = await Order.findOne({
@@ -1015,7 +1015,7 @@ export const getOrderDetails = async (req, res) => {
         .populate('userId', 'name fullName phone email')
         .lean();
     }
-    
+
     // If not found, try by orderId (custom order ID like "ORD-123456-789")
     if (!order) {
       order = await Order.findOne({
@@ -1208,6 +1208,287 @@ export const calculateOrder = async (req, res) => {
       success: false,
       message: error.message || 'Failed to calculate order pricing',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Initiate a Razorpay payment for order tip
+ */
+export const initiateTipPayment = async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { tip } = req.body;
+
+    if (!tip || isNaN(tip) || Number(tip) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid tip amount'
+      });
+    }
+
+    // Find order (support both MongoDB ObjectId and orderId string)
+    let order;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId: orderId });
+    }
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Create Razorpay order for the tip
+    const razorpayOrder = await createRazorpayOrder({
+      receipt: `${order.orderId}-TIP-${Date.now()}`,
+      amount: Number(tip) * 100, // Convert to paise
+      currency: 'INR'
+    });
+
+    // Get Razorpay credentials to return Key ID to frontend
+    const credentials = await getRazorpayCredentials();
+
+    res.json({
+      success: true,
+      data: {
+        razorpayOrder,
+        orderId: order._id,
+        tipAmount: Number(tip),
+        razorpayKeyId: credentials.keyId
+      }
+    });
+  } catch (error) {
+    logger.error(`Error initiating tip payment: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to initiate tip payment'
+    });
+  }
+};
+
+/**
+ * Verify Razorpay payment for order tip
+ */
+export const verifyTipPayment = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature, tip } = req.body;
+
+    if (!orderId || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !tip) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required payment verification fields'
+      });
+    }
+
+    // Verify payment signature
+    const isValid = await verifyPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment signature'
+      });
+    }
+
+    // Find order (support both MongoDB ObjectId and orderId string)
+    let order;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId: orderId });
+    }
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Create payment record for the tip
+    const payment = new Payment({
+      paymentId: `PAY-TIP-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      orderId: order._id,
+      userId,
+      amount: Number(tip),
+      currency: 'INR',
+      method: 'razorpay_tip',
+      status: 'completed',
+      razorpay: {
+        orderId: razorpayOrderId,
+        paymentId: razorpayPaymentId,
+        signature: razorpaySignature
+      },
+      transactionId: razorpayPaymentId,
+      completedAt: new Date(),
+      description: `Tip for Order #${order.orderId}`
+    });
+    await payment.save();
+
+    // Update tip in order
+    const oldTip = order.pricing.tip || 0;
+    const tipDiff = Number(tip); // Since this is a new payment, it's a fresh tip amount
+
+    order.pricing.tip = oldTip + Number(tip);
+    order.pricing.total += Number(tip);
+    await order.save();
+
+    // Credit the tip to delivery boy's wallet as PENDING (requires admin approval)
+    if (order.deliveryPartnerId && tipDiff > 0) {
+      try {
+        const DeliveryWallet = (await import('../../delivery/models/DeliveryWallet.js')).default;
+        const wallet = await DeliveryWallet.findOrCreateByDeliveryId(order.deliveryPartnerId);
+
+        wallet.addTransaction({
+          amount: tipDiff,
+          type: 'tip', // Changed from 'payment' to 'tip'
+          status: 'Completed', // Auto-approve tips so they show in earnings immediately
+          description: `Tip added for Order #${order.orderId}`,
+          orderId: order._id,
+          metadata: {
+            tip: tipDiff,
+            isTip: true,
+            paymentId: razorpayPaymentId,
+            razorpayOrderId: razorpayOrderId
+          }
+        });
+
+        await wallet.save();
+        logger.info(`✅ Tip ₹${tipDiff} added to wallet for order ${order.orderId}`);
+      } catch (walletError) {
+        logger.error(`❌ Error adding tip to wallet for order ${order.orderId}:`, walletError);
+      }
+    }
+
+    // Recalculate settlement
+    try {
+      const { calculateOrderSettlement } = await import('../services/orderSettlementService.js');
+      await calculateOrderSettlement(order._id);
+      logger.info(`✅ Order settlement recalculated for tipped order ${order.orderId}`);
+    } catch (settlementError) {
+      logger.error(`❌ Error recalculating settlement for tipped order ${order.orderId}:`, settlementError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Tip added successfully',
+      data: {
+        tip: order.pricing.tip,
+        total: order.pricing.total
+      }
+    });
+  } catch (error) {
+    logger.error(`Error verifying tip payment: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add tip'
+    });
+  }
+};
+
+/**
+ * Add tip to order (Direct - used by Admin or as fallback)
+ */
+export const addTipToOrder = async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { tip } = req.body;
+
+    if (tip === undefined || isNaN(tip) || Number(tip) < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid tip amount'
+      });
+    }
+
+    // Find order (support both MongoDB ObjectId and orderId string)
+    let order;
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
+      order = await Order.findById(orderId);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId: orderId });
+    }
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Safety check: Cannot add tip to cancelled orders
+    if (order.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot add tip to a cancelled order'
+      });
+    }
+
+    // Update tip in order
+    const oldTip = order.pricing.tip || 0;
+    const tipDiff = Number(tip) - oldTip;
+
+    order.pricing.tip = Number(tip);
+    order.pricing.total += tipDiff;
+    await order.save();
+
+    // Recalculate settlement
+    try {
+      const { calculateOrderSettlement } = await import('../services/orderSettlementService.js');
+      await calculateOrderSettlement(order._id);
+      logger.info(`✅ Order settlement recalculated for tipped order ${order.orderId}`);
+    } catch (settlementError) {
+      logger.error(`❌ Error recalculating settlement for tipped order ${order.orderId}:`, settlementError);
+    }
+
+    // If order is delivered, add the tip to delivery boy's wallet as PENDING (requires admin approval)
+    if ((order.status === 'delivered' || order.status === 'completed') && order.deliveryPartnerId && tipDiff > 0) {
+      try {
+        const DeliveryWallet = (await import('../../delivery/models/DeliveryWallet.js')).default;
+        const wallet = await DeliveryWallet.findOrCreateByDeliveryId(order.deliveryPartnerId);
+
+        wallet.addTransaction({
+          amount: tipDiff,
+          type: 'tip', // Changed from 'payment' to 'tip'
+          status: 'Completed', // Auto-approve tips so they show in earnings immediately
+          description: `Additional tip added for Order #${order.orderId} (Previous: ₹${oldTip}, New: ₹${tip})`,
+          orderId: order._id,
+          metadata: {
+            tip: tipDiff,
+            isAdditionalTip: true,
+            previousTip: oldTip,
+            currentTip: tip
+          }
+        });
+
+        await wallet.save();
+        logger.info(`✅ Additional tip ₹${tipDiff} added to wallet for order ${order.orderId}`);
+      } catch (walletError) {
+        logger.error(`❌ Error adding additional tip to wallet for order ${order.orderId}:`, walletError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Tip updated successfully',
+      data: {
+        tip: order.pricing.tip,
+        total: order.pricing.total
+      }
+    });
+  } catch (error) {
+    logger.error(`Error adding tip to order: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add tip'
     });
   }
 };

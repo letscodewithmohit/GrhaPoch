@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { 
+import {
   ArrowLeft,
   MessageCircle,
   Phone,
@@ -13,22 +13,52 @@ import {
   UtensilsCrossed,
   User
 } from "lucide-react"
-import { 
-  getDeliveryOrderStatus, 
+import {
+  getDeliveryOrderStatus,
   getDeliveryStatusMessage,
   saveDeliveryOrderStatus,
   normalizeDeliveryStatus,
   DELIVERY_ORDER_STATUS
 } from "../utils/deliveryOrderStatus"
-import { 
-  getDeliveryOrderPaymentStatus 
+import {
+  getDeliveryOrderPaymentStatus
 } from "../utils/deliveryWalletState"
+
+import { deliveryAPI } from "../../../lib/api"
+import { toast } from "sonner"
 
 export default function AcceptedOrderDetails() {
   const navigate = useNavigate()
   const { orderId } = useParams()
-  const [orderStatus, setOrderStatus] = useState(() => getDeliveryOrderStatus(orderId))
-  const [paymentStatus, setPaymentStatus] = useState(() => getDeliveryOrderPaymentStatus(orderId))
+  const [orderStatus, setOrderStatus] = useState(() => getDeliveryOrderStatus(orderId) || "Pending")
+  const [paymentStatus, setPaymentStatus] = useState(() => getDeliveryOrderPaymentStatus(orderId) || "Pending")
+  const [loading, setLoading] = useState(true)
+  const [order, setOrder] = useState(null)
+  const [error, setError] = useState(null)
+
+  // Fetch order details
+  useEffect(() => {
+    const fetchOrderDetails = async () => {
+      try {
+        setLoading(true)
+        const response = await deliveryAPI.getOrderDetails(orderId)
+        if (response.data?.success) {
+          setOrder(response.data.data.order)
+        } else {
+          setError(response.data?.message || "Failed to fetch order details")
+        }
+      } catch (err) {
+        console.error("Error fetching order details:", err)
+        setError("Failed to fetch order details. Please try again.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (orderId) {
+      fetchOrderDetails()
+    }
+  }, [orderId])
 
   // Listen for order status updates
   useEffect(() => {
@@ -52,50 +82,66 @@ export default function AcceptedOrderDetails() {
 
   const statusMessage = getDeliveryStatusMessage(orderStatus)
 
-  // Order data matching the image exactly
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f6e9dc] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-8 h-8 border-4 border-[#ff8100] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading order details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !order) {
+    return (
+      <div className="min-h-screen bg-[#f6e9dc] flex flex-col items-center justify-center p-4 text-center">
+        <p className="text-red-500 font-bold text-lg mb-4">{error || "Order not found"}</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="bg-[#ff8100] text-white px-6 py-2 rounded-lg font-semibold"
+        >
+          Go Back
+        </button>
+      </div>
+    )
+  }
+
+  // Map backend order to frontend UI needs
   const orderData = {
-    id: orderId || "100102",
-    status: orderStatus,
-    deliveryTime: "1 - 5 Min",
+    id: order.orderId || order._id,
+    status: orderStatus || order.status,
+    deliveryTime: order.preparationTime ? `${order.preparationTime} Min` : "15-20 Min",
     customer: {
-      name: "Hshsgs Gsvsgs",
-      address: "R9HC+GHV, Dhaka 1216,",
-      image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=100&h=100&fit=crop&q=80"
+      name: order.userId?.name || "Customer",
+      address: order.address?.address || "Address not available",
+      image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=100&h=100&fit=crop&q=80",
+      phone: order.userId?.phone || ""
     },
     restaurant: {
-      name: "Hungry Puppets",
-      address: "House: 00, Road: 00, Tes..",
-      rating: 3.3
+      name: order.restaurantId?.name || "Restaurant",
+      address: order.restaurantId?.address || "Address",
+      rating: order.restaurantId?.rating || 4.2,
+      phone: order.restaurantId?.phone || ""
     },
-    items: [
-      {
-        id: 1,
-        name: "Medu Vada",
-        price: 95.00,
-        variation: "Capacity (1 Person)",
-        quantity: 1,
-        type: "Non Veg",
-        image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=100&h=100&fit=crop&q=80"
-      },
-      {
-        id: 2,
-        name: "grilled lemon herb mediterrane...",
-        price: 540.00,
-        variation: "Size (Small)",
-        quantity: 1,
-        type: "Non Veg",
-        image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=100&h=100&fit=crop&q=80"
-      }
-    ],
-    cutlery: "No",
+    items: order.items?.map(item => ({
+      id: item._id,
+      name: item.name,
+      price: item.price,
+      variation: item.variation?.name || "Standard",
+      quantity: item.quantity,
+      type: item.isVeg ? "Veg" : "Non Veg",
+      image: item.image || "https://images.unsplash.com/photo-1544025162-d76694265947?w=100&h=100&fit=crop&q=80"
+    })) || [],
+    cutlery: order.notes?.cutlery ? "Yes" : "No",
     paymentMethod: {
-      status: paymentStatus,
-      method: "Cash"
+      status: order.payment?.status || paymentStatus,
+      method: order.paymentMethod === 'cash' ? 'Cash' : 'Online'
     },
     billing: {
-      subtotal: 697.35,
-      deliverymanTips: 0.00,
-      total: 697.35
+      subtotal: order.pricing?.subtotal || 0,
+      deliverymanTips: order.pricing?.tip || 0,
+      total: order.pricing?.total || 0
     },
     statusMessage: statusMessage.message,
     statusDescription: statusMessage.description
@@ -105,7 +151,7 @@ export default function AcceptedOrderDetails() {
     <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4 md:py-3 flex items-center justify-between rounded-b-3xl md:rounded-b-none sticky top-0 z-10">
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="p-2 -ml-2"
         >
@@ -145,7 +191,7 @@ export default function AcceptedOrderDetails() {
           <h3 className="text-gray-900 font-semibold mb-3">Customer Contact Details</h3>
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-start gap-4">
-              <img 
+              <img
                 src={orderData.customer.image}
                 alt="Food"
                 className="w-12 h-12 rounded-lg object-cover"
@@ -155,7 +201,7 @@ export default function AcceptedOrderDetails() {
                 <p className="text-gray-600 text-sm whitespace-nowrap overflow-hidden text-ellipsis">{orderData.customer.address}</p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button 
+                <button
                   onClick={() => {
                     navigate("/delivery/profile/conversation")
                   }}
@@ -163,7 +209,7 @@ export default function AcceptedOrderDetails() {
                 >
                   <MessageCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     window.open(`tel:+8801700000000`, '_self')
                   }}
@@ -171,7 +217,7 @@ export default function AcceptedOrderDetails() {
                 >
                   <Phone className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     const address = encodeURIComponent(orderData.restaurant.address)
                     window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank')
@@ -204,7 +250,7 @@ export default function AcceptedOrderDetails() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button 
+                <button
                   onClick={() => {
                     navigate("/delivery/profile/conversation")
                   }}
@@ -212,7 +258,7 @@ export default function AcceptedOrderDetails() {
                 >
                   <MessageCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     window.open(`tel:+8801700000000`, '_self')
                   }}
@@ -220,7 +266,7 @@ export default function AcceptedOrderDetails() {
                 >
                   <Phone className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     const address = encodeURIComponent(orderData.restaurant.address)
                     window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank')
@@ -241,7 +287,7 @@ export default function AcceptedOrderDetails() {
             {orderData.items.map((item) => (
               <div key={item.id} className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-start gap-4">
-                  <img 
+                  <img
                     src={item.image}
                     alt={item.name}
                     className="w-16 h-16 rounded-lg object-cover"
@@ -306,14 +352,14 @@ export default function AcceptedOrderDetails() {
       {/* Bottom Navigation Bar - Mobile Only */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
         <div className="flex items-center justify-around py-2 px-4">
-          <button 
+          <button
             onClick={() => navigate("/delivery")}
             className="flex flex-col items-center gap-1 p-2 text-gray-600"
           >
             <Home className="w-6 h-6" />
             <span className="text-[10px] text-gray-600 font-medium">Home</span>
           </button>
-          <button 
+          <button
             onClick={() => navigate("/delivery/requests")}
             className="flex flex-col items-center gap-1 p-2 text-gray-600 relative"
           >
@@ -325,14 +371,14 @@ export default function AcceptedOrderDetails() {
             </div>
             <span className="text-[10px] text-gray-600 font-medium">Request</span>
           </button>
-          <button 
+          <button
             onClick={() => navigate("/delivery/orders")}
             className="flex flex-col items-center gap-1 p-2 text-gray-600"
           >
             <UtensilsCrossed className="w-6 h-6" />
             <span className="text-[10px] text-gray-600 font-medium">Orders</span>
           </button>
-          <button 
+          <button
             onClick={() => navigate("/delivery/profile")}
             className="flex flex-col items-center gap-1 p-2 text-gray-600"
           >
@@ -347,10 +393,10 @@ export default function AcceptedOrderDetails() {
         const normalizedStatus = normalizeDeliveryStatus(orderStatus)
         const isDelivered = normalizedStatus === DELIVERY_ORDER_STATUS.DELIVERED
         const isCancelled = normalizedStatus === DELIVERY_ORDER_STATUS.CANCELLED
-        
+
         // Don't show buttons if order is delivered or cancelled
         if (isDelivered || isCancelled) return null
-        
+
         return (
           <div className="fixed bottom-28 md:bottom-12 left-0 right-0 px-4 z-[60]">
             <div className="bg-white rounded-lg shadow-lg p-3 space-y-2">
@@ -365,7 +411,7 @@ export default function AcceptedOrderDetails() {
                   Mark as Picked Up
                 </button>
               )}
-              
+
               {normalizedStatus === DELIVERY_ORDER_STATUS.PICKED_UP && (
                 <button
                   onClick={() => {
@@ -377,7 +423,7 @@ export default function AcceptedOrderDetails() {
                   Mark as On the Way
                 </button>
               )}
-              
+
               {normalizedStatus === DELIVERY_ORDER_STATUS.ON_THE_WAY && (
                 <button
                   onClick={() => {

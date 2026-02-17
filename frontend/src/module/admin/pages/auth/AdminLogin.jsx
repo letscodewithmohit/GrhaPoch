@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff } from "lucide-react"
-import appzetoLogo from "@/assets/appzetologo.png"
+import grhapochLogo from "@/assets/grhapochlogo.png"
 
 export default function AdminLogin() {
   const navigate = useNavigate()
@@ -48,11 +48,11 @@ export default function AdminLogin() {
       // Use admin-specific login endpoint
       const response = await adminAPI.login(email, password)
       const data = response?.data?.data || response?.data
-      
+
       if (data.accessToken && data.admin) {
         // Store admin token and data
         setAuthData("admin", data.accessToken, data.admin)
-        
+
         // Navigate to admin dashboard after successful login
         navigate("/admin", { replace: true })
       } else {
@@ -81,11 +81,11 @@ export default function AdminLogin() {
         <Card className="w-full max-w-lg bg-white/90 backdrop-blur border-neutral-200 shadow-2xl">
           <CardHeader className="pb-4">
             <div className="flex w-full items-center gap-4 sm:gap-5">
-              <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl bg-gray-900/5 ring-1 ring-neutral-200">
+              <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-neutral-200">
                 <img
-                  src={appzetoLogo}
-                  alt="Appzeto"
-                  className="h-10 w-24 object-contain"
+                  src={grhapochLogo}
+                  alt="Grha Poch"
+                  className="h-12 w-24 object-contain"
                   loading="lazy"
                 />
               </div>

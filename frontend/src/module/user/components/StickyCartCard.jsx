@@ -3,12 +3,19 @@ import { X, ChevronRight } from "lucide-react"
 import { useCart } from "../context/CartContext"
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { createPortal } from "react-dom"
 
 export default function StickyCartCard() {
   const { cart, getCartCount } = useCart()
   const [isVisible, setIsVisible] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [bottomPosition, setBottomPosition] = useState("bottom-[70px]") // Fixed above bottom navigation
   const cartCount = getCartCount()
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
 
   // Set fixed position above bottom navigation (no scroll-based movement)
   useEffect(() => {
@@ -81,9 +88,9 @@ export default function StickyCartCard() {
   }
 
   // Don't render if cart is empty
-  if (cartCount === 0) return null
+  if (cartCount === 0 || !mounted) return null
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isVisible && (
         <motion.div
@@ -106,7 +113,6 @@ export default function StickyCartCard() {
                     <div className="text-xs md:text-sm font-bold">{cartCount} {cartCount === 1 ? 'item' : 'items'}</div>
                   </div>
                 </Link>
-
                 {/* Close Button */}
                 <motion.button
                   onClick={() => setIsVisible(false)}
@@ -122,7 +128,8 @@ export default function StickyCartCard() {
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }
 
