@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { DateRangeCalendar } from "@/components/ui/date-range-calendar"
-import { Bell, HelpCircle, Menu, Search, TrendingUp, BarChart3, Users, CalendarRange, Download, MoreVertical, ChevronLeft, ChevronRight, Wand2, X, MapPin } from "lucide-react"
+import { Bell, HelpCircle, Menu, Search, TrendingUp, BarChart3, Users, CalendarRange, Download, MoreVertical, ChevronLeft, ChevronRight, Wand2, X, MapPin, Crown, ArrowRight } from "lucide-react"
 import {
   FaPhone,
   FaHistory,
@@ -41,6 +41,8 @@ export default function ToHub() {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [restaurantData, setRestaurantData] = useState(null)
   const [loadingRestaurant, setLoadingRestaurant] = useState(true)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -63,7 +65,19 @@ export default function ToHub() {
       }
     }
 
+    const fetchNotifications = async () => {
+      try {
+        const response = await restaurantAPI.getNotifications()
+        const fetchedNotifications = response?.data?.data?.notifications || []
+        setNotifications(fetchedNotifications)
+        setUnreadCount(fetchedNotifications.filter(n => !n.isRead).length)
+      } catch (error) {
+        console.error("Error fetching notifications:", error)
+      }
+    }
+
     fetchRestaurantData()
+    fetchNotifications()
   }, [])
   const topTabBarRef = useRef(null)
   const contentContainerRef = useRef(null)
@@ -74,7 +88,7 @@ export default function ToHub() {
   const mouseStartX = useRef(0)
   const mouseEndX = useRef(0)
   const isMouseDown = useRef(false)
-  
+
   // Learn more popup states
   const [showLearnMoreButton, setShowLearnMoreButton] = useState(null) // cardId
   const [learnMorePopupOpen, setLearnMorePopupOpen] = useState(false)
@@ -247,13 +261,13 @@ export default function ToHub() {
     if (!isSwiping.current) {
       const deltaX = Math.abs(e.touches[0].clientX - touchStartX.current)
       const deltaY = Math.abs(e.touches[0].clientY - touchStartY.current)
-      
+
       // Determine if this is a horizontal swipe
       if (deltaX > deltaY && deltaX > 10) {
         isSwiping.current = true
       }
     }
-    
+
     if (isSwiping.current) {
       touchEndX.current = e.touches[0].clientX
     }
@@ -273,7 +287,7 @@ export default function ToHub() {
     if (swipeVelocity > minSwipeDistance && !isTransitioning) {
       const currentIndex = topTabs.findIndex(tab => tab.id === activeTopTab)
       let newIndex = currentIndex
-      
+
       if (swipeDistance > 0 && currentIndex < topTabs.length - 1) {
         // Swipe left - go to next tab (right side)
         newIndex = currentIndex + 1
@@ -284,11 +298,11 @@ export default function ToHub() {
 
       if (newIndex !== currentIndex) {
         setIsTransitioning(true)
-        
+
         // Smooth transition with animation
         setTimeout(() => {
           setActiveTopTab(topTabs[newIndex].id)
-          
+
           // Reset transition state after animation
           setTimeout(() => {
             setIsTransitioning(false)
@@ -296,7 +310,7 @@ export default function ToHub() {
         }, 50)
       }
     }
-    
+
     // Reset touch positions
     touchStartX.current = 0
     touchEndX.current = 0
@@ -312,6 +326,7 @@ export default function ToHub() {
     { id: "feedback", label: "Share your feedback", icon: FaCommentDots, route: "/restaurant/Share-Feedback" },
     { id: "zone-setup", label: "Zone Setup", icon: MapPin, route: "/restaurant/zone-setup" },
     { id: "settings", label: "Settings", icon: FaCog, route: "/restaurant/delivery-settings" },
+    { id: "business-plan", label: "Business Plan", icon: Crown, route: "/restaurant/business-plan" },
     { id: "show-all", label: "Show all", icon: FaThLarge, route: "/restaurant/explore" },
   ]
 
@@ -491,7 +506,7 @@ export default function ToHub() {
   const [selectedDateRange, setSelectedDateRange] = useState("yesterday")
   const [customDateRange, setCustomDateRange] = useState({ start: null, end: null })
   const [isDateLoading, setIsDateLoading] = useState(false)
-  
+
   // Helper functions for date ranges
   const getDateRanges = () => {
     const now = new Date()
@@ -503,7 +518,7 @@ export default function ToHub() {
     thisWeekStart.setDate(now.getDate() - now.getDay() + 1)
     const thisWeekEnd = new Date(thisWeekStart)
     thisWeekEnd.setDate(thisWeekStart.getDate() + 6)
- 
+
     const lastWeekEnd = new Date(thisWeekStart)
     lastWeekEnd.setDate(thisWeekStart.getDate() - 1)
     const lastWeekStart = new Date(lastWeekEnd)
@@ -533,7 +548,7 @@ export default function ToHub() {
       last5DaysEnd,
     }
   }
-  
+
   // Calculate chart data from real orders
   const calculateChartDataFromOrders = (orders, startDate, endDate) => {
     // Initialize hour buckets
@@ -545,28 +560,28 @@ export default function ToHub() {
       "4pm": { orders: 0, sales: 0 },
       "8pm": { orders: 0, sales: 0 },
     }
-    
+
     // Filter orders by date range
     const start = new Date(startDate)
     start.setHours(0, 0, 0, 0)
     const end = new Date(endDate)
     end.setHours(23, 59, 59, 999)
-    
+
     const filteredOrders = orders.filter(order => {
       if (!order.createdAt) return false
       const orderDate = new Date(order.createdAt)
       return orderDate >= start && orderDate <= end
     })
-    
+
     // Calculate total sales and orders
     let totalSalesAmount = 0
     let totalOrdersCount = 0
-    
+
     // Group orders by hour
     filteredOrders.forEach(order => {
       const orderDate = new Date(order.createdAt)
       const hour = orderDate.getHours()
-      
+
       // Determine hour bucket
       let hourLabel
       if (hour >= 0 && hour < 4) hourLabel = "12am"
@@ -575,15 +590,15 @@ export default function ToHub() {
       else if (hour >= 12 && hour < 16) hourLabel = "12pm"
       else if (hour >= 16 && hour < 20) hourLabel = "4pm"
       else hourLabel = "8pm" // 20-23
-      
+
       const orderAmount = order.pricing?.total || 0
-      
+
       hourBuckets[hourLabel].orders += 1
       hourBuckets[hourLabel].sales += orderAmount
       totalSalesAmount += orderAmount
       totalOrdersCount += 1
     })
-    
+
     // Convert to chart data format
     const chartData = [
       { hour: "12am", orders: hourBuckets["12am"].orders, sales: Math.round(hourBuckets["12am"].sales) },
@@ -594,14 +609,14 @@ export default function ToHub() {
       { hour: "8pm", orders: hourBuckets["8pm"].orders, sales: Math.round(hourBuckets["8pm"].sales) },
       { hour: "12am", orders: 0, sales: 0 }, // Next day marker
     ]
-    
+
     return {
       chartData,
       totalSales: Math.round(totalSalesAmount),
       totalOrders: totalOrdersCount
     }
   }
-  
+
   // Calculate mealtime data from orders
   const calculateMealtimeData = (orders, startDate, endDate) => {
     // Initialize mealtime buckets
@@ -612,26 +627,26 @@ export default function ToHub() {
       dinner: { count: 0, color: "#f59e0b" },
       lateNight: { count: 0, color: "#10b981" },
     }
-    
+
     // Filter orders by date range
     const start = new Date(startDate)
     start.setHours(0, 0, 0, 0)
     const end = new Date(endDate)
     end.setHours(23, 59, 59, 999)
-    
+
     const filteredOrders = orders.filter(order => {
       if (!order.createdAt) return false
       const orderDate = new Date(order.createdAt)
       return orderDate >= start && orderDate <= end
     })
-    
+
     // Group orders by mealtime
     filteredOrders.forEach(order => {
       const orderDate = new Date(order.createdAt)
       const hour = orderDate.getHours()
       const minute = orderDate.getMinutes()
       const timeInMinutes = hour * 60 + minute
-      
+
       // Breakfast: 7:00 am - 11:00 am (420 - 660 minutes)
       if (timeInMinutes >= 420 && timeInMinutes < 660) {
         mealtimeBuckets.breakfast.count++
@@ -653,64 +668,64 @@ export default function ToHub() {
         mealtimeBuckets.lateNight.count++
       }
     })
-    
+
     const totalOrdersCount = filteredOrders.length
-    
+
     // Calculate percentages and format data
     const calculatePercentage = (count, total) => {
       if (total === 0) return "- 0%"
       const percentage = ((count / total) * 100).toFixed(1)
       return `${percentage}%`
     }
-    
+
     return [
-      { 
-        title: "Breakfast", 
-        window: "7:00 am - 11:00 am", 
-        value: mealtimeBuckets.breakfast.count.toString(), 
-        change: calculatePercentage(mealtimeBuckets.breakfast.count, totalOrdersCount), 
-        color: mealtimeBuckets.breakfast.color 
+      {
+        title: "Breakfast",
+        window: "7:00 am - 11:00 am",
+        value: mealtimeBuckets.breakfast.count.toString(),
+        change: calculatePercentage(mealtimeBuckets.breakfast.count, totalOrdersCount),
+        color: mealtimeBuckets.breakfast.color
       },
-      { 
-        title: "Lunch", 
-        window: "11:00 am - 4:00 pm", 
-        value: mealtimeBuckets.lunch.count.toString(), 
-        change: calculatePercentage(mealtimeBuckets.lunch.count, totalOrdersCount), 
-        color: mealtimeBuckets.lunch.color 
+      {
+        title: "Lunch",
+        window: "11:00 am - 4:00 pm",
+        value: mealtimeBuckets.lunch.count.toString(),
+        change: calculatePercentage(mealtimeBuckets.lunch.count, totalOrdersCount),
+        color: mealtimeBuckets.lunch.color
       },
-      { 
-        title: "Evening snacks", 
-        window: "4:00 pm - 7:00 pm", 
-        value: mealtimeBuckets.eveningSnacks.count.toString(), 
-        change: calculatePercentage(mealtimeBuckets.eveningSnacks.count, totalOrdersCount), 
-        color: mealtimeBuckets.eveningSnacks.color 
+      {
+        title: "Evening snacks",
+        window: "4:00 pm - 7:00 pm",
+        value: mealtimeBuckets.eveningSnacks.count.toString(),
+        change: calculatePercentage(mealtimeBuckets.eveningSnacks.count, totalOrdersCount),
+        color: mealtimeBuckets.eveningSnacks.color
       },
-      { 
-        title: "Dinner", 
-        window: "7:00 pm - 11:00 pm", 
-        value: mealtimeBuckets.dinner.count.toString(), 
-        change: calculatePercentage(mealtimeBuckets.dinner.count, totalOrdersCount), 
-        color: mealtimeBuckets.dinner.color 
+      {
+        title: "Dinner",
+        window: "7:00 pm - 11:00 pm",
+        value: mealtimeBuckets.dinner.count.toString(),
+        change: calculatePercentage(mealtimeBuckets.dinner.count, totalOrdersCount),
+        color: mealtimeBuckets.dinner.color
       },
-      { 
-        title: "Late night", 
-        window: "11:00 pm - 7:00 am", 
-        value: mealtimeBuckets.lateNight.count.toString(), 
-        change: calculatePercentage(mealtimeBuckets.lateNight.count, totalOrdersCount), 
-        color: mealtimeBuckets.lateNight.color 
+      {
+        title: "Late night",
+        window: "11:00 pm - 7:00 am",
+        value: mealtimeBuckets.lateNight.count.toString(),
+        change: calculatePercentage(mealtimeBuckets.lateNight.count, totalOrdersCount),
+        color: mealtimeBuckets.lateNight.color
       },
     ]
   }
-  
+
   // Fetch orders and update chart data
   const fetchOrdersAndUpdateChart = useCallback(async (rangeId) => {
     try {
       setIsDateLoading(true)
-      
+
       // Get date range
       const ranges = getDateRanges()
       let startDate, endDate
-      
+
       switch (rangeId) {
         case "today":
           startDate = ranges.today
@@ -753,35 +768,35 @@ export default function ToHub() {
           startDate = ranges.yesterday
           endDate = ranges.yesterday
       }
-      
+
       // Format dates for API (ISO format)
       const startDateISO = new Date(startDate)
       startDateISO.setHours(0, 0, 0, 0)
       const endDateISO = new Date(endDate)
       endDateISO.setHours(23, 59, 59, 999)
-      
+
       // Fetch all orders with pagination to get all orders
       let allOrders = []
       let page = 1
       let hasMore = true
       const limit = 1000 // Fetch in batches
       const maxPages = 50 // Safety limit to prevent infinite loops
-      
+
       while (hasMore && page <= maxPages) {
         try {
-          const response = await restaurantAPI.getOrders({ 
-            page, 
+          const response = await restaurantAPI.getOrders({
+            page,
             limit
           })
-          
+
           if (response.data?.success && response.data.data?.orders) {
             const orders = response.data.data.orders
             allOrders = [...allOrders, ...orders]
-            
+
             // Check if there are more pages
             const totalPages = response.data.data.totalPages || response.data.data.pagination?.totalPages || 1
             const totalCount = response.data.data.total || response.data.data.pagination?.total || 0
-            
+
             // Stop if we got fewer orders than the limit (last page) or if we've reached total pages
             if (orders.length < limit || (totalPages > 0 && page >= totalPages)) {
               hasMore = false
@@ -796,27 +811,27 @@ export default function ToHub() {
           hasMore = false
         }
       }
-      
+
       console.log(`📊 Fetched ${allOrders.length} orders for date range:`, {
         startDate: startDateISO.toISOString(),
         endDate: endDateISO.toISOString(),
         rangeId
       })
-      
+
       if (allOrders.length > 0) {
-        const { chartData: newChartData, totalSales: newTotalSales, totalOrders: newTotalOrders } = 
+        const { chartData: newChartData, totalSales: newTotalSales, totalOrders: newTotalOrders } =
           calculateChartDataFromOrders(allOrders, startDate, endDate)
-        
+
         // Calculate mealtime data
         const mealtimeData = calculateMealtimeData(allOrders, startDate, endDate)
-        
+
         console.log('📈 Chart data calculated:', {
           totalSales: newTotalSales,
           totalOrders: newTotalOrders,
           chartDataPoints: newChartData.length,
           mealtimeData
         })
-        
+
         setChartData(newChartData)
         setTotalSales(`₹ ${newTotalSales.toLocaleString("en-IN")}`)
         setTotalOrders(newTotalOrders.toString())
@@ -874,7 +889,7 @@ export default function ToHub() {
       fetchOrdersAndUpdateChart("custom")
     }
   }
-  
+
   // Fetch orders on mount and when date range changes
   useEffect(() => {
     if (!restaurantData) return // Don't fetch if restaurant data is not loaded yet
@@ -885,11 +900,11 @@ export default function ToHub() {
     date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
   const formatDateLong = (date) =>
     date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
-  
+
   const formatTimeAgo = (date) => {
     const now = new Date()
     const diffInSeconds = Math.floor((now - date) / 1000)
-    
+
     if (diffInSeconds < 60) {
       return "few seconds ago"
     } else if (diffInSeconds < 3600) {
@@ -1147,8 +1162,8 @@ export default function ToHub() {
           {quickLinks.map((link) => {
             const Icon = link.icon
             return (
-              <button 
-                key={link.id} 
+              <button
+                key={link.id}
                 onClick={() => {
                   if (link.isPhone) {
                     window.location.href = link.route
@@ -1193,7 +1208,7 @@ export default function ToHub() {
               <p className="text-xs text-gray-500">Last updated: few seconds ago</p>
             </div>
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'sales' ? null : 'sales')}
                 className="p-2 rounded-full hover:bg-gray-100"
               >
@@ -1252,7 +1267,7 @@ export default function ToHub() {
               <span className="flex items-center gap-2"><span className="w-3 h-0.5 bg-gray-900 inline-block"></span>Yesterday</span>
               <span className="flex items-center gap-2"><span className="w-3 h-0.5 bg-gray-400 inline-block"></span>Day before yesterday</span>
             </div>
-            <button 
+            <button
               onClick={() => setActiveTopTab("sales")}
               className="w-full mt-3 bg-black text-white py-3 rounded-md text-sm font-semibold hover:bg-gray-800 transition-colors"
             >
@@ -1271,7 +1286,7 @@ export default function ToHub() {
               <p className="text-xs text-gray-500">Last updated: a day ago</p>
             </div>
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'customers-myfeed' ? null : 'customers-myfeed')}
                 className="p-2 rounded-full hover:bg-gray-100"
               >
@@ -1315,7 +1330,7 @@ export default function ToHub() {
             ))}
           </div>
 
-          <button 
+          <button
             onClick={() => setActiveTopTab("customers")}
             className="w-full bg-black text-white py-3 rounded-md text-sm font-semibold hover:bg-gray-800 transition-colors"
           >
@@ -1331,13 +1346,13 @@ export default function ToHub() {
             <div>
               <p className="text-base font-bold text-gray-900">Orders by mealtime</p>
               <p className="text-xs text-gray-500">
-                {lastUpdated 
+                {lastUpdated
                   ? `Last updated: ${formatTimeAgo(lastUpdated)}`
                   : "Last updated: a day ago"}
               </p>
             </div>
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'orders-by-mealtime-myfeed' ? null : 'orders-by-mealtime-myfeed')}
                 className="p-2 rounded-full hover:bg-gray-100"
               >
@@ -1392,7 +1407,7 @@ export default function ToHub() {
               <p className="text-xs text-gray-500">Last updated: an hour ago</p>
             </div>
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'offers-myfeed' ? null : 'offers-myfeed')}
                 className="p-2 rounded-full hover:bg-gray-100"
               >
@@ -1444,7 +1459,7 @@ export default function ToHub() {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={() => setActiveTopTab("offers")}
             className="w-full bg-black text-white py-3 rounded-md text-sm font-semibold hover:bg-gray-800 transition-colors"
           >
@@ -1527,7 +1542,7 @@ export default function ToHub() {
                 <p className="text-xs text-gray-500">Last updated: few seconds ago</p>
               </div>
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'sales-tab' ? null : 'sales-tab')}
                   className="p-2 rounded-full hover:bg-gray-100"
                 >
@@ -1598,7 +1613,7 @@ export default function ToHub() {
                 <p className="text-xs text-gray-500">Last updated: few seconds ago</p>
               </div>
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'sales-orders' ? null : 'sales-orders')}
                   className="p-2 rounded-full hover:bg-gray-100"
                 >
@@ -1717,7 +1732,7 @@ export default function ToHub() {
                 <p className="text-xs text-gray-500">Last updated: few seconds ago</p>
               </div>
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'avg-order-value' ? null : 'avg-order-value')}
                   className="p-2 rounded-full hover:bg-gray-100"
                 >
@@ -1792,13 +1807,13 @@ export default function ToHub() {
               <div>
                 <p className="text-base font-bold text-gray-900">Orders by mealtime</p>
                 <p className="text-xs text-gray-500">
-                  {lastUpdated 
+                  {lastUpdated
                     ? `Last updated: ${formatTimeAgo(lastUpdated)}`
                     : "Last updated: a day ago"}
                 </p>
               </div>
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowLearnMoreButton(showLearnMoreButton === 'orders-by-mealtime-sales' ? null : 'orders-by-mealtime-sales')}
                   className="p-2 rounded-full hover:bg-gray-100"
                 >
@@ -1877,10 +1892,13 @@ export default function ToHub() {
 
           <div className="flex items-center">
             <button
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
               onClick={() => navigate("/restaurant/notifications")}
             >
               <Bell className="w-5 h-5 text-gray-700" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+              )}
             </button>
             <button
               className="p-2 ml-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -1950,6 +1968,100 @@ export default function ToHub() {
         </div>
       </div>
 
+      {/* Subscription Banner based on Business Model */}
+      {restaurantData?.businessModel !== 'Subscription Base' ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mx-4 mt-4 bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg shadow-purple-200 flex items-center justify-between overflow-hidden relative"
+        >
+          {/* Decorative background circle */}
+          <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/30 shadow-inner">
+              <Crown className="w-5 h-5 text-yellow-300 fill-yellow-300" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm flex items-center gap-1.5">
+                Commission Base Mode
+                <span className="bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter">Active</span>
+              </h3>
+              <p className="text-[10px] text-white/80 font-medium">Get 0% extra commission with Subscription plans</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/restaurant/subscription-plans')}
+            className="bg-white text-indigo-700 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10"
+          >
+            Upgrade
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </motion.div>
+      ) : restaurantData?.subscriptionStatus?.showWarning ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mx-4 mt-4 bg-gradient-to-r from-orange-600 to-red-700 rounded-2xl p-4 text-white shadow-lg shadow-orange-200 flex items-center justify-between overflow-hidden relative"
+        >
+          {/* Decorative background circle */}
+          <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/30 shadow-inner">
+              <FaExclamationTriangle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm flex items-center gap-1.5">
+                Subscription Expiring
+                <span className="bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter">Action Required</span>
+              </h3>
+              <p className="text-[10px] text-white/80 font-medium">
+                Expires in {restaurantData.subscriptionStatus.daysRemaining} days. Renew now to avoid commission charges.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/restaurant/business-plan')}
+            className="bg-white text-orange-700 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10"
+          >
+            Renew
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mx-4 mt-4 bg-gradient-to-r from-green-600 to-teal-700 rounded-2xl p-4 text-white shadow-lg shadow-green-200 flex items-center justify-between overflow-hidden relative"
+        >
+          {/* Decorative background circle */}
+          <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/30 shadow-inner">
+              <Crown className="w-5 h-5 text-yellow-300 fill-yellow-300" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm flex items-center gap-1.5">
+                Subscription Base Mode
+                <span className="bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter">
+                  {restaurantData?.subscriptionPlanName || 'Premium'}
+                </span>
+              </h3>
+              <p className="text-[10px] text-white/80 font-medium">Enjoying 0% commission on all orders</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/restaurant/business-plan')}
+            className="bg-white text-green-700 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10"
+          >
+            My Plan
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </motion.div>
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div
           ref={contentContainerRef}
@@ -1967,7 +2079,7 @@ export default function ToHub() {
             // Don't handle swipe if starting on topbar or chart
             if (topTabBarRef.current?.contains(target)) return
             if (target.closest('.chart-shell, .chart-shell-mini')) return
-            
+
             mouseStartX.current = e.clientX
             mouseEndX.current = e.clientX
             isMouseDown.current = true
@@ -1990,13 +2102,13 @@ export default function ToHub() {
             if (isMouseDown.current && isSwiping.current) {
               const swipeDistance = mouseStartX.current - mouseEndX.current
               const currentIndex = topTabs.findIndex(t => t.id === activeTopTab)
-              
+
               if (swipeDistance > 50 && currentIndex < topTabs.length - 1) {
                 setActiveTopTab(topTabs[currentIndex + 1].id)
               } else if (swipeDistance < -50 && currentIndex > 0) {
                 setActiveTopTab(topTabs[currentIndex - 1].id)
               }
-              
+
               isMouseDown.current = false
               isSwiping.current = false
             }

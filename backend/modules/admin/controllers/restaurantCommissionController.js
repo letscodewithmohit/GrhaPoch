@@ -12,7 +12,7 @@ import mongoose from 'mongoose';
  */
 export const getRestaurantCommissions = asyncHandler(async (req, res) => {
   try {
-    const { 
+    const {
       status,
       search,
       page = 1,
@@ -44,7 +44,7 @@ export const getRestaurantCommissions = asyncHandler(async (req, res) => {
 
     // Get commissions
     const commissions = await RestaurantCommission.find(query)
-      .populate('restaurant', 'name restaurantId isActive email phone')
+      .populate('restaurant', 'name restaurantId isActive email phone businessModel dishLimit')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .sort({ createdAt: -1 })
@@ -79,15 +79,16 @@ export const getRestaurantCommissions = asyncHandler(async (req, res) => {
  */
 export const getApprovedRestaurants = asyncHandler(async (req, res) => {
   try {
-    const { 
+    const {
       search,
       page = 1,
       limit = 100
     } = req.query;
 
-    // Build query - only approved restaurants
+    // Build query - only approved restaurants and NOT subscription based
     const query = {
-      isActive: true
+      isActive: true,
+      businessModel: { $ne: 'Subscription Base' }
     };
 
     // Search filter
@@ -121,7 +122,7 @@ export const getApprovedRestaurants = asyncHandler(async (req, res) => {
     const existingCommissions = await RestaurantCommission.find({
       restaurant: { $in: restaurantIds }
     }).select('restaurant').lean();
-    
+
     const commissionRestaurantIds = new Set(
       existingCommissions.map(c => c.restaurant.toString())
     );
@@ -160,7 +161,7 @@ export const getRestaurantCommissionById = asyncHandler(async (req, res) => {
     }
 
     const commission = await RestaurantCommission.findById(id)
-      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel')
+      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel dishLimit')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .lean();
@@ -191,7 +192,7 @@ export const getCommissionByRestaurantId = asyncHandler(async (req, res) => {
     }
 
     const commission = await RestaurantCommission.findOne({ restaurant: restaurantId })
-      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel')
+      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel dishLimit')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .lean();
@@ -220,7 +221,8 @@ export const createRestaurantCommission = asyncHandler(async (req, res) => {
       commissionRules,
       defaultCommission,
       status,
-      notes
+      notes,
+      dishLimit
     } = req.body;
 
     const adminId = req.user._id;
@@ -303,6 +305,11 @@ export const createRestaurantCommission = asyncHandler(async (req, res) => {
 
     await commission.save();
 
+    // Update dish limit if provided
+    if (dishLimit !== undefined) {
+      await Restaurant.findByIdAndUpdate(restaurantId, { $set: { dishLimit: Number(dishLimit) } });
+    }
+
     // Create audit log
     try {
       await AuditLog.createLog({
@@ -339,11 +346,11 @@ export const createRestaurantCommission = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating restaurant commission:', error);
-    
+
     if (error.code === 11000) {
       return errorResponse(res, 400, 'Commission already exists for this restaurant');
     }
-    
+
     return errorResponse(res, 500, 'Failed to create restaurant commission');
   }
 });
@@ -359,7 +366,8 @@ export const updateRestaurantCommission = asyncHandler(async (req, res) => {
       commissionRules,
       defaultCommission,
       status,
-      notes
+      notes,
+      dishLimit
     } = req.body;
 
     const adminId = req.user._id;
@@ -444,6 +452,11 @@ export const updateRestaurantCommission = asyncHandler(async (req, res) => {
     commission.updatedBy = adminId;
 
     await commission.save();
+
+    // Update dish limit if provided
+    if (dishLimit !== undefined) {
+      await Restaurant.findByIdAndUpdate(commission.restaurant, { $set: { dishLimit: Number(dishLimit) } });
+    }
 
     // Create audit log for commission change
     if (defaultCommission && (
@@ -590,3 +603,59 @@ export const calculateCommission = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * Upgrade restaurant to subscription base
+ * PATCH /api/admin/restaurant-commission/upgrade/:restaurantId
+ */
+export const upgradeToSubscription = asyncHandler(async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
+      return errorResponse(res, 400, 'Invalid restaurant ID');
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return errorResponse(res, 404, 'Restaurant not found');
+    }
+
+    // Set business model to Subscription Base
+    restaurant.businessModel = 'Subscription Base';
+
+    // Set dish limit to 0 (unlimited) for everyone as per requirements
+    restaurant.dishLimit = 0;
+
+    await restaurant.save();
+
+    // Create audit log
+    try {
+      await AuditLog.createLog({
+        entityType: 'restaurant',
+        entityId: restaurant._id,
+        action: 'upgrade_to_subscription',
+        actionType: 'update',
+        performedBy: {
+          type: 'admin',
+          userId: req.user._id,
+          name: req.user?.name || 'Admin'
+        },
+        description: `Restaurant ${restaurant.name} upgraded to Subscription Base model by Admin`
+      });
+    } catch (auditError) {
+      console.error('Error creating audit log:', auditError);
+    }
+
+    return successResponse(res, 200, 'Restaurant upgraded to subscription-based successfully', {
+      restaurant: {
+        _id: restaurant._id,
+        name: restaurant.name,
+        businessModel: restaurant.businessModel,
+        dishLimit: restaurant.dishLimit
+      }
+    });
+  } catch (error) {
+    console.error('Error upgrading restaurant to subscription base:', error);
+    return errorResponse(res, 500, 'Failed to upgrade restaurant');
+  }
+});

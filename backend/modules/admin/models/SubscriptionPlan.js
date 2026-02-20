@@ -33,6 +33,11 @@ const subscriptionPlanSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        dishLimit: {
+            type: Number,
+            default: 0, // 0 means unlimited
+            min: 0,
+        },
     },
     {
         timestamps: true,

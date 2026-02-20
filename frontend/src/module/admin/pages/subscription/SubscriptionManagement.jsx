@@ -69,8 +69,18 @@ export default function SubscriptionManagement() {
 
     const getPlanName = (planId) => {
         if (!planId) return 'No Plan';
-        const plan = plans.find(p => p._id === planId);
-        return plan ? plan.name : planId.replace(/_/g, ' '); // Fallback to formatted ID
+
+        // Try to find the plan object
+        const plan = plans.find(p => p._id === planId || p.id === planId);
+        if (plan) return plan.name;
+
+        // Fallback for string/legacy IDs
+        const planStr = planId.toString();
+        if (planStr.length < 20) {
+            return planStr.charAt(0).toUpperCase() + planStr.slice(1).replace(/_/g, ' ');
+        }
+
+        return 'Active Plan'; // Generic fallback for unknown long IDs
     }
 
     const getPlanDetails = (planId) => {
@@ -479,7 +489,7 @@ export default function SubscriptionManagement() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <Badge variant="outline" className="font-medium bg-indigo-50 text-indigo-700 border-indigo-200">
-                                                        {getPlanName(res.subscription?.planId)}
+                                                        {res.subscription?.planName || res.subscriptionPlanName || getPlanName(res.subscription?.planId)}
                                                     </Badge>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -728,7 +738,7 @@ export default function SubscriptionManagement() {
                                             <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                                                 <div className="text-xs text-slate-500 uppercase font-semibold mb-1">Plan Name</div>
                                                 <div className="font-medium text-slate-900 flex justify-between items-center">
-                                                    {getPlanName(selectedRestaurant.subscription?.planId)}
+                                                    {selectedRestaurant.subscription?.planName || selectedRestaurant.subscriptionPlanName || getPlanName(selectedRestaurant.subscription?.planId)}
                                                     <Badge className={selectedRestaurant.subscription?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
                                                         {selectedRestaurant.subscription?.status || 'Inactive'}
                                                     </Badge>

@@ -266,7 +266,7 @@ export const restaurantAPI = {
     return apiClient.post(API_ENDPOINTS.RESTAURANT.AUTH.SEND_OTP, payload);
   },
 
-  verifyOTP: (phone = null, otp, purpose = 'login', name = null, email = null, password = null) => {
+  verifyOTP: (phone = null, otp, purpose = 'login', name = null, email = null, businessModel = null, password = null) => {
     const payload = {
       otp,
       purpose,
@@ -274,6 +274,7 @@ export const restaurantAPI = {
     if (phone != null) payload.phone = phone;
     if (email != null) payload.email = email;
     if (name != null) payload.name = name;
+    if (businessModel != null) payload.businessModel = businessModel;
     if (password != null) payload.password = password;
     return apiClient.post(API_ENDPOINTS.RESTAURANT.AUTH.VERIFY_OTP, payload);
   },
@@ -648,6 +649,20 @@ export const restaurantAPI = {
   },
   getSubscriptionPlans: () => {
     return apiClient.get(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.PLANS);
+  },
+
+  // Notifications
+  getNotifications: () => {
+    return apiClient.get('/restaurant/notifications');
+  },
+  markAllNotificationsRead: () => {
+    return apiClient.put('/restaurant/notifications/mark-all-read');
+  },
+  markNotificationRead: (id) => {
+    return apiClient.put(`/restaurant/notifications/${id}/mark-read`);
+  },
+  deleteNotification: (id) => {
+    return apiClient.delete(`/restaurant/notifications/${id}`);
   },
 };
 
@@ -1025,6 +1040,10 @@ export const adminAPI = {
       restaurantId,
       orderAmount
     });
+  },
+
+  upgradeRestaurantToSubscription: (restaurantId) => {
+    return apiClient.patch(`/admin/restaurant-commission/upgrade/${restaurantId}`);
   },
 
   // Restaurant Complaint Management
@@ -1520,6 +1539,7 @@ export const uploadAPI = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 120000, // 120 seconds timeout for large uploads
     });
   },
 };

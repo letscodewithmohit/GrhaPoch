@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
-import { 
-  Search, Plus, Edit, Trash2, ArrowUpDown, 
+import {
+  Search, Plus, Edit, Trash2, ArrowUpDown,
   DollarSign, Percent, Loader2, X, Building2, IndianRupee
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { adminAPI } from "@/lib/api"
 import { API_BASE_URL } from "@/lib/api/config"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 export default function RestaurantCommission() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -34,18 +35,25 @@ export default function RestaurantCommission() {
     si: true,
     restaurant: true,
     restaurantId: true,
+    businessModel: true,
     defaultCommission: true,
+    dishLimit: true,
     status: true,
     actions: true,
   })
 
   const filteredCommissions = useMemo(() => {
+    // First filters: Exclude subscription-based restaurants
+    let filtered = commissions.filter(commission =>
+      commission.restaurant?.businessModel !== 'Subscription Base'
+    );
+
     if (!searchQuery.trim()) {
-      return commissions
+      return filtered
     }
-    
+
     const query = searchQuery.toLowerCase().trim()
-    return commissions.filter(commission =>
+    return filtered.filter(commission =>
       commission.restaurantName?.toLowerCase().includes(query) ||
       commission.restaurantId?.toLowerCase().includes(query) ||
       commission.restaurant?.name?.toLowerCase().includes(query)
@@ -56,7 +64,7 @@ export default function RestaurantCommission() {
     if (!searchQuery.trim()) {
       return approvedRestaurants
     }
-    
+
     const query = searchQuery.toLowerCase().trim()
     return approvedRestaurants.filter(restaurant =>
       restaurant.name?.toLowerCase().includes(query) ||
@@ -75,7 +83,7 @@ export default function RestaurantCommission() {
     try {
       setLoading(true)
       const response = await adminAPI.getRestaurantCommissions({})
-      
+
       let commissionsData = null
       if (response?.data?.success && response?.data?.data?.commissions) {
         commissionsData = response.data.data.commissions
@@ -84,7 +92,7 @@ export default function RestaurantCommission() {
       } else if (response?.data?.commissions) {
         commissionsData = response.data.commissions
       }
-      
+
       if (commissionsData && Array.isArray(commissionsData)) {
         setCommissions(commissionsData)
       } else {
@@ -92,7 +100,7 @@ export default function RestaurantCommission() {
       }
     } catch (error) {
       console.error('Error fetching commissions:', error)
-      
+
       // Handle network errors
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
         toast.error(`Cannot connect to backend server. Please ensure the backend is running on ${API_BASE_URL.replace('/api', '')}`)
@@ -112,7 +120,7 @@ export default function RestaurantCommission() {
   const fetchApprovedRestaurants = async () => {
     try {
       const response = await adminAPI.getApprovedRestaurants({ limit: 1000 })
-      
+
       let restaurantsData = null
       if (response?.data?.success && response?.data?.data?.restaurants) {
         restaurantsData = response.data.data.restaurants
@@ -121,7 +129,7 @@ export default function RestaurantCommission() {
       } else if (response?.data?.restaurants) {
         restaurantsData = response.data.restaurants
       }
-      
+
       if (restaurantsData && Array.isArray(restaurantsData)) {
         setApprovedRestaurants(restaurantsData)
       } else {
@@ -129,7 +137,7 @@ export default function RestaurantCommission() {
       }
     } catch (error) {
       console.error('Error fetching approved restaurants:', error)
-      
+
       // Handle network errors silently (already handled in fetchCommissions)
       if (error.code !== 'ERR_NETWORK' && error.message !== 'Network Error') {
         toast.error(error.response?.data?.message || 'Failed to fetch approved restaurants')
@@ -148,6 +156,8 @@ export default function RestaurantCommission() {
     }
   }
 
+
+
   const handleAdd = () => {
     setSelectedCommission(null)
     setSelectedRestaurant(null)
@@ -157,7 +167,8 @@ export default function RestaurantCommission() {
         type: "percentage",
         value: "10"
       },
-      notes: ""
+      notes: "",
+      dishLimit: "0"
     })
     setFormErrors({})
     setIsRestaurantSelectOpen(true)
@@ -177,7 +188,7 @@ export default function RestaurantCommission() {
     try {
       setLoading(true)
       const response = await adminAPI.getRestaurantCommissionById(commission._id)
-      
+
       let commissionData = null
       if (response?.data?.success && response?.data?.data?.commission) {
         commissionData = response.data.data.commission
@@ -190,8 +201,8 @@ export default function RestaurantCommission() {
       if (commissionData) {
         setSelectedCommission(commissionData)
         setSelectedRestaurant(commissionData.restaurant)
-        
-        // Handle restaurant ID - it can be an object with _id or just an ID string
+
+        // Handle restaurant ID
         let restaurantId = ""
         if (commissionData.restaurant) {
           if (typeof commissionData.restaurant === 'object' && commissionData.restaurant._id) {
@@ -202,17 +213,17 @@ export default function RestaurantCommission() {
             restaurantId = commissionData.restaurantId || commissionData.restaurant?._id || ""
           }
         } else {
-          // Fallback to restaurantId field if restaurant object is not populated
           restaurantId = commissionData.restaurantId || commissionData.restaurant || ""
         }
-        
+
         setFormData({
           restaurantId: restaurantId,
           defaultCommission: {
             type: commissionData.defaultCommission?.type || "percentage",
-            value: commissionData.defaultCommission?.value?.toString() || "10"
+            value: commissionData.defaultCommission?.value || "10"
           },
-          notes: commissionData.notes || ""
+          notes: commissionData.notes || "",
+          dishLimit: commissionData.restaurant?.dishLimit?.toString() || "50"
         })
         setFormErrors({})
         setIsAddEditOpen(true)
@@ -250,7 +261,7 @@ export default function RestaurantCommission() {
 
   const validateForm = () => {
     const errors = {}
-    
+
     if (!formData.restaurantId) {
       errors.restaurantId = "Restaurant is required"
     }
@@ -259,8 +270,8 @@ export default function RestaurantCommission() {
       errors.defaultCommission = "Default commission value is required"
     }
 
-    if (formData.defaultCommission.type === "percentage" && 
-        (parseFloat(formData.defaultCommission.value) < 0 || parseFloat(formData.defaultCommission.value) > 100)) {
+    if (formData.defaultCommission.type === "percentage" &&
+      (parseFloat(formData.defaultCommission.value) < 0 || parseFloat(formData.defaultCommission.value) > 100)) {
       errors.defaultCommission = "Percentage must be between 0-100"
     }
 
@@ -276,14 +287,15 @@ export default function RestaurantCommission() {
 
     try {
       setSaving(true)
-      
+
       const payload = {
         restaurantId: formData.restaurantId,
         defaultCommission: {
           type: formData.defaultCommission.type,
           value: parseFloat(formData.defaultCommission.value)
         },
-        notes: formData.notes
+        notes: formData.notes,
+        dishLimit: parseInt(formData.dishLimit, 10)
       }
 
       if (selectedCommission) {
@@ -310,7 +322,9 @@ export default function RestaurantCommission() {
     si: "Serial Number",
     restaurant: "Restaurant Name",
     restaurantId: "Restaurant ID",
+    businessModel: "Business Model",
     defaultCommission: "Default Commission",
+    dishLimit: "Dish Limit",
     status: "Status",
     actions: "Actions",
   }
@@ -328,7 +342,7 @@ export default function RestaurantCommission() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={handleAdd}
                 className="px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 transition-all shadow-md"
               >
@@ -378,9 +392,19 @@ export default function RestaurantCommission() {
                         Restaurant ID
                       </th>
                     )}
+                    {visibleColumns.businessModel && (
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Business Model
+                      </th>
+                    )}
                     {visibleColumns.defaultCommission && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                         Default Commission
+                      </th>
+                    )}
+                    {visibleColumns.dishLimit && (
+                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Dish Limit
                       </th>
                     )}
                     {visibleColumns.status && (
@@ -420,14 +444,45 @@ export default function RestaurantCommission() {
                             <span className="text-sm text-slate-700">{commission.restaurantId || '-'}</span>
                           </td>
                         )}
+                        {visibleColumns.businessModel && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={cn(
+                              "px-2.5 py-1 rounded-full text-xs font-medium",
+                              (commission.restaurant?.businessModel === 'Subscription Base')
+                                ? "bg-purple-100 text-purple-700"
+                                : "bg-blue-100 text-blue-700"
+                            )}>
+                              {commission.restaurant?.businessModel || 'Commission Base'}
+                            </span>
+                          </td>
+                        )}
                         {visibleColumns.defaultCommission && (
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-slate-900">
-                              {commission.defaultCommission?.type === 'percentage' ? (
-                                <>{commission.defaultCommission.value}%</>
+                            <div className="flex items-center gap-1.5 min-w-[120px]">
+                              {commission.restaurant?.businessModel === 'Subscription Base' ? (
+                                <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-purple-200">
+                                  0% (Subscription)
+                                </span>
                               ) : (
-                                <>${commission.defaultCommission.value}</>
+                                commission.defaultCommission?.type === 'percentage' ? (
+                                  <div className="flex items-center gap-1">
+                                    <Percent className="w-3.5 h-3.5 text-blue-500" />
+                                    <span className="text-sm font-semibold text-slate-700">{commission.defaultCommission?.value}%</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span className="text-sm font-semibold text-slate-700">{commission.defaultCommission?.value}</span>
+                                  </div>
+                                )
                               )}
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.dishLimit && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm font-medium text-slate-700">
+                              {commission.restaurant?.dishLimit === 0 ? 'Unlimited' : (commission.restaurant?.dishLimit || 'Unlimited')}
                             </span>
                           </td>
                         )}
@@ -435,14 +490,12 @@ export default function RestaurantCommission() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <button
                               onClick={() => handleToggleStatus(commission)}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                commission.status ? "bg-blue-600" : "bg-slate-300"
-                              }`}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${commission.status ? "bg-blue-600" : "bg-slate-300"
+                                }`}
                             >
                               <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                  commission.status ? "translate-x-6" : "translate-x-1"
-                                }`}
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${commission.status ? "translate-x-6" : "translate-x-1"
+                                  }`}
                               />
                             </button>
                           </td>
@@ -565,15 +618,34 @@ export default function RestaurantCommission() {
                       ...prev,
                       defaultCommission: { ...prev.defaultCommission, value: e.target.value }
                     }))}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      formErrors.defaultCommission ? "border-red-500" : "border-slate-300"
-                    }`}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.defaultCommission ? "border-red-500" : "border-slate-300"
+                      }`}
                     placeholder={formData.defaultCommission.type === "percentage" ? "e.g., 10" : "e.g., 5.00"}
                   />
                   {formErrors.defaultCommission && (
                     <p className="text-xs text-red-500 mt-1">{formErrors.defaultCommission}</p>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Dish Limit */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Dish Limit <span className="text-slate-400 font-normal">(Max items restaurant can add)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={formData.dishLimit}
+                  onChange={(e) => setFormData(prev => ({ ...prev, dishLimit: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g., 50 (0 for unlimited)"
+                  min="0"
+                />
+                {formData.dishLimit === "0" && (
+                  <p className="text-[10px] text-blue-600 mt-1 font-medium italic">Unlimited dishes allowed</p>
+                )}
               </div>
             </div>
 
@@ -640,7 +712,7 @@ export default function RestaurantCommission() {
         </DialogContent>
       </Dialog>
 
-    </div>
+    </div >
   )
 }
 

@@ -36,14 +36,14 @@ const isStepComplete = (stepData, stepNumber) => {
   }
 
   if (stepNumber === 3) {
-    const hasPanImage = stepData.pan?.image && 
+    const hasPanImage = stepData.pan?.image &&
       (stepData.pan.image.url || typeof stepData.pan.image === 'string')
-    const hasFssaiImage = stepData.fssai?.image && 
+    const hasFssaiImage = stepData.fssai?.image &&
       (stepData.fssai.image.url || typeof stepData.fssai.image === 'string')
     // GST image is required only if GST is registered
-    const hasGstImage = !stepData.gst?.isRegistered || 
+    const hasGstImage = !stepData.gst?.isRegistered ||
       (stepData.gst?.image && (stepData.gst.image.url || typeof stepData.gst.image === 'string'))
-    
+
     return (
       stepData.pan?.panNumber &&
       stepData.pan?.nameOnPan &&
@@ -58,6 +58,18 @@ const isStepComplete = (stepData, stepNumber) => {
     )
   }
 
+  if (stepNumber === 4) {
+    return (
+      stepData.estimatedDeliveryTime &&
+      stepData.featuredDish &&
+      stepData.featuredPrice
+    )
+  }
+
+  if (stepNumber === 5) {
+    return !!stepData.businessModel
+  }
+
   return false
 }
 
@@ -65,8 +77,8 @@ const isStepComplete = (stepData, stepNumber) => {
 export const determineStepToShow = (data) => {
   if (!data) return 1
 
-  // If completedSteps is 4, onboarding is complete (admin-created restaurants)
-  if (data.completedSteps === 4) {
+  // If completedSteps is 5, onboarding is complete
+  if (data.completedSteps === 5) {
     return null
   }
 
@@ -83,6 +95,16 @@ export const determineStepToShow = (data) => {
   // Check step 3
   if (!isStepComplete(data.step3, 3)) {
     return 3
+  }
+
+  // Check step 4
+  if (!data.step4 || !isStepComplete(data.step4, 4)) {
+    return 4
+  }
+
+  // Check step 5
+  if (!data.step5 || !isStepComplete(data.step5, 5)) {
+    return 5
   }
 
   // All steps complete

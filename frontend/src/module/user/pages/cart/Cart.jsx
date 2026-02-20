@@ -114,6 +114,11 @@ export default function Cart() {
   const [placedOrderId, setPlacedOrderId] = useState(null)
   const [showAddressSheet, setShowAddressSheet] = useState(false)
 
+  // Tip and Donation state
+  const [tipAmount, setTipAmount] = useState(0)
+  const [donationAmount, setDonationAmount] = useState(0)
+  const [showCustomTip, setShowCustomTip] = useState(false)
+
   // Restaurant and pricing state
   const [restaurantData, setRestaurantData] = useState(null)
   const [loadingRestaurant, setLoadingRestaurant] = useState(false)
@@ -548,7 +553,9 @@ export default function Cart() {
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: defaultAddress,
           couponCode: appliedCoupon?.code || couponCode || null,
-          deliveryFleet: deliveryFleet || 'standard'
+          deliveryFleet: deliveryFleet || 'standard',
+          tip: tipAmount,
+          donation: donationAmount
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -575,7 +582,8 @@ export default function Cart() {
     }
 
     calculatePricing()
-  }, [cart, defaultAddress, appliedCoupon, couponCode, deliveryFleet, restaurantId])
+    calculatePricing()
+  }, [cart, defaultAddress, appliedCoupon, couponCode, deliveryFleet, restaurantId, tipAmount, donationAmount])
 
   // Fetch wallet balance
   useEffect(() => {
@@ -621,9 +629,9 @@ export default function Cart() {
   const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
   const deliveryFee = pricing?.deliveryFee ?? (subtotal >= feeSettings.freeDeliveryThreshold || appliedCoupon?.freeDelivery ? 0 : feeSettings.deliveryFee)
   const platformFee = pricing?.platformFee || feeSettings.platformFee
-  const gstCharges = pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100))
+  const gstCharges = 0 // GST for now Zero
   const discount = pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
-  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + Number(tipAmount) + Number(donationAmount)
   const total = pricing?.total || (totalBeforeDiscount - discount)
   const savings = pricing?.savings || (discount + (subtotal > 500 ? 32 : 0))
 
@@ -725,7 +733,9 @@ export default function Cart() {
             restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
             deliveryAddress: defaultAddress,
             couponCode: coupon.code,
-            deliveryFleet: deliveryFleet || 'standard'
+            deliveryFleet: deliveryFleet || 'standard',
+            tip: tipAmount,
+            donation: donationAmount
           })
 
           if (response?.data?.success && response?.data?.data?.pricing) {
@@ -761,7 +771,9 @@ export default function Cart() {
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: defaultAddress,
           couponCode: null,
-          deliveryFleet: deliveryFleet || 'standard'
+          deliveryFleet: deliveryFleet || 'standard',
+          tip: tipAmount,
+          donation: donationAmount
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -796,15 +808,49 @@ export default function Cart() {
       console.log("📍 Delivery address:", defaultAddress?.label || defaultAddress?.city)
 
       // Ensure couponCode is included in pricing
-      const orderPricing = pricing || {
+      // Use the LATEST tip and donation from state to prevent stale data issues
+      const orderPricing = pricing ? {
+        ...pricing,
+        tip: Number(tipAmount) || 0,
+        donation: Number(donationAmount) || 0,
+        // If we override tip/donation, we must ensure total reflects it if the pricing object was stale.
+        // However, calculating total here is complex due to discounts etc.
+        // Trusted approach: If pricing exists, trust its subtotal/fees, but override tip/donation.
+        // Proper solution: The useEffect fix ensures pricing is likely up to date. 
+        // This is a safety net. If pricing was for Tip 0, and now Tip is 20, 
+        // the total in 'pricing' will be wrong.
+        // We should really wait for pricing to update, but user clicked "Place Order".
+        // Let's rely on the useEffect fix primarily, but ensure the tip FIELD is correct here.
+        couponCode: appliedCoupon?.code || null
+      } : {
         subtotal,
         deliveryFee,
         tax: gstCharges,
         platformFee,
         discount,
         total,
+        tip: Number(tipAmount) || 0,
+        donation: Number(donationAmount) || 0,
         couponCode: appliedCoupon?.code || null
       };
+
+      // Re-calculate total if we are using the 'pricing' object but overriding tip
+      if (pricing) {
+        // Current pricing total might be old (e.g. 124).
+        // Old tip in pricing might be 0.
+        // New tip is 20.
+        // We want total to be 144.
+        // But we don't know if 'pricing' is old or new here easily without comparing.
+        // If pricing.tip != tipAmount, then pricing is stale (or tip changed).
+        // So we should update total.
+        if (Number(pricing.tip || 0) !== Number(tipAmount) || Number(pricing.donation || 0) !== Number(donationAmount)) {
+          const oldTip = Number(pricing.tip || 0);
+          const oldDonation = Number(pricing.donation || 0);
+          const newTip = Number(tipAmount) || 0;
+          const newDonation = Number(donationAmount) || 0;
+          orderPricing.total = (orderPricing.total || 0) - oldTip - oldDonation + newTip + newDonation;
+        }
+      }
 
       // Add couponCode if not present but coupon is applied
       if (!orderPricing.couponCode && appliedCoupon?.code) {
@@ -1648,6 +1694,84 @@ export default function Cart() {
                 </Link>
               </div>
 
+              {/* Tip Section */}
+              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-lg md:rounded-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Tip your delivery partner</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">100% of the tip goes to your delivery partner</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                  {[10, 20, 30, 50].map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => {
+                        setTipAmount(tipAmount === amount ? 0 : amount)
+                        setShowCustomTip(false)
+                      }}
+                      className={`px-4 md:px-5 py-2 rounded-lg border-2 font-medium transition-all ${tipAmount === amount
+                        ? "border-red-600 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                        : "border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-200 dark:hover:border-gray-600"
+                        }`}
+                    >
+                      ₹{amount}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setShowCustomTip(!showCustomTip)}
+                    className={`px-4 md:px-5 py-2 rounded-lg border-2 font-medium transition-all ${showCustomTip
+                      ? "border-red-600 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                      : "border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                      }`}
+                  >
+                    Custom
+                  </button>
+                </div>
+                {showCustomTip && (
+                  <div className="mt-3 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      value={tipAmount || ""}
+                      onChange={(e) => setTipAmount(Number(e.target.value))}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Donation Section */}
+              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-lg md:rounded-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center shrink-0">
+                    <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Usai Foundation Donation</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Help us feed the needy. 100% of your donation goes to charity.</p>
+                    <div className="flex gap-2 md:gap-3">
+                      {[2, 5, 10].map((amount) => (
+                        <button
+                          key={amount}
+                          onClick={() => setDonationAmount(donationAmount === amount ? 0 : amount)}
+                          className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${donationAmount === amount
+                            ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                            }`}
+                        >
+                          ₹{amount}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Bill Details */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
                 <button
@@ -1691,6 +1815,18 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
                       <span className="text-gray-800 dark:text-gray-200">₹{gstCharges}</span>
                     </div>
+                    {tipAmount > 0 && (
+                      <div className="flex justify-between text-sm md:text-base">
+                        <span className="text-gray-600 dark:text-gray-400">Delivery Tip</span>
+                        <span className="text-gray-800 dark:text-gray-200">₹{tipAmount}</span>
+                      </div>
+                    )}
+                    {donationAmount > 0 && (
+                      <div className="flex justify-between text-sm md:text-base">
+                        <span className="text-gray-600 dark:text-gray-400">Donation (Usai Foundation)</span>
+                        <span className="text-gray-800 dark:text-gray-200">₹{donationAmount}</span>
+                      </div>
+                    )}
                     {discount > 0 && (
                       <div className="flex justify-between text-sm md:text-base text-red-600 dark:text-red-400">
                         <span>Coupon Discount</span>
@@ -1732,6 +1868,18 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">GST</span>
                       <span className="text-gray-800 dark:text-gray-200">₹{gstCharges}</span>
                     </div>
+                    {tipAmount > 0 && (
+                      <div className="flex justify-between text-sm md:text-base">
+                        <span className="text-gray-600 dark:text-gray-400">Tip</span>
+                        <span className="text-gray-800 dark:text-gray-200">₹{tipAmount}</span>
+                      </div>
+                    )}
+                    {donationAmount > 0 && (
+                      <div className="flex justify-between text-sm md:text-base">
+                        <span className="text-gray-600 dark:text-gray-400">Donation</span>
+                        <span className="text-gray-800 dark:text-gray-200">₹{donationAmount}</span>
+                      </div>
+                    )}
                     {discount > 0 && (
                       <div className="flex justify-between text-sm md:text-base text-red-600 dark:text-red-400">
                         <span>Discount</span>

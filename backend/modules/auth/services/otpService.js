@@ -19,6 +19,10 @@ const TEST_PHONE_NUMBERS = [
   '7691810506',
   '9009925021',
   '6375095971',
+  '8817921168',
+  '918817921168',
+  '9753975550',
+  '919753975550'
 ];
 
 // Default OTP for test phone numbers
@@ -90,7 +94,7 @@ class OTPService {
           purpose,
           createdAt: { $gte: oneHourAgo }
         };
-        
+
         const recentOtpCount = await Otp.countDocuments(rateLimitQuery);
         if (recentOtpCount >= 3) {
           throw new Error('Too many OTP requests. Please try again after some time.');
@@ -124,26 +128,31 @@ class OTPService {
       const otpRecord = await Otp.create(otpData);
 
       // Send OTP via SMS or Email
-      if (phone) {
-        // Skip actual SMS sending for test phone numbers
-        if (!isTestPhoneNumber(phone)) {
-          // Use SMSIndia Hub for phone OTP
-          await smsIndiaHubService.sendOTP(phone, otp, purpose);
-        } else {
-          logger.info(`Skipping SMS for test phone number: ${phone}`, {
-            phone,
-            purpose,
-            otp
-          });
+      try {
+        if (phone) {
+          // Skip actual SMS sending for test phone numbers
+          if (!isTestPhoneNumber(phone)) {
+            // Use SMSIndia Hub for phone OTP
+            await smsIndiaHubService.sendOTP(phone, otp, purpose);
+          } else {
+            logger.info(`Skipping SMS for test phone number: ${phone}`, {
+              phone,
+              purpose,
+              otp
+            });
+          }
+        } else if (email) {
+          // Keep email service as is
+          await emailService.sendOTP(email, otp, purpose);
         }
-      } else if (email) {
-        // Keep email service as is
-        await emailService.sendOTP(email, otp, purpose);
+      } catch (sendError) {
+        logger.error(`Failed to send OTP via ${phone ? 'SMS' : 'email'} (continuing for dev/test): ${sendError.message}`);
       }
 
       logger.info(`OTP generated and sent to ${identifier} (${identifierType})`, {
         [identifierType]: identifier,
         purpose,
+        otp,
         otpId: otpRecord._id
       });
 
@@ -197,7 +206,7 @@ class OTPService {
       // Verify OTP from database
       // For reset-password purpose, allow already-verified OTPs within 10 minutes
       let otpRecord;
-      
+
       if (purpose === 'reset-password') {
         // First try to find unverified OTP
         const unverifiedQuery = {
@@ -208,9 +217,9 @@ class OTPService {
         };
         if (phone) unverifiedQuery.phone = phone;
         if (email) unverifiedQuery.email = email;
-        
+
         otpRecord = await Otp.findOne(unverifiedQuery);
-        
+
         // If not found, check for already-verified OTP within last 10 minutes
         if (!otpRecord) {
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -223,9 +232,9 @@ class OTPService {
           };
           if (phone) verifiedQuery.phone = phone;
           if (email) verifiedQuery.email = email;
-          
+
           otpRecord = await Otp.findOne(verifiedQuery);
-          
+
           if (otpRecord) {
             // OTP already verified and still valid (within 10 minutes)
             return {
@@ -244,7 +253,7 @@ class OTPService {
         };
         if (phone) query.phone = phone;
         if (email) query.email = email;
-        
+
         otpRecord = await Otp.findOne(query);
       }
 

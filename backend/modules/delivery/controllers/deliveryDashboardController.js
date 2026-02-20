@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from '../../../shared/utils/response.j
 import Delivery from '../models/Delivery.js';
 import DeliveryWallet from '../models/DeliveryWallet.js';
 import Order from '../../order/models/Order.js';
+import OrderSettlement from '../../order/models/OrderSettlement.js';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -31,15 +32,15 @@ export const getDashboard = asyncHandler(async (req, res) => {
     let pendingOrders = 0;
 
     try {
-      totalOrders = await Order.countDocuments({ 
-        deliveryPartnerId: delivery._id 
+      totalOrders = await Order.countDocuments({
+        deliveryPartnerId: delivery._id
       });
     } catch (error) {
       logger.warn(`Error counting total orders for delivery ${delivery._id}:`, error);
     }
 
     try {
-      completedOrders = await Order.countDocuments({ 
+      completedOrders = await Order.countDocuments({
         deliveryPartnerId: delivery._id,
         status: 'delivered'
       });
@@ -48,7 +49,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
     }
 
     try {
-      pendingOrders = await Order.countDocuments({ 
+      pendingOrders = await Order.countDocuments({
         deliveryPartnerId: delivery._id,
         status: { $in: ['out_for_delivery', 'ready'] }
       });
@@ -61,7 +62,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
     const joiningBonusAmount = 100;
     const joiningBonusUnlockThreshold = 1; // Complete 1 order to unlock
     const joiningBonusUnlocked = completedOrders >= joiningBonusUnlockThreshold;
-    
+
     // Get wallet data (using new DeliveryWallet model)
     let wallet = null;
     try {
@@ -69,7 +70,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
     } catch (error) {
       logger.warn(`Error fetching wallet for dashboard:`, error);
     }
-    
+
     const joiningBonusClaimed = wallet?.joiningBonusClaimed || false;
     const joiningBonusValidTill = new Date('2025-12-10'); // Valid till 10 December 2025
 
@@ -81,26 +82,36 @@ export const getDashboard = asyncHandler(async (req, res) => {
       ?.filter(t => t.type === 'withdrawal' && t.status === 'Pending')
       .reduce((sum, t) => sum + t.amount, 0) || delivery.earnings?.pendingPayout || 0;
     const tips = wallet?.transactions
-      ?.filter(t => t.type === 'payment' && t.description?.toLowerCase().includes('tip'))
+      ?.filter(t => t.type === 'tip' || (t.type === 'payment' && t.description?.toLowerCase().includes('tip')))
       .reduce((sum, t) => sum + t.amount, 0) || delivery.earnings?.tips || 0;
 
     // Calculate weekly earnings (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    let weeklyOrders = [];
+
+    let weeklySettlements = [];
     try {
-      weeklyOrders = await Order.find({
+      // Find settlements for orders delivered in last 7 days by this partner
+      // We look for settlements where deliveryPartnerId matches and created/updated recently
+      // Ideally we should lookup by orderId from the orders we found above
+      const weeklyOrderIds = await Order.find({
         deliveryPartnerId: delivery._id,
         status: 'delivered',
         deliveredAt: { $gte: sevenDaysAgo }
-      }).select('pricing.deliveryFee');
+      }).select('_id');
+
+      const weeklyOrderIdArray = weeklyOrderIds.map(o => o._id);
+
+      weeklySettlements = await OrderSettlement.find({
+        orderId: { $in: weeklyOrderIdArray }
+      }).select('deliveryPartnerEarning.totalEarning');
+
     } catch (error) {
-      logger.warn(`Error fetching weekly orders for delivery ${delivery._id}:`, error);
+      logger.warn(`Error fetching weekly settlements for delivery ${delivery._id}:`, error);
     }
 
-    const weeklyEarnings = weeklyOrders.reduce((sum, order) => {
-      return sum + (order.pricing?.deliveryFee || 0);
+    const weeklyEarnings = weeklySettlements.reduce((sum, settlement) => {
+      return sum + (settlement.deliveryPartnerEarning?.totalEarning || 0);
     }, 0);
 
     // Get recent orders (last 5)
@@ -120,20 +131,26 @@ export const getDashboard = asyncHandler(async (req, res) => {
     // Calculate today's earnings
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    
-    let todayOrders = [];
+
+    let todaySettlements = [];
     try {
-      todayOrders = await Order.find({
+      const todayOrderIds = await Order.find({
         deliveryPartnerId: delivery._id,
         status: 'delivered',
         deliveredAt: { $gte: todayStart }
-      }).select('pricing.deliveryFee');
+      }).select('_id');
+
+      const todayOrderIdArray = todayOrderIds.map(o => o._id);
+
+      todaySettlements = await OrderSettlement.find({
+        orderId: { $in: todayOrderIdArray }
+      }).select('deliveryPartnerEarning.totalEarning');
     } catch (error) {
-      logger.warn(`Error fetching today's orders for delivery ${delivery._id}:`, error);
+      logger.warn(`Error fetching today's settlements for delivery ${delivery._id}:`, error);
     }
 
-    const todayEarnings = todayOrders.reduce((sum, order) => {
-      return sum + (order.pricing?.deliveryFee || 0);
+    const todayEarnings = todaySettlements.reduce((sum, settlement) => {
+      return sum + (settlement.deliveryPartnerEarning?.totalEarning || 0);
     }, 0);
 
     // Prepare dashboard data
@@ -175,7 +192,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
         ordersCompleted: completedOrders,
         ordersRequired: joiningBonusUnlockThreshold,
         validTill: joiningBonusValidTill,
-        message: joiningBonusUnlocked 
+        message: joiningBonusUnlocked
           ? (joiningBonusClaimed ? 'Bonus claimed' : 'Complete 1 order to unlock')
           : 'Complete 1 order to unlock',
       },
@@ -277,7 +294,7 @@ export const claimJoiningBonus = asyncHandler(async (req, res) => {
     // Check if bonus is unlocked (completed at least 1 order)
     let completedOrders = 0;
     try {
-      completedOrders = await Order.countDocuments({ 
+      completedOrders = await Order.countDocuments({
         deliveryPartnerId: delivery._id,
         status: 'delivered'
       });
@@ -376,26 +393,35 @@ export const getOrderStats = asyncHandler(async (req, res) => {
     // Get order counts
     const totalOrders = await Order.countDocuments(query);
     const completedOrders = await Order.countDocuments({ ...query, status: 'delivered' });
-    const pendingOrders = await Order.countDocuments({ 
-      ...query, 
-      status: { $in: ['out_for_delivery', 'ready'] } 
+    const pendingOrders = await Order.countDocuments({
+      ...query,
+      status: { $in: ['out_for_delivery', 'ready'] }
     });
     const cancelledOrders = await Order.countDocuments({ ...query, status: 'cancelled' });
 
     // Calculate earnings
-    let orders = [];
+    // Calculate earnings from Settlements
+    let totalEarnings = 0;
     try {
-      orders = await Order.find({
+      // Get order IDs first
+      const orderIds = await Order.find({
         ...query,
         status: 'delivered'
-      }).select('pricing.deliveryFee deliveredAt');
-    } catch (error) {
-      logger.warn(`Error fetching orders for stats:`, error);
-    }
+      }).select('_id');
 
-    const totalEarnings = orders.reduce((sum, order) => {
-      return sum + (order.pricing?.deliveryFee || 0);
-    }, 0);
+      const orderIdArray = orderIds.map(o => o._id);
+
+      const settlements = await OrderSettlement.find({
+        orderId: { $in: orderIdArray }
+      }).select('deliveryPartnerEarning.totalEarning');
+
+      totalEarnings = settlements.reduce((sum, settlement) => {
+        return sum + (settlement.deliveryPartnerEarning?.totalEarning || 0);
+      }, 0);
+
+    } catch (error) {
+      logger.warn(`Error fetching settlements for stats:`, error);
+    }
 
     const stats = {
       period,

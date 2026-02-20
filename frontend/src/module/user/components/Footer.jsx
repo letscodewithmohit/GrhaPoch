@@ -2,11 +2,11 @@ import { Link } from "react-router-dom"
 import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Heart } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getCachedSettings, loadBusinessSettings } from "@/lib/utils/businessSettings"
-import appzetoFoodLogo from "@/assets/appzetologo.png"
+
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
-  const [logoUrl, setLogoUrl] = useState(appzetoFoodLogo)
+  const [logoUrl, setLogoUrl] = useState(null)
 
   // Load business settings logo
   useEffect(() => {
@@ -79,15 +79,16 @@ export default function Footer() {
               }}
             >
               <div className="flex items-center gap-2 mb-4">
-                <img
-                  src={logoUrl}
-                  alt="Company Logo"
-                  className="h-10 w-10 rounded-full object-cover"
-                  onError={(e) => {
-                    // Fallback to default logo if business logo fails to load
-                    e.target.src = appzetoFoodLogo
-                  }}
-                />
+                {logoUrl && (
+                  <img
+                    src={logoUrl}
+                    alt="Company Logo"
+                    className="h-10 w-10 rounded-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                    }}
+                  />
+                )}
                 <span className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
                   GrhaPoch
                 </span>

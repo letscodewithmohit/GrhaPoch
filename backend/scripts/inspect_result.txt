@@ -1,0 +1,17 @@
+Connected to MongoDB
+
+--- Searching for Users ---
+No users found with emails: Abhishek@gmail.com, 712choudharymohit@gmail.com
+
+--- Searching for Restaurant ---
+Restaurant Found:
+  ID: 6995da49f14ad7237e8b9fb4
+  RestaurantID: REST-1771428425465-3865
+  Name: Abhishek restaurant
+  Owner Email: Abhishek@gmail.com
+  Owner Phone: 919753975550
+  Location: {"latitude":22.71915233333333,"longitude":75.88454033333333,"coordinates":[75.88454033333333,22.71915233333333],"addressLine1":"12","addressLine2":"2 floor ","area":"Indore ","city":"Indore ","state":"MP","landmark":"2","pincode":"234672","_id":"6995da49f14ad7237e8b9fb5"}
+  Is Active: true
+  Is Accepting Orders: true
+  Slug: abhishek-restaurant
+

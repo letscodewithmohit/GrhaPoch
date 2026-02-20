@@ -50,8 +50,8 @@ function processFallbackPartners(deliveryPartners, restaurantLat, restaurantLng,
         phone: partner.phone,
         distance: partner.distance,
         location: {
-            lat: partner.availability.currentLocation.coordinates[1],
-            lng: partner.availability.currentLocation.coordinates[0]
+            latitude: partner.availability.currentLocation.coordinates[1],
+            longitude: partner.availability.currentLocation.coordinates[0]
         },
         lastLocationUpdate: partner.availability.lastLocationUpdate,
         inZone: partner.inZone || false,
@@ -109,8 +109,8 @@ function processSingleFallbackPartner(deliveryPartners, restaurantLat, restauran
         phone: nearest.phone,
         distance: nearest.distance,
         location: {
-            lat: nearest.availability.currentLocation.coordinates[1],
-            lng: nearest.availability.currentLocation.coordinates[0]
+            latitude: nearest.availability.currentLocation.coordinates[1],
+            longitude: nearest.availability.currentLocation.coordinates[0]
         },
         lastLocationUpdate: nearest.availability.lastLocationUpdate,
         inZone: nearest.inZone || false,

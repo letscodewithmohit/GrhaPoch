@@ -12,7 +12,7 @@ export default function AllZonesMap() {
   const zonesPolygonsRef = useRef([])
   const infoWindowsRef = useRef([])
   const restaurantMarkersRef = useRef([])
-  
+
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
   const [zones, setZones] = useState([])
@@ -35,19 +35,19 @@ export default function AllZonesMap() {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'in' } // Restrict to India
       })
-      
+
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace()
         if (place.geometry && place.geometry.location && mapInstanceRef.current) {
           const location = place.geometry.location
           mapInstanceRef.current.setCenter(location)
           mapInstanceRef.current.setZoom(12) // Zoom in when location is selected
-          
+
           // Set the search input value
           setLocationSearch(place.formatted_address || place.name || "")
         }
       })
-      
+
       autocompleteRef.current = autocomplete
     }
   }, [mapLoading])
@@ -94,11 +94,11 @@ export default function AllZonesMap() {
     try {
       const apiKey = await getGoogleMapsApiKey()
       setGoogleMapsApiKey(apiKey || "loaded")
-      
+
       // Wait for Google Maps to be loaded from main.jsx if it's loading
       let retries = 0
       const maxRetries = 50 // Wait up to 5 seconds (50 * 100ms)
-      
+
       while (!window.google && retries < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 100))
         retries++
@@ -141,9 +141,12 @@ export default function AllZonesMap() {
       zoom: 5,
       mapTypeControl: true,
       mapTypeControlOptions: {
-        style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-        position: google.maps.ControlPosition.TOP_RIGHT,
-        mapTypeIds: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE]
+        style: google.maps.MapTypeControlStyle ? google.maps.MapTypeControlStyle.HORIZONTAL_BAR : 0,
+        position: google.maps.ControlPosition ? google.maps.ControlPosition.TOP_RIGHT : 1,
+        mapTypeIds: [
+          google.maps.MapTypeId ? google.maps.MapTypeId.ROADMAP : 'roadmap',
+          google.maps.MapTypeId ? google.maps.MapTypeId.SATELLITE : 'satellite'
+        ]
       },
       zoomControl: true,
       streetViewControl: false,
@@ -261,7 +264,7 @@ export default function AllZonesMap() {
         infoWindowsRef.current.forEach(iw => {
           if (iw && iw !== infoWindow) iw.close()
         })
-        
+
         infoWindow.setPosition(path[0])
         infoWindow.open(map)
         infoWindowsRef.current.push(infoWindow)
@@ -356,7 +359,7 @@ export default function AllZonesMap() {
         infoWindowsRef.current.forEach(iw => {
           if (iw && iw !== infoWindow) iw.close()
         })
-        
+
         infoWindow.open(map, marker)
         infoWindowsRef.current.push(infoWindow)
       })
@@ -406,7 +409,7 @@ export default function AllZonesMap() {
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
           <div className="relative" style={{ height: "calc(100vh - 250px)", minHeight: "600px" }}>
             <div ref={mapRef} className="w-full h-full rounded-lg" />
-            
+
             {mapLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
                 <div className="text-center">

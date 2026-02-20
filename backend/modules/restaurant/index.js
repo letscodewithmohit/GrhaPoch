@@ -13,6 +13,7 @@ import { scheduleItemAvailability, cancelScheduledAvailability, getItemSchedule 
 import { getInventory, updateInventory, getInventoryByRestaurantId } from './controllers/inventoryController.js';
 import { addStaff, getStaff, getStaffById, updateStaff, deleteStaff } from './controllers/staffManagementController.js';
 import { createOffer, getOffers, getOfferById, updateOfferStatus, deleteOffer, getCouponsByItemId, getCouponsByItemIdPublic, getPublicOffers } from './controllers/offerController.js';
+import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from './controllers/notificationController.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import restaurantOrderRoutes from './routes/restaurantOrderRoutes.js';
 import outletTimingsRoutes from './routes/outletTimingsRoutes.js';
@@ -126,6 +127,12 @@ router.post('/profile/menu-image', authenticate, uploadMiddleware.single('file')
 
 // Delivery status route (authenticated - for restaurant module)
 router.put('/delivery-status', authenticate, updateDeliveryStatus);
+
+// Notification routes
+router.get('/notifications', authenticate, getNotifications);
+router.put('/notifications/mark-all-read', authenticate, markAllAsRead);
+router.put('/notifications/:id/mark-read', authenticate, markAsRead);
+router.delete('/notifications/:id', authenticate, deleteNotification);
 
 // Outlet Timings routes (authenticated - for restaurant module)
 // Must come after all /:id routes to avoid route conflicts

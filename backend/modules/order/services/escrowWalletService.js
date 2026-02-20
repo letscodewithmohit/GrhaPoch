@@ -315,6 +315,17 @@ const creditAdminWallet = async (orderId, adminEarning, orderNumber, restaurantI
       });
     }
 
+    // Credit Donation
+    if (adminEarning.donation > 0) {
+      wallet.addTransaction({
+        amount: adminEarning.donation,
+        type: 'donation',
+        status: 'Completed',
+        description: `Donation from order ${orderNumber}`,
+        orderId: orderId
+      });
+    }
+
     await wallet.save();
 
     // Create audit log

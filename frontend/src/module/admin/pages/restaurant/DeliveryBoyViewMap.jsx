@@ -14,7 +14,7 @@ export default function DeliveryBoyViewMap() {
   const infoWindowsRef = useRef([])
   const deliveryBoyMarkersRef = useRef([])
   const rotatedIconCacheRef = useRef(new Map()) // Cache for rotated bike icons
-  
+
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
   const [zones, setZones] = useState([])
@@ -28,12 +28,12 @@ export default function DeliveryBoyViewMap() {
     fetchZones()
     fetchOnlineDeliveryBoys()
     loadGoogleMaps()
-    
+
     // Refresh delivery boys location every 10 seconds
     const interval = setInterval(() => {
       fetchOnlineDeliveryBoys()
     }, 10000)
-    
+
     return () => clearInterval(interval)
   }, [])
 
@@ -44,7 +44,7 @@ export default function DeliveryBoyViewMap() {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'in' }
       })
-      
+
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace()
         if (place.geometry && place.geometry.location && mapInstanceRef.current) {
@@ -54,7 +54,7 @@ export default function DeliveryBoyViewMap() {
           setLocationSearch(place.formatted_address || place.name || "")
         }
       })
-      
+
       autocompleteRef.current = autocomplete
     }
   }, [mapLoading])
@@ -92,39 +92,39 @@ export default function DeliveryBoyViewMap() {
   const fetchOnlineDeliveryBoys = async () => {
     try {
       // Fetch delivery partners - we need availability data included
-      const response = await adminAPI.getDeliveryPartners({ 
+      const response = await adminAPI.getDeliveryPartners({
         limit: 1000,
         status: 'approved',
         isActive: true,
         includeAvailability: true // Request availability data
       })
-      
+
       console.log("📦 Delivery Partners API Response:", response.data)
-      
+
       if (response.data?.success && response.data.data?.deliveryPartners) {
         // Filter only online delivery boys with valid location
         // Check both formatted data and fullData, and also top-level availability
         const onlineBoys = response.data.data.deliveryPartners.filter(boy => {
           // Try multiple sources for availability data
           const availability = boy.availability || boy.fullData?.availability || (boy.fullData && boy.fullData.availability)
-          
+
           if (!availability) {
             console.log("⚠️ No availability data for:", boy.name || boy.fullData?.name)
             return false
           }
-          
+
           const isOnline = availability.isOnline === true
-          
+
           // Check for location in different possible formats
           const currentLocation = availability.currentLocation
           const coordinates = currentLocation?.coordinates
-          
-          const hasLocation = coordinates && 
-                            Array.isArray(coordinates) &&
-                            coordinates.length >= 2 &&
-                            coordinates[0] !== 0 && 
-                            coordinates[1] !== 0
-          
+
+          const hasLocation = coordinates &&
+            Array.isArray(coordinates) &&
+            coordinates.length >= 2 &&
+            coordinates[0] !== 0 &&
+            coordinates[1] !== 0
+
           if (isOnline && hasLocation) {
             console.log("✅ Found online delivery boy:", {
               name: boy.name || boy.fullData?.name,
@@ -140,16 +140,16 @@ export default function DeliveryBoyViewMap() {
               coordinates: coordinates ? `[${coordinates[0]}, ${coordinates[1]}]` : 'none'
             })
           }
-          
+
           return isOnline && hasLocation
         })
-        
+
         // Remove duplicates based on delivery boy ID
         const uniqueBoysMap = new Map()
         onlineBoys.forEach(boy => {
           // Get unique ID from multiple possible sources
           const boyId = boy._id || boy.id || boy.deliveryId || boy.fullData?._id || boy.fullData?.id || boy.fullData?.deliveryId
-          
+
           if (boyId) {
             const idString = boyId.toString()
             // Only keep the first occurrence (or the one with better data)
@@ -160,7 +160,7 @@ export default function DeliveryBoyViewMap() {
               const existing = uniqueBoysMap.get(idString)
               const existingHasFullData = existing.fullData || existing.availability
               const newHasFullData = boy.fullData || boy.availability
-              
+
               // Prefer the one with more complete data
               if (newHasFullData && !existingHasFullData) {
                 uniqueBoysMap.set(idString, boy)
@@ -170,7 +170,7 @@ export default function DeliveryBoyViewMap() {
             console.warn("⚠️ Delivery boy without ID:", boy.name || boy.fullData?.name)
           }
         })
-        
+
         const uniqueBoys = Array.from(uniqueBoysMap.values())
         console.log(`🚴 Found ${onlineBoys.length} online delivery boys, ${uniqueBoys.length} unique after deduplication`)
         setDeliveryBoys(uniqueBoys)
@@ -188,10 +188,10 @@ export default function DeliveryBoyViewMap() {
     try {
       const apiKey = await getGoogleMapsApiKey()
       setGoogleMapsApiKey(apiKey || "loaded")
-      
+
       let retries = 0
       const maxRetries = 50
-      
+
       while (!window.google && retries < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 100))
         retries++
@@ -230,9 +230,12 @@ export default function DeliveryBoyViewMap() {
       zoom: 5,
       mapTypeControl: true,
       mapTypeControlOptions: {
-        style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-        position: google.maps.ControlPosition.TOP_RIGHT,
-        mapTypeIds: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE]
+        style: google.maps.MapTypeControlStyle ? google.maps.MapTypeControlStyle.HORIZONTAL_BAR : 0,
+        position: google.maps.ControlPosition ? google.maps.ControlPosition.TOP_RIGHT : 1,
+        mapTypeIds: [
+          google.maps.MapTypeId ? google.maps.MapTypeId.ROADMAP : 'roadmap',
+          google.maps.MapTypeId ? google.maps.MapTypeId.SATELLITE : 'satellite'
+        ]
       },
       zoomControl: true,
       streetViewControl: false,
@@ -354,7 +357,7 @@ export default function DeliveryBoyViewMap() {
     // Round heading to nearest 5 degrees for caching
     const roundedHeading = Math.round(heading / 5) * 5
     const cacheKey = `${roundedHeading}`
-    
+
     // Check cache first
     if (rotatedIconCacheRef.current.has(cacheKey)) {
       return Promise.resolve(rotatedIconCacheRef.current.get(cacheKey))
@@ -369,17 +372,17 @@ export default function DeliveryBoyViewMap() {
           canvas.width = size
           canvas.height = size
           const ctx = canvas.getContext('2d')
-          
+
           // Clear canvas
           ctx.clearRect(0, 0, size, size)
-          
+
           // Move to center, rotate, then draw image
           ctx.save()
           ctx.translate(size / 2, size / 2)
           ctx.rotate((roundedHeading * Math.PI) / 180) // Convert degrees to radians
           ctx.drawImage(img, -size / 2, -size / 2, size, size)
           ctx.restore()
-          
+
           // Get data URL and cache it
           const dataUrl = canvas.toDataURL()
           rotatedIconCacheRef.current.set(cacheKey, dataUrl)
@@ -423,26 +426,26 @@ export default function DeliveryBoyViewMap() {
       // Get unique ID to prevent duplicate markers
       const fullData = boy.fullData || boy
       const boyId = boy._id || boy.id || boy.deliveryId || fullData?._id || fullData?.id || fullData?.deliveryId
-      
+
       if (!boyId) {
         console.warn("⚠️ Skipping delivery boy without ID:", fullData.name || "Unknown")
         continue
       }
-      
+
       const idString = boyId.toString()
-      
+
       // Skip if we've already processed this delivery boy
       if (processedIds.has(idString)) {
         console.warn("⚠️ Duplicate delivery boy detected, skipping:", fullData.name || "Unknown", idString)
         continue
       }
-      
+
       processedIds.add(idString)
-      
+
       // Try multiple sources for availability
       const availability = boy.availability || fullData?.availability || (fullData && fullData.availability)
       const currentLocation = availability?.currentLocation
-      
+
       if (!currentLocation?.coordinates) {
         console.warn("⚠️ No coordinates for delivery boy:", fullData.name || "Unknown")
         continue
@@ -478,11 +481,11 @@ export default function DeliveryBoyViewMap() {
 
       // Get heading if available
       const heading = currentLocation.heading || 0
-      
+
       // Get name and phone from fullData
       const boyName = fullData.name || "Delivery Boy"
       const boyPhone = fullData.phone || "N/A"
-      
+
       console.log("🚴 Creating bike marker for:", {
         name: boyName,
         lat,
@@ -589,7 +592,7 @@ export default function DeliveryBoyViewMap() {
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
           <div className="relative" style={{ height: "calc(100vh - 250px)", minHeight: "600px" }}>
             <div ref={mapRef} className="w-full h-full rounded-lg" />
-            
+
             {mapLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
                 <div className="text-center">

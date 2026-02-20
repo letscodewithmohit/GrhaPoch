@@ -26,7 +26,7 @@ export default function AddRestaurant() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [formErrors, setFormErrors] = useState({})
-  
+
   // Step 1: Basic Info
   const [step1, setStep1] = useState({
     restaurantName: "",
@@ -88,6 +88,7 @@ export default function AddRestaurant() {
     email: "",
     phone: "",
     signupMethod: "email",
+    businessModel: "Commission Base",
   })
 
   const languageTabs = [
@@ -179,7 +180,7 @@ export default function AddRestaurant() {
   const handleNext = () => {
     setFormErrors({})
     let validationErrors = []
-    
+
     if (step === 1) {
       validationErrors = validateStep1()
     } else if (step === 2) {
@@ -191,14 +192,14 @@ export default function AddRestaurant() {
     } else if (step === 5) {
       validationErrors = validateAuth()
     }
-    
+
     if (validationErrors.length > 0) {
       validationErrors.forEach((error) => {
         toast.error(error)
       })
       return
     }
-    
+
     if (step < 5) {
       setStep(step + 1)
     } else {
@@ -209,7 +210,7 @@ export default function AddRestaurant() {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     setFormErrors({})
-    
+
     try {
       // Upload all images first
       let profileImageData = null
@@ -291,11 +292,12 @@ export default function AddRestaurant() {
         email: auth.email || null,
         phone: auth.phone || null,
         signupMethod: auth.email ? 'email' : 'phone',
+        businessModel: auth.businessModel,
       }
 
       // Call backend API
       const response = await adminAPI.createRestaurant(payload)
-      
+
       if (response.data.success) {
         toast.success("Restaurant created successfully!")
         setShowSuccessDialog(true)
@@ -729,6 +731,31 @@ export default function AddRestaurant() {
             className="mt-1 bg-white text-sm"
             placeholder="+91 9876543210"
           />
+        </div>
+        <div>
+          <Label className="text-xs text-gray-700">Business Model*</Label>
+          <div className="grid grid-cols-2 gap-3 mt-1">
+            <div
+              onClick={() => setAuth({ ...auth, businessModel: "Commission Base" })}
+              className={`cursor-pointer p-3 rounded-lg border-2 transition-all flex flex-col gap-1 ${auth.businessModel === "Commission Base"
+                ? "border-blue-600 bg-blue-50"
+                : "border-gray-200 hover:border-gray-300"
+                }`}
+            >
+              <span className="text-sm font-bold text-gray-900">Commission</span>
+              <span className="text-[10px] text-gray-500">Pay per order</span>
+            </div>
+            <div
+              onClick={() => setAuth({ ...auth, businessModel: "Subscription Base" })}
+              className={`cursor-pointer p-3 rounded-lg border-2 transition-all flex flex-col gap-1 ${auth.businessModel === "Subscription Base"
+                ? "border-blue-600 bg-blue-50"
+                : "border-gray-200 hover:border-gray-300"
+                }`}
+            >
+              <span className="text-sm font-bold text-gray-900">Subscription</span>
+              <span className="text-[10px] text-gray-500">Fixed monthly fee</span>
+            </div>
+          </div>
         </div>
       </section>
     </div>

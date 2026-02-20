@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Mail, User, Lock, Eye, EyeOff, ArrowLeft, Shield } from "lucide-react"
-import appzetoLogo from "@/assets/appzetologo.png"
+
 import { authAPI, adminAPI } from "@/lib/api"
 import { setAuthData } from "@/lib/utils/auth"
 
@@ -92,7 +92,7 @@ export default function AdminSignup() {
 
   const handleOtpChange = (index, value) => {
     if (!/^\d*$/.test(value)) return
-    
+
     const newOtp = [...otp]
     newOtp[index] = value.slice(-1)
     setOtp(newOtp)
@@ -129,7 +129,7 @@ export default function AdminSignup() {
   const handleOtpSubmit = async (e) => {
     e.preventDefault()
     setError("")
-    
+
     const otpCode = otp.join("")
     if (otpCode.length !== 6) {
       setError("Please enter the complete OTP")
@@ -147,12 +147,12 @@ export default function AdminSignup() {
       )
 
       const data = response?.data?.data || response?.data
-      
+
       // If registration successful, store tokens and redirect
       if (data.accessToken && data.admin) {
         // Store admin token and data
         setAuthData("admin", data.accessToken, data.admin)
-        
+
         // Navigate to admin dashboard
         navigate("/admin", { replace: true })
       } else {
@@ -174,7 +174,7 @@ export default function AdminSignup() {
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return
-    
+
     setIsLoading(true)
     setError("")
     try {

@@ -45,6 +45,7 @@ const orderSettlementSchema = new mongoose.Schema({
     gst: { type: Number, default: 0, min: 0 },
     packagingFee: { type: Number, default: 0, min: 0 },
     tip: { type: Number, default: 0, min: 0 },
+    donation: { type: Number, default: 0, min: 0 },
     total: { type: Number, required: true, min: 0 }
   },
 
@@ -86,6 +87,7 @@ const orderSettlementSchema = new mongoose.Schema({
     platformFee: { type: Number, required: true, min: 0 },
     deliveryFee: { type: Number, required: true, min: 0 },
     gst: { type: Number, required: true, min: 0 },
+    donation: { type: Number, default: 0, min: 0 },
     deliveryMargin: { type: Number, default: 0, min: 0 }, // deliveryFee - deliveryPartnerEarning
     totalEarning: { type: Number, required: true, min: 0 },
     status: {

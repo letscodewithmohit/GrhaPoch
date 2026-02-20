@@ -11,7 +11,7 @@ const commissionRuleSchema = new mongoose.Schema({
     required: true,
     min: 0,
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         if (this.type === 'percentage') {
           return value >= 0 && value <= 100;
         }
@@ -29,7 +29,7 @@ const commissionRuleSchema = new mongoose.Schema({
     type: Number,
     default: null, // null means unlimited
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         if (value === null || value === undefined) return true;
         return value > this.minOrderAmount;
       },
@@ -79,7 +79,7 @@ const restaurantCommissionSchema = new mongoose.Schema(
         default: 10, // Default 10% commission
         min: 0,
         validate: {
-          validator: function(value) {
+          validator: function (value) {
             if (this.type === 'percentage') {
               return value >= 0 && value <= 100;
             }
@@ -124,7 +124,7 @@ restaurantCommissionSchema.index({ createdAt: -1 });
 restaurantCommissionSchema.index({ createdBy: 1 });
 
 // Method to calculate commission for an order amount
-restaurantCommissionSchema.methods.calculateCommission = function(orderAmount) {
+restaurantCommissionSchema.methods.calculateCommission = function (orderAmount) {
   if (!this.status) {
     return {
       commission: 0,
@@ -164,7 +164,7 @@ restaurantCommissionSchema.methods.calculateCommission = function(orderAmount) {
   if (matchingRule) {
     commissionType = matchingRule.type;
     commissionValue = matchingRule.value;
-    
+
     if (matchingRule.type === 'percentage') {
       commission = (orderAmount * matchingRule.value) / 100;
     } else {
@@ -174,7 +174,7 @@ restaurantCommissionSchema.methods.calculateCommission = function(orderAmount) {
     // Use default commission
     commissionType = this.defaultCommission.type;
     commissionValue = this.defaultCommission.value;
-    
+
     if (this.defaultCommission.type === 'percentage') {
       commission = (orderAmount * this.defaultCommission.value) / 100;
     } else {
@@ -199,22 +199,66 @@ restaurantCommissionSchema.methods.calculateCommission = function(orderAmount) {
 };
 
 // Static method to get commission for a restaurant
-restaurantCommissionSchema.statics.getCommissionForRestaurant = async function(restaurantId) {
-  const commission = await this.findOne({ 
+restaurantCommissionSchema.statics.getCommissionForRestaurant = async function (restaurantId) {
+  const commission = await this.findOne({
     restaurant: restaurantId,
-    status: true 
+    status: true
   }).populate('restaurant', 'name restaurantId isActive');
-  
+
   return commission;
 };
 
-// Static method to calculate commission for a restaurant and order amount
-restaurantCommissionSchema.statics.calculateCommissionForOrder = async function(restaurantId, orderAmount) {
-  const commission = await this.findOne({ 
+// Static method to calculate commission for a restaurant and order amount/items
+restaurantCommissionSchema.statics.calculateCommissionForOrder = async function (restaurantId, orderAmount, items = []) {
+  const Restaurant = mongoose.model('Restaurant');
+  const restaurant = await Restaurant.findById(restaurantId).select('businessModel');
+
+  if (restaurant && restaurant.businessModel === 'Subscription Base') {
+    return {
+      commission: 0,
+      type: 'percentage',
+      value: 0,
+      orderAmount: orderAmount,
+      rule: null,
+      defaultUsed: false,
+      message: 'No commission for subscription-based restaurants'
+    };
+  }
+
+  // Check for item-specific commissions if items are provided
+  let totalItemCommission = 0;
+  let hasItemCommission = false;
+
+  if (items && items.length > 0) {
+    items.forEach(item => {
+      if (item.commission && item.commission.value > 0) {
+        hasItemCommission = true;
+        if (item.commission.type === 'Percent') {
+          totalItemCommission += (item.price * item.quantity * item.commission.value) / 100;
+        } else {
+          totalItemCommission += item.commission.value * item.quantity;
+        }
+      }
+    });
+  }
+
+  if (hasItemCommission) {
+    return {
+      commission: totalItemCommission,
+      type: 'item_specific',
+      value: totalItemCommission,
+      orderAmount: orderAmount,
+      rule: 'item_level',
+      defaultUsed: false,
+      message: 'Commission calculated based on individual items'
+    };
+  }
+
+  const commission = await this.findOne({
     restaurant: restaurantId,
-    status: true 
+    status: true
   });
-  
+
   if (!commission) {
     // Return default commission if no commission setup
     return {
@@ -227,7 +271,7 @@ restaurantCommissionSchema.statics.calculateCommissionForOrder = async function(
       message: 'No commission setup found, using default 10%'
     };
   }
-  
+
   return commission.calculateCommission(orderAmount);
 };
 

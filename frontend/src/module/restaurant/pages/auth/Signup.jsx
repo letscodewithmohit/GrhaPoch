@@ -45,6 +45,7 @@ export default function RestaurantSignup() {
     phone: "",
     countryCode: "+91",
     name: "",
+    businessModel: "Commission Base",
   })
   const [errors, setErrors] = useState({
     phone: "",
@@ -136,6 +137,7 @@ export default function RestaurantSignup() {
         method: "phone",
         phone: fullPhone,
         name: formData.name,
+        businessModel: formData.businessModel,
         isSignUp: true,
         module: "restaurant",
       }
@@ -251,6 +253,35 @@ export default function RestaurantSignup() {
                   <span>{errors.name}</span>
                 </div>
               )}
+            </div>
+
+            {/* Business Model selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-gray-700">
+                Choose Your Business Model
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div
+                  onClick={() => setFormData({ ...formData, businessModel: "Commission Base" })}
+                  className={`cursor-pointer p-3 rounded-lg border-2 transition-all flex flex-col gap-1 ${formData.businessModel === "Commission Base"
+                      ? "border-primary-orange bg-orange-50/50"
+                      : "border-gray-200 hover:border-gray-300"
+                    }`}
+                >
+                  <span className="text-[13px] font-bold text-gray-900">Commission Base</span>
+                  <span className="text-[10px] text-gray-500 leading-tight">Pay per order. No fixed fee.</span>
+                </div>
+                <div
+                  onClick={() => setFormData({ ...formData, businessModel: "Subscription Base" })}
+                  className={`cursor-pointer p-3 rounded-lg border-2 transition-all flex flex-col gap-1 ${formData.businessModel === "Subscription Base"
+                      ? "border-primary-orange bg-orange-50/50"
+                      : "border-gray-200 hover:border-gray-300"
+                    }`}
+                >
+                  <span className="text-[13px] font-bold text-gray-900">Subscription Base</span>
+                  <span className="text-[10px] text-gray-500 leading-tight">Zero commission. Fixed fee.</span>
+                </div>
+              </div>
             </div>
 
             {/* Phone input */}

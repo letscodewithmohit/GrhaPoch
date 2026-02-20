@@ -1,0 +1,38 @@
+{
+  "plans": [
+    {
+      "id": "69973cf1babe4ca17afd98d1",
+      "name": "Basic"
+    },
+    {
+      "id": "69973cf1babe4ca17afd98d2",
+      "name": "Growth"
+    },
+    {
+      "id": "69973cf1babe4ca17afd98d3",
+      "name": "Premium"
+    }
+  ],
+  "restaurants": [
+    {
+      "name": "mohit restaurant",
+      "storedPlanId": "69973cf1babe4ca17afd98d1",
+      "mappedName": "Basic"
+    },
+    {
+      "name": "Sumit's Pizza",
+      "storedPlanId": "69973cf1babe4ca17afd98d1",
+      "mappedName": "Basic"
+    },
+    {
+      "name": "Abhishek restaurant",
+      "storedPlanId": "69973cf1babe4ca17afd98d1",
+      "mappedName": "Basic"
+    },
+    {
+      "name": "Manmohan Choudhary",
+      "storedPlanId": "69973cf1babe4ca17afd98d3",
+      "mappedName": "Premium"
+    }
+  ]
+}

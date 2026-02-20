@@ -2,8 +2,10 @@ import Admin from '../models/Admin.js';
 import Order from '../../order/models/Order.js';
 import Restaurant from '../../restaurant/models/Restaurant.js';
 import Offer from '../../restaurant/models/Offer.js';
-import AdminCommission from '../models/AdminCommission.js';
+import Menu from '../../restaurant/models/Menu.js';
+import RestaurantCommission from '../models/RestaurantCommission.js';
 import OrderSettlement from '../../order/models/OrderSettlement.js';
+import SubscriptionPayment from '../models/SubscriptionPayment.js';
 import AdminWallet from '../models/AdminWallet.js';
 import { successResponse, errorResponse } from '../../../shared/utils/response.js';
 import { asyncHandler } from '../../../shared/middleware/asyncHandler.js';
@@ -64,13 +66,48 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
                 0
               ]
             }
+          },
+          totalDonations: { $sum: { $ifNull: ['$pricing.donation', 0] } },
+          last30DaysDonations: {
+            $sum: {
+              $cond: [
+                { $gte: ['$createdAt', last30Days] },
+                { $ifNull: ['$pricing.donation', 0] },
+                0
+              ]
+            }
           }
         }
       }
     ]);
 
     // Get revenue data from aggregation result
-    const revenueData = revenueStats[0] || { totalRevenue: 0, totalTips: 0, last30DaysRevenue: 0, last30DaysTips: 0 };
+    const revenueData = revenueStats[0] || {
+      totalRevenue: 0,
+      totalTips: 0,
+      last30DaysRevenue: 0,
+      last30DaysTips: 0,
+      totalDonations: 0,
+      last30DaysDonations: 0
+    };
+
+    // Get subscription revenue stats
+    const subscriptionStats = await SubscriptionPayment.aggregate([
+      {
+        $facet: {
+          total: [{ $group: { _id: null, amount: { $sum: '$amount' } } }],
+          last30Days: [
+            { $match: { paymentDate: { $gte: last30Days } } },
+            { $group: { _id: null, amount: { $sum: '$amount' } } }
+          ]
+        }
+      }
+    ]);
+
+    const totalSubscriptionRevenue = subscriptionStats[0]?.total[0]?.amount || 0;
+    const last30DaysSubscriptionRevenue = subscriptionStats[0]?.last30Days[0]?.amount || 0;
+
+    console.log(`📊 Dashboard Stats - Subscription Revenue: ₹${totalSubscriptionRevenue}`);
 
     // Get all settlements for delivered orders only (to match with revenue calculation)
     // First get delivered order IDs
@@ -381,9 +418,19 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         last30Days: revenueData.last30DaysTips || 0,
         currency: 'INR'
       },
+      donations: {
+        total: revenueData.totalDonations || 0,
+        last30Days: revenueData.last30DaysDonations || 0,
+        currency: 'INR'
+      },
+      subscription: {
+        total: totalSubscriptionRevenue,
+        last30Days: last30DaysSubscriptionRevenue,
+        currency: 'INR'
+      },
       totalAdminEarnings: {
-        total: totalCommission + totalPlatformFee + totalDeliveryFee + totalGST,
-        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryFee + last30DaysGST,
+        total: totalCommission + totalPlatformFee + totalDeliveryFee + totalGST + totalSubscriptionRevenue,
+        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryFee + last30DaysGST + last30DaysSubscriptionRevenue,
         currency: 'INR'
       },
       orders: {
@@ -1400,13 +1447,38 @@ export const approveRestaurant = asyncHandler(async (req, res) => {
       return errorResponse(res, 400, 'Cannot approve a rejected restaurant. Please remove rejection reason first.');
     }
 
-    // Activate restaurant
+    // Activate restaurant and set default dish limit
     restaurant.isActive = true;
     restaurant.approvedAt = new Date();
     restaurant.approvedBy = adminId;
     restaurant.rejectionReason = undefined; // Clear any previous rejection
 
+    // Set default dish limit to 0 (unlimited)
+    restaurant.dishLimit = 0;
+
     await restaurant.save();
+
+    // Create default commission entry for the restaurant if it doesn't exist
+    try {
+      const existingCommission = await RestaurantCommission.findOne({ restaurant: id });
+      if (!existingCommission) {
+        await RestaurantCommission.create({
+          restaurant: restaurant._id,
+          restaurantName: restaurant.name,
+          restaurantId: restaurant.restaurantId,
+          createdBy: adminId,
+          status: true,
+          defaultCommission: {
+            type: 'percentage',
+            value: restaurant.businessModel === 'Subscription Base' ? 0 : 10
+          }
+        });
+        logger.info(`Default commission record created for approved restaurant: ${id}`);
+      }
+    } catch (commError) {
+      logger.error(`Error creating default commission during approval: ${commError.message}`);
+      // Don't fail the approval if commission record creation fails
+    }
 
     logger.info(`Restaurant approved: ${id}`, {
       approvedBy: adminId,
@@ -1569,7 +1641,8 @@ export const createRestaurant = asyncHandler(async (req, res) => {
       email,
       phone,
       password,
-      signupMethod = 'email'
+      signupMethod = 'admin',
+      businessModel = 'Commission Base'
     } = req.body;
 
     // Validation
@@ -1728,6 +1801,7 @@ export const createRestaurant = asyncHandler(async (req, res) => {
       featuredPrice: featuredPrice || 249,
       offer: offer || '',
       signupMethod,
+      businessModel,
       // Admin created restaurants are active by default
       isActive: true,
       isAcceptingOrders: true,
@@ -1796,11 +1870,30 @@ export const createRestaurant = asyncHandler(async (req, res) => {
         featuredPrice: featuredPrice || 249,
         offer: offer || ''
       },
-      completedSteps: 4
+      completedSteps: 4,
+      dishLimit: 0 // Unlimited dishes for all by default
     };
 
     // Create restaurant
     const restaurant = await Restaurant.create(restaurantData);
+
+    // Create default commission entry for the restaurant
+    try {
+      await RestaurantCommission.create({
+        restaurant: restaurant._id,
+        restaurantName: restaurant.name,
+        restaurantId: restaurant.restaurantId,
+        createdBy: adminId,
+        status: true,
+        defaultCommission: {
+          type: 'percentage',
+          value: 10 // Default 10%
+        }
+      });
+      logger.info(`Default commission record created for admin-created restaurant: ${restaurant._id}`);
+    } catch (commError) {
+      logger.error(`Error creating default commission for admin-created restaurant: ${commError.message}`);
+    }
 
     logger.info(`Restaurant created by admin: ${restaurant._id}`, {
       createdBy: adminId,
@@ -1843,6 +1936,8 @@ export const createRestaurant = asyncHandler(async (req, res) => {
   }
 });
 
+
+
 /**
  * Delete Restaurant
  * DELETE /api/admin/restaurants/:id
@@ -1856,6 +1951,20 @@ export const deleteRestaurant = asyncHandler(async (req, res) => {
 
     if (!restaurant) {
       return errorResponse(res, 404, 'Restaurant not found');
+    }
+
+    // Delete associated data
+    try {
+      // 1. Delete Menu
+      await Menu.findOneAndDelete({ restaurant: id });
+      logger.info(`Associated menu deleted for restaurant: ${id}`);
+
+      // 2. Delete Commission configuration
+      await RestaurantCommission.findOneAndDelete({ restaurant: id });
+      logger.info(`Associated commission configuration deleted for restaurant: ${id}`);
+    } catch (cleanupError) {
+      logger.error(`Error deleting associated data for restaurant ${id}: ${cleanupError.message}`);
+      // Continue with restaurant deletion even if cleanup fails
     }
 
     // Delete restaurant

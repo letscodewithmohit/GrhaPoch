@@ -15,6 +15,7 @@ import etaCalculationService from '../services/etaCalculationService.js';
 import etaWebSocketService from '../services/etaWebSocketService.js';
 import OrderEvent from '../models/OrderEvent.js';
 import UserWallet from '../../user/models/UserWallet.js';
+import RestaurantCommission from '../../admin/models/RestaurantCommission.js';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -292,6 +293,111 @@ export const createOrder = async (req, res) => {
       pricing.couponCode = pricing.appliedCoupon.code;
     }
 
+    // --- COMMISSION CALCULATION SNAPSHOT LOGIC ---
+    let commissionSnapshot = {
+      amount: 0,
+      rate: 0,
+      type: 'percentage',
+      model: restaurant.businessModel || 'Commission Base'
+    };
+
+    try {
+      if (restaurant.businessModel === 'Subscription Base') {
+        // Subscription Base: 0 commission
+        commissionSnapshot = {
+          amount: 0,
+          rate: 0,
+          type: 'percentage',
+          model: 'Subscription Base'
+        };
+      } else {
+        // Commission Base: Calculate based on rules
+        // Default to commission base if undefined
+        commissionSnapshot.model = 'Commission Base';
+
+        // Fetch commission settings
+        const restaurantCommission = await RestaurantCommission.findOne({
+          restaurant: restaurant._id,
+          status: true
+        }).lean();
+
+        // Calculate based on food item total (subtotal - discount)
+        // Pricing structure: subtotal is item total. Discount is item discount + coupon discount.
+        // We charge commission on the actual food value realized.
+        const orderValueForCommission = Math.max(0, (pricing.subtotal || 0) - (pricing.discount || 0));
+
+        if (!restaurantCommission || !restaurantCommission.status) {
+          // Default 10% fallback if no commission setup found
+          commissionSnapshot.rate = 10;
+          commissionSnapshot.type = 'percentage';
+          commissionSnapshot.amount = (orderValueForCommission * 10) / 100;
+        } else {
+          // Find matching rule
+          const sortedRules = [...(restaurantCommission.commissionRules || [])]
+            .filter(rule => rule.isActive)
+            .sort((a, b) => {
+              if (b.priority !== a.priority) return b.priority - a.priority;
+              return a.minOrderAmount - b.minOrderAmount;
+            });
+
+          let matchingRule = null;
+          for (const rule of sortedRules) {
+            if (orderValueForCommission >= rule.minOrderAmount) {
+              if (rule.maxOrderAmount === null || orderValueForCommission <= rule.maxOrderAmount) {
+                matchingRule = rule;
+                break;
+              }
+            }
+          }
+
+          if (matchingRule) {
+            commissionSnapshot.rate = matchingRule.value;
+            commissionSnapshot.type = matchingRule.type;
+            if (matchingRule.type === 'percentage') {
+              commissionSnapshot.amount = (orderValueForCommission * matchingRule.value) / 100;
+            } else {
+              commissionSnapshot.amount = matchingRule.value;
+            }
+          } else if (restaurantCommission.defaultCommission) {
+            commissionSnapshot.rate = restaurantCommission.defaultCommission.value || 10;
+            commissionSnapshot.type = restaurantCommission.defaultCommission.type || 'percentage';
+            if (commissionSnapshot.type === 'percentage') {
+              commissionSnapshot.amount = (orderValueForCommission * commissionSnapshot.rate) / 100;
+            } else {
+              commissionSnapshot.amount = commissionSnapshot.rate;
+            }
+          } else {
+            // Ultimate fallback
+            commissionSnapshot.rate = 10;
+            commissionSnapshot.type = 'percentage';
+            commissionSnapshot.amount = (orderValueForCommission * 10) / 100;
+          }
+        }
+      }
+
+      // Round commission amount to 2 decimal places
+      commissionSnapshot.amount = Math.round(commissionSnapshot.amount * 100) / 100;
+
+      logger.info('💰 Commission Snapshot Calculated:', {
+        orderId: generatedOrderId,
+        restaurantId: assignedRestaurantId,
+        model: commissionSnapshot.model,
+        rate: commissionSnapshot.rate,
+        type: commissionSnapshot.type,
+        amount: commissionSnapshot.amount
+      });
+
+    } catch (commError) {
+      logger.error('❌ Error calculating commission snapshot:', commError);
+      // Fallback to default 10% on error to be safe/safe for platform
+      if (restaurant.businessModel !== 'Subscription Base') {
+        const val = Math.max(0, (pricing.subtotal || 0) - (pricing.discount || 0));
+        commissionSnapshot.amount = (val * 10) / 100;
+        commissionSnapshot.rate = 10;
+      }
+    }
+    // ---------------------------------------------
+
     // Create order in database with pending status
     const order = new Order({
       orderId: generatedOrderId,
@@ -302,7 +408,8 @@ export const createOrder = async (req, res) => {
       address,
       pricing: {
         ...pricing,
-        couponCode: pricing.couponCode || null
+        couponCode: pricing.couponCode || null,
+        commission: commissionSnapshot // Add snapshot here
       },
       deliveryFleet: deliveryFleet || 'standard',
       note: note || '',
@@ -515,6 +622,11 @@ export const createOrder = async (req, res) => {
             restaurantId: assignedRestaurantId,
             notifyRestaurantResult
           });
+
+          // Calculate settlement (commission, earnings, etc.) - Run asynchronously
+          calculateOrderSettlement(order._id).catch(err => {
+            logger.error('❌ Error calculating settlement for Wallet order:', err);
+          });
         } catch (notifyError) {
           logger.error('❌ Error notifying restaurant about wallet payment order:', notifyError);
         }
@@ -594,6 +706,11 @@ export const createOrder = async (req, res) => {
           orderId: order.orderId,
           restaurantId: assignedRestaurantId,
           notifyRestaurantResult
+        });
+
+        // Calculate settlement (commission, earnings, etc.) - Run asynchronously
+        calculateOrderSettlement(order._id).catch(err => {
+          logger.error('❌ Error calculating settlement for COD order:', err);
         });
       } catch (notifyError) {
         logger.error('❌ Error notifying restaurant about COD order (order still created):', {
@@ -799,6 +916,8 @@ export const verifyOrderPayment = async (req, res) => {
     order.status = 'confirmed';
     order.tracking.confirmed = { status: true, timestamp: new Date() };
     await order.save();
+
+
 
     // Calculate order settlement and hold escrow
     try {
@@ -1174,7 +1293,7 @@ export const cancelOrder = async (req, res) => {
  */
 export const calculateOrder = async (req, res) => {
   try {
-    const { items, restaurantId, deliveryAddress, couponCode, deliveryFleet } = req.body;
+    const { items, restaurantId, deliveryAddress, couponCode, deliveryFleet, tip, donation } = req.body;
 
     // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -1190,7 +1309,9 @@ export const calculateOrder = async (req, res) => {
       restaurantId,
       deliveryAddress,
       couponCode,
-      deliveryFleet: deliveryFleet || 'standard'
+      deliveryFleet: deliveryFleet || 'standard',
+      tip: Number(tip) || 0,
+      donation: Number(donation) || 0
     });
 
     res.json({

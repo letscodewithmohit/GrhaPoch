@@ -98,6 +98,11 @@ const businessSettingsSchema = new mongoose.Schema(
       type: [Number],
       default: [10, 20, 30, 50]
     },
+    initialRestaurantDishLimit: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',

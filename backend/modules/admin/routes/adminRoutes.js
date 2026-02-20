@@ -122,7 +122,8 @@ import {
   updateRestaurantCommission,
   deleteRestaurantCommission,
   toggleRestaurantCommissionStatus,
-  calculateCommission as calculateRestaurantCommission
+  calculateCommission as calculateRestaurantCommission,
+  upgradeToSubscription
 } from '../controllers/restaurantCommissionController.js';
 import {
   getPendingFoodApprovals,
@@ -398,6 +399,7 @@ router.get('/restaurant-commission/:id', getRestaurantCommissionById);
 router.put('/restaurant-commission/:id', updateRestaurantCommission);
 router.delete('/restaurant-commission/:id', deleteRestaurantCommission);
 router.patch('/restaurant-commission/:id/status', toggleRestaurantCommissionStatus);
+
 
 // Restaurant Complaint Management
 router.get('/restaurant-complaints', getAllComplaints);

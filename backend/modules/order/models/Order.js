@@ -125,8 +125,33 @@ const orderSchema = new mongoose.Schema({
       default: 0,
       min: 0
     },
+    donation: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     couponCode: {
       type: String
+    },
+    // Commission Snapshot - Frozen at time of order creation
+    commission: {
+      amount: { // Calculated commission amount
+        type: Number,
+        default: 0
+      },
+      rate: { // Commission rate/value used (e.g. 10 for 10%)
+        type: Number,
+        default: 0
+      },
+      type: { // 'percentage' or 'fixed'
+        type: String,
+        enum: ['percentage', 'fixed'],
+        default: 'percentage'
+      },
+      model: { // 'Commission Base' or 'Subscription Base'
+        type: String,
+        default: 'Commission Base'
+      }
     }
   },
   payment: {

@@ -54,26 +54,51 @@ export const calculateOrderSettlement = async (orderId) => {
       fixedFee: order.pricing.fixedFee || 0,
       packagingFee: 0, // Can be added later if needed
       tip: order.pricing.tip || 0,
+      donation: order.pricing.donation || 0,
       total: order.pricing.total || 0
     };
 
     // Calculate restaurant commission and earnings
     // Commission is calculated on food price (subtotal - discount)
     const foodPrice = userPayment.subtotal - userPayment.discount;
-    const restaurantCommissionData = await RestaurantCommission.calculateCommissionForOrder(
-      restaurant._id,
-      foodPrice
-    );
 
-    const commissionAmount = Math.round(restaurantCommissionData.commission * 100) / 100;
+    let commissionAmount = 0;
+    let commissionPercentage = 0;
+    let commissionData = null;
+
+    // Check if order has commission snapshot (New Orders)
+    if (order.pricing && order.pricing.commission && order.pricing.commission.amount !== undefined) {
+      commissionAmount = order.pricing.commission.amount;
+      commissionPercentage = order.pricing.commission.type === 'percentage'
+        ? order.pricing.commission.rate
+        : 0; // If fixed, percentage is effectively 0 or calc manually
+
+      commissionData = {
+        commission: commissionAmount,
+        type: order.pricing.commission.type,
+        value: order.pricing.commission.rate
+      };
+    } else {
+      // Fallback for old orders
+      const restaurantCommissionData = await RestaurantCommission.calculateCommissionForOrder(
+        restaurant._id,
+        foodPrice,
+        order.items
+      );
+      commissionAmount = Math.round(restaurantCommissionData.commission * 100) / 100;
+      commissionPercentage = restaurantCommissionData.type === 'percentage'
+        ? restaurantCommissionData.value
+        : (commissionAmount / foodPrice) * 100;
+
+      commissionData = restaurantCommissionData;
+    }
+
     const restaurantNetEarning = Math.round((foodPrice - commissionAmount) * 100) / 100;
 
     const restaurantEarning = {
       foodPrice: foodPrice, // Full order value (₹200)
       commission: commissionAmount, // Commission deducted (₹30 for 15%)
-      commissionPercentage: restaurantCommissionData.type === 'percentage'
-        ? restaurantCommissionData.value
-        : (commissionAmount / foodPrice) * 100,
+      commissionPercentage: commissionPercentage,
       netEarning: restaurantNetEarning, // Amount restaurant receives (₹170)
       status: 'pending'
     };
@@ -95,20 +120,31 @@ export const calculateOrderSettlement = async (orderId) => {
       const distance = order.assignmentInfo.distance;
       const deliveryCommission = await DeliveryBoyCommission.calculateCommission(distance);
 
-      // Get surge multiplier (can be configured in order or settings)
+      // NEW LOGIC: Base Payout is User's Delivery Fee OR Minimum Base Payout from Rule (whichever is higher)
+      // This ensures driver gets paid even if delivery is free for user
+      const ruleBasePayout = deliveryCommission.breakdown.basePayout || 0;
+      const basePayout = Math.max(userPayment.deliveryFee, ruleBasePayout);
+
+      // Calculate distance commission (ON TOP of the base payout)
+      // distanceCommission comes from the rules (e.g. ₹5/km for distance > 4km)
+      const distanceCommission = deliveryCommission.breakdown.distanceCommission;
+
+      // Get surge multiplier
       const surgeMultiplier = order.assignmentInfo?.surgeMultiplier || 1;
-      const baseEarning = deliveryCommission.commission;
-      const surgeAmount = baseEarning * (surgeMultiplier - 1);
+      const surgeAmount = 0; // Keeping 0 for now as per previous logic, or implement surge calc if needed
+
+      // Total Earning = Delivery Fee (Base) + Distance Commission + Surge + Tip
+      const deliveryPartnerTotal = basePayout + distanceCommission + surgeAmount + userPayment.tip;
 
       deliveryPartnerEarning = {
-        basePayout: deliveryCommission.breakdown.basePayout,
+        basePayout: basePayout, // This is now userPayment.deliveryFee
         distance: distance,
         commissionPerKm: deliveryCommission.breakdown.commissionPerKm,
-        distanceCommission: deliveryCommission.breakdown.distanceCommission,
+        distanceCommission: distanceCommission,
         surgeMultiplier: surgeMultiplier,
         surgeAmount: surgeAmount,
         tip: userPayment.tip,
-        totalEarning: baseEarning + surgeAmount + userPayment.tip,
+        totalEarning: Math.round(deliveryPartnerTotal * 100) / 100,
         status: 'pending'
       };
     } else if (userPayment.tip > 0) {
@@ -118,8 +154,15 @@ export const calculateOrderSettlement = async (orderId) => {
     }
 
     // Calculate admin/platform earnings
-    // Admin gets: Restaurant commission + Platform fee + Delivery fee + GST + Fixed Fee
-    // Note: Even if delivery is free for user, delivery fee amount still goes to admin
+    // Admin gets: Restaurant commission + Platform fee + Delivery fee (collected) + GST + Fixed Fee
+    // Less: Payout to delivery partner (excluding tip which passes through)
+
+    // Delivery Margin Calculation:
+    // Admin collects: userPayment.deliveryFee
+    // Admin pays partner: (userPayment.deliveryFee + distanceCommission + surge)
+    // Margin = Collected - Paid = - (distanceCommission + surge)
+    // Note: This logic implies Admin subsidizes distance commission and surge.
+
     const deliveryPartnerBaseEarning = deliveryPartnerEarning.totalEarning - userPayment.tip;
     const deliveryMargin = userPayment.deliveryFee - deliveryPartnerBaseEarning;
 
@@ -128,16 +171,18 @@ export const calculateOrderSettlement = async (orderId) => {
     const adminDeliveryFee = Math.round(userPayment.deliveryFee * 100) / 100;
     const adminGST = Math.round(userPayment.gst * 100) / 100;
     const adminFixedFee = Math.round((userPayment.fixedFee || 0) * 100) / 100;
-    const adminTotal = Math.round((adminCommission + adminPlatformFee + adminDeliveryFee + adminGST + adminFixedFee) * 100) / 100;
+    const adminDonation = Math.round((userPayment.donation || 0) * 100) / 100;
+    const adminTotal = Math.round((adminCommission + adminPlatformFee + adminDeliveryFee + adminGST + adminFixedFee + adminDonation) * 100) / 100;
 
     const adminEarning = {
-      commission: adminCommission, // Restaurant commission (₹30)
-      platformFee: adminPlatformFee, // Platform fee (₹6)
-      fixedFee: adminFixedFee, // Fixed fee (₹2)
-      deliveryFee: adminDeliveryFee, // Delivery fee (₹0 if free, but still tracked)
-      gst: adminGST, // GST (₹10)
-      deliveryMargin: Math.max(0, Math.round(deliveryMargin * 100) / 100), // Delivery fee - delivery partner earning
-      totalEarning: adminTotal, // Total admin earnings
+      commission: adminCommission,
+      platformFee: adminPlatformFee,
+      fixedFee: adminFixedFee,
+      deliveryFee: adminDeliveryFee,
+      gst: adminGST,
+      donation: adminDonation,
+      deliveryMargin: Math.round(deliveryMargin * 100) / 100, // Allow negative margin
+      totalEarning: adminTotal,
       status: 'pending'
     };
 
@@ -164,9 +209,9 @@ export const calculateOrderSettlement = async (orderId) => {
           deliveryFee: feeSettings?.deliveryFee
         },
         restaurantCommission: {
-          type: restaurantCommissionData.type,
-          value: restaurantCommissionData.value,
-          rule: restaurantCommissionData.rule
+          type: commissionData.type,
+          value: commissionData.value,
+          rule: commissionData.rule || null
         },
         deliveryCommission: deliveryPartnerEarning.distance > 0 ? {
           distance: deliveryPartnerEarning.distance,

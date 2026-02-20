@@ -62,6 +62,12 @@ export const sidebarMenuData = [
           { label: "Menu Add", path: "/admin/restaurants/menu-add" },
         ],
       },
+      {
+        type: "link",
+        label: "Commission Management",
+        path: "/admin/restaurants/commission",
+        icon: "IndianRupee",
+      },
     ],
   },
 

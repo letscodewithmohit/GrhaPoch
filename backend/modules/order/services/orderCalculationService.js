@@ -142,12 +142,10 @@ export const calculatePlatformFee = async (distanceInKm = null) => {
 /**
  * Calculate GST (Goods and Services Tax)
  * GST is calculated on subtotal after discounts
+ * NOTE: Currently set to 0 as per client request
  */
 export const calculateGST = async (subtotal, discount = 0) => {
-  const taxableAmount = subtotal - discount;
-  const feeSettings = await getFeeSettings();
-  const gstRate = (feeSettings.gstRate || 5) / 100; // Convert percentage to decimal
-  return Math.round(taxableAmount * gstRate);
+  return 0; // GST for now Zero
 };
 
 /**
@@ -206,7 +204,9 @@ export const calculateOrderPricing = async ({
   restaurantId,
   deliveryAddress = null,
   couponCode = null,
-  deliveryFleet = 'standard'
+  deliveryFleet = 'standard',
+  tip = 0,
+  donation = 0
 }) => {
   try {
     // Get fee settings
@@ -341,7 +341,7 @@ export const calculateOrderPricing = async ({
     const gst = await calculateGST(subtotal, discount);
 
     // Calculate total
-    const total = subtotal - discount + finalDeliveryFee + platformFee + fixedFee + gst;
+    const total = subtotal - discount + finalDeliveryFee + platformFee + fixedFee + gst + Number(tip) + Number(donation);
 
     // Calculate savings (discount + any delivery savings)
     const savings = discount + (deliveryFee > finalDeliveryFee ? deliveryFee - finalDeliveryFee : 0);
@@ -353,6 +353,8 @@ export const calculateOrderPricing = async ({
       platformFee: Math.round(platformFee),
       fixedFee: Math.round(fixedFee),
       tax: gst, // Already rounded in calculateGST
+      tip: Number(tip),
+      donation: Number(donation),
       total: Math.round(total),
       savings: Math.round(savings),
       appliedCoupon: appliedCoupon ? {
@@ -367,6 +369,8 @@ export const calculateOrderPricing = async ({
         platformFee: Math.round(platformFee),
         fixedFee: Math.round(fixedFee),
         gst: gst,
+        tip: Number(tip),
+        donation: Number(donation),
         total: Math.round(total)
       }
     };

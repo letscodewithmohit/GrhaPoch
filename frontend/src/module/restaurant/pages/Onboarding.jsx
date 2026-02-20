@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles } from "lucide-react"
+import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, CheckCircle } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -35,7 +35,7 @@ const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const ONBOARDING_STORAGE_KEY = "restaurant_onboarding_data"
 
 // Helper functions for localStorage
-const saveOnboardingToLocalStorage = (step1, step2, step3, step4, currentStep) => {
+const saveOnboardingToLocalStorage = (step1, step2, step3, step4, step5, currentStep) => {
   try {
     // Convert File objects to a serializable format (we'll store file names/paths if available)
     const serializableStep2 = {
@@ -69,6 +69,7 @@ const saveOnboardingToLocalStorage = (step1, step2, step3, step4, currentStep) =
       step2: serializableStep2,
       step3: serializableStep3,
       step4: step4 || {},
+      step5: step5 || {},
       currentStep,
       timestamp: Date.now(),
     }
@@ -225,6 +226,10 @@ export default function RestaurantOnboarding() {
     offer: "",
   })
 
+  const [step5, setStep5] = useState({
+    businessModel: "Commission Base",
+  })
+
 
   // Load from localStorage on mount and check URL parameter
   useEffect(() => {
@@ -293,8 +298,13 @@ export default function RestaurantOnboarding() {
           offer: localData.step4.offer || "",
         })
       }
-      // Only set step from localStorage if URL doesn't have a step parameter
-      if (localData.currentStep && !stepParam) {
+      if (localData.step5) {
+        setStep5({
+          businessModel: localData.step5.businessModel,
+        })
+      }
+      // Only set step from localStorage if URL doesn't have a step parameter and step is valid
+      if (localData.currentStep && typeof localData.currentStep === 'number' && !stepParam) {
         setStep(localData.currentStep)
       }
     }
@@ -302,8 +312,8 @@ export default function RestaurantOnboarding() {
 
   // Save to localStorage whenever step data changes
   useEffect(() => {
-    saveOnboardingToLocalStorage(step1, step2, step3, step4, step)
-  }, [step1, step2, step3, step4, step])
+    saveOnboardingToLocalStorage(step1, step2, step3, step4, step5, step)
+  }, [step1, step2, step3, step4, step5, step])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -362,7 +372,7 @@ export default function RestaurantOnboarding() {
               accountType: data.step3.bank?.accountType || "",
             })
           }
-          
+
           if (data.step4) {
             setStep4({
               estimatedDeliveryTime: data.step4.estimatedDeliveryTime || "",
@@ -371,7 +381,13 @@ export default function RestaurantOnboarding() {
               offer: data.step4.offer || "",
             })
           }
-          
+
+          if (data.businessModel) {
+            setStep5({
+              businessModel: data.businessModel,
+            })
+          }
+
           // Determine which step to show based on completeness
           const stepToShow = determineStepToShow(data)
           setStep(stepToShow)
@@ -409,7 +425,7 @@ export default function RestaurantOnboarding() {
   // Validation functions for each step
   const validateStep1 = () => {
     const errors = []
-    
+
     if (!step1.restaurantName?.trim()) {
       errors.push("Restaurant name is required")
     }
@@ -433,13 +449,13 @@ export default function RestaurantOnboarding() {
     if (!step1.location?.city?.trim()) {
       errors.push("City is required")
     }
-    
+
     return errors
   }
 
   const validateStep2 = () => {
     const errors = []
-    
+
     // Check menu images - must have at least one File or existing URL
     const hasMenuImages = step2.menuImages && step2.menuImages.length > 0
     if (!hasMenuImages) {
@@ -456,13 +472,13 @@ export default function RestaurantOnboarding() {
         errors.push("Please upload at least one valid menu image")
       }
     }
-    
+
     // Check profile image - must be a File or existing URL
     if (!step2.profileImage) {
       errors.push("Restaurant profile image is required")
     } else {
       // Verify profile image is either a File or has a valid URL
-      const isValidProfileImage = 
+      const isValidProfileImage =
         step2.profileImage instanceof File ||
         (step2.profileImage?.url && typeof step2.profileImage.url === 'string') ||
         (typeof step2.profileImage === 'string' && step2.profileImage.startsWith('http'))
@@ -470,7 +486,7 @@ export default function RestaurantOnboarding() {
         errors.push("Please upload a valid restaurant profile image")
       }
     }
-    
+
     if (!step2.cuisines || step2.cuisines.length === 0) {
       errors.push("Please select at least one cuisine")
     }
@@ -483,7 +499,7 @@ export default function RestaurantOnboarding() {
     if (!step2.openDays || step2.openDays.length === 0) {
       errors.push("Please select at least one open day")
     }
-    
+
     return errors
   }
 
@@ -504,9 +520,17 @@ export default function RestaurantOnboarding() {
     return errors
   }
 
+  const validateStep5 = () => {
+    const errors = []
+    if (!step5.businessModel) {
+      errors.push("Please select a business model")
+    }
+    return errors
+  }
+
   const validateStep3 = () => {
     const errors = []
-    
+
     if (!step3.panNumber?.trim()) {
       errors.push("PAN number is required")
     }
@@ -517,7 +541,7 @@ export default function RestaurantOnboarding() {
     if (!step3.panImage) {
       errors.push("PAN image is required")
     } else {
-      const isValidPanImage = 
+      const isValidPanImage =
         step3.panImage instanceof File ||
         (step3.panImage?.url && typeof step3.panImage.url === 'string') ||
         (typeof step3.panImage === 'string' && step3.panImage.startsWith('http'))
@@ -525,7 +549,7 @@ export default function RestaurantOnboarding() {
         errors.push("Please upload a valid PAN image")
       }
     }
-    
+
     if (!step3.fssaiNumber?.trim()) {
       errors.push("FSSAI number is required")
     }
@@ -536,7 +560,7 @@ export default function RestaurantOnboarding() {
     if (!step3.fssaiImage) {
       errors.push("FSSAI image is required")
     } else {
-      const isValidFssaiImage = 
+      const isValidFssaiImage =
         step3.fssaiImage instanceof File ||
         (step3.fssaiImage?.url && typeof step3.fssaiImage.url === 'string') ||
         (typeof step3.fssaiImage === 'string' && step3.fssaiImage.startsWith('http'))
@@ -544,7 +568,7 @@ export default function RestaurantOnboarding() {
         errors.push("Please upload a valid FSSAI image")
       }
     }
-    
+
     // Validate GST details if GST registered
     if (step3.gstRegistered) {
       if (!step3.gstNumber?.trim()) {
@@ -560,7 +584,7 @@ export default function RestaurantOnboarding() {
       if (!step3.gstImage) {
         errors.push("GST image is required when GST registered")
       } else {
-        const isValidGstImage = 
+        const isValidGstImage =
           step3.gstImage instanceof File ||
           (step3.gstImage?.url && typeof step3.gstImage.url === 'string') ||
           (typeof step3.gstImage === 'string' && step3.gstImage.startsWith('http'))
@@ -569,7 +593,7 @@ export default function RestaurantOnboarding() {
         }
       }
     }
-    
+
     if (!step3.accountNumber?.trim()) {
       errors.push("Account number is required")
     }
@@ -588,7 +612,7 @@ export default function RestaurantOnboarding() {
     if (!step3.accountType?.trim()) {
       errors.push("Account type is required")
     }
-    
+
     return errors
   }
 
@@ -620,45 +644,50 @@ export default function RestaurantOnboarding() {
         openDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       })
       toast.success("Step 2 filled with dummy data", { duration: 2000 })
-      } else if (step === 3) {
-        // Calculate expiry date 1 year from now
-        const expiryDate = new Date()
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1)
-        const expiryDateString = expiryDate.toISOString().split("T")[0]
+    } else if (step === 3) {
+      // Calculate expiry date 1 year from now
+      const expiryDate = new Date()
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1)
+      const expiryDateString = expiryDate.toISOString().split("T")[0]
 
-        setStep3({
-          panNumber: "ABCDE1234F",
-          nameOnPan: "John Doe",
-          panImage: null,
-          gstRegistered: true,
-          gstNumber: "27ABCDE1234F1Z5",
-          gstLegalName: "Test Restaurant Private Limited",
-          gstAddress: "123 Main Street, Mumbai, Maharashtra 400001",
-          gstImage: null,
-          fssaiNumber: "12345678901234",
-          fssaiExpiry: expiryDateString,
-          fssaiImage: null,
-          accountNumber: "1234567890123",
-          confirmAccountNumber: "1234567890123",
-          ifscCode: "HDFC0001234",
-          accountHolderName: "John Doe",
-          accountType: "savings",
-        })
-        toast.success("Step 3 filled with dummy data", { duration: 2000 })
-      } else if (step === 4) {
-        setStep4({
-          estimatedDeliveryTime: "25-30 mins",
-          featuredDish: "Butter Chicken Special",
-          featuredPrice: "249",
-          offer: "Flat ₹50 OFF above ₹199",
-        })
-        toast.success("Step 4 filled with dummy data", { duration: 2000 })
-      }
+      setStep3({
+        panNumber: "ABCDE1234F",
+        nameOnPan: "John Doe",
+        panImage: null,
+        gstRegistered: true,
+        gstNumber: "27ABCDE1234F1Z5",
+        gstLegalName: "Test Restaurant Private Limited",
+        gstAddress: "123 Main Street, Mumbai, Maharashtra 400001",
+        gstImage: null,
+        fssaiNumber: "12345678901234",
+        fssaiExpiry: expiryDateString,
+        fssaiImage: null,
+        accountNumber: "1234567890123",
+        confirmAccountNumber: "1234567890123",
+        ifscCode: "HDFC0001234",
+        accountHolderName: "John Doe",
+        accountType: "savings",
+      })
+      toast.success("Step 3 filled with dummy data", { duration: 2000 })
+    } else if (step === 4) {
+      setStep4({
+        estimatedDeliveryTime: "25-30 mins",
+        featuredDish: "Butter Chicken Special",
+        featuredPrice: "249",
+        offer: "Flat ₹50 OFF above ₹199",
+      })
+      toast.success("Step 4 filled with dummy data", { duration: 2000 })
+    } else if (step === 5) {
+      setStep5({
+        businessModel: "Commission Base",
+      })
+      toast.success("Step 5 filled with dummy data", { duration: 2000 })
+    }
   }
 
   const handleNext = async () => {
     setError("")
-    
+
     // Validate current step before proceeding
     let validationErrors = []
     if (step === 1) {
@@ -669,16 +698,10 @@ export default function RestaurantOnboarding() {
       validationErrors = validateStep3()
     } else if (step === 4) {
       validationErrors = validateStep4()
-      console.log('🔍 Step 4 validation:', { 
-        step4, 
-        errors: validationErrors,
-        estimatedDeliveryTime: step4.estimatedDeliveryTime,
-        featuredDish: step4.featuredDish,
-        featuredPrice: step4.featuredPrice,
-        offer: step4.offer
-      })
+    } else if (step === 5) {
+      validationErrors = validateStep5()
     }
-    
+
     if (validationErrors.length > 0) {
       // Show error toast for each validation error
       validationErrors.forEach((error, index) => {
@@ -691,7 +714,7 @@ export default function RestaurantOnboarding() {
       console.log('❌ Validation failed:', validationErrors)
       return
     }
-    
+
     setSaving(true)
     try {
       if (step === 1) {
@@ -720,12 +743,12 @@ export default function RestaurantOnboarding() {
         // If menuImages already have URLs (from previous save), include them
         const existingMenuUrls = step2.menuImages.filter((img) => !(img instanceof File) && (img?.url || (typeof img === 'string' && img.startsWith('http'))))
         const allMenuUrls = [...existingMenuUrls, ...menuUploads]
-        
+
         // Verify we have at least one menu image
         if (allMenuUrls.length === 0) {
           throw new Error('At least one menu image must be uploaded')
         }
-        
+
         // Upload profile image if it's a File object
         let profileUpload = null
         if (step2.profileImage instanceof File) {
@@ -746,7 +769,7 @@ export default function RestaurantOnboarding() {
           // If it's a direct URL string
           profileUpload = { url: step2.profileImage }
         }
-        
+
         // Verify profile image is present
         if (!profileUpload || !profileUpload.url) {
           throw new Error('Profile image must be uploaded')
@@ -772,21 +795,21 @@ export default function RestaurantOnboarding() {
           openDays: payload.step2.openDays,
           deliveryTimings: payload.step2.deliveryTimings,
         })
-        
+
         const response = await api.put("/restaurant/onboarding", payload)
         console.log('✅ Step2 response:', response?.data)
-        
+
         // Verify response is successful
         if (!response || !response.data) {
           throw new Error('Invalid response from server')
         }
-        
+
         // After step2, also update restaurant schema with step2 data
         // This ensures data is saved immediately, not just in onboarding subdocument
         if (response?.data?.data?.restaurant) {
           console.log('✅ Step2 data saved and restaurant updated')
         }
-        
+
         // Only proceed to step 3 if save was successful
         if (response?.data?.data?.onboarding || response?.data?.data) {
           console.log('✅ Step2 completed successfully, moving to step 3')
@@ -815,12 +838,12 @@ export default function RestaurantOnboarding() {
           // If it's a direct URL string
           panImageUpload = { url: step3.panImage }
         }
-        
+
         // Verify PAN image is present
         if (!panImageUpload || !panImageUpload.url) {
           throw new Error('PAN image must be uploaded')
         }
-        
+
         // Upload GST image if it's a File object (only if GST registered)
         let gstImageUpload = null
         if (step3.gstRegistered) {
@@ -842,13 +865,13 @@ export default function RestaurantOnboarding() {
             // If it's a direct URL string
             gstImageUpload = { url: step3.gstImage }
           }
-          
+
           // Verify GST image is present if GST registered
           if (!gstImageUpload || !gstImageUpload.url) {
             throw new Error('GST image must be uploaded when GST registered')
           }
         }
-        
+
         // Upload FSSAI image if it's a File object
         let fssaiImageUpload = null
         if (step3.fssaiImage instanceof File) {
@@ -869,7 +892,7 @@ export default function RestaurantOnboarding() {
           // If it's a direct URL string
           fssaiImageUpload = { url: step3.fssaiImage }
         }
-        
+
         // Verify FSSAI image is present
         if (!fssaiImageUpload || !fssaiImageUpload.url) {
           throw new Error('FSSAI image must be uploaded')
@@ -909,10 +932,10 @@ export default function RestaurantOnboarding() {
           hasFssai: !!payload.step3.fssai.registrationNumber,
           hasBank: !!payload.step3.bank.accountNumber,
         })
-        
+
         const response = await api.put("/restaurant/onboarding", payload)
         console.log('✅ Step3 response:', response?.data)
-        
+
         if (response?.data?.data?.onboarding) {
           console.log('✅ Step3 data saved successfully')
         }
@@ -928,21 +951,32 @@ export default function RestaurantOnboarding() {
           },
           completedSteps: 4,
         }
-        console.log('📤 Step 4 payload:', payload)
+        await api.put("/restaurant/onboarding", payload)
+        setStep(5)
+      } else if (step === 5) {
+        console.log('📤 Submitting Step 5 (Final):', step5)
+        const payload = {
+          step5: {
+            businessModel: step5.businessModel,
+          },
+          businessModel: step5.businessModel,
+          completedSteps: 5,
+        }
+        console.log('📤 Final payload:', payload)
         const response = await api.put("/restaurant/onboarding", payload)
-        console.log('✅ Step4 completed, response:', response?.data)
-        
+        console.log('✅ Onboarding completed, response:', response?.data)
+
         // Verify response is successful
         if (!response || !response.data) {
           throw new Error('Invalid response from server')
         }
-        
+
         // Clear localStorage when onboarding is complete
         clearOnboardingFromLocalStorage()
-        
+
         // Show success message briefly, then navigate
         console.log('✅ Onboarding completed successfully, redirecting to restaurant home...')
-        
+
         // Wait a moment to ensure data is saved, then navigate
         setTimeout(() => {
           // Navigate to restaurant home page after onboarding completion
@@ -1181,7 +1215,7 @@ export default function RestaurantOnboarding() {
                 // Handle both File objects and URL objects
                 let imageUrl = null
                 let imageName = `Image ${idx + 1}`
-                
+
                 if (file instanceof File) {
                   imageUrl = URL.createObjectURL(file)
                   imageName = file.name
@@ -1193,7 +1227,7 @@ export default function RestaurantOnboarding() {
                   // If it's a direct URL string
                   imageUrl = file
                 }
-                
+
                 return (
                   <div
                     key={idx}
@@ -1230,7 +1264,7 @@ export default function RestaurantOnboarding() {
               {step2.profileImage ? (
                 (() => {
                   let imageSrc = null;
-                  
+
                   if (step2.profileImage instanceof File) {
                     imageSrc = URL.createObjectURL(step2.profileImage);
                   } else if (step2.profileImage?.url) {
@@ -1240,7 +1274,7 @@ export default function RestaurantOnboarding() {
                     // If it's a direct URL string
                     imageSrc = step2.profileImage;
                   }
-                  
+
                   return imageSrc ? (
                     <img
                       src={imageSrc}
@@ -1262,35 +1296,35 @@ export default function RestaurantOnboarding() {
                   This will be shown on your listing card and restaurant page.
                 </span>
               </div>
-             
+
             </div>
-            
+
           </div>
-           <label
-                htmlFor="profileImageInput"
-                className="inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-sm bg-white text-black  border-black text-xs font-medium cursor-pointer     w-full items-center"
-                >
-                <Upload className="w-4.5 h-4.5" />
-                <span>Upload</span>
-              </label>
-              <input
-                id="profileImageInput"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null
-                  if (file) {
-                    console.log('📸 Profile image selected:', file.name)
-                    setStep2((prev) => ({
-                      ...prev,
-                      profileImage: file,
-                    }))
-                  }
-                  // Reset input to allow selecting same file again
-                  e.target.value = ''
-                }}
-              />
+          <label
+            htmlFor="profileImageInput"
+            className="inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-sm bg-white text-black  border-black text-xs font-medium cursor-pointer     w-full items-center"
+          >
+            <Upload className="w-4.5 h-4.5" />
+            <span>Upload</span>
+          </label>
+          <input
+            id="profileImageInput"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null
+              if (file) {
+                console.log('📸 Profile image selected:', file.name)
+                setStep2((prev) => ({
+                  ...prev,
+                  profileImage: file,
+                }))
+              }
+              // Reset input to allow selecting same file again
+              e.target.value = ''
+            }}
+          />
         </div>
       </section>
 
@@ -1307,9 +1341,8 @@ export default function RestaurantOnboarding() {
                   key={cuisine}
                   type="button"
                   onClick={() => toggleCuisine(cuisine)}
-                  className={`px-3 py-1.5 text-xs rounded-full ${
-                    active ? "bg-black text-white" : "bg-gray-100 text-gray-800"
-                  }`}
+                  className={`px-3 py-1.5 text-xs rounded-full ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+                    }`}
                 >
                   {cuisine}
                 </button>
@@ -1352,9 +1385,8 @@ export default function RestaurantOnboarding() {
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${
-                    active ? "bg-black text-white" : "bg-gray-100 text-gray-800"
-                  }`}
+                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+                    }`}
                 >
                   {day.charAt(0)}
                 </button>
@@ -1408,18 +1440,16 @@ export default function RestaurantOnboarding() {
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: true })}
-            className={`px-3 py-1.5 text-xs rounded-full ${
-              step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
-            }`}
+            className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+              }`}
           >
             Yes
           </button>
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: false })}
-            className={`px-3 py-1.5 text-xs rounded-full ${
-              !step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
-            }`}
+            className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+              }`}
           >
             No
           </button>
@@ -1476,10 +1506,10 @@ export default function RestaurantOnboarding() {
                   <span className={step3.fssaiExpiry ? "text-gray-900" : "text-gray-500"}>
                     {step3.fssaiExpiry
                       ? new Date(step3.fssaiExpiry).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })
                       : "Select expiry date"}
                   </span>
                   <CalendarIcon className="w-4 h-4 text-gray-500" />
@@ -1561,121 +1591,219 @@ export default function RestaurantOnboarding() {
   const renderStep4 = () => (
     <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">Restaurant Display Information</h2>
+        <h2 className="text-lg font-semibold text-black">Delivery & Featured Items</h2>
         <p className="text-sm text-gray-600">
-          Add information that will be displayed to customers on the home page
+          Set your delivery expectations and highlight your best dish.
         </p>
-        
-        <div>
-          <Label className="text-xs text-gray-700">Estimated Delivery Time*</Label>
-          <Input
-            value={step4.estimatedDeliveryTime || ""}
-            onChange={(e) => setStep4({ ...step4, estimatedDeliveryTime: e.target.value })}
-            className="mt-1 bg-white text-sm"
-            placeholder="e.g., 25-30 mins"
-          />
-        </div>
 
-        <div>
-          <Label className="text-xs text-gray-700">Featured Dish Name*</Label>
-          <Input
-            value={step4.featuredDish || ""}
-            onChange={(e) => setStep4({ ...step4, featuredDish: e.target.value })}
-            className="mt-1 bg-white text-sm"
-            placeholder="e.g., Butter Chicken Special"
-          />
-        </div>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs text-gray-700">Estimated Delivery Time (minutes)</Label>
+            <Input
+              value={step4.estimatedDeliveryTime || ""}
+              onChange={(e) => setStep4({ ...step4, estimatedDeliveryTime: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. 30-45"
+            />
+          </div>
 
-        <div>
-          <Label className="text-xs text-gray-700">Featured Dish Price (₹)*</Label>
-          <Input
-            type="number"
-            value={step4.featuredPrice || ""}
-            onChange={(e) => setStep4({ ...step4, featuredPrice: e.target.value })}
-            className="mt-1 bg-white text-sm"
-            placeholder="e.g., 249"
-            min="0"
-          />
-        </div>
+          <div>
+            <Label className="text-xs text-gray-700">Featured Dish Name</Label>
+            <Input
+              value={step4.featuredDish || ""}
+              onChange={(e) => setStep4({ ...step4, featuredDish: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. Butter Chicken"
+            />
+          </div>
 
-        <div>
-          <Label className="text-xs text-gray-700">Special Offer/Promotion*</Label>
-          <Input
-            value={step4.offer || ""}
-            onChange={(e) => setStep4({ ...step4, offer: e.target.value })}
-            className="mt-1 bg-white text-sm"
-            placeholder="e.g., Flat ₹50 OFF above ₹199"
-          />
+          <div>
+            <Label className="text-xs text-gray-700">Featured Dish Price</Label>
+            <Input
+              type="number"
+              value={step4.featuredPrice || ""}
+              onChange={(e) => setStep4({ ...step4, featuredPrice: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. 249"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs text-gray-700">Special Offer (Optional)</Label>
+            <Input
+              value={step4.offer || ""}
+              onChange={(e) => setStep4({ ...step4, offer: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. 20% off on first order"
+            />
+          </div>
         </div>
       </section>
     </div>
   )
 
+  const renderStep5 = () => (
+    <div className="space-y-6">
+      <section className="bg-white p-4 sm:p-6 rounded-md space-y-6">
+        <h2 className="text-xl font-bold text-black border-b pb-4">Choose Your Business Model</h2>
+        <p className="text-sm text-gray-600">
+          Select how you want to partner with us. This determines your fee structure and features.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Commission Based Option */}
+          <div
+            onClick={() => setStep5({ businessModel: "Commission Base" })}
+            className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 relative overflow-hidden ${step5.businessModel === "Commission Base"
+              ? "border-black bg-gray-50 shadow-md"
+              : "border-gray-200 hover:border-gray-300"
+              }`}
+          >
+            {step5.businessModel === "Commission Base" && (
+              <div className="absolute top-3 right-3">
+                <CheckCircle className="w-6 h-6 text-black fill-white" />
+              </div>
+            )}
+            <div className="mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${step5.businessModel === "Commission Base" ? "bg-black text-white" : "bg-gray-100 text-gray-600"
+                }`}>
+                <span className="text-lg font-bold">%</span>
+              </div>
+              <h3 className="text-lg font-bold text-black">Commission Based</h3>
+              <p className="text-xs text-gray-500 mt-1">Best for restaurants starting out</p>
+            </div>
+            <ul className="space-y-3 mt-4">
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                <span>Pay only when you get orders</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                <span>Standard commission rate applies</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                <span className="text-gray-800 font-semibold">Unlimited food item additions</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Subscription Based Option */}
+          <div
+            onClick={() => setStep5({ businessModel: "Subscription Base" })}
+            className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 relative overflow-hidden ${step5.businessModel === "Subscription Base"
+              ? "border-black bg-gray-50 shadow-md"
+              : "border-gray-200 hover:border-gray-300"
+              }`}
+          >
+            {step5.businessModel === "Subscription Base" && (
+              <div className="absolute top-3 right-3">
+                <CheckCircle className="w-6 h-6 text-black fill-white" />
+              </div>
+            )}
+            <div className="mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${step5.businessModel === "Subscription Base" ? "bg-black text-white" : "bg-gray-100 text-gray-600"
+                }`}>
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-black">Subscription Based</h3>
+              <p className="text-xs text-gray-500 mt-1">Best for high-volume restaurants</p>
+            </div>
+            <ul className="space-y-3 mt-4">
+              <li className="flex items-start gap-2 text-sm text-gray-800 font-semibold">
+                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                <span>Unlimited food item additions</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                <span>Zero commission on orders</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                <span>Fixed monthly/yearly subscription</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mt-6">
+          <p className="text-xs text-blue-800 leading-relaxed">
+            <strong>Note:</strong> Subscription plans can be purchased after your restaurant profile is approved by our team.
+            The unlimited dish feature will be activated immediately upon selecting the subscription model.
+          </p>
+        </div>
+      </section>
+    </div>
+  )
+
+
+
   const renderStep = () => {
     if (step === 1) return renderStep1()
     if (step === 2) return renderStep2()
     if (step === 3) return renderStep3()
-    return renderStep4()
+    if (step === 4) return renderStep4()
+    return renderStep5()
   }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="px-4 py-4 sm:px-6 sm:py-5 bg-white flex items-center justify-between">
-        <div className="text-sm font-semibold text-black">Restaurant onboarding</div>
-        <div className="flex items-center gap-3">
-          {import.meta.env.DEV && (
-            <Button
-              onClick={fillDummyData}
-              variant="outline"
-              size="sm"
-              className="text-xs bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100 flex items-center gap-1.5"
-              title="Fill with dummy data (Dev only)"
-            >
-              <Sparkles className="w-3 h-3" />
-              Fill Dummy
-            </Button>
-          )}
-          <div className="text-xs text-gray-600">
-            Step {step} of 4
+      <div className="min-h-screen bg-gray-100 flex flex-col">
+        <header className="px-4 py-4 sm:px-6 sm:py-5 bg-white flex items-center justify-between">
+          <div className="text-sm font-semibold text-black">Restaurant onboarding</div>
+          <div className="flex items-center gap-3">
+            {import.meta.env.DEV && (
+              <Button
+                onClick={fillDummyData}
+                variant="outline"
+                size="sm"
+                className="text-xs bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100 flex items-center gap-1.5"
+                title="Fill with dummy data (Dev only)"
+              >
+                <Sparkles className="w-3 h-3" />
+                Fill Dummy
+              </Button>
+            )}
+            <div className="text-xs text-gray-600">
+              Step {step} of 5
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="flex-1 px-4 sm:px-6 py-4 space-y-4">
-        {loading ? (
-          <p className="text-sm text-gray-600">Loading...</p>
-        ) : (
-          renderStep()
+        <main className="flex-1 px-4 sm:px-6 py-4 space-y-4">
+          {loading ? (
+            <p className="text-sm text-gray-600">Loading...</p>
+          ) : (
+            renderStep()
+          )}
+        </main>
+
+        {error && (
+          <div className="px-4 sm:px-6 pb-2 text-xs text-red-600">
+            {error}
+          </div>
         )}
-      </main>
 
-      {error && (
-        <div className="px-4 sm:px-6 pb-2 text-xs text-red-600">
-          {error}
-        </div>
-      )}
-
-      <footer className="px-4 sm:px-6 py-3 bg-white">
-        <div className="flex justify-between items-center">
-          <Button
-            variant="ghost"
-            disabled={step === 1 || saving}
-            onClick={() => setStep((s) => Math.max(1, s - 1))}
-            className="text-sm text-gray-700 bg-transparent"
-          >
-            Back
-          </Button>
-          <Button
-            onClick={handleNext}
-            disabled={saving}
-            className="text-sm bg-black text-white px-6"
-          >
-            {step === 4 ? (saving ? "Saving..." : "Finish") : saving ? "Saving..." : "Continue"}
-          </Button>
-        </div>
-      </footer>
-    </div>
+        <footer className="px-4 sm:px-6 py-3 bg-white">
+          <div className="flex justify-between items-center">
+            <Button
+              variant="ghost"
+              disabled={step === 1 || saving}
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
+              className="text-sm text-gray-700 bg-transparent"
+            >
+              Back
+            </Button>
+            <Button
+              onClick={handleNext}
+              disabled={saving}
+              className="text-sm bg-black text-white px-6"
+            >
+              {step === 5 ? (saving ? "Saving..." : "Finish") : saving ? "Saving..." : "Continue"}
+            </Button>
+          </div>
+        </footer>
+      </div>
     </LocalizationProvider>
   )
 }

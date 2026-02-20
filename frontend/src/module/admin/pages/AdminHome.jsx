@@ -22,8 +22,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus } from "lucide-react"
-import appzetoLogo from "@/assets/appzetologo.png"
+import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, Gift } from "lucide-react"
+
 import { adminAPI } from "@/lib/api"
 
 export default function AdminHome() {
@@ -109,15 +109,18 @@ export default function AdminHome() {
   const monthlyData = getMonthlyData()
 
   // Calculate totals from real data
-  const revenueTotal = dashboardData?.revenue?.total || 0
+  // Gross Revenue = Total Order Revenue + Subscription Revenue
+  const revenueTotal = (dashboardData?.revenue?.total || 0) + (dashboardData?.subscription?.total || 0)
   const commissionTotal = dashboardData?.commission?.total || 0
   const ordersTotal = dashboardData?.orders?.total || 0
   const platformFeeTotal = dashboardData?.platformFee?.total || 0
   const deliveryFeeTotal = dashboardData?.deliveryFee?.total || 0
   const gstTotal = dashboardData?.gst?.total || 0
   const tipsTotal = dashboardData?.tips?.total || 0
-  // Total revenue = Commission + Platform Fee + Delivery Fee + GST
-  const totalAdminEarnings = commissionTotal + platformFeeTotal + deliveryFeeTotal + gstTotal
+  const donationsTotal = dashboardData?.donations?.total || 0
+  const subscriptionTotal = dashboardData?.subscription?.total || 0
+  // Total revenue = Commission + Platform Fee + Delivery Fee + GST + Subscription + Donation
+  const totalAdminEarnings = commissionTotal + platformFeeTotal + deliveryFeeTotal + gstTotal + subscriptionTotal + donationsTotal
 
   // Additional stats
   const totalRestaurants = dashboardData?.restaurants?.total || 0
@@ -238,9 +241,23 @@ export default function AdminHome() {
               accent="bg-orange-100/30"
             />
             <MetricCard
+              title="Total Donations"
+              value={`₹${donationsTotal.toLocaleString("en-IN")}`}
+              helper="Total donations collected"
+              icon={<Gift className="h-5 w-5 text-pink-500" />}
+              accent="bg-pink-100/30"
+            />
+            <MetricCard
+              title="Subscription Revenue"
+              value={`₹${subscriptionTotal.toLocaleString("en-IN")}`}
+              helper="Total subscription fees"
+              icon={<Receipt className="h-5 w-5 text-teal-600" />}
+              accent="bg-teal-100/30"
+            />
+            <MetricCard
               title="Total revenue"
               value={`₹${totalAdminEarnings.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              helper={`Commission ₹${commissionTotal.toFixed(2)} + Platform ₹${platformFeeTotal.toFixed(2)} + Delivery ₹${deliveryFeeTotal.toFixed(2)} + GST ₹${gstTotal.toFixed(2)}`}
+              helper={`Com ₹${commissionTotal.toFixed(0)} + Plat ₹${platformFeeTotal.toFixed(0)} + Del ₹${deliveryFeeTotal.toFixed(0)} + Sub ₹${subscriptionTotal.toFixed(0)} + Don ₹${donationsTotal.toFixed(0)}`}
               icon={<DollarSign className="h-5 w-5 text-green-600" />}
               accent="bg-green-200/40"
             />

@@ -10,6 +10,7 @@ import RestaurantWallet from '../../restaurant/models/RestaurantWallet.js';
 import RestaurantCommission from '../../admin/models/RestaurantCommission.js';
 import AdminCommission from '../../admin/models/AdminCommission.js';
 import { calculateRoute } from '../../order/services/routeCalculationService.js';
+import { calculateOrderSettlement } from '../../order/services/orderSettlementService.js';
 import mongoose from 'mongoose';
 import winston from 'winston';
 
@@ -621,6 +622,23 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       return errorResponse(res, 500, 'Invalid route data. Please try again.');
     }
 
+    // Calculate delivery distance (restaurant to customer) to save in assignment info
+    let deliveryDistanceForSave = 0;
+    if (order.restaurantId?.location?.coordinates && order.address?.location?.coordinates) {
+      const [restLng, restLat] = order.restaurantId.location.coordinates;
+      const [custLng, custLat] = order.address.location.coordinates;
+
+      // Calculate distance using Haversine formula
+      const R = 6371; // Earth radius in km
+      const dLat = (custLat - restLat) * Math.PI / 180;
+      const dLng = (custLng - restLng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(restLat * Math.PI / 180) * Math.cos(custLat * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      deliveryDistanceForSave = R * c;
+    }
+
     let updatedOrder;
     try {
       console.log(`💾 Updating order in database...`);
@@ -631,7 +649,8 @@ export const acceptOrder = asyncHandler(async (req, res) => {
             'deliveryState.status': 'accepted',
             'deliveryState.acceptedAt': new Date(),
             'deliveryState.currentPhase': 'en_route_to_pickup',
-            'deliveryState.routeToPickup': routeToPickup
+            'deliveryState.routeToPickup': routeToPickup,
+            'assignmentInfo.distance': deliveryDistanceForSave // Save distance for settlement calc
           }
         },
         { new: true }
@@ -738,6 +757,11 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       } catch (e) { /* ignore */ }
     }
     const orderWithPayment = { ...updatedOrder, paymentMethod };
+
+    // Recalculate settlement to update earnings based on assigned partner and distance
+    calculateOrderSettlement(updatedOrder._id).catch(err => {
+      console.error('❌ Error recalculating settlement after order acceptance:', err);
+    });
 
     return successResponse(res, 200, 'Order accepted successfully', {
       order: orderWithPayment,
@@ -1737,7 +1761,7 @@ export const completeDelivery = asyncHandler(async (req, res) => {
           }
         }
 
-        const cashCollectedThisOrder = isCOD ? codAmount : 0;
+        const cashCollectedThisOrder = isCashOrder ? codAmount : 0;
         logger.info(`💰 Earning added to wallet for delivery: ${delivery._id}`, {
           deliveryId: delivery.deliveryId || delivery._id.toString(),
           orderId: orderIdForLog,

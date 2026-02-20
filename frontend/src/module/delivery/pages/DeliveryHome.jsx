@@ -170,59 +170,59 @@ function shouldAcceptLocation(position, lastValidLocation, lastLocationTime) {
   const accuracy = position.coords.accuracy || 0
   const latitude = position.coords.latitude
   const longitude = position.coords.longitude
-  
+
   // CRITICAL: Always accept first location (no previous location) to ensure admin map shows delivery boy
   // Even if accuracy is poor, we need at least one location update
   const isFirstLocation = !lastValidLocation || !lastLocationTime
-  
+
   if (isFirstLocation) {
     // For first location, accept if accuracy < 1000m (very lenient)
     if (accuracy > 1000) {
       console.log('🚫 First location rejected: accuracy extremely poor', { accuracy: accuracy.toFixed(2) + 'm' })
       return false
     }
-    console.log('✅ Accepting first location (will be used for admin map):', { 
+    console.log('✅ Accepting first location (will be used for admin map):', {
       accuracy: accuracy.toFixed(2) + 'm',
       lat: latitude,
       lng: longitude
     })
     return true
   }
-  
+
   // Filter 1: For subsequent locations, use relaxed accuracy threshold (200m instead of 30m)
   // This allows GPS to work even in areas with poor signal
   if (accuracy > 200) {
     console.log('🚫 Location rejected: accuracy too poor', { accuracy: accuracy.toFixed(2) + 'm' })
     return false
   }
-  
+
   // Filter 2: Check distance jump and speed if we have previous location
   if (lastValidLocation && lastLocationTime) {
     const [prevLat, prevLng] = lastValidLocation
     const distance = haversineDistance(prevLat, prevLng, latitude, longitude)
     const timeDiff = (Date.now() - lastLocationTime) / 1000 // seconds
-    
+
     // Filter 2a: Ignore if distance jump > 50 meters within 2 seconds
     if (distance > 50 && timeDiff < 2) {
-      console.log('🚫 Location rejected: distance jump too large', { 
-        distance: distance.toFixed(2) + 'm', 
-        timeDiff: timeDiff.toFixed(2) + 's' 
+      console.log('🚫 Location rejected: distance jump too large', {
+        distance: distance.toFixed(2) + 'm',
+        timeDiff: timeDiff.toFixed(2) + 's'
       })
       return false
     }
-    
+
     // Filter 2b: Ignore if calculated speed > 60 km/h (bike speed limit)
     if (timeDiff > 0) {
       const speedKmh = (distance / timeDiff) * 3.6 // Convert m/s to km/h
       if (speedKmh > 60) {
-        console.log('🚫 Location rejected: speed too high', { 
-          speed: speedKmh.toFixed(2) + ' km/h' 
+        console.log('🚫 Location rejected: speed too high', {
+          speed: speedKmh.toFixed(2) + ' km/h'
         })
         return false
       }
     }
   }
-  
+
   return true
 }
 
@@ -235,14 +235,14 @@ function smoothLocation(locationHistory) {
   if (locationHistory.length < 2) {
     return locationHistory.length === 1 ? locationHistory[0] : null
   }
-  
+
   // Use last 5 points for moving average
   const pointsToUse = locationHistory.slice(-5)
-  
+
   // Calculate average latitude and longitude
   const avgLat = pointsToUse.reduce((sum, point) => sum + point[0], 0) / pointsToUse.length
   const avgLng = pointsToUse.reduce((sum, point) => sum + point[1], 0) / pointsToUse.length
-  
+
   return [avgLat, avgLng]
 }
 
@@ -255,45 +255,45 @@ function smoothLocation(locationHistory) {
  */
 function animateMarkerSmoothly(marker, newPosition, duration = 1500, animationRef) {
   if (!marker || !newPosition) return
-  
+
   const currentPosition = marker.getPosition()
   if (!currentPosition) {
     // If no current position, set directly
     marker.setPosition(newPosition)
     return
   }
-  
+
   const startLat = currentPosition.lat()
   const startLng = currentPosition.lng()
   const endLat = newPosition.lat
   const endLng = newPosition.lng
-  
+
   // Cancel any ongoing animation (use ref if passed)
   if (animationRef?.current) {
     cancelAnimationFrame(animationRef.current)
   }
-  
+
   const startTime = Date.now()
   const startPos = { lat: startLat, lng: startLng }
   const endPos = { lat: endLat, lng: endLng }
-  
+
   function animate() {
     const elapsed = Date.now() - startTime
     const progress = Math.min(elapsed / duration, 1)
-    
+
     // Linear easing
     const currentLat = startPos.lat + (endPos.lat - startPos.lat) * progress
     const currentLng = startPos.lng + (endPos.lng - startPos.lng) * progress
-    
+
     marker.setPosition({ lat: currentLat, lng: currentLng })
-    
+
     if (progress < 1) {
       if (animationRef) animationRef.current = requestAnimationFrame(animate)
     } else {
       if (animationRef) animationRef.current = null
     }
   }
-  
+
   if (animationRef) animationRef.current = requestAnimationFrame(animate)
 }
 
@@ -306,13 +306,13 @@ export default function DeliveryHome() {
   // React's synthetic touch events are passive by default, so we check cancelable first
   const safePreventDefault = (e) => {
     if (!e) return;
-    
+
     // Early return if event is not cancelable (passive listener)
     // This prevents the browser warning about calling preventDefault on passive listeners
     if (e.cancelable === false) {
       return; // Event listener is passive, cannot and should not call preventDefault
     }
-    
+
     // For touch events, check if CSS touch-action is handling it
     // If touch-action is set, we don't need preventDefault
     const eventType = e.type || '';
@@ -331,7 +331,7 @@ export default function DeliveryHome() {
         }
       }
     }
-    
+
     // For React synthetic events, check the native event's cancelable property
     // React synthetic events may have cancelable: true but the underlying listener is passive
     const nativeEvent = e.nativeEvent;
@@ -340,13 +340,13 @@ export default function DeliveryHome() {
       if (nativeEvent.cancelable === false) {
         return; // Native event listener is passive
       }
-      
+
       // Additional check: if defaultPrevented is already true, no need to call again
       if (nativeEvent.defaultPrevented === true) {
         return;
       }
     }
-    
+
     // Only call preventDefault if event is cancelable AND we have a function
     // Wrap in try-catch to completely suppress passive listener errors
     if (e.cancelable !== false && typeof e.preventDefault === 'function') {
@@ -357,7 +357,7 @@ export default function DeliveryHome() {
         }
         // Suppress console errors temporarily while calling preventDefault
         const originalError = console.error;
-        console.error = () => {}; // Temporarily suppress console.error
+        console.error = () => { }; // Temporarily suppress console.error
         try {
           e.preventDefault();
         } finally {
@@ -384,10 +384,10 @@ export default function DeliveryHome() {
     return stored ? JSON.parse(stored) : null
   })
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(() => getUnreadDeliveryNotificationCount())
-  
+
   // Delivery notifications hook
   const { newOrder, clearNewOrder, orderReady, clearOrderReady, isConnected } = useDeliveryNotifications()
-  
+
   // Default location - will be set from saved location or GPS, not hardcoded
   const [riderLocation, setRiderLocation] = useState(null) // Will be set from GPS or saved location
   const [isRefreshingLocation, setIsRefreshingLocation] = useState(false)
@@ -395,7 +395,7 @@ export default function DeliveryHome() {
   const [deliveryStatus, setDeliveryStatus] = useState(null) // Store delivery partner status
   const [rejectionReason, setRejectionReason] = useState(null) // Store rejection reason
   const [isReverifying, setIsReverifying] = useState(false) // Loading state for reverify
-  
+
   // Map refs and state (Ola Maps removed)
   const mapContainerRef = useRef(null)
   const directionsMapContainerRef = useRef(null)
@@ -406,7 +406,7 @@ export default function DeliveryHome() {
   const routePolylineRef = useRef(null) // Store route polyline instance (legacy - for fallback)
   const routeHistoryRef = useRef([]) // Store route history for traveled path
   const isOnlineRef = useRef(false) // Store online status for use in callbacks
-  
+
   // Stable tracking system - Rapido/Uber style
   const locationHistoryRef = useRef([]) // Store last 5 valid GPS points for smoothing
   const lastValidLocationRef = useRef(null) // Last valid smoothed location
@@ -459,29 +459,29 @@ export default function DeliveryHome() {
     const [lat, lng] = center
     const vertices = []
     const seededRandom = createSeededRandom(seedOffset)
-    
+
     // Generate random points around the center
     for (let i = 0; i < numPoints; i++) {
       // Seeded random angle
       const angle = seededRandom() * 2 * Math.PI
       // Seeded random distance (varying spread for irregularity)
       const distance = spread * (0.5 + seededRandom() * 0.5)
-      
+
       const vertexLat = lat + distance * Math.cos(angle)
       const vertexLng = lng + distance * Math.sin(angle)
       vertices.push([vertexLat, vertexLng])
     }
-    
+
     // Sort vertices by angle to create a proper polygon (prevents self-intersection)
     const centerLat = vertices.reduce((sum, v) => sum + v[0], 0) / vertices.length
     const centerLng = vertices.reduce((sum, v) => sum + v[1], 0) / vertices.length
-    
+
     vertices.sort((a, b) => {
       const angleA = Math.atan2(a[0] - centerLat, a[1] - centerLng)
       const angleB = Math.atan2(b[0] - centerLat, b[1] - centerLng)
       return angleA - angleB
     })
-    
+
     return vertices
   }
 
@@ -493,7 +493,7 @@ export default function DeliveryHome() {
     const [lat, lng] = riderLocation || defaultLocation
     const hotspots = []
     const baseSpread = 0.004 // Base spread for points in degrees
-    
+
     // Hotspot 1 - Northeast, 3 points
     hotspots.push({
       type: 'polygon',
@@ -501,7 +501,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat + 0.008, lng + 0.006], 3, baseSpread * 1.2, 1000),
       opacity: 0.25
     })
-    
+
     // Hotspot 2 - Northwest, 4 points
     hotspots.push({
       type: 'polygon',
@@ -509,7 +509,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat + 0.005, lng - 0.007], 4, baseSpread * 1.0, 2000),
       opacity: 0.3
     })
-    
+
     // Hotspot 3 - Southeast, 5 points
     hotspots.push({
       type: 'polygon',
@@ -517,7 +517,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat - 0.006, lng + 0.009], 5, baseSpread * 0.9, 3000),
       opacity: 0.2
     })
-    
+
     // Hotspot 4 - Southwest, 3 points
     hotspots.push({
       type: 'polygon',
@@ -525,7 +525,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat - 0.004, lng - 0.005], 3, baseSpread * 1.1, 4000),
       opacity: 0.28
     })
-    
+
     // Hotspot 5 - North, 4 points
     hotspots.push({
       type: 'polygon',
@@ -533,7 +533,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat + 0.011, lng + 0.001], 4, baseSpread * 0.7, 5000),
       opacity: 0.22
     })
-    
+
     // Hotspot 6 - East, 5 points
     hotspots.push({
       type: 'polygon',
@@ -541,7 +541,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat + 0.002, lng + 0.012], 5, baseSpread * 1.1, 6000),
       opacity: 0.32
     })
-    
+
     // Hotspot 7 - South, 3 points
     hotspots.push({
       type: 'polygon',
@@ -549,7 +549,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat - 0.009, lng - 0.002], 3, baseSpread * 1.0, 7000),
       opacity: 0.26
     })
-    
+
     // Hotspot 8 - West, 4 points
     hotspots.push({
       type: 'polygon',
@@ -557,7 +557,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat - 0.001, lng - 0.010], 4, baseSpread * 0.85, 8000),
       opacity: 0.24
     })
-    
+
     // Hotspot 9 - Northeast (further), 5 points
     hotspots.push({
       type: 'polygon',
@@ -565,7 +565,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat + 0.006, lng + 0.008], 5, baseSpread * 0.6, 9000),
       opacity: 0.23
     })
-    
+
     // Hotspot 10 - Southwest (further), 3 points
     hotspots.push({
       type: 'polygon',
@@ -573,7 +573,7 @@ export default function DeliveryHome() {
       vertices: createIrregularPolygon([lat - 0.007, lng - 0.008], 3, baseSpread * 0.9, 10000),
       opacity: 0.27
     })
-    
+
     return hotspots
   })
   const [selectedRestaurant, setSelectedRestaurant] = useState(null)
@@ -612,8 +612,8 @@ export default function DeliveryHome() {
   const [customerReviewText, setCustomerReviewText] = useState("")
   const [orderEarnings, setOrderEarnings] = useState(0) // Store earnings from completed order
   const [routePolyline, setRoutePolyline] = useState([])
-   const [showRoutePath, setShowRoutePath] = useState(false) // Toggle to show/hide route path - disabled by default
-   const [directionsResponse, setDirectionsResponse] = useState(null) // Directions API response for road-based routing
+  const [showRoutePath, setShowRoutePath] = useState(false) // Toggle to show/hide route path - disabled by default
+  const [directionsResponse, setDirectionsResponse] = useState(null) // Directions API response for road-based routing
   const [reachedPickupButtonProgress, setreachedPickupButtonProgress] = useState(0)
   const [reachedPickupIsAnimatingToComplete, setreachedPickupIsAnimatingToComplete] = useState(false)
   const reachedPickupButtonRef = useRef(null)
@@ -674,7 +674,7 @@ export default function DeliveryHome() {
 
   // Use same localStorage key as FeedNavbar for online status
   const LS_KEY = "app:isOnline"
-  
+
   // Initialize online status from localStorage (same as FeedNavbar)
   const [isOnline, setIsOnline] = useState(() => {
     try {
@@ -712,7 +712,7 @@ export default function DeliveryHome() {
 
     // Listen for storage events (cross-tab sync)
     window.addEventListener('storage', handleStorageChange)
-    
+
     // Also listen for custom events (same-tab sync from FeedNavbar)
     const handleCustomStorageChange = () => {
       try {
@@ -730,7 +730,7 @@ export default function DeliveryHome() {
         console.error('[DeliveryHome] Error reading online status:', error)
       }
     }
-    
+
     window.addEventListener('onlineStatusChanged', handleCustomStorageChange)
 
     // Also poll localStorage periodically to catch any missed updates (fallback)
@@ -745,7 +745,7 @@ export default function DeliveryHome() {
           }
           return prev
         })
-      } catch {}
+      } catch { }
     }, 1000) // Check every second
 
     return () => {
@@ -796,7 +796,7 @@ export default function DeliveryHome() {
   // Get today's progress from store
   const { getTodayProgress, getDateData, hasDateData, updateTodayProgress } = useProgressStore()
   const todayProgress = getTodayProgress()
-  
+
   // Check if store has data for today
   const hasStoreDataForToday = hasDateData(today)
   const todayData = hasStoreDataForToday ? getDateData(today) : null
@@ -872,18 +872,18 @@ export default function DeliveryHome() {
       try {
         const response = await deliveryAPI.getActiveEarningAddons()
         console.log('Active earning addons response:', response?.data)
-        
+
         if (response?.data?.success && response?.data?.data?.activeOffers) {
           const offers = response.data.data.activeOffers
           console.log('Active offers found:', offers)
-          
+
           // Get the first valid active offer (prioritize isValid, then isUpcoming, then any active status)
-          const activeOffer = offers.find(offer => offer.isValid) || 
-                             offers.find(offer => offer.isUpcoming) ||
-                             offers.find(offer => offer.status === 'active') || 
-                             offers[0] || 
-                             null
-          
+          const activeOffer = offers.find(offer => offer.isValid) ||
+            offers.find(offer => offer.isUpcoming) ||
+            offers.find(offer => offer.status === 'active') ||
+            offers[0] ||
+            null
+
           console.log('Selected active offer:', activeOffer)
           setActiveEarningAddon(activeOffer)
         } else {
@@ -897,7 +897,7 @@ export default function DeliveryHome() {
           setActiveEarningAddon(null)
           return
         }
-        
+
         // Skip logging timeout errors (handled by axios interceptor)
         if (error.code !== 'ECONNABORTED' && !error.message?.includes('timeout')) {
           // Only log non-network errors
@@ -941,31 +941,31 @@ export default function DeliveryHome() {
   // Calculate bonus earnings from earning_addon transactions (only for active offer)
   const calculateBonusEarnings = () => {
     if (!activeEarningAddon || !walletState?.transactions) return 0
-    
+
     const now = new Date()
     const startDate = activeEarningAddon.startDate ? new Date(activeEarningAddon.startDate) : null
     const endDate = activeEarningAddon.endDate ? new Date(activeEarningAddon.endDate) : null
-    
+
     return walletState.transactions
       .filter(t => {
         // Only count earning_addon type transactions
         if (t.type !== 'earning_addon' || t.status !== 'Completed') return false
-        
+
         // Filter by date range if offer has dates
         if (startDate || endDate) {
           const transactionDate = t.date ? new Date(t.date) : (t.createdAt ? new Date(t.createdAt) : null)
           if (!transactionDate) return false
-          
+
           if (startDate && transactionDate < startDate) return false
           if (endDate && transactionDate > endDate) return false
         }
-        
+
         // Check if transaction is related to current offer
         if (t.metadata?.earningAddonId) {
-          return t.metadata.earningAddonId === activeEarningAddon._id?.toString() || 
-                 t.metadata.earningAddonId === activeEarningAddon.id?.toString()
+          return t.metadata.earningAddonId === activeEarningAddon._id?.toString() ||
+            t.metadata.earningAddonId === activeEarningAddon.id?.toString()
         }
-        
+
         // If no metadata, include all earning_addon transactions in date range
         return true
       })
@@ -980,11 +980,11 @@ export default function DeliveryHome() {
   const earningsGuaranteeCurrentOrders = activeEarningAddon ? (activeEarningAddon.currentOrders ?? weeklyOrders) : 0
   // Show only bonus earnings from the offer, not total weekly earnings
   const earningsGuaranteeCurrentEarnings = activeEarningAddon ? calculateBonusEarnings() : 0
-  const ordersProgress = earningsGuaranteeOrdersTarget > 0 
-    ? Math.min(earningsGuaranteeCurrentOrders / earningsGuaranteeOrdersTarget, 1) 
+  const ordersProgress = earningsGuaranteeOrdersTarget > 0
+    ? Math.min(earningsGuaranteeCurrentOrders / earningsGuaranteeOrdersTarget, 1)
     : 0
-  const earningsProgress = earningsGuaranteeTarget > 0 
-    ? Math.min(earningsGuaranteeCurrentEarnings / earningsGuaranteeTarget, 1) 
+  const earningsProgress = earningsGuaranteeTarget > 0
+    ? Math.min(earningsGuaranteeCurrentEarnings / earningsGuaranteeTarget, 1)
     : 0
 
   // Get week end date for valid till - use offer end date if available
@@ -1022,8 +1022,8 @@ export default function DeliveryHome() {
   useEffect(() => {
     // Only update if values have actually changed
     if (
-      calculatedEarnings !== undefined && 
-      calculatedTrips !== undefined && 
+      calculatedEarnings !== undefined &&
+      calculatedTrips !== undefined &&
       calculatedHours !== undefined &&
       (
         lastUpdatedRef.current.earnings !== calculatedEarnings ||
@@ -1036,7 +1036,7 @@ export default function DeliveryHome() {
         trips: calculatedTrips,
         hours: calculatedHours
       }
-      
+
       updateTodayProgress({
         earnings: calculatedEarnings,
         trips: calculatedTrips,
@@ -1051,7 +1051,7 @@ export default function DeliveryHome() {
       // Force re-render to show updated progress
       setAnimationKey(prev => prev + 1)
     }
-    
+
     window.addEventListener('progressDataUpdated', handleProgressUpdate)
     return () => {
       window.removeEventListener('progressDataUpdated', handleProgressUpdate)
@@ -1110,12 +1110,12 @@ export default function DeliveryHome() {
       document.removeEventListener('touchstart', handleUserInteraction)
       document.removeEventListener('keydown', handleUserInteraction)
     }
-    
+
     // Listen for user interaction
     document.addEventListener('click', handleUserInteraction, { once: true })
     document.addEventListener('touchstart', handleUserInteraction, { once: true })
     document.addEventListener('keydown', handleUserInteraction, { once: true })
-    
+
     return () => {
       document.removeEventListener('click', handleUserInteraction)
       document.removeEventListener('touchstart', handleUserInteraction)
@@ -1130,12 +1130,12 @@ export default function DeliveryHome() {
       console.log('🔇 Audio playback skipped - user has not interacted with page yet')
       return null
     }
-    
+
     try {
       // Get selected alert sound preference from localStorage
       const selectedSound = localStorage.getItem('delivery_alert_sound') || 'zomato_tone'
       const soundFile = selectedSound === 'original' ? originalSound : alertSound
-      
+
       console.log('🔊 Playing alert sound:', {
         selectedSound,
         soundType: selectedSound === 'original' ? 'Original' : 'Zomato Tone',
@@ -1143,28 +1143,28 @@ export default function DeliveryHome() {
         originalSoundPath: originalSound,
         alertSoundPath: alertSound
       })
-      
+
       // Verify sound file exists
       if (!soundFile) {
         console.error('❌ Sound file is undefined!', { selectedSound, soundFile })
         return null
       }
-      
+
       // Use selected sound file from assets
       const audio = new Audio(soundFile)
-      
+
       // Add load event listener to verify file loads
       audio.addEventListener('loadeddata', () => {
         console.log('✅ Audio file loaded successfully:', soundFile)
       })
-      
+
       audio.addEventListener('canplay', () => {
         console.log('✅ Audio can play:', soundFile)
       })
-      
+
       audio.volume = 1
       audio.loop = true // Loop the sound
-      
+
       // Set up error handler
       audio.addEventListener('error', (e) => {
         console.error('Audio error:', e)
@@ -1173,10 +1173,10 @@ export default function DeliveryHome() {
           message: audio.error?.message
         })
       })
-      
+
       // Preload audio before playing
       audio.preload = 'auto'
-      
+
       // Play the sound and wait for it to start
       try {
         // Wait for audio to be ready
@@ -1187,7 +1187,7 @@ export default function DeliveryHome() {
           // Timeout after 3 seconds
           setTimeout(() => reject(new Error('Audio load timeout')), 3000)
         })
-        
+
         const playPromise = audio.play()
         if (playPromise !== undefined) {
           await playPromise
@@ -1209,14 +1209,14 @@ export default function DeliveryHome() {
           audioReadyState: audio.readyState,
           audioSrc: audio.src
         })
-        
+
         // Don't log autoplay policy errors as they're expected before user interaction
-        if (!playError.message?.includes('user didn\'t interact') && 
-            !playError.name?.includes('NotAllowedError') &&
-            !playError.message?.includes('timeout')) {
+        if (!playError.message?.includes('user didn\'t interact') &&
+          !playError.name?.includes('NotAllowedError') &&
+          !playError.message?.includes('timeout')) {
           console.error('❌ Could not play alert sound:', playError)
         }
-        
+
         // Try to load and play again
         try {
           audio.load()
@@ -1229,8 +1229,8 @@ export default function DeliveryHome() {
           return audio
         } catch (retryError) {
           // Don't log autoplay policy errors
-          if (!retryError.message?.includes('user didn\'t interact') && 
-              !retryError.name?.includes('NotAllowedError')) {
+          if (!retryError.message?.includes('user didn\'t interact') &&
+            !retryError.name?.includes('NotAllowedError')) {
             console.error('❌ Could not play alert sound after retry:', retryError)
           }
           return null
@@ -1305,12 +1305,12 @@ export default function DeliveryHome() {
           if (audio) {
             alertAudioRef.current = audio
             console.log('[NewOrder] 🔊 Audio started playing, looping:', audio.loop)
-            
+
             // Verify audio is actually playing and ensure it loops
             audio.addEventListener('playing', () => {
               console.log('[NewOrder] ✅ Audio is now playing')
             })
-            
+
             // Manually restart if loop doesn't work
             audio.addEventListener('ended', () => {
               console.log('[NewOrder] 🔄 Audio ended, restarting...')
@@ -1321,11 +1321,11 @@ export default function DeliveryHome() {
                 })
               }
             })
-            
+
             audio.addEventListener('error', (e) => {
               console.error('[NewOrder] ❌ Audio error:', e)
             })
-            
+
             // Double-check loop is enabled
             if (!audio.loop) {
               audio.loop = true
@@ -1338,12 +1338,12 @@ export default function DeliveryHome() {
           console.error('[NewOrder] ⚠️ Audio failed to play:', error)
         }
       }
-      
+
       // Small delay to ensure popup is fully rendered
       const timeoutId = setTimeout(() => {
         playAudio()
       }, 100)
-      
+
       return () => {
         clearTimeout(timeoutId)
       }
@@ -1375,7 +1375,7 @@ export default function DeliveryHome() {
         const minutes = Math.floor(time / 60)
         const seconds = time % 60
         setEarningsGuaranteeAudioTime(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
-        
+
         // Stop after 10 seconds (simulating audio length)
         if (time >= 10) {
           setEarningsGuaranteeIsPlaying(false)
@@ -1406,7 +1406,7 @@ export default function DeliveryHome() {
     setShowRejectPopup(true)
   }
 
-  const handleRejectConfirm = () => {    
+  const handleRejectConfirm = () => {
     if (alertAudioRef.current) {
       alertAudioRef.current.pause()
       alertAudioRef.current.currentTime = 0
@@ -1433,7 +1433,7 @@ export default function DeliveryHome() {
     setSelectedRestaurant(null)
     setHasAutoShown(false)
     setCountdownSeconds(300)
-    
+
     // Clear any timers
     if (autoShowTimerRef.current) {
       clearTimeout(autoShowTimerRef.current)
@@ -1443,7 +1443,7 @@ export default function DeliveryHome() {
       clearInterval(countdownTimerRef.current)
       countdownTimerRef.current = null
     }
-    
+
     // Stop and cleanup audio
     if (alertAudioRef.current) {
       alertAudioRef.current.pause()
@@ -1461,15 +1461,15 @@ export default function DeliveryHome() {
         const parsed = JSON.parse(savedLocation)
         if (parsed && Array.isArray(parsed) && parsed.length === 2) {
           const [lat, lng] = parsed
-          
+
           // Validate saved coordinates
           if (typeof lat === 'number' && typeof lng === 'number' &&
-              lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
             // Check if coordinates might be swapped (common issue)
             // If lat > 90 or lng > 180, they're definitely swapped
             // If lat is in lng range (68-98 for India) and lng is in lat range (8-38), they might be swapped
             const mightBeSwapped = (lat >= 68 && lat <= 98 && lng >= 8 && lng <= 38)
-            
+
             if (mightBeSwapped) {
               console.warn('⚠️ Saved coordinates might be swapped - correcting:', {
                 original: [lat, lng],
@@ -1518,12 +1518,12 @@ export default function DeliveryHome() {
           const latitude = position.coords.latitude
           const longitude = position.coords.longitude
           const accuracy = position.coords.accuracy || 0
-          
+
           // Validate coordinates are valid numbers
-          if (typeof latitude !== 'number' || typeof longitude !== 'number' || 
-              isNaN(latitude) || isNaN(longitude) ||
-              latitude < -90 || latitude > 90 || 
-              longitude < -180 || longitude > 180) {
+          if (typeof latitude !== 'number' || typeof longitude !== 'number' ||
+            isNaN(latitude) || isNaN(longitude) ||
+            latitude < -90 || latitude > 90 ||
+            longitude < -180 || longitude > 180) {
             console.warn("⚠️ Invalid coordinates received:", { latitude, longitude })
             // Don't use default location - keep trying or use saved location
             // Retry after a delay
@@ -1533,9 +1533,9 @@ export default function DeliveryHome() {
                   (pos) => {
                     const lat = pos.coords.latitude
                     const lng = pos.coords.longitude
-                    if (typeof lat === 'number' && typeof lng === 'number' && 
-                        !isNaN(lat) && !isNaN(lng) &&
-                        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    if (typeof lat === 'number' && typeof lng === 'number' &&
+                      !isNaN(lat) && !isNaN(lng) &&
+                      lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                       setRiderLocation([lat, lng])
                       lastLocationRef.current = [lat, lng]
                     }
@@ -1547,7 +1547,7 @@ export default function DeliveryHome() {
             }, 2000)
             return
           }
-          
+
           // Check for coordinate swap (common issue: lat/lng swapped)
           // India coordinates: lat ~8-37, lng ~68-97
           if ((latitude > 90 || latitude < -90) || (longitude > 180 || longitude < -180)) {
@@ -1559,9 +1559,9 @@ export default function DeliveryHome() {
                   (pos) => {
                     const lat = pos.coords.latitude
                     const lng = pos.coords.longitude
-                    if (typeof lat === 'number' && typeof lng === 'number' && 
-                        !isNaN(lat) && !isNaN(lng) &&
-                        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    if (typeof lat === 'number' && typeof lng === 'number' &&
+                      !isNaN(lat) && !isNaN(lng) &&
+                      lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                       setRiderLocation([lat, lng])
                       lastLocationRef.current = [lat, lng]
                     }
@@ -1573,58 +1573,58 @@ export default function DeliveryHome() {
             }, 2000)
             return
           }
-          
+
           // Validate coordinates are reasonable for India (basic sanity check)
           // India: Latitude 8.4° to 37.6°, Longitude 68.7° to 97.25°
           const isInIndiaRange = latitude >= 8 && latitude <= 38 && longitude >= 68 && longitude <= 98
           if (!isInIndiaRange) {
-            console.warn("⚠️ Coordinates outside India range - might be incorrect:", { 
-              latitude, 
+            console.warn("⚠️ Coordinates outside India range - might be incorrect:", {
+              latitude,
               longitude,
               note: "India range: lat 8-38, lng 68-98"
             })
             // Still use the location but log warning
           }
-          
+
           // Apply stable tracking filter
           const shouldAccept = shouldAcceptLocation(
             position,
             lastValidLocationRef.current,
             lastLocationTimeRef.current
           )
-          
+
           if (!shouldAccept) {
             console.log('🚫 Initial location rejected by filter, will wait for better GPS signal')
             return
           }
-          
+
           const rawLocation = [latitude, longitude]
-          
+
           // Initialize location history with first valid point
           locationHistoryRef.current = [rawLocation]
           const smoothedLocation = rawLocation // First point, no smoothing needed yet
-          
+
           // Update refs
           lastValidLocationRef.current = smoothedLocation
           lastLocationTimeRef.current = Date.now()
           smoothedLocationRef.current = smoothedLocation
-          
-          let heading = position.coords.heading !== null && position.coords.heading !== undefined 
-            ? position.coords.heading 
+
+          let heading = position.coords.heading !== null && position.coords.heading !== undefined
+            ? position.coords.heading
             : null
-          
+
           // Initialize route history
           routeHistoryRef.current = [{
             lat: smoothedLocation[0],
             lng: smoothedLocation[1]
           }]
-          
+
           // Save location to localStorage
           localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(smoothedLocation))
-          
+
           setRiderLocation(smoothedLocation)
           lastLocationRef.current = smoothedLocation
-          
+
           // Initialize map if not already initialized (will use this location)
           if (!window.deliveryMapInstance && window.google && window.google.maps && mapContainerRef.current) {
             console.log('📍 Map not initialized yet, will initialize with GPS location')
@@ -1637,8 +1637,8 @@ export default function DeliveryHome() {
             updateRoutePolyline()
             console.log('📍 Map recentered to GPS location')
           }
-          
-          console.log("📍 Current location obtained on app open (filtered):", { 
+
+          console.log("📍 Current location obtained on app open (filtered):", {
             raw: { lat: latitude, lng: longitude },
             smoothed: { lat: smoothedLocation[0], lng: smoothedLocation[1] },
             heading,
@@ -1661,9 +1661,9 @@ export default function DeliveryHome() {
                   (position) => {
                     const lat = position.coords.latitude
                     const lng = position.coords.longitude
-                    if (typeof lat === 'number' && typeof lng === 'number' && 
-                        !isNaN(lat) && !isNaN(lng) &&
-                        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    if (typeof lat === 'number' && typeof lng === 'number' &&
+                      !isNaN(lat) && !isNaN(lng) &&
+                      lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                       const newLocation = [lat, lng]
                       setRiderLocation(newLocation)
                       lastLocationRef.current = newLocation
@@ -1672,13 +1672,13 @@ export default function DeliveryHome() {
                       locationHistoryRef.current = [newLocation]
                       localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(newLocation))
                       console.log('✅ Location obtained on retry:', newLocation)
-                      
+
                       // Recenter map if already initialized, otherwise it will initialize when location is set
                       if (window.deliveryMapInstance) {
                         window.deliveryMapInstance.setCenter({ lat, lng })
                         window.deliveryMapInstance.setZoom(18)
                         console.log('📍 Recentered map to GPS location')
-                        
+
                         // Update bike marker
                         if (bikeMarkerRef.current) {
                           bikeMarkerRef.current.setPosition({ lat, lng })
@@ -1731,321 +1731,321 @@ export default function DeliveryHome() {
 
     // Watch position updates for live tracking with STABLE TRACKING SYSTEM
     const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          // Validate coordinates first
-          const latitude = position.coords.latitude
-          const longitude = position.coords.longitude
-          const accuracy = position.coords.accuracy || 0
-          
-          // Basic validation
-          if (typeof latitude !== 'number' || typeof longitude !== 'number' || 
-              isNaN(latitude) || isNaN(longitude) ||
-              latitude < -90 || latitude > 90 || 
-              longitude < -180 || longitude > 180) {
-            console.warn("⚠️ Invalid coordinates received:", { latitude, longitude })
-            return
-          }
-          
-          // ============================================
-          // STABLE TRACKING FILTERING (RAPIDO STYLE)
-          // ============================================
-          
-          // Apply filtering: accuracy, distance jump, speed checks
-          const shouldAccept = shouldAcceptLocation(
-            position, 
-            lastValidLocationRef.current, 
-            lastLocationTimeRef.current
-          )
-          
-          if (!shouldAccept) {
-            // Location rejected by filter - but send to backend if it's been > 30 seconds since last update
-            // This ensures admin map always shows delivery boy even with poor GPS
-            if (isOnlineRef.current && lastValidLocationRef.current) {
-              const now = Date.now();
-              const lastSentTime = window.lastLocationSentTime || 0;
-              const timeSinceLastSend = now - lastSentTime;
-              
-              // Fallback: Send last valid location every 30 seconds even if new location is rejected
-              if (timeSinceLastSend >= 30000) {
-                const [lat, lng] = lastValidLocationRef.current;
-                if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                  console.log('📤 Sending fallback location to backend (filter rejected new location):', { 
-                    lat, 
-                    lng,
-                    accuracy: accuracy.toFixed(2) + 'm',
-                    timeSinceLastSend: (timeSinceLastSend / 1000).toFixed(0) + 's'
-                  });
-                  deliveryAPI.updateLocation(lat, lng, true)
-                    .then(() => {
-                      window.lastLocationSentTime = now;
-                      console.log('✅ Fallback location sent to backend successfully');
-                    })
-                    .catch(error => {
-                      if (error.code !== 'ERR_NETWORK' && error.message !== 'Network Error') {
-                        console.error('❌ Error sending fallback location:', error);
-                      }
-                    });
-                }
-              }
-            }
-            // Keep using last valid location
-            return
-          }
-          
-          // Location passed filter - add to history
-          const rawLocation = [latitude, longitude]
-          locationHistoryRef.current.push(rawLocation)
-          
-          // Keep only last 5 points for moving average
-          if (locationHistoryRef.current.length > 5) {
-            locationHistoryRef.current.shift()
-          }
-          
-          // Apply moving average smoothing
-          const smoothedLocation = smoothLocation(locationHistoryRef.current)
-          
-          if (!smoothedLocation) {
-            // Not enough points yet, use raw location
-            const newLocation = rawLocation
-            lastValidLocationRef.current = newLocation
-            lastLocationTimeRef.current = Date.now()
-            smoothedLocationRef.current = newLocation
-            
-            // Initialize if first location
-            if (!lastLocationRef.current) {
-              setRiderLocation(newLocation)
-              lastLocationRef.current = newLocation
-              routeHistoryRef.current = [{
-                lat: newLocation[0],
-                lng: newLocation[1]
-              }]
-              
-              // Save to localStorage
-              localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(newLocation))
-              
-              // Update marker with correct location
-              if (window.deliveryMapInstance) {
-                const [lat, lng] = newLocation
-                console.log('📍 Updating bike marker with first location:', { lat, lng })
-                
-                // Validate coordinates
-                if (typeof lat === 'number' && typeof lng === 'number' &&
-                    !isNaN(lat) && !isNaN(lng) &&
-                    lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                  if (bikeMarkerRef.current) {
-                    bikeMarkerRef.current.setPosition({ lat, lng })
-                    console.log('✅ Bike marker position updated to first location')
-                  } else {
-                    // Create marker if it doesn't exist
-                    createOrUpdateBikeMarker(lat, lng, null, true)
-                    console.log('✅ Bike marker created with first location')
-                  }
-                } else {
-                  console.error('❌ Invalid coordinates for bike marker:', { lat, lng })
-                }
-              }
-            }
-            
-            // Send raw location to backend even if not smoothed yet
-            if (isOnlineRef.current) {
-              const [lat, lng] = newLocation
-              const now = Date.now();
-              const lastSentTime = window.lastLocationSentTime || 0;
-              const timeSinceLastSend = now - lastSentTime;
-              
-              // Send location every 5 seconds even if not smoothed
-              if (timeSinceLastSend >= 5000) {
-                if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                  console.log('📤 Sending raw location to backend (not smoothed yet):', { lat, lng })
-                  deliveryAPI.updateLocation(lat, lng, true)
-                    .then(() => {
-                      window.lastLocationSentTime = now;
-                      window.lastSentLocation = newLocation;
-                      console.log('✅ Raw location sent to backend successfully')
-                    })
-                    .catch(error => {
-                      if (error.code !== 'ERR_NETWORK' && error.message !== 'Network Error') {
-                        console.error('❌ Error sending raw location to backend:', error);
-                      }
-                    });
-                }
-              }
-            }
-            
-            return
-          }
-          
-          // ============================================
-          // SMOOTH MARKER ANIMATION (NO INSTANT JUMPS)
-          // ============================================
-          
-          const [smoothedLat, smoothedLng] = smoothedLocation
-          const newSmoothedLocation = { lat: smoothedLat, lng: smoothedLng }
-          
-          // Calculate heading
-          let heading = position.coords.heading !== null && position.coords.heading !== undefined 
-            ? position.coords.heading 
-            : null
-          
-          if (heading === null && smoothedLocationRef.current) {
-            const [prevLat, prevLng] = smoothedLocationRef.current
-            heading = calculateHeading(prevLat, prevLng, smoothedLat, smoothedLng)
-          }
-          
-          // Update refs
-          lastValidLocationRef.current = smoothedLocation
-          lastLocationTimeRef.current = Date.now()
-          smoothedLocationRef.current = smoothedLocation
-          
-          // Update route history with smoothed location
-          routeHistoryRef.current.push({
-            lat: smoothedLat,
-            lng: smoothedLng
-          })
-          if (routeHistoryRef.current.length > 1000) {
-            routeHistoryRef.current.shift()
-          }
-          
-          // Save smoothed location to localStorage
-          localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(smoothedLocation))
-          
-          // Update live tracking polyline for any active route (pickup or delivery)
-          const currentDirectionsResponse = directionsResponseRef.current;
-          if (currentDirectionsResponse && currentDirectionsResponse.routes && currentDirectionsResponse.routes.length > 0) {
-            updateLiveTrackingPolyline(currentDirectionsResponse, smoothedLocation);
-          }
-          
-          // ============================================
-          // SMOOTH MARKER ANIMATION (1-2 seconds)
-          // ============================================
-          
-          // Update state with smoothed location FIRST
-          setRiderLocation(smoothedLocation)
-          lastLocationRef.current = smoothedLocation
-          
-          // Always update bike marker with latest smoothed location
-          if (window.deliveryMapInstance) {
-            if (bikeMarkerRef.current) {
-              // Marker exists - animate smoothly to new position
-              animateMarkerSmoothly(bikeMarkerRef.current, newSmoothedLocation, 1500, markerAnimationRef)
-            } else {
-              // Marker doesn't exist yet, create it immediately with correct location
-              console.log('📍 Creating bike marker with smoothed location:', { lat: smoothedLat, lng: smoothedLng })
-              createOrUpdateBikeMarker(smoothedLat, smoothedLng, heading, !isUserPanningRef.current)
-            }
-          }
-          
-          // Update route polyline
-          updateRoutePolyline()
-          
-          console.log("📍 Live location updated (smoothed):", { 
-            raw: { lat: latitude, lng: longitude },
-            smoothed: { lat: smoothedLat, lng: smoothedLng },
-            heading,
-            accuracy: `${accuracy.toFixed(0)}m`,
-            isOnline: isOnlineRef.current,
-            timestamp: new Date().toISOString()
-          })
-          
-          // Send SMOOTHED location to backend if user is online (throttle to every 5 seconds)
-          if (isOnlineRef.current && smoothedLocation) {
+      (position) => {
+        // Validate coordinates first
+        const latitude = position.coords.latitude
+        const longitude = position.coords.longitude
+        const accuracy = position.coords.accuracy || 0
+
+        // Basic validation
+        if (typeof latitude !== 'number' || typeof longitude !== 'number' ||
+          isNaN(latitude) || isNaN(longitude) ||
+          latitude < -90 || latitude > 90 ||
+          longitude < -180 || longitude > 180) {
+          console.warn("⚠️ Invalid coordinates received:", { latitude, longitude })
+          return
+        }
+
+        // ============================================
+        // STABLE TRACKING FILTERING (RAPIDO STYLE)
+        // ============================================
+
+        // Apply filtering: accuracy, distance jump, speed checks
+        const shouldAccept = shouldAcceptLocation(
+          position,
+          lastValidLocationRef.current,
+          lastLocationTimeRef.current
+        )
+
+        if (!shouldAccept) {
+          // Location rejected by filter - but send to backend if it's been > 30 seconds since last update
+          // This ensures admin map always shows delivery boy even with poor GPS
+          if (isOnlineRef.current && lastValidLocationRef.current) {
             const now = Date.now();
             const lastSentTime = window.lastLocationSentTime || 0;
             const timeSinceLastSend = now - lastSentTime;
-            
-            // Use smoothed location for backend (not raw GPS) - already declared above
-            
-            // Simple distance check using Haversine formula
-            const calculateDistance = (lat1, lng1, lat2, lng2) => {
-              const R = 6371; // Earth's radius in km
-              const dLat = (lat2 - lat1) * Math.PI / 180;
-              const dLng = (lng2 - lng1) * Math.PI / 180;
-              const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2);
-              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-              return R * c;
-            };
-            
-            // Get last sent location for distance check
-            const lastSentLocation = window.lastSentLocation || null;
-            
-            // Send location every 5 seconds OR if location changed significantly (>50m)
-            const shouldSend = timeSinceLastSend >= 5000 || 
-              (lastSentLocation && 
-               calculateDistance(lastSentLocation[0], lastSentLocation[1], smoothedLat, smoothedLng) > 0.05);
-            
-            if (shouldSend) {
-              // Final validation before sending to backend
-              // Ensure coordinates are in correct format [lat, lng] and within valid ranges
-              if (smoothedLat >= -90 && smoothedLat <= 90 && smoothedLng >= -180 && smoothedLng <= 180) {
-                console.log('📤 Sending smoothed location to backend:', { 
-                  smoothed: { lat: smoothedLat, lng: smoothedLng },
-                  raw: { lat: latitude, lng: longitude },
-                  accuracy: `${accuracy.toFixed(0)}m`,
-                  timeSinceLastSend: `${(timeSinceLastSend / 1000).toFixed(1)}s`
+
+            // Fallback: Send last valid location every 30 seconds even if new location is rejected
+            if (timeSinceLastSend >= 30000) {
+              const [lat, lng] = lastValidLocationRef.current;
+              if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                console.log('📤 Sending fallback location to backend (filter rejected new location):', {
+                  lat,
+                  lng,
+                  accuracy: accuracy.toFixed(2) + 'm',
+                  timeSinceLastSend: (timeSinceLastSend / 1000).toFixed(0) + 's'
                 });
-                
-                deliveryAPI.updateLocation(smoothedLat, smoothedLng, true)
+                deliveryAPI.updateLocation(lat, lng, true)
                   .then(() => {
                     window.lastLocationSentTime = now;
-                    window.lastSentLocation = smoothedLocation; // Store last sent location
-                    console.log('✅ Smoothed location sent to backend successfully:', { 
-                      latitude: smoothedLat, 
-                      longitude: smoothedLng,
-                      format: "lat, lng (correct order)",
-                      accuracy: `${accuracy.toFixed(0)}m`
-                    });
+                    console.log('✅ Fallback location sent to backend successfully');
                   })
                   .catch(error => {
-                    // Only log non-network errors (backend might be down, which is expected in dev)
                     if (error.code !== 'ERR_NETWORK' && error.message !== 'Network Error') {
-                      console.error('❌ Error sending location to backend:', error);
-                    } else {
-                      // Silently handle network errors - backend might not be running
-                      // Socket.IO will handle reconnection automatically
+                      console.error('❌ Error sending fallback location:', error);
                     }
                   });
-              } else {
-                console.error('❌ Invalid smoothed coordinates - not sending to backend:', { 
-                  smoothedLat, 
-                  smoothedLng,
-                  raw: { latitude, longitude }
-                });
               }
             }
           }
-        },
-        (error) => {
-          console.warn("⚠️ Error watching location:", error)
-        },
-        { 
-          enableHighAccuracy: true, 
-          maximumAge: 0, // Always use fresh location
-          timeout: 10000
+          // Keep using last valid location
+          return
         }
-      )
 
-      watchPositionIdRef.current = watchId
+        // Location passed filter - add to history
+        const rawLocation = [latitude, longitude]
+        locationHistoryRef.current.push(rawLocation)
 
-      // Show bike marker immediately if we have last known location and map is ready
-      if (window.deliveryMapInstance && lastLocationRef.current && lastLocationRef.current.length === 2) {
-        const [lat, lng] = lastLocationRef.current
-        // Get heading from route history if available
-        let heading = null
-        if (routeHistoryRef.current.length > 1) {
-          const prev = routeHistoryRef.current[routeHistoryRef.current.length - 2]
-          heading = calculateHeading(prev.lat, prev.lng, lat, lng)
+        // Keep only last 5 points for moving average
+        if (locationHistoryRef.current.length > 5) {
+          locationHistoryRef.current.shift()
         }
-        createOrUpdateBikeMarker(lat, lng, heading, !isUserPanningRef.current)
+
+        // Apply moving average smoothing
+        const smoothedLocation = smoothLocation(locationHistoryRef.current)
+
+        if (!smoothedLocation) {
+          // Not enough points yet, use raw location
+          const newLocation = rawLocation
+          lastValidLocationRef.current = newLocation
+          lastLocationTimeRef.current = Date.now()
+          smoothedLocationRef.current = newLocation
+
+          // Initialize if first location
+          if (!lastLocationRef.current) {
+            setRiderLocation(newLocation)
+            lastLocationRef.current = newLocation
+            routeHistoryRef.current = [{
+              lat: newLocation[0],
+              lng: newLocation[1]
+            }]
+
+            // Save to localStorage
+            localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(newLocation))
+
+            // Update marker with correct location
+            if (window.deliveryMapInstance) {
+              const [lat, lng] = newLocation
+              console.log('📍 Updating bike marker with first location:', { lat, lng })
+
+              // Validate coordinates
+              if (typeof lat === 'number' && typeof lng === 'number' &&
+                !isNaN(lat) && !isNaN(lng) &&
+                lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                if (bikeMarkerRef.current) {
+                  bikeMarkerRef.current.setPosition({ lat, lng })
+                  console.log('✅ Bike marker position updated to first location')
+                } else {
+                  // Create marker if it doesn't exist
+                  createOrUpdateBikeMarker(lat, lng, null, true)
+                  console.log('✅ Bike marker created with first location')
+                }
+              } else {
+                console.error('❌ Invalid coordinates for bike marker:', { lat, lng })
+              }
+            }
+          }
+
+          // Send raw location to backend even if not smoothed yet
+          if (isOnlineRef.current) {
+            const [lat, lng] = newLocation
+            const now = Date.now();
+            const lastSentTime = window.lastLocationSentTime || 0;
+            const timeSinceLastSend = now - lastSentTime;
+
+            // Send location every 5 seconds even if not smoothed
+            if (timeSinceLastSend >= 5000) {
+              if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                console.log('📤 Sending raw location to backend (not smoothed yet):', { lat, lng })
+                deliveryAPI.updateLocation(lat, lng, true)
+                  .then(() => {
+                    window.lastLocationSentTime = now;
+                    window.lastSentLocation = newLocation;
+                    console.log('✅ Raw location sent to backend successfully')
+                  })
+                  .catch(error => {
+                    if (error.code !== 'ERR_NETWORK' && error.message !== 'Network Error') {
+                      console.error('❌ Error sending raw location to backend:', error);
+                    }
+                  });
+              }
+            }
+          }
+
+          return
+        }
+
+        // ============================================
+        // SMOOTH MARKER ANIMATION (NO INSTANT JUMPS)
+        // ============================================
+
+        const [smoothedLat, smoothedLng] = smoothedLocation
+        const newSmoothedLocation = { lat: smoothedLat, lng: smoothedLng }
+
+        // Calculate heading
+        let heading = position.coords.heading !== null && position.coords.heading !== undefined
+          ? position.coords.heading
+          : null
+
+        if (heading === null && smoothedLocationRef.current) {
+          const [prevLat, prevLng] = smoothedLocationRef.current
+          heading = calculateHeading(prevLat, prevLng, smoothedLat, smoothedLng)
+        }
+
+        // Update refs
+        lastValidLocationRef.current = smoothedLocation
+        lastLocationTimeRef.current = Date.now()
+        smoothedLocationRef.current = smoothedLocation
+
+        // Update route history with smoothed location
+        routeHistoryRef.current.push({
+          lat: smoothedLat,
+          lng: smoothedLng
+        })
+        if (routeHistoryRef.current.length > 1000) {
+          routeHistoryRef.current.shift()
+        }
+
+        // Save smoothed location to localStorage
+        localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(smoothedLocation))
+
+        // Update live tracking polyline for any active route (pickup or delivery)
+        const currentDirectionsResponse = directionsResponseRef.current;
+        if (currentDirectionsResponse && currentDirectionsResponse.routes && currentDirectionsResponse.routes.length > 0) {
+          updateLiveTrackingPolyline(currentDirectionsResponse, smoothedLocation);
+        }
+
+        // ============================================
+        // SMOOTH MARKER ANIMATION (1-2 seconds)
+        // ============================================
+
+        // Update state with smoothed location FIRST
+        setRiderLocation(smoothedLocation)
+        lastLocationRef.current = smoothedLocation
+
+        // Always update bike marker with latest smoothed location
+        if (window.deliveryMapInstance) {
+          if (bikeMarkerRef.current) {
+            // Marker exists - animate smoothly to new position
+            animateMarkerSmoothly(bikeMarkerRef.current, newSmoothedLocation, 1500, markerAnimationRef)
+          } else {
+            // Marker doesn't exist yet, create it immediately with correct location
+            console.log('📍 Creating bike marker with smoothed location:', { lat: smoothedLat, lng: smoothedLng })
+            createOrUpdateBikeMarker(smoothedLat, smoothedLng, heading, !isUserPanningRef.current)
+          }
+        }
+
+        // Update route polyline
+        updateRoutePolyline()
+
+        console.log("📍 Live location updated (smoothed):", {
+          raw: { lat: latitude, lng: longitude },
+          smoothed: { lat: smoothedLat, lng: smoothedLng },
+          heading,
+          accuracy: `${accuracy.toFixed(0)}m`,
+          isOnline: isOnlineRef.current,
+          timestamp: new Date().toISOString()
+        })
+
+        // Send SMOOTHED location to backend if user is online (throttle to every 5 seconds)
+        if (isOnlineRef.current && smoothedLocation) {
+          const now = Date.now();
+          const lastSentTime = window.lastLocationSentTime || 0;
+          const timeSinceLastSend = now - lastSentTime;
+
+          // Use smoothed location for backend (not raw GPS) - already declared above
+
+          // Simple distance check using Haversine formula
+          const calculateDistance = (lat1, lng1, lat2, lng2) => {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+          };
+
+          // Get last sent location for distance check
+          const lastSentLocation = window.lastSentLocation || null;
+
+          // Send location every 5 seconds OR if location changed significantly (>50m)
+          const shouldSend = timeSinceLastSend >= 5000 ||
+            (lastSentLocation &&
+              calculateDistance(lastSentLocation[0], lastSentLocation[1], smoothedLat, smoothedLng) > 0.05);
+
+          if (shouldSend) {
+            // Final validation before sending to backend
+            // Ensure coordinates are in correct format [lat, lng] and within valid ranges
+            if (smoothedLat >= -90 && smoothedLat <= 90 && smoothedLng >= -180 && smoothedLng <= 180) {
+              console.log('📤 Sending smoothed location to backend:', {
+                smoothed: { lat: smoothedLat, lng: smoothedLng },
+                raw: { lat: latitude, lng: longitude },
+                accuracy: `${accuracy.toFixed(0)}m`,
+                timeSinceLastSend: `${(timeSinceLastSend / 1000).toFixed(1)}s`
+              });
+
+              deliveryAPI.updateLocation(smoothedLat, smoothedLng, true)
+                .then(() => {
+                  window.lastLocationSentTime = now;
+                  window.lastSentLocation = smoothedLocation; // Store last sent location
+                  console.log('✅ Smoothed location sent to backend successfully:', {
+                    latitude: smoothedLat,
+                    longitude: smoothedLng,
+                    format: "lat, lng (correct order)",
+                    accuracy: `${accuracy.toFixed(0)}m`
+                  });
+                })
+                .catch(error => {
+                  // Only log non-network errors (backend might be down, which is expected in dev)
+                  if (error.code !== 'ERR_NETWORK' && error.message !== 'Network Error') {
+                    console.error('❌ Error sending location to backend:', error);
+                  } else {
+                    // Silently handle network errors - backend might not be running
+                    // Socket.IO will handle reconnection automatically
+                  }
+                });
+            } else {
+              console.error('❌ Invalid smoothed coordinates - not sending to backend:', {
+                smoothedLat,
+                smoothedLng,
+                raw: { latitude, longitude }
+              });
+            }
+          }
+        }
+      },
+      (error) => {
+        console.warn("⚠️ Error watching location:", error)
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0, // Always use fresh location
+        timeout: 10000
       }
+    )
 
-      return () => {
-        if (watchPositionIdRef.current !== null) {
-          navigator.geolocation.clearWatch(watchPositionIdRef.current)
-          watchPositionIdRef.current = null
-        }
+    watchPositionIdRef.current = watchId
+
+    // Show bike marker immediately if we have last known location and map is ready
+    if (window.deliveryMapInstance && lastLocationRef.current && lastLocationRef.current.length === 2) {
+      const [lat, lng] = lastLocationRef.current
+      // Get heading from route history if available
+      let heading = null
+      if (routeHistoryRef.current.length > 1) {
+        const prev = routeHistoryRef.current[routeHistoryRef.current.length - 2]
+        heading = calculateHeading(prev.lat, prev.lng, lat, lng)
       }
+      createOrUpdateBikeMarker(lat, lng, heading, !isUserPanningRef.current)
+    }
+
+    return () => {
+      if (watchPositionIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchPositionIdRef.current)
+        watchPositionIdRef.current = null
+      }
+    }
   }, [isOnline]) // Re-run when online status changes - this controls start/stop of tracking
 
   // Handle new order popup accept button swipe
@@ -2108,14 +2108,14 @@ export default function DeliveryHome() {
       const acceptOrderAndShowRoute = async () => {
         // Get order ID from selectedRestaurant or newOrder (define outside try-catch for error handling)
         const orderId = selectedRestaurant?.id || newOrder?.orderMongoId || newOrder?.orderId
-        
+
         console.log('🔍 Order ID lookup:', {
           selectedRestaurantId: selectedRestaurant?.id,
           newOrderMongoId: newOrder?.orderMongoId,
           newOrderId: newOrder?.orderId,
           finalOrderId: orderId
         })
-        
+
         if (!orderId) {
           console.error('❌ No order ID found to accept')
           toast.error('Order ID not found. Please try again.')
@@ -2124,16 +2124,16 @@ export default function DeliveryHome() {
 
         // Declare currentLocation in outer scope so it's accessible in catch block
         let currentLocation = null
-        
+
         try {
           // Get current LIVE location (prioritize riderLocation which is updated in real-time)
           currentLocation = riderLocation
-          
+
           // If riderLocation is not available, try to get from lastLocationRef
           if (!currentLocation || currentLocation.length !== 2) {
             currentLocation = lastLocationRef.current
           }
-          
+
           // If still not available, try to get current position
           if (!currentLocation || currentLocation.length !== 2) {
             try {
@@ -2154,7 +2154,7 @@ export default function DeliveryHome() {
               return
             }
           }
-          
+
           // Validate currentLocation before proceeding
           if (!currentLocation || currentLocation.length !== 2) {
             console.error('❌ No valid location available')
@@ -2176,7 +2176,7 @@ export default function DeliveryHome() {
             lat: currentLocation[0], // latitude
             lng: currentLocation[1]  // longitude
           })
-          
+
           console.log('📡 API Response:', response.data)
 
           if (response.data?.success && response.data.data) {
@@ -2187,7 +2187,7 @@ export default function DeliveryHome() {
               alertAudioRef.current = null
               console.log('[NewOrder] 🔇 Audio stopped (order accepted successfully)')
             }
-            
+
             const orderData = response.data.data
             const order = orderData.order || orderData // Backend returns { order, route }
             const routeData = response.data.data.route
@@ -2209,11 +2209,11 @@ export default function DeliveryHome() {
               const restaurantCoords = order.restaurantId?.location?.coordinates || []
               const restaurantLat = restaurantCoords[1] // Latitude is second element
               const restaurantLng = restaurantCoords[0] // Longitude is first element
-              
+
               // Format restaurant address - check multiple possible locations
               let restaurantAddress = 'Restaurant Address'
               const restaurantLocation = order.restaurantId?.location
-              
+
               // Debug: Log order structure to understand data format
               console.log('🔍 Order structure for address extraction:', {
                 hasRestaurantId: !!order.restaurantId,
@@ -2227,7 +2227,7 @@ export default function DeliveryHome() {
                 locationStreet: restaurantLocation?.street,
                 orderRestaurantAddress: order.restaurantAddress
               })
-              
+
               // Priority 1: Direct address fields on restaurantId
               if (order.restaurantId?.address) {
                 restaurantAddress = order.restaurantId.address
@@ -2295,10 +2295,10 @@ export default function DeliveryHome() {
                 const restaurantId = order.restaurantId
                 if (restaurantId) {
                   // Handle both string and object restaurantId
-                  const restaurantIdString = typeof restaurantId === 'string' 
-                    ? restaurantId 
+                  const restaurantIdString = typeof restaurantId === 'string'
+                    ? restaurantId
                     : (restaurantId._id || restaurantId.id || restaurantId.toString())
-                  
+
                   if (restaurantIdString) {
                     try {
                       console.log('🔄 Fetching restaurant address by ID:', restaurantIdString)
@@ -2307,7 +2307,7 @@ export default function DeliveryHome() {
                         const restaurant = restaurantResponse.data.data.restaurant || restaurantResponse.data.data
                         const restLocation = restaurant.location
                         console.log('✅ Fetched restaurant data:', { restaurant, restLocation })
-                        
+
                         // Priority: location.formattedAddress (this is what user wants)
                         if (restLocation?.formattedAddress) {
                           restaurantAddress = restLocation.formattedAddress
@@ -2346,21 +2346,21 @@ export default function DeliveryHome() {
                     }
                   }
                 }
-                
+
                 if (restaurantAddress === 'Restaurant Address') {
                   console.warn('⚠️ Restaurant address not found in any location, using default')
                 }
               }
-              
+
               // Extract restaurant name - priority: restaurantName field > restaurantId.name > fallback
               // Backend returns restaurantName as a direct field on order, and restaurantId is populated with name
               let restaurantName = null
-              
+
               // Priority 1: Direct restaurantName field from order (stored in Order model)
               if (order.restaurantName && typeof order.restaurantName === 'string' && order.restaurantName.trim()) {
                 restaurantName = order.restaurantName.trim()
                 console.log('✅ Using restaurantName from order:', restaurantName)
-              } 
+              }
               // Priority 2: Name from populated restaurantId object
               else if (order.restaurantId && typeof order.restaurantId === 'object' && order.restaurantId.name) {
                 restaurantName = order.restaurantId.name.trim()
@@ -2376,15 +2376,15 @@ export default function DeliveryHome() {
                 restaurantName = 'Restaurant'
                 console.error('❌ Restaurant name not found anywhere, using default:', restaurantName)
               }
-              
+
               console.log('🏪 Final extracted restaurant name:', restaurantName)
-              
+
               // Extract earnings from backend response
               const backendEarnings = orderData.estimatedEarnings || response.data.data.estimatedEarnings;
-              const earningsValue = backendEarnings 
+              const earningsValue = backendEarnings
                 ? (typeof backendEarnings === 'object' ? backendEarnings.totalEarning : backendEarnings)
                 : (selectedRestaurant?.estimatedEarnings || 0);
-              
+
               console.log('💰 Earnings from backend:', {
                 backendEarnings,
                 earningsValue,
@@ -2406,9 +2406,9 @@ export default function DeliveryHome() {
                 estimatedEarnings: backendEarnings || selectedRestaurant?.estimatedEarnings || 0,
                 amount: earningsValue, // Also set amount for compatibility
                 customerName: order.userId?.name || selectedRestaurant?.customerName,
-                customerAddress: order.address?.formattedAddress || 
-                                (order.address?.street ? `${order.address.street}, ${order.address.city || ''}, ${order.address.state || ''}`.trim() : '') ||
-                                selectedRestaurant?.customerAddress,
+                customerAddress: order.address?.formattedAddress ||
+                  (order.address?.street ? `${order.address.street}, ${order.address.city || ''}, ${order.address.state || ''}`.trim() : '') ||
+                  selectedRestaurant?.customerAddress,
                 customerLat: order.address?.location?.coordinates?.[1],
                 customerLng: order.address?.location?.coordinates?.[0],
                 items: order.items || [],
@@ -2424,7 +2424,7 @@ export default function DeliveryHome() {
                 }, // Store delivery state (currentPhase, status, etc.)
                 deliveryPhase: 'en_route_to_pickup' // CRITICAL: Set to en_route_to_pickup after order acceptance so Reached Pickup popup can show
               }
-              
+
               console.log('🏪 Updated restaurant info from backend:', restaurantInfo)
               // Update state immediately
               setSelectedRestaurant(restaurantInfo)
@@ -2446,7 +2446,7 @@ export default function DeliveryHome() {
               setRoutePolyline(routeCoordinates);
               console.log('✅ Route set from backend:', routeCoordinates.length, 'points');
             }
-            
+
             // Calculate route using Google Maps Directions API (Zomato-style road-based routing)
             // Use LIVE location from delivery boy to restaurant
             // Use restaurantInfo directly (not selectedRestaurant) since state update is async
@@ -2454,31 +2454,31 @@ export default function DeliveryHome() {
               console.log('🗺️ Calculating route with Google Maps Directions API...');
               console.log('📍 From (Delivery Boy Live Location):', currentLocation);
               console.log('📍 To (Restaurant):', { lat: restaurantInfo.lat, lng: restaurantInfo.lng });
-              
+
               try {
                 // Calculate route immediately with current live location
                 const directionsResult = await calculateRouteWithDirectionsAPI(
                   currentLocation, // Delivery boy's current live location
                   { lat: restaurantInfo.lat, lng: restaurantInfo.lng } // Restaurant location
                 );
-                
+
                 if (directionsResult) {
                   console.log('✅ Route calculated with Directions API from live location');
                   console.log('📍 Route distance:', directionsResult.routes[0]?.legs[0]?.distance?.text);
                   console.log('📍 Route duration:', directionsResult.routes[0]?.legs[0]?.duration?.text);
-                  
+
                   // Store pickup route distance and time
                   const pickupDistance = directionsResult.routes[0]?.legs[0]?.distance?.value || 0; // in meters
                   const pickupDuration = directionsResult.routes[0]?.legs[0]?.duration?.value || 0; // in seconds
                   pickupRouteDistanceRef.current = pickupDistance;
                   pickupRouteTimeRef.current = pickupDuration;
                   console.log('📊 Pickup route stored:', { distance: pickupDistance, duration: pickupDuration });
-                  
+
                   // Store directions result for rendering on main map
                   setDirectionsResponse(directionsResult);
                   directionsResponseRef.current = directionsResult; // Store in ref for callbacks
                   directionsResultForMap = directionsResult; // Store for use in setTimeout
-                  
+
                   // Initialize live tracking polyline with full route (Delivery Boy → Restaurant)
                   if (currentLocation) {
                     // Ensure map is ready before updating polyline
@@ -2495,7 +2495,7 @@ export default function DeliveryHome() {
                       }, 500);
                     }
                   }
-                  
+
                   console.log('✅ Route to restaurant initialized - polyline will update as delivery boy moves');
                 } else {
                   // Fallback: Use backend route or OSRM
@@ -2505,7 +2505,7 @@ export default function DeliveryHome() {
                       const url = `https://router.project-osrm.org/route/v1/driving/${currentLocation[1]},${currentLocation[0]};${restaurantInfo.lng},${restaurantInfo.lat}?overview=full&geometries=geojson`;
                       const osrmResponse = await fetch(url);
                       const osrmData = await osrmResponse.json();
-                      
+
                       if (osrmData.code === 'Ok' && osrmData.routes && osrmData.routes.length > 0) {
                         routeCoordinates = osrmData.routes[0].geometry.coordinates.map((coord) => [coord[1], coord[0]]);
                         setRoutePolyline(routeCoordinates);
@@ -2531,7 +2531,7 @@ export default function DeliveryHome() {
                 } else {
                   console.error('❌ Error calculating route with Directions API:', directionsError);
                 }
-                
+
                 // Fallback to OSRM or straight line
                 if (!routeCoordinates || routeCoordinates.length === 0) {
                   try {
@@ -2539,7 +2539,7 @@ export default function DeliveryHome() {
                     const url = `https://router.project-osrm.org/route/v1/driving/${currentLocation[1]},${currentLocation[0]};${restaurantInfo.lng},${restaurantInfo.lat}?overview=full&geometries=geojson`;
                     const osrmResponse = await fetch(url);
                     const osrmData = await osrmResponse.json();
-                    
+
                     if (osrmData.code === 'Ok' && osrmData.routes && osrmData.routes.length > 0) {
                       routeCoordinates = osrmData.routes[0].geometry.coordinates.map((coord) => [coord[1], coord[0]]);
                       setRoutePolyline(routeCoordinates);
@@ -2576,20 +2576,20 @@ export default function DeliveryHome() {
               console.log('✅ Added order to accepted list:', acceptedOrderId);
             }
             clearNewOrder();
-            
+
             // Ensure route path is visible
             setShowRoutePath(true);
-            
+
             // Show Reached Pickup popup immediately after order acceptance (no distance check)
             // But only if order is not already past pickup phase
             setTimeout(() => {
               const currentOrderStatus = selectedRestaurant?.orderStatus || selectedRestaurant?.status || '';
               const currentDeliveryPhase = selectedRestaurant?.deliveryPhase || selectedRestaurant?.deliveryState?.currentPhase || '';
-              const isAlreadyPastPickup = currentOrderStatus === 'out_for_delivery' || 
-                                         currentDeliveryPhase === 'en_route_to_delivery' ||
-                                         currentDeliveryPhase === 'en_route_to_drop' ||
-                                         currentDeliveryPhase === 'picked_up';
-              
+              const isAlreadyPastPickup = currentOrderStatus === 'out_for_delivery' ||
+                currentDeliveryPhase === 'en_route_to_delivery' ||
+                currentDeliveryPhase === 'en_route_to_drop' ||
+                currentDeliveryPhase === 'picked_up';
+
               if (!isAlreadyPastPickup) {
                 console.log('✅ Order accepted - showing Reached Pickup popup immediately');
                 setShowreachedPickupPopup(true);
@@ -2599,21 +2599,21 @@ export default function DeliveryHome() {
                 console.log('🚫 Order already past pickup phase, skipping Reached Pickup popup');
               }
             }, 500); // Wait 500ms for state to update
-            
+
             // Show route on main map instead of opening full-screen directions map
             setTimeout(() => {
               console.log('✅ Showing route on main map from live location to restaurant');
               console.log('📍 Flow: Order Accepted → Route to Restaurant → 500m Detection → Reached Pickup → Order ID → Route to Customer → 500m Detection → Reached Drop → Delivered → Review → Payment');
-              
+
               // Show route on main map using DirectionsRenderer or polyline
               if (window.deliveryMapInstance && restaurantInfo) {
                 // Use DirectionsRenderer on main map if we have directions result
                 // Use directionsResponse state (which was set above) instead of local variable
                 const directionsResult = directionsResultForMap || (directionsResponse && directionsResponse.routes && directionsResponse.routes.length > 0 ? directionsResponse : null);
-                
+
                 if (directionsResult && directionsResult.routes && directionsResult.routes.length > 0) {
                   console.log('🗺️ Setting up DirectionsRenderer on main map with route:', directionsResult);
-                  
+
                   // Initialize DirectionsRenderer for main map if not exists
                   // Don't create DirectionsRenderer - it adds dots
                   // We'll extract route path and use custom polyline instead
@@ -2634,7 +2634,7 @@ export default function DeliveryHome() {
                     // Explicitly don't set map - we use custom polyline instead
                     console.log('✅ DirectionsRenderer created (not on map - using custom polyline)');
                   }
-                  
+
                   // Extract route path directly from directionsResult (don't use DirectionsRenderer - it adds dots)
                   try {
                     // Validate directionsResult is a valid DirectionsResult object
@@ -2655,7 +2655,7 @@ export default function DeliveryHome() {
                       distance: directionsResult.routes?.[0]?.legs?.[0]?.distance?.text,
                       duration: directionsResult.routes?.[0]?.legs?.[0]?.duration?.text
                     });
-                    
+
                     // Don't create main route polyline - only live tracking polyline will be shown
                     // Remove old custom polyline if exists (cleanup)
                     try {
@@ -2663,7 +2663,7 @@ export default function DeliveryHome() {
                         routePolylineRef.current.setMap(null);
                         routePolylineRef.current = null;
                       }
-                      
+
                       // Completely remove DirectionsRenderer from map to prevent any dots/icons
                       if (directionsRendererRef.current) {
                         directionsRendererRef.current.setMap(null);
@@ -2671,7 +2671,7 @@ export default function DeliveryHome() {
                     } catch (e) {
                       console.warn('⚠️ Error cleaning up polyline:', e);
                     }
-                    
+
                     // Fit bounds to show entire route - but preserve zoom if user has zoomed in
                     const bounds = directionsResult.routes[0].bounds;
                     if (bounds) {
@@ -2686,7 +2686,7 @@ export default function DeliveryHome() {
                       }, 100);
                       console.log('✅ Map bounds fitted to route');
                     }
-                    
+
                     console.log('✅ Route displayed on main map using custom polyline');
                   } catch (error) {
                     console.error('❌ Error extracting route path:', error);
@@ -2702,19 +2702,19 @@ export default function DeliveryHome() {
                 } else {
                   console.warn('⚠️ No route data available to display (neither Directions API result nor coordinates)');
                 }
-                
+
                 // Add restaurant marker to main map
                 if (restaurantInfo.lat && restaurantInfo.lng) {
                   const restaurantLocation = {
                     lat: restaurantInfo.lat,
                     lng: restaurantInfo.lng
                   };
-                  
+
                   // Remove old restaurant marker if exists
                   if (restaurantMarkerRef.current) {
                     restaurantMarkerRef.current.setMap(null);
                   }
-                  
+
                   // Create restaurant marker on main map with kitchen icon
                   restaurantMarkerRef.current = new window.google.maps.Marker({
                     position: restaurantLocation,
@@ -2735,13 +2735,13 @@ export default function DeliveryHome() {
                     animation: window.google.maps.Animation.DROP,
                     zIndex: 10
                   });
-                  
+
                   console.log('✅ Restaurant marker added to main map');
                 }
               } else {
                 console.warn('⚠️ Main map not ready, will show route when map loads');
               }
-              
+
               // Save accepted order to localStorage for refresh handling
               try {
                 const activeOrderData = {
@@ -2758,7 +2758,7 @@ export default function DeliveryHome() {
               } catch (storageError) {
                 console.error('❌ Error saving active order to localStorage:', storageError);
               }
-              
+
               // Don't show Reached Pickup popup here - it will be shown when order becomes ready via WebSocket
               // The popup will be triggered by orderReady event from backend
             }, 300); // Wait for popup close animation
@@ -2783,12 +2783,12 @@ export default function DeliveryHome() {
             isNetworkError: error.code === 'ERR_NETWORK',
             currentLocation: currentLocation && currentLocation.length === 2 ? 'available' : 'not available'
           })
-          
+
           // Log full error response for debugging
           if (error.response?.data) {
             console.error('❌ Backend error response:', JSON.stringify(error.response.data, null, 2))
           }
-          
+
           // Show user-friendly error message
           let errorMessage = 'Failed to accept order. Please try again.'
           if (error.code === 'ERR_NETWORK') {
@@ -2802,9 +2802,9 @@ export default function DeliveryHome() {
           } else if (error.message) {
             errorMessage = error.message
           }
-          
+
           toast.error(errorMessage)
-          
+
           // Close popup even on error
           setShowNewOrderPopup(false)
           setIsNewOrderPopupMinimized(false) // Reset minimized state
@@ -2989,11 +2989,11 @@ export default function DeliveryHome() {
       // Close popup after animation, confirm reached pickup, then show order ID confirmation popup
       setTimeout(async () => {
         setShowreachedPickupPopup(false)
-        
+
         // Get order ID - prioritize orderId (string) over id (MongoDB _id) for better compatibility
         // Backend accepts both _id and orderId, but orderId is more reliable
         const orderId = selectedRestaurant?.orderId || selectedRestaurant?.id || newOrder?.orderId || newOrder?.orderMongoId
-        
+
         console.log('🔍 Order ID lookup for reached pickup:', {
           selectedRestaurantId: selectedRestaurant?.id,
           selectedRestaurantOrderId: selectedRestaurant?.orderId,
@@ -3001,32 +3001,32 @@ export default function DeliveryHome() {
           newOrderId: newOrder?.orderId,
           finalOrderId: orderId
         })
-        
+
         // CRITICAL: Check if order is already delivered/completed - don't call API
         const orderStatus = selectedRestaurant?.orderStatus || selectedRestaurant?.status || ''
         const deliveryPhase = selectedRestaurant?.deliveryPhase || selectedRestaurant?.deliveryState?.currentPhase || ''
         const deliveryStateStatus = selectedRestaurant?.deliveryState?.status || ''
-        
-        const isDelivered = orderStatus === 'delivered' || 
-                            deliveryPhase === 'completed' || 
-                            deliveryPhase === 'delivered' ||
-                            deliveryStateStatus === 'delivered'
-        
+
+        const isDelivered = orderStatus === 'delivered' ||
+          deliveryPhase === 'completed' ||
+          deliveryPhase === 'delivered' ||
+          deliveryStateStatus === 'delivered'
+
         if (isDelivered) {
           console.warn('⚠️ Order is already delivered, skipping reached pickup confirmation')
           toast.error('Order is already delivered. Cannot confirm reached pickup.')
           setShowreachedPickupPopup(false)
           return
         }
-        
+
         // CRITICAL: Check if order is already past pickup phase (order ID confirmed or out for delivery)
         const isPastPickupPhase = orderStatus === 'out_for_delivery' ||
-                                  deliveryPhase === 'en_route_to_delivery' ||
-                                  deliveryPhase === 'picked_up' ||
-                                  deliveryStateStatus === 'order_confirmed' ||
-                                  deliveryStateStatus === 'reached_pickup' ||
-                                  deliveryPhase === 'at_pickup'
-        
+          deliveryPhase === 'en_route_to_delivery' ||
+          deliveryPhase === 'picked_up' ||
+          deliveryStateStatus === 'order_confirmed' ||
+          deliveryStateStatus === 'reached_pickup' ||
+          deliveryPhase === 'at_pickup'
+
         if (isPastPickupPhase) {
           console.warn('⚠️ Order is already past pickup phase, skipping reached pickup confirmation:', {
             orderStatus,
@@ -3046,20 +3046,20 @@ export default function DeliveryHome() {
           }
           return
         }
-        
+
         if (orderId) {
           try {
             // Call backend API to confirm reached pickup and save status in database
             console.log('📦 Confirming reached pickup for order:', orderId)
             console.log('📦 API endpoint: /delivery/orders/:orderId/reached-pickup')
             const response = await deliveryAPI.confirmReachedPickup(orderId)
-            
+
             console.log('📦 Reached pickup API response:', response.data)
-            
+
             if (response.data?.success) {
               console.log('✅ Reached pickup confirmed and status saved in database')
               toast.success('Reached pickup confirmed!')
-              
+
               // Update local state to reflect the new status
               if (selectedRestaurant) {
                 setSelectedRestaurant(prev => ({
@@ -3071,7 +3071,7 @@ export default function DeliveryHome() {
                   }
                 }))
               }
-              
+
               // Ensure reached pickup popup is closed first
               setShowreachedPickupPopup(false)
               // Wait for reached pickup popup to close, then show order ID confirmation popup
@@ -3099,12 +3099,12 @@ export default function DeliveryHome() {
               orderId: orderId || 'unknown',
               selectedRestaurant: selectedRestaurant
             })
-            
+
             // Show specific error message
-            const errorMessage = error.response?.data?.message || 
-                               (error.response?.status === 404 ? 'Order not found. Please refresh and try again.' : 'Failed to confirm reached pickup. Please try again.')
+            const errorMessage = error.response?.data?.message ||
+              (error.response?.status === 404 ? 'Order not found. Please refresh and try again.' : 'Failed to confirm reached pickup. Please try again.')
             toast.error(errorMessage)
-            
+
             // Ensure reached pickup popup is closed
             setShowreachedPickupPopup(false)
             // Still show order ID popup even if API call fails, after delay
@@ -3124,9 +3124,9 @@ export default function DeliveryHome() {
             console.log('⚠️ Showing Order ID confirmation popup without order ID (fallback)')
           }, 300)
         }
-        
+
         // DO NOT show reached drop here - it will only show after order ID is confirmed
-        
+
         // Reset after animation
         setTimeout(() => {
           setreachedPickupButtonProgress(0)
@@ -3194,80 +3194,80 @@ export default function DeliveryHome() {
       // Close popup, confirm reached drop, and show order delivered animation instantly (no delay)
       // Close reached drop popup first
       setShowReachedDropPopup(false)
-      
+
       // Show Order Delivered popup instantly after Reached Drop is confirmed
       console.log('✅ Showing Order Delivered popup instantly after Reached Drop confirmation')
       setShowOrderDeliveredAnimation(true)
-      
-      // API call in background (async, doesn't block popup)
-      ;(async () => {
-        // Get order ID - prioritize MongoDB _id over orderId string for API call
-        // Backend expects _id (MongoDB ObjectId) in the URL parameter
-        // Use _id (MongoDB ObjectId) if available, otherwise fallback to orderId string
-        const orderIdForApi = selectedRestaurant?.id || 
-                             newOrder?.orderMongoId || 
-                             newOrder?._id ||
-                             selectedRestaurant?.orderId || 
-                             newOrder?.orderId
-        
-        console.log('🔍 Order ID lookup for reached drop:', {
-          selectedRestaurantId: selectedRestaurant?.id,
-          selectedRestaurantOrderId: selectedRestaurant?.orderId,
-          newOrderMongoId: newOrder?.orderMongoId,
-          newOrderId: newOrder?.orderId,
-          finalOrderIdForApi: orderIdForApi
-        })
-        
-        if (orderIdForApi) {
-          try {
-            // Call backend API to confirm reached drop (in background, don't block popup)
-            // Use MongoDB _id for API call to avoid ObjectId casting errors
-            console.log('📦 Confirming reached drop for order:', orderIdForApi)
-            const response = await deliveryAPI.confirmReachedDrop(orderIdForApi)
-            
-            if (response.data?.success) {
-              console.log('✅ Reached drop confirmed')
-            } else {
-              console.error('❌ Failed to confirm reached drop:', response.data)
-              toast.error(response.data?.message || 'Failed to confirm reached drop. Please try again.')
-            }
-          } catch (error) {
-            const status = error.response?.status
-            
-            // Handle 500 errors gracefully (server-side issue, popup already shown)
-            if (status === 500) {
-              // For 500 errors, just log warning - popup is already shown, backend will sync later
-              console.warn('⚠️ Server error confirming reached drop (500), but popup is shown. Backend will sync status automatically.', {
+
+        // API call in background (async, doesn't block popup)
+        ; (async () => {
+          // Get order ID - prioritize MongoDB _id over orderId string for API call
+          // Backend expects _id (MongoDB ObjectId) in the URL parameter
+          // Use _id (MongoDB ObjectId) if available, otherwise fallback to orderId string
+          const orderIdForApi = selectedRestaurant?.id ||
+            newOrder?.orderMongoId ||
+            newOrder?._id ||
+            selectedRestaurant?.orderId ||
+            newOrder?.orderId
+
+          console.log('🔍 Order ID lookup for reached drop:', {
+            selectedRestaurantId: selectedRestaurant?.id,
+            selectedRestaurantOrderId: selectedRestaurant?.orderId,
+            newOrderMongoId: newOrder?.orderMongoId,
+            newOrderId: newOrder?.orderId,
+            finalOrderIdForApi: orderIdForApi
+          })
+
+          if (orderIdForApi) {
+            try {
+              // Call backend API to confirm reached drop (in background, don't block popup)
+              // Use MongoDB _id for API call to avoid ObjectId casting errors
+              console.log('📦 Confirming reached drop for order:', orderIdForApi)
+              const response = await deliveryAPI.confirmReachedDrop(orderIdForApi)
+
+              if (response.data?.success) {
+                console.log('✅ Reached drop confirmed')
+              } else {
+                console.error('❌ Failed to confirm reached drop:', response.data)
+                toast.error(response.data?.message || 'Failed to confirm reached drop. Please try again.')
+              }
+            } catch (error) {
+              const status = error.response?.status
+
+              // Handle 500 errors gracefully (server-side issue, popup already shown)
+              if (status === 500) {
+                // For 500 errors, just log warning - popup is already shown, backend will sync later
+                console.warn('⚠️ Server error confirming reached drop (500), but popup is shown. Backend will sync status automatically.', {
+                  orderIdForApi: orderIdForApi || 'unknown',
+                  message: error.response?.data?.message || error.message
+                })
+                // Don't show error toast or log as error - it's a server issue, not user action
+                return
+              }
+
+              // For other errors, log and show error message
+              console.error('❌ Error confirming reached drop:', error)
+              console.error('❌ Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: status,
                 orderIdForApi: orderIdForApi || 'unknown',
-                message: error.response?.data?.message || error.message
+                selectedRestaurant: selectedRestaurant,
+                newOrder: newOrder
               })
-              // Don't show error toast or log as error - it's a server issue, not user action
-              return
+
+              // Show specific error message based on status code
+              let errorMessage = 'Failed to confirm reached drop. Please try again.'
+              if (status === 404) {
+                errorMessage = 'Order not found. Please refresh and try again.'
+              } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message
+              }
+
+              toast.error(errorMessage)
             }
-            
-            // For other errors, log and show error message
-            console.error('❌ Error confirming reached drop:', error)
-            console.error('❌ Error details:', {
-              message: error.message,
-              response: error.response?.data,
-              status: status,
-              orderIdForApi: orderIdForApi || 'unknown',
-              selectedRestaurant: selectedRestaurant,
-              newOrder: newOrder
-            })
-            
-            // Show specific error message based on status code
-            let errorMessage = 'Failed to confirm reached drop. Please try again.'
-            if (status === 404) {
-              errorMessage = 'Order not found. Please refresh and try again.'
-            } else if (error.response?.data?.message) {
-              errorMessage = error.response.data.message
-            }
-            
-            toast.error(errorMessage)
           }
-        }
-      })()
+        })()
     } else {
       // Reset smoothly
       setReachedDropButtonProgress(0)
@@ -3331,7 +3331,7 @@ export default function DeliveryHome() {
       // Check if Flutter InAppWebView handler is available
       if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
         console.log('📸 Using Flutter InAppWebView camera handler')
-        
+
         // Call Flutter handler to open camera
         const result = await window.flutter_inappwebview.callHandler('openCamera', {
           source: 'camera', // 'camera' for camera, 'gallery' for file picker
@@ -3339,13 +3339,13 @@ export default function DeliveryHome() {
           multiple: false,
           quality: 0.8 // Image quality (0.0 to 1.0)
         })
-        
+
         console.log('📸 Flutter handler response:', result)
-        
+
         if (result && result.success) {
           // Handle the result - could be base64, file path, or file object
           let file = null
-          
+
           if (result.file) {
             // If Flutter returns a File object (preferred method)
             file = result.file
@@ -3354,12 +3354,12 @@ export default function DeliveryHome() {
             // If Flutter returns base64, convert to File
             console.log('📸 Converting base64 to File object')
             let base64Data = result.base64
-            
+
             // Remove data URL prefix if present
             if (base64Data.includes(',')) {
               base64Data = base64Data.split(',')[1]
             }
-            
+
             try {
               const byteCharacters = atob(base64Data)
               const byteNumbers = new Array(byteCharacters.length)
@@ -3383,7 +3383,7 @@ export default function DeliveryHome() {
             toast.error('File path handling not implemented. Please use base64 or File object.')
             return
           }
-          
+
           if (file) {
             // Process the file the same way as handleBillImageSelect
             await processBillImageFile(file)
@@ -3404,7 +3404,7 @@ export default function DeliveryHome() {
     } catch (error) {
       console.error('❌ Error opening camera:', error)
       toast.error('Failed to open camera. Please try again.')
-      
+
       // Fallback to standard file input
       if (cameraInputRef.current) {
         cameraInputRef.current.click()
@@ -3432,7 +3432,7 @@ export default function DeliveryHome() {
 
     try {
       console.log('📸 Uploading bill image to Cloudinary...')
-      
+
       // Upload to Cloudinary via backend
       const uploadResponse = await uploadAPI.uploadMedia(file, {
         folder: 'appzeto/delivery/bills'
@@ -3445,7 +3445,7 @@ export default function DeliveryHome() {
         if (imageUrl) {
           console.log('✅ Bill image uploaded to Cloudinary:', imageUrl)
           setBillImageUrl(imageUrl)
-          
+
           // Bill image is uploaded to Cloudinary, now enable the button
           // The bill image URL will be sent when confirming order ID
           console.log('✅ Bill image uploaded to Cloudinary, ready to save to database')
@@ -3506,35 +3506,35 @@ export default function DeliveryHome() {
       // Close popup after animation, then confirm order ID and show polyline to customer
       setTimeout(async () => {
         setShowOrderIdConfirmationPopup(false)
-        
+
         // Get order ID from selectedRestaurant
         const orderId = selectedRestaurant?.id || selectedRestaurant?.orderId
         const confirmedOrderId = selectedRestaurant?.orderId
-        
+
         // CRITICAL: Check if order is already delivered/completed - don't call API
         const orderStatus = selectedRestaurant?.orderStatus || selectedRestaurant?.status || ''
         const deliveryPhase = selectedRestaurant?.deliveryPhase || selectedRestaurant?.deliveryState?.currentPhase || ''
         const deliveryStateStatus = selectedRestaurant?.deliveryState?.status || ''
-        
-        const isDelivered = orderStatus === 'delivered' || 
-                            deliveryPhase === 'completed' || 
-                            deliveryPhase === 'delivered' ||
-                            deliveryStateStatus === 'delivered'
-        
+
+        const isDelivered = orderStatus === 'delivered' ||
+          deliveryPhase === 'completed' ||
+          deliveryPhase === 'delivered' ||
+          deliveryStateStatus === 'delivered'
+
         if (isDelivered) {
           console.warn('⚠️ Order is already delivered, skipping order ID confirmation')
           toast.error('Order is already delivered. Cannot confirm order ID.')
           setShowOrderIdConfirmationPopup(false)
           return
         }
-        
+
         // CRITICAL: Check if order ID is already confirmed - don't call API again
         const isOrderIdAlreadyConfirmed = orderStatus === 'out_for_delivery' ||
-                                          deliveryPhase === 'en_route_to_delivery' ||
-                                          deliveryPhase === 'picked_up' ||
-                                          deliveryStateStatus === 'order_confirmed' ||
-                                          selectedRestaurant?.deliveryState?.orderIdConfirmedAt
-        
+          deliveryPhase === 'en_route_to_delivery' ||
+          deliveryPhase === 'picked_up' ||
+          deliveryStateStatus === 'order_confirmed' ||
+          selectedRestaurant?.deliveryState?.orderIdConfirmedAt
+
         if (isOrderIdAlreadyConfirmed) {
           console.warn('⚠️ Order ID is already confirmed, skipping confirmation:', {
             orderStatus,
@@ -3558,7 +3558,7 @@ export default function DeliveryHome() {
           toast.info('Order ID is already confirmed. Order is out for delivery.')
           return
         }
-        
+
         if (!orderId) {
           console.error('❌ No order ID found to confirm')
           toast.error('Order ID not found. Please try again.')
@@ -3570,7 +3570,7 @@ export default function DeliveryHome() {
         if (!currentLocation || currentLocation.length !== 2) {
           currentLocation = lastLocationRef.current
         }
-        
+
         if (!currentLocation || currentLocation.length !== 2) {
           try {
             const position = await new Promise((resolve, reject) => {
@@ -3594,14 +3594,14 @@ export default function DeliveryHome() {
           const confirmedOrderIdForApi = selectedRestaurant?.orderId || (orderIdForApi && String(orderIdForApi).startsWith('ORD-') ? orderIdForApi : undefined)
 
           // Call backend API to confirm order ID with bill image
-          console.log('📦 Confirming order ID:', { 
-            orderIdForApi, 
-            confirmedOrderIdForApi, 
-            lat: currentLocation[0], 
+          console.log('📦 Confirming order ID:', {
+            orderIdForApi,
+            confirmedOrderIdForApi,
+            lat: currentLocation[0],
             lng: currentLocation[1],
-            billImageUrl 
+            billImageUrl
           })
-          
+
           // Update API call to include bill image URL
           const response = await deliveryAPI.confirmOrderId(orderIdForApi, confirmedOrderIdForApi, {
             lat: currentLocation[0],
@@ -3609,27 +3609,27 @@ export default function DeliveryHome() {
           }, {
             billImageUrl: billImageUrl
           })
-          
+
           console.log('✅ Order ID confirmed, response:', response.data)
-          
+
           if (response.data?.success && response.data.data) {
             const orderData = response.data.data
             const order = orderData.order || orderData
             const routeData = orderData.route || order.deliveryState?.routeToDelivery
-            
+
             // Update selectedRestaurant with customer address
             if (order && selectedRestaurant) {
               const customerCoords = order.address?.location?.coordinates
               const customerLat = customerCoords?.[1]
               const customerLng = customerCoords?.[0]
-              
+
               if (customerLat && customerLng) {
                 const updatedRestaurant = {
                   ...selectedRestaurant,
                   customerName: order.userId?.name || selectedRestaurant.customerName,
                   customerAddress: order.address?.formattedAddress ||
-                                  (order.address?.street ? `${order.address.street}, ${order.address.city || ''}, ${order.address.state || ''}`.trim() : '') ||
-                                  selectedRestaurant.customerAddress,
+                    (order.address?.street ? `${order.address.street}, ${order.address.city || ''}, ${order.address.state || ''}`.trim() : '') ||
+                    selectedRestaurant.customerAddress,
                   customerLat,
                   customerLng
                 }
@@ -3648,28 +3648,28 @@ export default function DeliveryHome() {
 
                   if (directionsResult) {
                     console.log('✅ Route to customer calculated with Directions API')
-                    
+
                     // Store delivery route distance and time
                     const deliveryDistance = directionsResult.routes[0]?.legs[0]?.distance?.value || 0; // in meters
                     const deliveryDuration = directionsResult.routes[0]?.legs[0]?.duration?.value || 0; // in seconds
                     deliveryRouteDistanceRef.current = deliveryDistance;
                     deliveryRouteTimeRef.current = deliveryDuration;
                     console.log('📊 Delivery route stored:', { distance: deliveryDistance, duration: deliveryDuration });
-                    
+
                     // Calculate total trip distance and time
                     const totalDistance = pickupRouteDistanceRef.current + deliveryDistance;
                     const totalTime = pickupRouteTimeRef.current + deliveryDuration;
                     setTripDistance(totalDistance);
                     setTripTime(totalTime);
-                    console.log('📊 Total trip calculated:', { 
-                      totalDistance: totalDistance, 
+                    console.log('📊 Total trip calculated:', {
+                      totalDistance: totalDistance,
                       totalTime: totalTime,
                       pickupDistance: pickupRouteDistanceRef.current,
                       pickupTime: pickupRouteTimeRef.current,
                       deliveryDistance: deliveryDistance,
                       deliveryTime: deliveryDuration
                     });
-                    
+
                     setDirectionsResponse(directionsResult)
                     directionsResponseRef.current = directionsResult
 
@@ -3693,7 +3693,7 @@ export default function DeliveryHome() {
                           routePolylineRef.current.setMap(null);
                           routePolylineRef.current = null;
                         }
-                        
+
                         // Remove DirectionsRenderer from map
                         if (directionsRendererRef.current) {
                           directionsRendererRef.current.setMap(null);
@@ -3701,7 +3701,7 @@ export default function DeliveryHome() {
                       } catch (e) {
                         console.warn('⚠️ Error cleaning up polyline:', e);
                       }
-                      
+
                       const bounds = directionsResult.routes?.[0]?.bounds
                       if (bounds) {
                         const currentZoomBeforeFit = window.deliveryMapInstance.getZoom();
@@ -3751,12 +3751,12 @@ export default function DeliveryHome() {
 
             // CRITICAL: Close Reached Pickup popup if it's still showing (shouldn't happen, but defensive)
             setShowreachedPickupPopup(false)
-            
+
             // Close Order ID confirmation popup
             setShowOrderIdConfirmationPopup(false)
 
             toast.success('Order is out for delivery. Route to customer is on the map.', { duration: 4000 })
-            
+
             // Show Reached Drop popup instantly after Order Picked Up is confirmed
             // Use setTimeout to ensure state updates are processed and useEffect doesn't block it
             console.log('✅ Showing Reached Drop popup instantly after Order Picked Up confirmation')
@@ -3764,7 +3764,7 @@ export default function DeliveryHome() {
               setShowReachedDropPopup(true)
               console.log('✅ Reached Drop popup state set to true')
             }, 100) // Small delay to ensure showOrderIdConfirmationPopup state is updated
-            
+
           } else {
             console.error('❌ Failed to confirm order ID:', response.data)
             toast.error(response.data?.message || 'Failed to confirm order ID. Please try again.')
@@ -3775,7 +3775,7 @@ export default function DeliveryHome() {
           console.error('❌ Error confirming order ID:', { status, message: msg, data: error.response?.data })
           toast.error(msg || 'Failed to confirm order ID. Please try again.')
         }
-        
+
         // Reset after animation
         setTimeout(() => {
           setOrderIdConfirmButtonProgress(0)
@@ -3797,7 +3797,7 @@ export default function DeliveryHome() {
     // Get customer location from selectedRestaurant
     const customerLat = selectedRestaurant?.customerLat;
     const customerLng = selectedRestaurant?.customerLng;
-    
+
     if (!customerLat || !customerLng) {
       console.error('❌ Customer location not available');
       toast.error('Customer location not found');
@@ -3821,10 +3821,10 @@ export default function DeliveryHome() {
       // Android: Use google.navigation: scheme (opens directly in navigation mode)
       // Fallback to web URL if app not installed
       mapsUrl = `google.navigation:q=${customerLat},${customerLng}&mode=b`;
-      
+
       // Try to open Google Maps app first
       window.location.href = mapsUrl;
-      
+
       // Fallback to web URL after a short delay (in case app is not installed)
       setTimeout(() => {
         const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${customerLat},${customerLng}&travelmode=bicycling`;
@@ -3833,10 +3833,10 @@ export default function DeliveryHome() {
     } else if (isIOS) {
       // iOS: Use comgooglemaps:// scheme (opens Google Maps app)
       mapsUrl = `comgooglemaps://?daddr=${customerLat},${customerLng}&directionsmode=bicycling`;
-      
+
       // Try to open Google Maps app first
       window.location.href = mapsUrl;
-      
+
       // Fallback to web URL after a short delay (in case app is not installed)
       setTimeout(() => {
         const webUrl = `https://maps.google.com/?daddr=${customerLat},${customerLng}&directionsmode=bicycling`;
@@ -3905,15 +3905,15 @@ export default function DeliveryHome() {
       // Close popup after animation and show customer review (delivery will be completed when review is submitted)
       setTimeout(() => {
         setShowOrderDeliveredAnimation(false)
-        
+
         // CRITICAL: Clear all pickup/delivery related popups
         setShowReachedDropPopup(false)
         setShowreachedPickupPopup(false)
         setShowOrderIdConfirmationPopup(false)
-        
+
         // Show customer review popup instantly
         setShowCustomerReviewPopup(true)
-        
+
         // Reset after animation
         setTimeout(() => {
           setOrderDeliveredButtonProgress(0)
@@ -4115,14 +4115,14 @@ export default function DeliveryHome() {
   useEffect(() => {
     if (newOrder) {
       const orderId = newOrder.orderMongoId || newOrder.orderId;
-      
+
       // Check if this order has already been accepted
       if (acceptedOrderIdsRef.current.has(orderId)) {
         console.log('⚠️ Order already accepted, ignoring duplicate notification:', orderId);
         clearNewOrder();
         return;
       }
-      
+
       // Check if order is already in localStorage (accepted order)
       try {
         const activeOrderData = localStorage.getItem('deliveryActiveOrder');
@@ -4139,9 +4139,9 @@ export default function DeliveryHome() {
       } catch (e) {
         // Ignore localStorage errors
       }
-      
+
       console.log('📦 New order received from Socket.IO:', newOrder)
-      
+
       // Transform newOrder data to match selectedRestaurant format
       // Extract restaurant address with proper priority
       let restaurantAddress = 'Restaurant address';
@@ -4152,12 +4152,12 @@ export default function DeliveryHome() {
       } else if (newOrder.restaurantAddress) {
         restaurantAddress = newOrder.restaurantAddress;
       }
-      
+
       // Extract earnings from notification - backend now calculates and sends estimatedEarnings
       const deliveryFee = newOrder.deliveryFee ?? 0;
       const earned = newOrder.estimatedEarnings;
       let earnedValue = 0;
-      
+
       if (earned) {
         if (typeof earned === 'object' && earned.totalEarning != null) {
           earnedValue = Number(earned.totalEarning) || 0;
@@ -4165,10 +4165,10 @@ export default function DeliveryHome() {
           earnedValue = earned;
         }
       }
-      
+
       // Use calculated earnings if available, otherwise fallback to deliveryFee
       const effectiveEarnings = earnedValue > 0 ? earned : (deliveryFee > 0 ? deliveryFee : 0);
-      
+
       console.log('💰 Earnings from notification:', {
         earned,
         earnedValue,
@@ -4184,15 +4184,15 @@ export default function DeliveryHome() {
         const currentLocation = riderLocation || lastLocationRef.current;
         const restaurantLat = newOrder.restaurantLocation?.latitude;
         const restaurantLng = newOrder.restaurantLocation?.longitude;
-        
-        if (currentLocation && currentLocation.length === 2 && 
-            restaurantLat && restaurantLng && 
-            !isNaN(restaurantLat) && !isNaN(restaurantLng)) {
+
+        if (currentLocation && currentLocation.length === 2 &&
+          restaurantLat && restaurantLng &&
+          !isNaN(restaurantLat) && !isNaN(restaurantLng)) {
           // Calculate distance in meters, then convert to km
           const distanceInMeters = calculateDistance(
-            currentLocation[0], 
-            currentLocation[1], 
-            restaurantLat, 
+            currentLocation[0],
+            currentLocation[1],
+            restaurantLat,
             restaurantLng
           );
           const distanceInKm = distanceInMeters / 1000;
@@ -4200,7 +4200,7 @@ export default function DeliveryHome() {
           console.log('📍 Calculated pickup distance:', pickupDistance);
         }
       }
-      
+
       // Default to 'Calculating...' if still no distance
       if (!pickupDistance || pickupDistance === '0 km') {
         pickupDistance = 'Calculating...';
@@ -4227,7 +4227,7 @@ export default function DeliveryHome() {
         items: newOrder.items || [],
         total: newOrder.total || 0
       }
-      
+
       setSelectedRestaurant(restaurantData)
       setShowNewOrderPopup(true)
       setCountdownSeconds(300) // Reset countdown to 5 minutes
@@ -4237,32 +4237,32 @@ export default function DeliveryHome() {
   // Recalculate distance when rider location becomes available
   useEffect(() => {
     if (!selectedRestaurant || !showNewOrderPopup) return
-    
+
     // Only recalculate if distance is missing or showing '0 km' or 'Calculating...'
     const currentDistance = selectedRestaurant.distance || selectedRestaurant.pickupDistance
     if (currentDistance && currentDistance !== '0 km' && currentDistance !== 'Calculating...') {
       return // Distance already calculated
     }
-    
+
     const currentLocation = riderLocation || lastLocationRef.current
     const restaurantLat = selectedRestaurant.lat
     const restaurantLng = selectedRestaurant.lng
-    
-    if (currentLocation && currentLocation.length === 2 && 
-        restaurantLat && restaurantLng && 
-        !isNaN(restaurantLat) && !isNaN(restaurantLng)) {
+
+    if (currentLocation && currentLocation.length === 2 &&
+      restaurantLat && restaurantLng &&
+      !isNaN(restaurantLat) && !isNaN(restaurantLng)) {
       // Calculate distance in meters, then convert to km
       const distanceInMeters = calculateDistance(
-        currentLocation[0], 
-        currentLocation[1], 
-        restaurantLat, 
+        currentLocation[0],
+        currentLocation[1],
+        restaurantLat,
         restaurantLng
       )
       const distanceInKm = distanceInMeters / 1000
       const pickupDistance = `${distanceInKm.toFixed(2)} km`
-      
+
       console.log('📍 Recalculated pickup distance:', pickupDistance)
-      
+
       setSelectedRestaurant(prev => ({
         ...prev,
         distance: pickupDistance,
@@ -4275,19 +4275,19 @@ export default function DeliveryHome() {
   // Fetch restaurant address if missing when selectedRestaurant is set
   useEffect(() => {
     if (!selectedRestaurant?.orderId && !selectedRestaurant?.id) return
-    if (!selectedRestaurant?.address || 
-        selectedRestaurant.address === 'Restaurant address' || 
-        selectedRestaurant.address === 'Restaurant Address') {
+    if (!selectedRestaurant?.address ||
+      selectedRestaurant.address === 'Restaurant address' ||
+      selectedRestaurant.address === 'Restaurant Address') {
       // Address is missing, fetch order details to get restaurant address
       const orderId = selectedRestaurant.orderId || selectedRestaurant.id
       console.log('🔄 Fetching restaurant address for order:', orderId)
-      
+
       const fetchAddress = async () => {
         try {
           const response = await deliveryAPI.getOrderDetails(orderId)
           if (response?.data?.success && response?.data?.data) {
             const order = response.data.data.order || response.data.data
-            
+
             // Extract restaurant address
             let restaurantAddress = null
             if (order.restaurantId?.address) {
@@ -4297,7 +4297,7 @@ export default function DeliveryHome() {
             } else if (order.restaurantId?.location?.address) {
               restaurantAddress = order.restaurantId.location.address
             }
-            
+
             if (restaurantAddress && restaurantAddress !== 'Restaurant address' && restaurantAddress !== 'Restaurant Address') {
               setSelectedRestaurant(prev => ({
                 ...prev,
@@ -4310,7 +4310,7 @@ export default function DeliveryHome() {
           console.error('❌ Error fetching restaurant address:', error)
         }
       }
-      
+
       fetchAddress()
     }
   }, [selectedRestaurant?.orderId, selectedRestaurant?.id, selectedRestaurant?.address])
@@ -4326,7 +4326,7 @@ export default function DeliveryHome() {
       //   setShowBookGigsPopup(true)
       //   return
       // }
-      
+
       // // If gigs exist, proceed with going online
       // const success = goOnline()
       // if (!success) {
@@ -4506,38 +4506,38 @@ export default function DeliveryHome() {
       if (response?.data?.success && response?.data?.data?.orders) {
         const orders = response.data.data.orders
         console.log(`✅ Found ${orders.length} assigned order(s)`)
-        
+
         // Filter out orders that are already accepted or delivered
         const pendingOrders = orders.filter(order => {
           const orderStatus = order.status
           const deliveryPhase = order.deliveryState?.currentPhase
-          
+
           // Skip if already delivered or completed
           if (orderStatus === 'delivered' || deliveryPhase === 'completed') {
             return false
           }
-          
+
           // Skip if already accepted (has deliveryState with accepted status)
-          if (order.deliveryState?.status === 'accepted' || 
-              order.deliveryState?.status === 'reached_pickup' ||
-              order.deliveryState?.status === 'order_confirmed' ||
-              deliveryPhase === 'en_route_to_pickup' ||
-              deliveryPhase === 'at_pickup' ||
-              deliveryPhase === 'en_route_to_delivery' ||
-              deliveryPhase === 'at_delivery') {
+          if (order.deliveryState?.status === 'accepted' ||
+            order.deliveryState?.status === 'reached_pickup' ||
+            order.deliveryState?.status === 'order_confirmed' ||
+            deliveryPhase === 'en_route_to_pickup' ||
+            deliveryPhase === 'at_pickup' ||
+            deliveryPhase === 'en_route_to_delivery' ||
+            deliveryPhase === 'at_delivery') {
             return false
           }
-          
+
           return true
         })
 
         if (pendingOrders.length > 0) {
           console.log(`📦 Found ${pendingOrders.length} new pending order(s) to show`)
-          
+
           // Show the first pending order as a new order notification
           const firstOrder = pendingOrders[0]
           const orderId = firstOrder.orderId || firstOrder._id?.toString()
-          
+
           // Check if this order is already being shown or accepted
           if (acceptedOrderIdsRef.current.has(orderId)) {
             console.log('⚠️ Order already accepted, skipping:', orderId)
@@ -4559,13 +4559,13 @@ export default function DeliveryHome() {
             const parts = [loc.street, loc.city, loc.state, loc.pincode].filter(Boolean);
             restaurantAddress = parts.join(', ') || 'Restaurant address';
           }
-          
+
           console.log('📍 Restaurant address extracted from assigned order:', {
             address: restaurantAddress,
             hasRestaurantId: !!firstOrder.restaurantId,
             hasLocation: !!firstOrder.restaurantId?.location
           });
-          
+
           // Calculate pickup distance if not provided
           let pickupDistance = null;
           if (firstOrder.assignmentInfo?.distance) {
@@ -4575,15 +4575,15 @@ export default function DeliveryHome() {
             const currentLocation = riderLocation || lastLocationRef.current;
             const restaurantLat = firstOrder.restaurantId?.location?.coordinates?.[1];
             const restaurantLng = firstOrder.restaurantId?.location?.coordinates?.[0];
-            
-            if (currentLocation && currentLocation.length === 2 && 
-                restaurantLat && restaurantLng && 
-                !isNaN(restaurantLat) && !isNaN(restaurantLng)) {
+
+            if (currentLocation && currentLocation.length === 2 &&
+              restaurantLat && restaurantLng &&
+              !isNaN(restaurantLat) && !isNaN(restaurantLng)) {
               // Calculate distance in meters, then convert to km
               const distanceInMeters = calculateDistance(
-                currentLocation[0], 
-                currentLocation[1], 
-                restaurantLat, 
+                currentLocation[0],
+                currentLocation[1],
+                restaurantLat,
                 restaurantLng
               );
               const distanceInKm = distanceInMeters / 1000;
@@ -4591,12 +4591,12 @@ export default function DeliveryHome() {
               console.log('📍 Calculated pickup distance from assigned order:', pickupDistance);
             }
           }
-          
+
           // Default to 'Calculating...' if still no distance
           if (!pickupDistance || pickupDistance === '0 km') {
             pickupDistance = 'Calculating...';
           }
-          
+
           const restaurantData = {
             id: firstOrder._id?.toString() || firstOrder.orderId,
             orderId: firstOrder.orderId,
@@ -4606,16 +4606,16 @@ export default function DeliveryHome() {
             lng: firstOrder.restaurantId?.location?.coordinates?.[0],
             distance: pickupDistance,
             timeAway: pickupDistance !== 'Calculating...' ? calculateTimeAway(pickupDistance) : 'Calculating...',
-            dropDistance: firstOrder.address?.location?.coordinates 
-              ? 'Calculating...' 
+            dropDistance: firstOrder.address?.location?.coordinates
+              ? 'Calculating...'
               : '0 km',
             pickupDistance: pickupDistance,
             estimatedEarnings: firstOrder.pricing?.deliveryFee || 0,
             customerName: firstOrder.userId?.name || 'Customer',
-            customerAddress: firstOrder.address?.formattedAddress || 
-                           (firstOrder.address?.street 
-                             ? `${firstOrder.address.street}, ${firstOrder.address.city || ''}, ${firstOrder.address.state || ''}`.trim()
-                             : 'Customer address'),
+            customerAddress: firstOrder.address?.formattedAddress ||
+              (firstOrder.address?.street
+                ? `${firstOrder.address.street}, ${firstOrder.address.city || ''}, ${firstOrder.address.state || ''}`.trim()
+                : 'Customer address'),
             customerLat: firstOrder.address?.location?.coordinates?.[1],
             customerLng: firstOrder.address?.location?.coordinates?.[0],
             items: firstOrder.items || [],
@@ -4623,7 +4623,7 @@ export default function DeliveryHome() {
             payment: firstOrder.payment?.method || 'COD',
             amount: firstOrder.pricing?.total || 0
           }
-          
+
           setSelectedRestaurant(restaurantData)
           setShowNewOrderPopup(true)
           setCountdownSeconds(300) // Reset countdown to 5 minutes
@@ -4657,7 +4657,7 @@ export default function DeliveryHome() {
     // Check if delivery person is already online when component mounts
     const storedOnlineStatus = localStorage.getItem('delivery_online_status')
     const isCurrentlyOnline = storedOnlineStatus === 'true' || isOnline
-    
+
     if (isCurrentlyOnline) {
       // Fetch orders after a short delay to ensure everything is initialized
       const timeoutId = setTimeout(() => {
@@ -4677,19 +4677,19 @@ export default function DeliveryHome() {
         if (response?.data?.success && response?.data?.data?.profile) {
           const profile = response.data.data.profile
           const bankDetails = profile?.documents?.bankDetails
-          
+
           // Store delivery partner status first
           if (profile?.status) {
             setDeliveryStatus(profile.status)
           }
-          
+
           // Store rejection reason if status is blocked
           if (profile?.status === 'blocked' && profile?.rejectionReason) {
             setRejectionReason(profile.rejectionReason)
           } else {
             setRejectionReason(null)
           }
-          
+
           // Only check bank details if status is approved/active
           // Pending users don't need bank details check
           if (profile?.status && profile.status !== 'pending') {
@@ -4700,7 +4700,7 @@ export default function DeliveryHome() {
               bankDetails?.ifscCode?.trim() &&
               bankDetails?.bankName?.trim()
             )
-            
+
             setBankDetailsFilled(isFilled)
           } else {
             // For pending status, don't show bank details banner
@@ -4732,7 +4732,7 @@ export default function DeliveryHome() {
     }
 
     window.addEventListener('deliveryProfileRefresh', handleProfileRefresh)
-    
+
     return () => {
       window.removeEventListener('deliveryProfileRefresh', handleProfileRefresh)
     }
@@ -4743,7 +4743,7 @@ export default function DeliveryHome() {
     try {
       setIsReverifying(true)
       await deliveryAPI.reverify()
-      
+
       // Refresh profile to get updated status
       const response = await deliveryAPI.getProfile()
       if (response?.data?.success && response?.data?.data?.profile) {
@@ -4751,7 +4751,7 @@ export default function DeliveryHome() {
         setDeliveryStatus(profile.status)
         setRejectionReason(null)
       }
-      
+
       alert("Your request has been resubmitted for verification. Admin will review it soon.")
     } catch (err) {
       console.error("Error reverifying:", err)
@@ -4784,15 +4784,15 @@ export default function DeliveryHome() {
 
     // Store preserved state for re-initialization after navigation
     let preservedState = null;
-    
+
     // If map instance exists, preserve state before re-initializing
     if (window.deliveryMapInstance) {
       const existingMap = window.deliveryMapInstance;
       const existingBikeMarker = bikeMarkerRef.current;
       const existingPolyline = routePolylineRef.current;
-      
+
       console.log('📍 Map instance exists, preserving state for re-initialization...');
-      
+
       // Check if map is already attached to current container
       try {
         const mapDiv = existingMap.getDiv();
@@ -4804,7 +4804,7 @@ export default function DeliveryHome() {
         // Map div check failed, will re-initialize
         console.log('📍 Map container check failed, will re-initialize');
       }
-      
+
       // Store map state safely
       try {
         preservedState = {
@@ -4814,7 +4814,7 @@ export default function DeliveryHome() {
           bikeMarkerHeading: null,
           hasPolyline: !!existingPolyline
         };
-        
+
         // Store bike marker state
         if (existingBikeMarker) {
           const pos = existingBikeMarker.getPosition();
@@ -4831,7 +4831,7 @@ export default function DeliveryHome() {
         console.warn('⚠️ Error preserving map state:', error);
         preservedState = null;
       }
-      
+
       // Remove markers from old map before clearing (safely)
       try {
         if (existingBikeMarker && typeof existingBikeMarker.setMap === 'function') {
@@ -4843,7 +4843,7 @@ export default function DeliveryHome() {
       } catch (error) {
         console.warn('⚠️ Error removing markers from old map:', error);
       }
-      
+
       // Clear old map instance reference (will be re-created below)
       // Markers preserved in refs, will be re-attached after map initialization
       window.deliveryMapInstance = null;
@@ -4861,26 +4861,26 @@ export default function DeliveryHome() {
         initializeGoogleMap();
         return;
       }
-      
+
       // Check if script tag is already present (from main.jsx)
       const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
       if (existingScript || window.__googleMapsLoading) {
         console.log('📍 Google Maps is already being loaded, waiting...');
         let attempts = 0;
         const maxAttempts = 50; // 5 seconds max wait
-        
+
         while ((!window.google || !window.google.maps) && attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
         }
-        
+
         if (window.google && window.google.maps) {
           console.log('✅ Google Maps loaded via script tag');
           await initializeGoogleMap();
           return;
         }
       }
-      
+
       // Only use Loader if no script tag exists and not already loading
       if (!existingScript && !window.__googleMapsLoading) {
         console.log('📍 Google Maps not loaded, using Loader as fallback...');
@@ -4918,7 +4918,7 @@ export default function DeliveryHome() {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
         }
-        
+
         if (window.google && window.google.maps) {
           console.log('✅ Google Maps loaded via script tag');
           await initializeGoogleMap();
@@ -4933,7 +4933,7 @@ export default function DeliveryHome() {
         console.log('📍 Waiting for MapTypeId to be available...');
         let attempts = 0;
         const maxAttempts = 20; // 2 seconds max wait
-        
+
         while (!window.google.maps.MapTypeId && attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
@@ -4968,12 +4968,12 @@ export default function DeliveryHome() {
           console.log('📍 Map container ref not available yet, waiting...');
           let attempts = 0;
           const maxAttempts = 50; // 5 seconds max wait
-          
+
           while (!mapContainerRef.current && attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
           }
-          
+
           if (!mapContainerRef.current) {
             console.error('❌ Map container ref is still null after waiting');
             setMapLoading(false);
@@ -4989,10 +4989,10 @@ export default function DeliveryHome() {
 
         console.log('📍 Initializing Google Map with container:', mapContainerRef.current);
         setMapLoading(true);
-        
+
         // Get location from multiple sources (priority: riderLocation > saved location > wait for GPS)
         let initialCenter = null;
-        
+
         if (riderLocation && riderLocation.length === 2) {
           // Use current rider location
           initialCenter = { lat: riderLocation[0], lng: riderLocation[1] };
@@ -5007,7 +5007,7 @@ export default function DeliveryHome() {
                 const [lat, lng] = parsed;
                 // Validate coordinates
                 if (typeof lat === 'number' && typeof lng === 'number' &&
-                    lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                  lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                   initialCenter = { lat, lng };
                   console.log('📍 Using saved location from localStorage for map center:', initialCenter);
                 }
@@ -5017,22 +5017,22 @@ export default function DeliveryHome() {
             }
           }
         }
-        
+
         // If still no location, use default India center so map always loads.
         // When GPS location is received, map will recenter and show bike marker.
         if (!initialCenter) {
           initialCenter = { lat: 20.5937, lng: 78.9629 };
           console.log('📍 No location yet, using default center (India). Map will recenter when GPS is available.');
         }
-        
+
         console.log('📍 Map center:', initialCenter);
-        
+
         // Check if MapTypeId is available, use string fallback if not
         // Always use string 'roadmap' to avoid MapTypeId enum issues
-        const mapTypeId = (window.google?.maps?.MapTypeId?.ROADMAP !== undefined) 
-          ? window.google.maps.MapTypeId.ROADMAP 
+        const mapTypeId = (window.google?.maps?.MapTypeId?.ROADMAP !== undefined)
+          ? window.google.maps.MapTypeId.ROADMAP
           : 'roadmap';
-        
+
         console.log('📍 MapTypeId:', mapTypeId);
         console.log('📍 Google Maps API check:', {
           google: !!window.google,
@@ -5040,7 +5040,7 @@ export default function DeliveryHome() {
           MapTypeId: !!window.google?.maps?.MapTypeId,
           ROADMAP: window.google?.maps?.MapTypeId?.ROADMAP !== undefined
         });
-        
+
         // Wrap map initialization in try-catch to handle any Google Maps internal errors
         let map;
         try {
@@ -5072,7 +5072,7 @@ export default function DeliveryHome() {
         // Store map instance
         window.deliveryMapInstance = map;
         console.log('✅ Map instance created and stored');
-        
+
         // Add error listener for map errors (if available)
         try {
           if (window.google.maps.event) {
@@ -5083,12 +5083,12 @@ export default function DeliveryHome() {
         } catch (eventError) {
           console.warn('⚠️ Could not add map event listeners:', eventError);
         }
-        
+
         // Add error listener for map errors
         window.google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
           console.log('✅ Map tiles loaded successfully');
         });
-        
+
         // Handle map errors
         window.google.maps.event.addListener(map, 'error', (error) => {
           console.error('❌ Google Map error:', error);
@@ -5097,13 +5097,13 @@ export default function DeliveryHome() {
         // Track user panning to disable auto-center when user manually moves map
         let isUserPanning = false;
         let panTimeout = null;
-        
+
         map.addListener('dragstart', () => {
           isUserPanning = true;
           isUserPanningRef.current = true;
           if (panTimeout) clearTimeout(panTimeout);
         });
-        
+
         map.addListener('dragend', () => {
           // Re-enable auto-center after 5 seconds of no panning
           panTimeout = setTimeout(() => {
@@ -5111,7 +5111,7 @@ export default function DeliveryHome() {
             isUserPanningRef.current = false;
           }, 5000);
         });
-        
+
         // Also track zoom changes as user interaction
         map.addListener('zoom_changed', () => {
           isUserPanning = true;
@@ -5121,7 +5121,7 @@ export default function DeliveryHome() {
             isUserPanning = false;
             isUserPanningRef.current = false;
           }, 5000);
-          
+
           // Allow full zoom - no limit
           // Removed zoom limit to allow full zoom in
         });
@@ -5133,18 +5133,18 @@ export default function DeliveryHome() {
             map.setZoom(preservedState.zoom);
             console.log('📍 Restored map center and zoom after navigation');
           }
-          
+
           // Re-create bike marker if it existed before navigation
           if (preservedState.bikeMarkerPosition && isOnlineRef.current) {
             console.log('📍 Re-creating bike marker after navigation:', preservedState.bikeMarkerPosition);
             createOrUpdateBikeMarker(
-              preservedState.bikeMarkerPosition.lat, 
-              preservedState.bikeMarkerPosition.lng, 
+              preservedState.bikeMarkerPosition.lat,
+              preservedState.bikeMarkerPosition.lng,
               preservedState.bikeMarkerHeading,
               false // Don't center when restoring from navigation
             );
           }
-          
+
           // Don't re-attach route polyline on refresh - only show if there's an active order
           // This prevents showing default/mock polylines on page refresh
           if (preservedState.hasPolyline && routePolylineRef.current && selectedRestaurant) {
@@ -5158,7 +5158,7 @@ export default function DeliveryHome() {
             routePolylineRef.current.setMap(null);
             routePolylineRef.current = null;
           }
-          
+
           // Clear live tracking polyline if no active order
           if (!selectedRestaurant && liveTrackingPolylineRef.current) {
             liveTrackingPolylineRef.current.setMap(null);
@@ -5176,7 +5176,7 @@ export default function DeliveryHome() {
               lng: riderLocation[1]
             }];
             lastLocationRef.current = riderLocation;
-            
+
             // Always add bike marker if location is available (both online and offline)
             console.log('📍 Creating bike marker on map init');
             createOrUpdateBikeMarker(riderLocation[0], riderLocation[1], null, true);
@@ -5210,7 +5210,7 @@ export default function DeliveryHome() {
               }
             }
           }
-          
+
           // Ensure restaurant marker is visible if we have a selected restaurant
           if (selectedRestaurant && selectedRestaurant.lat && selectedRestaurant.lng) {
             setTimeout(() => {
@@ -5220,7 +5220,7 @@ export default function DeliveryHome() {
                   lat: selectedRestaurant.lat,
                   lng: selectedRestaurant.lng
                 };
-                
+
                 restaurantMarkerRef.current = new window.google.maps.Marker({
                   position: restaurantLocation,
                   map: window.deliveryMapInstance,
@@ -5242,7 +5242,7 @@ export default function DeliveryHome() {
               }
             }, 500);
           }
-          
+
           // Load and draw nearby zones after map is ready
           setTimeout(() => {
             fetchAndDrawNearbyZones();
@@ -5261,7 +5261,7 @@ export default function DeliveryHome() {
       // Preserve map instance and markers for navigation
       // Map will be re-initialized when component mounts again
       console.log('📍 Component cleanup - preserving map instance for navigation');
-      
+
       // Don't clear map instance - preserve it in window.deliveryMapInstance
       // Don't clear bike marker - preserve it in bikeMarkerRef
       // Only temporarily remove polyline from map (preserve reference)
@@ -5287,9 +5287,9 @@ export default function DeliveryHome() {
       try {
         const initialCenter = { lat: riderLocation[0], lng: riderLocation[1] }
         console.log('📍 Initializing map with rider location:', initialCenter)
-        
+
         if (!window.google || !window.google.maps) return
-        
+
         const map = new window.google.maps.Map(mapContainerRef.current, {
           center: initialCenter,
           zoom: 18,
@@ -5304,10 +5304,10 @@ export default function DeliveryHome() {
           streetViewControl: false,
           fullscreenControl: false
         })
-        
+
         window.deliveryMapInstance = map
         console.log('✅ Map initialized with rider location')
-        
+
         // Create bike marker
         createOrUpdateBikeMarker(riderLocation[0], riderLocation[1], null, true)
         setMapLoading(false)
@@ -5316,17 +5316,17 @@ export default function DeliveryHome() {
         setMapLoading(false)
       }
     }
-    
+
     initializeMap()
   }, [riderLocation, showHomeSections]) // Initialize when location is available
 
   // Update bike marker when going online - ensure bike appears immediately
   useEffect(() => {
-    console.log('🔄 Online status effect triggered:', { 
-      isOnline, 
-      showHomeSections, 
+    console.log('🔄 Online status effect triggered:', {
+      isOnline,
+      showHomeSections,
       hasMap: !!window.deliveryMapInstance,
-      riderLocation 
+      riderLocation
     });
 
     if (showHomeSections || !window.deliveryMapInstance) {
@@ -5343,11 +5343,15 @@ export default function DeliveryHome() {
         heading = calculateHeading(prevLat, prevLng, riderLocation[0], riderLocation[1]);
       }
 
-      console.log('✅ User went ONLINE - creating/updating bike marker immediately at:', riderLocation);
+      if (isOnline) {
+        console.log('✅ User went ONLINE - creating/updating bike marker immediately at:', riderLocation);
+      } else {
+        console.log('📍 Location updated (Offline) - updating bike marker at:', riderLocation);
+      }
 
       // Create or update bike marker IMMEDIATELY (blue dot की जगह bike icon)
       createOrUpdateBikeMarker(riderLocation[0], riderLocation[1], heading, true);
-      
+
       // Center map on bike location smoothly
       window.deliveryMapInstance.panTo({
         lat: riderLocation[0],
@@ -5390,12 +5394,12 @@ export default function DeliveryHome() {
           const parsed = JSON.parse(savedLocation)
           if (parsed && Array.isArray(parsed) && parsed.length === 2) {
             const [lat, lng] = parsed
-            
+
             // Validate and check for coordinate swap
             if (typeof lat === 'number' && typeof lng === 'number' &&
-                lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+              lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
               const mightBeSwapped = (lat >= 68 && lat <= 98 && lng >= 8 && lng <= 38)
-              
+
               if (mightBeSwapped) {
                 console.warn('⚠️ Saved coordinates might be swapped - correcting:', {
                   original: [lat, lng],
@@ -5443,7 +5447,7 @@ export default function DeliveryHome() {
           createOrUpdateBikeMarker(riderLocation[0], riderLocation[1], null, false);
         }
       }
-      
+
       // Check restaurant marker
       if (selectedRestaurant && selectedRestaurant.lat && selectedRestaurant.lng) {
         if (restaurantMarkerRef.current) {
@@ -5454,7 +5458,7 @@ export default function DeliveryHome() {
               lat: selectedRestaurant.lat,
               lng: selectedRestaurant.lng
             };
-            
+
             restaurantMarkerRef.current.setMap(window.deliveryMapInstance);
             restaurantMarkerRef.current.setPosition(restaurantLocation);
           }
@@ -5465,7 +5469,7 @@ export default function DeliveryHome() {
             lat: selectedRestaurant.lat,
             lng: selectedRestaurant.lng
           };
-          
+
           restaurantMarkerRef.current = new window.google.maps.Marker({
             position: restaurantLocation,
             map: window.deliveryMapInstance,
@@ -5503,12 +5507,12 @@ export default function DeliveryHome() {
         lat: selectedRestaurant.lat,
         lng: selectedRestaurant.lng
       };
-      
+
       // Remove old marker if exists
       if (restaurantMarkerRef.current) {
         restaurantMarkerRef.current.setMap(null);
       }
-      
+
       // Create new restaurant marker
       restaurantMarkerRef.current = new window.google.maps.Marker({
         position: restaurantLocation,
@@ -5529,7 +5533,7 @@ export default function DeliveryHome() {
         animation: window.google.maps.Animation.DROP,
         zIndex: 10
       });
-      
+
       console.log('✅ Restaurant marker created/updated on main map');
     } else {
       // Update position if marker exists
@@ -5643,7 +5647,7 @@ export default function DeliveryHome() {
     try {
       // Extract and decode full polyline from directions result
       const fullPolyline = extractPolylineFromDirections(directionsResult);
-      
+
       if (fullPolyline.length < 2) {
         console.warn('⚠️ Invalid polyline from directions result');
         return;
@@ -5665,7 +5669,7 @@ export default function DeliveryHome() {
       // This ensures the polyline always starts at the bike's current location
       const path = [
         new window.google.maps.LatLng(riderPos.lat, riderPos.lng), // Start from bike position
-        ...trimmedPolyline.map(point => 
+        ...trimmedPolyline.map(point =>
           new window.google.maps.LatLng(point.lat, point.lng)
         )
       ];
@@ -5692,7 +5696,7 @@ export default function DeliveryHome() {
           console.warn('⚠️ Cannot create polyline - map instance not ready');
           return;
         }
-        
+
         // Create main polyline with vibrant blue color (Zomato style)
         liveTrackingPolylineRef.current = new window.google.maps.Polyline({
           path: path,
@@ -5704,7 +5708,7 @@ export default function DeliveryHome() {
           icons: [], // No icons/dots - clean solid line
           map: window.deliveryMapInstance
         });
-        
+
         // Create shadow/outline polyline for better visibility (like Zomato/Rapido)
         // This creates a subtle outline effect for better contrast
         if (!liveTrackingPolylineShadowRef.current) {
@@ -5721,7 +5725,7 @@ export default function DeliveryHome() {
         } else {
           liveTrackingPolylineShadowRef.current.setPath(path);
         }
-        
+
         console.log('✅ Created new live tracking polyline on map with Zomato/Rapido styling');
       }
 
@@ -5820,7 +5824,7 @@ export default function DeliveryHome() {
 
       try {
         setDirectionsMapLoading(true);
-        
+
         // Get current LIVE location (delivery boy) - prioritize riderLocation which is updated in real-time
         // Use rider location or last known location, don't use default
         const currentLocation = riderLocation || lastLocationRef.current;
@@ -5828,7 +5832,7 @@ export default function DeliveryHome() {
           console.warn('⚠️ No location available for navigation')
           return
         }
-        
+
         // Determine destination based on navigation mode
         let destinationLocation;
         let destinationName;
@@ -5894,7 +5898,7 @@ export default function DeliveryHome() {
 
         // Calculate route using Directions API
         const routeResult = await calculateRouteWithDirectionsAPI(currentLocation, destinationLocation);
-        
+
         if (routeResult) {
           // Don't create main route polyline - only live tracking polyline will be shown
           // Remove old custom polyline if exists (cleanup)
@@ -5903,7 +5907,7 @@ export default function DeliveryHome() {
               routePolylineRef.current.setMap(null);
               routePolylineRef.current = null;
             }
-            
+
             // Remove DirectionsRenderer from map
             if (directionsRendererRef.current) {
               directionsRendererRef.current.setMap(null);
@@ -5911,7 +5915,7 @@ export default function DeliveryHome() {
           } catch (e) {
             console.warn('⚠️ Error cleaning up polyline:', e);
           }
-          
+
           // Fit bounds to show entire route
           const bounds = routeResult.routes[0].bounds;
           if (bounds) {
@@ -5919,7 +5923,7 @@ export default function DeliveryHome() {
           }
 
           // Add custom Destination Marker (Restaurant or Customer)
-          const markerIcon = navigationMode === 'customer' 
+          const markerIcon = navigationMode === 'customer'
             ? `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#10B981">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/>
@@ -5933,7 +5937,7 @@ export default function DeliveryHome() {
                   <path d="M8 16h2v6H8zm6 0h2v6h-2z" fill="#FFFFFF"/>
                 </svg>
               `)}`;
-          
+
           if (!restaurantMarkerRef.current) {
             restaurantMarkerRef.current = new window.google.maps.Marker({
               position: destinationLocation,
@@ -6034,11 +6038,11 @@ export default function DeliveryHome() {
     const R = 6371000; // Earth's radius in meters
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distance in meters
   }, []);
 
@@ -6051,14 +6055,14 @@ export default function DeliveryHome() {
 
     if (riderLocation && riderLocation.length === 2) {
       const newPosition = { lat: riderLocation[0], lng: riderLocation[1] };
-      
+
       // Update bike marker position (smooth movement)
       directionsBikeMarkerRef.current.setPosition(newPosition);
-      
+
       // Optional: Auto-center map on bike (like Zomato) - smooth pan
       // Uncomment if you want map to follow bike movement
       // directionsMapInstanceRef.current.panTo(newPosition);
-      
+
       // API Cost Optimization: Only recalculate route if bike deviates significantly (>50m from route)
       // This prevents unnecessary API calls on every location update
       if (lastBikePositionRef.current) {
@@ -6068,7 +6072,7 @@ export default function DeliveryHome() {
           newPosition.lat,
           newPosition.lng
         );
-        
+
         // Only recalculate if moved >50 meters AND last recalculation was >30 seconds ago
         const timeSinceLastRecalc = Date.now() - (lastRouteRecalculationRef.current || 0);
         if (distance > 50 && timeSinceLastRecalc > 30000 && selectedRestaurant) {
@@ -6089,7 +6093,7 @@ export default function DeliveryHome() {
                     routePolylineRef.current.setMap(null);
                     routePolylineRef.current = null;
                   }
-                  
+
                   // Remove DirectionsRenderer from map
                   if (directionsRendererRef.current) {
                     directionsRendererRef.current.setMap(null);
@@ -6109,7 +6113,7 @@ export default function DeliveryHome() {
           });
         }
       }
-      
+
       lastBikePositionRef.current = newPosition;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6123,7 +6127,7 @@ export default function DeliveryHome() {
     if (directionsRendererRef.current && directionsRendererRef.current.getMap()) {
       directionsRendererRef.current.setMap(null);
     }
-    
+
     // Only show fallback polyline if DirectionsRenderer is NOT active
     if (routePolyline && routePolyline.length > 0 && window.deliveryMapInstance) {
       updateRoutePolyline();
@@ -6183,7 +6187,7 @@ export default function DeliveryHome() {
       });
       // Explicitly don't set map - we use custom polyline instead
       console.log('✅ DirectionsRenderer created with bright blue polyline (markers suppressed)');
-      
+
       // Ensure it's visible by explicitly setting map
       directionsRendererRef.current.setMap(window.deliveryMapInstance);
     } else {
@@ -6238,14 +6242,14 @@ export default function DeliveryHome() {
             routePolylineRef.current.setMap(null);
             routePolylineRef.current = null;
           }
-          
+
           console.log('📍 Route details:', {
             routes: directionsResponse.routes?.length || 0,
             legs: directionsResponse.routes?.[0]?.legs?.length || 0,
             distance: directionsResponse.routes?.[0]?.legs?.[0]?.distance?.text,
             duration: directionsResponse.routes?.[0]?.legs?.[0]?.duration?.text
           });
-          
+
           // Completely remove DirectionsRenderer from map to prevent any dots/icons
           if (directionsRendererRef.current) {
             directionsRendererRef.current.setMap(null);
@@ -6296,7 +6300,7 @@ export default function DeliveryHome() {
 
         // Get order ID from saved data
         const orderId = activeOrderData.orderId || activeOrderData.restaurantInfo?.id || activeOrderData.restaurantInfo?.orderId;
-        
+
         if (!orderId) {
           console.log('⚠️ No order ID found in saved data, removing from localStorage');
           localStorage.removeItem('deliveryActiveOrder');
@@ -6308,7 +6312,7 @@ export default function DeliveryHome() {
         try {
           console.log('🔍 Verifying order exists in database:', orderId);
           const orderResponse = await deliveryAPI.getOrderDetails(orderId);
-          
+
           if (!orderResponse.data?.success || !orderResponse.data?.data) {
             console.log('⚠️ Order not found in database, removing from localStorage');
             localStorage.removeItem('deliveryActiveOrder');
@@ -6317,7 +6321,7 @@ export default function DeliveryHome() {
           }
 
           const order = orderResponse.data.data;
-          
+
           // Check if order is cancelled or deleted
           if (order.status === 'cancelled' || order.status === 'delivered') {
             console.log(`⚠️ Order is ${order.status}, removing from localStorage`);
@@ -6381,7 +6385,7 @@ export default function DeliveryHome() {
                   setDirectionsResponse(result);
                   directionsResponseRef.current = result; // Store in ref for callbacks
                   console.log('✅ Route recalculated with Directions API and restored');
-                  
+
                   // Initialize live tracking polyline for restored route
                   if (riderLocation && riderLocation.length === 2) {
                     updateLiveTrackingPolyline(result, riderLocation);
@@ -6440,18 +6444,18 @@ export default function DeliveryHome() {
     const currentRiderLocation = riderLocation || lastLocationRef.current;
 
     // If we have a directions response and rider location, but no polyline, create it
-    if (currentDirectionsResponse && 
-        currentDirectionsResponse.routes && 
-        currentDirectionsResponse.routes.length > 0 &&
-        currentRiderLocation && 
-        currentRiderLocation.length === 2 &&
-        !liveTrackingPolylineRef.current) {
+    if (currentDirectionsResponse &&
+      currentDirectionsResponse.routes &&
+      currentDirectionsResponse.routes.length > 0 &&
+      currentRiderLocation &&
+      currentRiderLocation.length === 2 &&
+      !liveTrackingPolylineRef.current) {
       console.log('🗺️ Map ready with active route - initializing polyline');
       updateLiveTrackingPolyline(currentDirectionsResponse, currentRiderLocation);
-    } else if (currentDirectionsResponse && 
-               currentRiderLocation && 
-               liveTrackingPolylineRef.current &&
-               liveTrackingPolylineRef.current.getMap() === null) {
+    } else if (currentDirectionsResponse &&
+      currentRiderLocation &&
+      liveTrackingPolylineRef.current &&
+      liveTrackingPolylineRef.current.getMap() === null) {
       // Polyline exists but not on map - reattach it
       console.log('🗺️ Reattaching polyline to map');
       liveTrackingPolylineRef.current.setMap(window.deliveryMapInstance);
@@ -6489,7 +6493,7 @@ export default function DeliveryHome() {
       directionsResponseRef.current = null;
       setShowRoutePath(false);
     }
-    
+
     // Wait a bit for restoreActiveOrder to complete, then check again
     const timer = setTimeout(() => {
       if (!selectedRestaurant && window.deliveryMapInstance) {
@@ -6561,11 +6565,11 @@ export default function DeliveryHome() {
     }
 
     const orderId = selectedRestaurant.orderId || selectedRestaurant.id;
-    
+
     const verifyOrderInterval = setInterval(async () => {
       try {
         const orderResponse = await deliveryAPI.getOrderDetails(orderId);
-        
+
         if (!orderResponse.data?.success || !orderResponse.data?.data) {
           console.log('⚠️ Order no longer exists, clearing data');
           clearOrderData();
@@ -6573,7 +6577,7 @@ export default function DeliveryHome() {
         }
 
         const order = orderResponse.data.data;
-        
+
         // Check if order is cancelled, deleted, or delivered/completed
         if (order.status === 'cancelled') {
           console.log('⚠️ Order is cancelled, clearing data');
@@ -6582,11 +6586,11 @@ export default function DeliveryHome() {
         }
 
         // Check if order is delivered/completed - clear it from UI
-        const isOrderDelivered = order.status === 'delivered' || 
-                                order.status === 'completed' ||
-                                order.deliveryState?.currentPhase === 'completed' ||
-                                order.deliveryState?.status === 'delivered'
-        
+        const isOrderDelivered = order.status === 'delivered' ||
+          order.status === 'completed' ||
+          order.deliveryState?.currentPhase === 'completed' ||
+          order.deliveryState?.status === 'delivered'
+
         if (isOrderDelivered && !showPaymentPage && !showCustomerReviewPopup && !showOrderDeliveredAnimation) {
           console.log('✅ Order is delivered/completed, clearing from UI');
           clearOrderData();
@@ -6664,7 +6668,7 @@ export default function DeliveryHome() {
       // Extract restaurant address with multiple fallbacks
       let restaurantAddress = selectedRestaurant?.address || 'Restaurant Address'
       const restaurantLocation = order.restaurantId?.location
-      
+
       if (order.restaurantId?.address) {
         restaurantAddress = order.restaurantId.address
       } else if (restaurantLocation?.formattedAddress) {
@@ -6712,7 +6716,7 @@ export default function DeliveryHome() {
       } else if (orderReady.restaurantAddress) {
         restaurantAddress = orderReady.restaurantAddress
       }
-      
+
       restaurantInfo = {
         ...selectedRestaurant,
         orderId: order.orderId || orderReady.orderId || selectedRestaurant?.orderId,
@@ -6767,12 +6771,12 @@ export default function DeliveryHome() {
       id: selectedRestaurant?.id,
       selectedRestaurantKeys: selectedRestaurant ? Object.keys(selectedRestaurant) : []
     })
-    
+
     if (!showreachedPickupPopup) {
       console.log('⏭️ Skipping fetch - popup not shown')
       return
     }
-    
+
     const orderId = selectedRestaurant?.orderId || selectedRestaurant?.id
     if (!orderId) {
       console.log('⏭️ Skipping fetch - no orderId or id found')
@@ -6781,9 +6785,9 @@ export default function DeliveryHome() {
 
     // Always fetch to ensure we have the latest address (even if one exists, it might be incomplete)
     // Only skip if we have a valid non-default address
-    if (selectedRestaurant?.address && 
-        selectedRestaurant.address !== 'Restaurant Address' && 
-        selectedRestaurant.address.length > 20) { // Valid address should be longer than default
+    if (selectedRestaurant?.address &&
+      selectedRestaurant.address !== 'Restaurant Address' &&
+      selectedRestaurant.address.length > 20) { // Valid address should be longer than default
       console.log('⏭️ Skipping fetch - address already exists and seems valid:', selectedRestaurant.address)
       return
     }
@@ -6791,22 +6795,22 @@ export default function DeliveryHome() {
     const fetchOrderDetails = async () => {
       try {
         console.log('📋 Fetching order details for restaurant address, orderId:', orderId)
-        
+
         const response = await deliveryAPI.getOrderDetails(orderId)
-        
+
         if (response.data?.success && response.data.data) {
           const orderData = response.data.data
           const order = orderData.order || orderData
-          
+
           // Debug: Log full order structure
           console.log('🔍 Full order structure:', JSON.stringify(order, null, 2))
           console.log('🔍 order.restaurantId:', order.restaurantId)
           console.log('🔍 order.restaurantId?.location:', order.restaurantId?.location)
-          
+
           // Extract restaurant address with multiple fallbacks
           let restaurantAddress = selectedRestaurant?.address || 'Restaurant Address'
           const restaurantLocation = order.restaurantId?.location
-          
+
           if (order.restaurantId?.address) {
             restaurantAddress = order.restaurantId.address
             console.log('✅ Fetched restaurantId.address:', restaurantAddress)
@@ -6858,7 +6862,7 @@ export default function DeliveryHome() {
             restaurantAddress = order.restaurant.location.address
             console.log('✅ Fetched order.restaurant.location.address:', restaurantAddress)
           }
-          
+
           // Update selectedRestaurant with fetched address
           if (restaurantAddress && restaurantAddress !== 'Restaurant Address') {
             setSelectedRestaurant(prev => {
@@ -6879,17 +6883,17 @@ export default function DeliveryHome() {
             if (restaurantId && (typeof restaurantId === 'string' || typeof restaurantId === 'object')) {
               const restaurantIdString = typeof restaurantId === 'string' ? restaurantId : (restaurantId._id || restaurantId.id || restaurantId.toString())
               console.log('🔄 Address not found in order, fetching restaurant details by ID:', restaurantIdString)
-              
+
               try {
                 const restaurantResponse = await restaurantAPI.getRestaurantById(restaurantIdString)
                 if (restaurantResponse.data?.success && restaurantResponse.data.data) {
                   const restaurant = restaurantResponse.data.data.restaurant || restaurantResponse.data.data
                   console.log('✅ Fetched restaurant details:', restaurant)
-                  
+
                   // Extract address from restaurant location.formattedAddress (priority)
                   let fetchedAddress = 'Restaurant Address'
                   const restLocation = restaurant.location
-                  
+
                   if (restLocation?.formattedAddress) {
                     fetchedAddress = restLocation.formattedAddress
                     console.log('✅ Using restaurant.location.formattedAddress:', fetchedAddress)
@@ -6929,13 +6933,13 @@ export default function DeliveryHome() {
                     fetchedAddress = addressParts.join(', ')
                     console.log('✅ Built address from restaurant fields:', fetchedAddress)
                   }
-                  
+
                   // Update selectedRestaurant with fetched address and phone
                   const updates = {}
                   if (fetchedAddress && fetchedAddress !== 'Restaurant Address') {
                     updates.address = fetchedAddress
                   }
-                  
+
                   // Also fetch phone number from restaurant data
                   const restaurantPhone = restaurant.phone || restaurant.ownerPhone || restaurant.primaryContactNumber
                   if (restaurantPhone) {
@@ -6943,7 +6947,7 @@ export default function DeliveryHome() {
                     updates.ownerPhone = restaurant.ownerPhone || restaurantPhone
                     console.log('✅ Fetched restaurant phone:', restaurantPhone)
                   }
-                  
+
                   if (Object.keys(updates).length > 0) {
                     setSelectedRestaurant(prev => ({
                       ...prev,
@@ -6966,7 +6970,7 @@ export default function DeliveryHome() {
                 console.error('❌ Error fetching restaurant details:', restaurantError)
               }
             }
-            
+
             console.warn('⚠️ Could not extract restaurant address from order or restaurant API:', {
               orderKeys: Object.keys(order),
               hasRestaurantId: !!order.restaurantId,
@@ -6988,29 +6992,29 @@ export default function DeliveryHome() {
   // Show "Reached Pickup" popup when delivery boy is within 500 meters of restaurant location
   useEffect(() => {
     // Don't show if popup is already showing, or if order hasn't been accepted yet
-    if (showreachedPickupPopup || 
-        showNewOrderPopup || 
-        showOrderIdConfirmationPopup || // Don't show if order ID is already being confirmed
-        showReachedDropPopup || // Don't show if already reached drop
-        showOrderDeliveredAnimation || // Don't show if order is delivered
-        showCustomerReviewPopup || // Don't show if showing review popup
-        showPaymentPage || // Don't show if showing payment page
-        !selectedRestaurant?.lat || 
-        !selectedRestaurant?.lng || 
-        !riderLocation || 
-        riderLocation.length !== 2) {
+    if (showreachedPickupPopup ||
+      showNewOrderPopup ||
+      showOrderIdConfirmationPopup || // Don't show if order ID is already being confirmed
+      showReachedDropPopup || // Don't show if already reached drop
+      showOrderDeliveredAnimation || // Don't show if order is delivered
+      showCustomerReviewPopup || // Don't show if showing review popup
+      showPaymentPage || // Don't show if showing payment page
+      !selectedRestaurant?.lat ||
+      !selectedRestaurant?.lng ||
+      !riderLocation ||
+      riderLocation.length !== 2) {
       return
     }
 
     // Only show for orders that are in pickup phase (en_route_to_pickup or at_pickup)
     const deliveryPhase = selectedRestaurant?.deliveryPhase || selectedRestaurant?.deliveryState?.currentPhase || ''
     const orderStatus = selectedRestaurant?.orderStatus || selectedRestaurant?.status || ''
-    
+
     // CRITICAL: Don't show if order is already delivered/completed
-    const isDelivered = orderStatus === 'delivered' || 
-                        deliveryPhase === 'completed' || 
-                        deliveryPhase === 'delivered' ||
-                        selectedRestaurant?.deliveryState?.status === 'delivered'
+    const isDelivered = orderStatus === 'delivered' ||
+      deliveryPhase === 'completed' ||
+      deliveryPhase === 'delivered' ||
+      selectedRestaurant?.deliveryState?.status === 'delivered'
 
     if (isDelivered) {
       // Hide popup if it's showing and order is delivered
@@ -7019,16 +7023,16 @@ export default function DeliveryHome() {
       }
       return
     }
-    
+
     // CRITICAL: Don't show if order ID is already confirmed (en_route_to_delivery or order_confirmed)
     const isOrderIdConfirmed = deliveryPhase === 'en_route_to_delivery' ||
-                               deliveryPhase === 'picked_up' ||
-                               deliveryPhase === 'en_route_to_drop' ||
-                               orderStatus === 'out_for_delivery' ||
-                               selectedRestaurant?.deliveryState?.status === 'order_confirmed' ||
-                               selectedRestaurant?.deliveryState?.currentPhase === 'en_route_to_delivery' ||
-                               selectedRestaurant?.deliveryState?.currentPhase === 'en_route_to_drop'
-    
+      deliveryPhase === 'picked_up' ||
+      deliveryPhase === 'en_route_to_drop' ||
+      orderStatus === 'out_for_delivery' ||
+      selectedRestaurant?.deliveryState?.status === 'order_confirmed' ||
+      selectedRestaurant?.deliveryState?.currentPhase === 'en_route_to_delivery' ||
+      selectedRestaurant?.deliveryState?.currentPhase === 'en_route_to_drop'
+
     if (isOrderIdConfirmed) {
       // Order ID is already confirmed, don't show Reached Pickup popup
       if (showreachedPickupPopup) {
@@ -7037,12 +7041,12 @@ export default function DeliveryHome() {
       }
       return
     }
-    
+
     // Only show if order is accepted and on the way to pickup or at pickup
-    const isInPickupPhase = deliveryPhase === 'en_route_to_pickup' || 
-                            deliveryPhase === 'at_pickup' ||
-                            orderStatus === 'ready' ||
-                            orderStatus === 'preparing'
+    const isInPickupPhase = deliveryPhase === 'en_route_to_pickup' ||
+      deliveryPhase === 'at_pickup' ||
+      orderStatus === 'ready' ||
+      orderStatus === 'preparing'
 
     if (!isInPickupPhase) {
       return
@@ -7052,19 +7056,19 @@ export default function DeliveryHome() {
     if (!showreachedPickupPopup) {
       console.log('✅ Order is in pickup phase, showing Reached Pickup popup immediately')
       setShowreachedPickupPopup(true)
-      
+
       // Close directions map if open
       setShowDirectionsMap(false)
     }
   }, [
-    riderLocation?.[0] ?? null, 
-    riderLocation?.[1] ?? null, 
-    selectedRestaurant?.lat ?? null, 
+    riderLocation?.[0] ?? null,
+    riderLocation?.[1] ?? null,
+    selectedRestaurant?.lat ?? null,
     selectedRestaurant?.lng ?? null,
     selectedRestaurant?.deliveryPhase ?? selectedRestaurant?.deliveryState?.currentPhase ?? null,
     selectedRestaurant?.orderStatus ?? selectedRestaurant?.status ?? null,
-    Boolean(showNewOrderPopup), 
-    Boolean(showOrderIdConfirmationPopup), 
+    Boolean(showNewOrderPopup),
+    Boolean(showOrderIdConfirmationPopup),
     Boolean(showreachedPickupPopup),
     Boolean(showReachedDropPopup),
     Boolean(showOrderDeliveredAnimation),
@@ -7083,14 +7087,14 @@ export default function DeliveryHome() {
     const orderStatus = selectedRestaurant?.orderStatus || selectedRestaurant?.status || ''
     const deliveryPhase = selectedRestaurant?.deliveryPhase || selectedRestaurant?.deliveryState?.currentPhase || ''
     const deliveryStateStatus = selectedRestaurant?.deliveryState?.status || ''
-    
-    const isDelivered = orderStatus === 'delivered' || 
-                        orderStatus === 'completed' ||
-                        deliveryPhase === 'completed' || 
-                        deliveryPhase === 'delivered' ||
-                        deliveryStateStatus === 'delivered' ||
-                        showPaymentPage ||
-                        showOrderDeliveredAnimation
+
+    const isDelivered = orderStatus === 'delivered' ||
+      orderStatus === 'completed' ||
+      deliveryPhase === 'completed' ||
+      deliveryPhase === 'delivered' ||
+      deliveryStateStatus === 'delivered' ||
+      showPaymentPage ||
+      showOrderDeliveredAnimation
 
     if (isDelivered) {
       // Close all pickup/delivery related popups when order is delivered
@@ -7106,7 +7110,7 @@ export default function DeliveryHome() {
         console.log('🚫 Order is delivered, closing Reached Drop popup')
         setShowReachedDropPopup(false)
       }
-      
+
       // If payment page is closed and order is delivered, clear selectedRestaurant
       if (!showPaymentPage && !showCustomerReviewPopup && !showOrderDeliveredAnimation && selectedRestaurant) {
         console.log('✅ Order is delivered and payment completed, clearing selectedRestaurant')
@@ -7117,7 +7121,7 @@ export default function DeliveryHome() {
           clearNewOrder()
         }
         acceptedOrderIdsRef.current.clear()
-        
+
         // Clear map markers and polylines
         if (routePolylineRef.current) {
           routePolylineRef.current.setMap(null)
@@ -7149,27 +7153,27 @@ export default function DeliveryHome() {
   useEffect(() => {
     const orderStatus = selectedRestaurant?.orderStatus || selectedRestaurant?.status || '';
     const deliveryPhase = selectedRestaurant?.deliveryPhase || selectedRestaurant?.deliveryState?.currentPhase || '';
-    
+
     // Check if order is picked up or out for delivery
-    const isPickedUp = orderStatus === 'out_for_delivery' || 
-                       orderStatus === 'picked_up' ||
-                       deliveryPhase === 'en_route_to_delivery' ||
-                       deliveryPhase === 'picked_up';
-    
+    const isPickedUp = orderStatus === 'out_for_delivery' ||
+      orderStatus === 'picked_up' ||
+      deliveryPhase === 'en_route_to_delivery' ||
+      deliveryPhase === 'picked_up';
+
     // Check if we have customer location
     const hasCustomerLocation = selectedRestaurant?.customerLat && selectedRestaurant?.customerLng;
-    
+
     // Only switch route if order is picked up and we have customer location
     if (isPickedUp && hasCustomerLocation && riderLocation && riderLocation.length === 2) {
       // Check if we already have a route to customer (avoid recalculating unnecessarily)
       const currentDirections = directionsResponseRef.current;
-      const needsCustomerRoute = !currentDirections || 
-                                 !currentDirections.routes || 
-                                 currentDirections.routes.length === 0;
-      
+      const needsCustomerRoute = !currentDirections ||
+        !currentDirections.routes ||
+        currentDirections.routes.length === 0;
+
       if (needsCustomerRoute) {
         console.log('🔄 Order picked up - switching route to customer location');
-        
+
         // Calculate route from current location to customer
         calculateRouteWithDirectionsAPI(
           riderLocation,
@@ -7179,7 +7183,7 @@ export default function DeliveryHome() {
             console.log('✅ Route to customer calculated after pickup');
             setDirectionsResponse(directionsResult);
             directionsResponseRef.current = directionsResult;
-            
+
             // Show polyline for customer route - update live tracking polyline with new route
             if (riderLocation && window.deliveryMapInstance) {
               // Update live tracking polyline with route to customer (Restaurant → Customer)
@@ -7194,7 +7198,7 @@ export default function DeliveryHome() {
                 }
               }, 500);
             }
-            
+
             // Clean up old fallback polyline if exists
             if (window.deliveryMapInstance) {
               try {
@@ -7202,7 +7206,7 @@ export default function DeliveryHome() {
                   routePolylineRef.current.setMap(null);
                   routePolylineRef.current = null;
                 }
-                
+
                 // Remove DirectionsRenderer from map (we use custom polyline instead)
                 if (directionsRendererRef.current) {
                   directionsRendererRef.current.setMap(null);
@@ -7210,7 +7214,7 @@ export default function DeliveryHome() {
               } catch (e) {
                 console.warn('⚠️ Error cleaning up old polyline:', e);
               }
-              
+
               // Fit map bounds to show entire route
               const bounds = directionsResult.routes[0].bounds;
               if (bounds) {
@@ -7281,7 +7285,7 @@ export default function DeliveryHome() {
   const deliveryStateStatus = useMemo(() => {
     return selectedRestaurant?.deliveryState?.status ?? null
   }, [selectedRestaurant?.deliveryState?.status])
-  
+
   useEffect(() => {
     // CRITICAL: If payment page is showing, delivery is completed - do NOT show reached drop popup
     if (showPaymentPage || showCustomerReviewPopup || showOrderDeliveredAnimation) {
@@ -7291,20 +7295,20 @@ export default function DeliveryHome() {
 
     const orderStatus = selectedRestaurant?.orderStatus || selectedRestaurant?.status || newOrder?.status || ''
     const deliveryPhase = selectedRestaurant?.deliveryState?.currentPhase || selectedRestaurant?.deliveryPhase || ''
-    const isDeliveredOrCompleted = orderStatus === 'delivered' || 
-                                   orderStatus === 'completed' || 
-                                   deliveryPhase === 'completed' ||
-                                   deliveryPhase === 'at_delivery'
+    const isDeliveredOrCompleted = orderStatus === 'delivered' ||
+      orderStatus === 'completed' ||
+      deliveryPhase === 'completed' ||
+      deliveryPhase === 'at_delivery'
     // deliveryStateStatus is defined outside useEffect using useMemo (prevents dependency array size changes)
     // More lenient check: allow if order ID is confirmed or order is out for delivery
     const isOutForDelivery = !isDeliveredOrCompleted && (
-                             orderStatus === 'out_for_delivery' || 
-                             deliveryPhase === 'en_route_to_delivery' ||
-                             deliveryPhase === 'picked_up' ||
-                             deliveryPhase === 'at_delivery' ||
-                             deliveryStateStatus === 'order_confirmed' ||
-                             deliveryStateStatus === 'en_route_to_delivery' ||
-                             orderStatus === 'ready')
+      orderStatus === 'out_for_delivery' ||
+      deliveryPhase === 'en_route_to_delivery' ||
+      deliveryPhase === 'picked_up' ||
+      deliveryPhase === 'at_delivery' ||
+      deliveryStateStatus === 'order_confirmed' ||
+      deliveryStateStatus === 'en_route_to_delivery' ||
+      orderStatus === 'ready')
 
     // Rider position: prefer riderLocation, fallback lastLocationRef
     const riderPos = (riderLocation && riderLocation.length === 2) ? riderLocation : (lastLocationRef.current && lastLocationRef.current.length === 2 ? lastLocationRef.current : null)
@@ -7323,31 +7327,31 @@ export default function DeliveryHome() {
       console.log('[Reached Drop] No rider position available')
       return
     }
-    
+
     // Don't show if other popups are active (but allow if Order ID confirmation was just completed)
     // NOTE: If showReachedDropPopup is already true, don't hide it - it was explicitly set after Order ID confirmation
     if (isDeliveredOrCompleted || showNewOrderPopup || showreachedPickupPopup) {
       return
     }
-    
+
     // If Reached Drop popup is already showing, don't interfere (it was explicitly set)
     if (showReachedDropPopup) {
       return
     }
-    
+
     // Only block if Order ID confirmation popup is still actively showing
     // If it was just closed, allow Reached Drop to show
     if (showOrderIdConfirmationPopup) {
       return
     }
-    
+
     // CRITICAL: Must be in delivery phase (after Order ID confirmation)
     // Also allow if order ID confirmation was just completed (picked_up phase)
-    const isInDeliveryPhase = isOutForDelivery || 
-                              deliveryPhase === 'picked_up' ||
-                              deliveryStateStatus === 'order_confirmed' ||
-                              orderStatus === 'out_for_delivery'
-    
+    const isInDeliveryPhase = isOutForDelivery ||
+      deliveryPhase === 'picked_up' ||
+      deliveryStateStatus === 'order_confirmed' ||
+      orderStatus === 'out_for_delivery'
+
     if (!isInDeliveryPhase) {
       console.log('[Reached Drop] Order not in delivery phase:', {
         orderStatus,
@@ -7387,7 +7391,7 @@ export default function DeliveryHome() {
     // REMOVED: 500m distance check - Reached Drop popup now shows instantly after Order Picked Up
     // This useEffect is kept for other monitoring but won't trigger Reached Drop popup
     // The popup is now shown directly after Order Picked Up confirmation (see handleOrderIdConfirmTouchEnd)
-    
+
     // Log distance for debugging (but don't show popup based on distance)
     if (distanceInMeters <= 1000) {
       console.log(`📍 Distance to customer: ${distanceInMeters.toFixed(2)} meters (popup shown instantly, not based on distance)`, {
@@ -7399,21 +7403,21 @@ export default function DeliveryHome() {
         deliveryStateStatus
       })
     }
-    
+
     // Live tracking polyline is already updated automatically via watchPosition callback
     // No need to recalculate route here - it's handled in handleOrderIdConfirmTouchEnd
   }, [
-    riderLocation?.[0] ?? null, 
-    riderLocation?.[1] ?? null, 
-    selectedRestaurant?.customerLat ?? null, 
+    riderLocation?.[0] ?? null,
+    riderLocation?.[1] ?? null,
+    selectedRestaurant?.customerLat ?? null,
     selectedRestaurant?.customerLng ?? null,
     selectedRestaurant?.orderStatus ?? newOrder?.status ?? null,
     selectedRestaurant?.deliveryPhase ?? selectedRestaurant?.deliveryState?.currentPhase ?? null,
     deliveryStateStatus, // Use memoized value to ensure consistent dependency array size
-    Boolean(showNewOrderPopup), 
-    Boolean(showOrderIdConfirmationPopup), 
-    Boolean(showreachedPickupPopup), 
-    Boolean(showReachedDropPopup), 
+    Boolean(showNewOrderPopup),
+    Boolean(showOrderIdConfirmationPopup),
+    Boolean(showreachedPickupPopup),
+    Boolean(showReachedDropPopup),
     Boolean(showOrderDeliveredAnimation),
     Boolean(showCustomerReviewPopup),
     Boolean(showPaymentPage),
@@ -7425,13 +7429,13 @@ export default function DeliveryHome() {
     const dLng = (lng2 - lng1) * Math.PI / 180
     const lat1Rad = lat1 * Math.PI / 180
     const lat2Rad = lat2 * Math.PI / 180
-    
+
     const y = Math.sin(dLng) * Math.cos(lat2Rad)
     const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng)
-    
+
     let heading = Math.atan2(y, x) * 180 / Math.PI
     heading = (heading + 360) % 360 // Normalize to 0-360
-    
+
     return heading
   }
 
@@ -7443,7 +7447,7 @@ export default function DeliveryHome() {
     // Round heading to nearest 5 degrees for caching
     const roundedHeading = Math.round(heading / 5) * 5;
     const cacheKey = `${roundedHeading}`;
-    
+
     // Check cache first
     if (rotatedIconCache.current.has(cacheKey)) {
       return Promise.resolve(rotatedIconCache.current.get(cacheKey));
@@ -7459,17 +7463,17 @@ export default function DeliveryHome() {
           canvas.width = size;
           canvas.height = size;
           const ctx = canvas.getContext('2d');
-          
+
           // Clear canvas
           ctx.clearRect(0, 0, size, size);
-          
+
           // Move to center, rotate, then draw image
           ctx.save();
           ctx.translate(size / 2, size / 2);
           ctx.rotate((roundedHeading * Math.PI) / 180); // Convert degrees to radians
           ctx.drawImage(img, -size / 2, -size / 2, size, size);
           ctx.restore();
-          
+
           // Get data URL and cache it
           const dataUrl = canvas.toDataURL();
           rotatedIconCache.current.set(cacheKey, dataUrl);
@@ -7486,7 +7490,7 @@ export default function DeliveryHome() {
         resolve(bikeLogo);
       };
       img.src = bikeLogo;
-      
+
       // If image is already loaded (cached), resolve immediately
       if (img.complete) {
         // Image already loaded, process it
@@ -7525,14 +7529,14 @@ export default function DeliveryHome() {
         animation: window.google.maps.Animation.DROP, // Drop animation on first appearance
         zIndex: 1000 // High z-index to ensure it's above other markers
       });
-      
+
       console.log('✅ Bike marker created:', {
         position: { lat: latitude, lng: longitude },
         map: map,
         iconUrl: rotatedIconUrl,
         marker: bikeMarkerRef.current
       });
-      
+
       // Center map on bike location initially - preserve current zoom if user has zoomed in
       if (shouldCenterMap) {
         const currentZoom = map.getZoom();
@@ -7542,7 +7546,7 @@ export default function DeliveryHome() {
           map.setZoom(18); // Full zoom in for better visibility
         }
       }
-      
+
       // Remove animation after drop completes
       setTimeout(() => {
         if (bikeMarkerRef.current) {
@@ -7559,29 +7563,29 @@ export default function DeliveryHome() {
         });
         bikeMarkerRef.current.setMap(map);
       }
-      
+
       // Update position EXACTLY - use setPosition for precise location
       // Verify coordinates are correct before setting
-      console.log('📍 Updating bike marker position:', { 
-        lat: latitude, 
+      console.log('📍 Updating bike marker position:', {
+        lat: latitude,
         lng: longitude,
         heading: heading || 0,
-        currentMarkerPos: bikeMarkerRef.current.getPosition() 
+        currentMarkerPos: bikeMarkerRef.current.getPosition()
           ? { lat: bikeMarkerRef.current.getPosition().lat(), lng: bikeMarkerRef.current.getPosition().lng() }
           : 'null'
       });
-      
+
       // Validate coordinates before setting
       if (typeof latitude === 'number' && typeof longitude === 'number' &&
-          !isNaN(latitude) && !isNaN(longitude) &&
-          latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+        !isNaN(latitude) && !isNaN(longitude) &&
+        latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
         bikeMarkerRef.current.setPosition(position);
         console.log('✅ Bike marker position updated successfully');
       } else {
         console.error('❌ Invalid coordinates for bike marker:', { latitude, longitude });
         return; // Don't update if coordinates are invalid
       }
-      
+
       // Update icon with rotation for smooth movement
       const currentHeading = heading !== null && heading !== undefined ? heading : 0;
       const rotatedIconUrl = await getRotatedBikeIcon(currentHeading);
@@ -7591,16 +7595,16 @@ export default function DeliveryHome() {
         anchor: new window.google.maps.Point(30, 30)
       };
       bikeMarkerRef.current.setIcon(bikeIcon);
-      
+
       // Ensure z-index is high
       bikeMarkerRef.current.setZIndex(1000);
-      
+
       // Auto-center map on bike location (like Zomato) - only if user hasn't manually panned
       if (shouldCenterMap && !isUserPanningRef.current) {
         // Smooth pan to bike location
         map.panTo(position);
       }
-      
+
       // Double-check marker is still on map after update
       if (bikeMarkerRef.current.getMap() === null) {
         console.warn('⚠️ Bike marker lost map reference after update, re-adding...');
@@ -7709,7 +7713,7 @@ export default function DeliveryHome() {
       }
       return prev
     })
-    
+
     carouselAutoRotateRef.current = setInterval(() => {
       setCurrentCarouselSlide((prev) => (prev + 1) % carouselSlides.length)
     }, 3000)
@@ -7845,24 +7849,24 @@ export default function DeliveryHome() {
     // Check if touch is on a button or interactive element
     const target = e.target
     const isInteractive = target.closest('button') || target.closest('a') || target.closest('[role="button"]')
-    
+
     // If touching an interactive element, don't start swipe
     if (isInteractive && !target.closest('[data-swipe-handle]')) {
       return
     }
-    
+
     // Check if touch is on scrollable content area
-    const isOnScrollableContent = target.closest('[ref="homeSectionsScrollRef"]') || 
-                                  target.closest('.overflow-y-auto') ||
-                                  (homeSectionsScrollRef.current && homeSectionsScrollRef.current.contains(target))
-    
+    const isOnScrollableContent = target.closest('[ref="homeSectionsScrollRef"]') ||
+      target.closest('.overflow-y-auto') ||
+      (homeSectionsScrollRef.current && homeSectionsScrollRef.current.contains(target))
+
     // Check if we're scrolling vs dragging
     if (showHomeSections && homeSectionsScrollRef.current && isOnScrollableContent) {
       const scrollTop = homeSectionsScrollRef.current.scrollTop
       const scrollHeight = homeSectionsScrollRef.current.scrollHeight
       const clientHeight = homeSectionsScrollRef.current.clientHeight
       const isScrollable = scrollHeight > clientHeight
-      
+
       // If content is scrollable and not at top/bottom, allow scrolling
       if (isScrollable && (scrollTop > 10 || scrollTop < (scrollHeight - clientHeight - 10))) {
         // User is scrolling, not dragging
@@ -7871,7 +7875,7 @@ export default function DeliveryHome() {
         return
       }
     }
-    
+
     // Only start swipe if touch is on swipe handle or at top/bottom of scrollable area
     isSwipingBar.current = true
     swipeBarStartY.current = e.touches[0].clientY
@@ -7881,7 +7885,7 @@ export default function DeliveryHome() {
 
   const handleSwipeBarTouchMove = (e) => {
     if (!isSwipingBar.current) return
-    
+
     const currentY = e.touches[0].clientY
     const deltaY = swipeBarStartY.current - currentY // Positive = swiping up, Negative = swiping down
     const windowHeight = window.innerHeight
@@ -7892,7 +7896,7 @@ export default function DeliveryHome() {
       const scrollHeight = homeSectionsScrollRef.current.scrollHeight
       const clientHeight = homeSectionsScrollRef.current.clientHeight
       const isScrollable = scrollHeight > clientHeight
-      
+
       // If content is scrollable and user is trying to scroll
       if (isScrollable) {
         // Scrolling down (deltaY < 0) - allow scroll if not at top
@@ -7902,7 +7906,7 @@ export default function DeliveryHome() {
           setIsDraggingSwipeBar(false)
           return // Allow native scroll
         }
-        
+
         // Scrolling up (deltaY > 0) - allow scroll if not at bottom
         if (deltaY > 0 && scrollTop < (scrollHeight - clientHeight - 10)) {
           isScrollingHomeSections.current = true
@@ -7940,7 +7944,7 @@ export default function DeliveryHome() {
 
   const handleSwipeBarTouchEnd = (e) => {
     if (!isSwipingBar.current) return
-    
+
     // If user was scrolling, don't handle as swipe
     if (isScrollingHomeSections.current) {
       isSwipingBar.current = false
@@ -7986,12 +7990,12 @@ export default function DeliveryHome() {
     // Check if click is on a button or interactive element
     const target = e.target
     const isInteractive = target.closest('button') || target.closest('a') || target.closest('[role="button"]')
-    
+
     // If clicking an interactive element, don't start swipe
     if (isInteractive && !target.closest('[data-swipe-handle]')) {
       return
     }
-    
+
     isSwipingBar.current = true
     swipeBarStartY.current = e.clientY
     setIsDraggingSwipeBar(true)
@@ -8118,7 +8122,7 @@ export default function DeliveryHome() {
     try {
       const [riderLat, riderLng] = riderLocation
       const response = await deliveryAPI.getZonesInRadius(riderLat, riderLng, 70)
-      
+
       if (response.data?.success && response.data.data?.zones) {
         const nearbyZones = response.data.data.zones
         setZones(nearbyZones)
@@ -8208,84 +8212,84 @@ export default function DeliveryHome() {
 
       {/* Carousel - Only show if there are slides */}
       {carouselSlides.length > 0 && (
-      <div
-        ref={carouselRef}
-        className="relative overflow-hidden bg-gray-700 cursor-grab active:cursor-grabbing select-none flex-shrink-0"
-        onMouseDown={handleCarouselMouseDown}
-      >
-        <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentCarouselSlide * 100}%)` }}>
-          {carouselSlides.map((slide) => (
-            <div key={slide.id} className="min-w-full">
-              <div className={`${slide.bgColor} px-4 py-3 flex items-center gap-3 min-h-[80px]`}>
-                {/* Icon */}
-                <div className="flex-shrink-0">
-                  {slide.icon === "bag" ? (
-                    <div className="relative">
-                      {/* Delivery Bag Icon - Reduced size */}
-                      <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center shadow-lg relative">
-                        {/* Bag shape */}
-                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                        </svg>
+        <div
+          ref={carouselRef}
+          className="relative overflow-hidden bg-gray-700 cursor-grab active:cursor-grabbing select-none flex-shrink-0"
+          onMouseDown={handleCarouselMouseDown}
+        >
+          <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentCarouselSlide * 100}%)` }}>
+            {carouselSlides.map((slide) => (
+              <div key={slide.id} className="min-w-full">
+                <div className={`${slide.bgColor} px-4 py-3 flex items-center gap-3 min-h-[80px]`}>
+                  {/* Icon */}
+                  <div className="flex-shrink-0">
+                    {slide.icon === "bag" ? (
+                      <div className="relative">
+                        {/* Delivery Bag Icon - Reduced size */}
+                        <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center shadow-lg relative">
+                          {/* Bag shape */}
+                          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                          </svg>
+                        </div>
+                        {/* Shadow */}
+                        <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-black/30 rounded-full blur-sm"></div>
                       </div>
-                      {/* Shadow */}
-                      <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-black/30 rounded-full blur-sm"></div>
-                    </div>
-                  ) : (
-                    <div className="relative w-10 h-10">
-                      {/* Bank/Rupee Icon - Reduced size */}
-                      <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center relative">
-                        {/* Rupee symbol */}
-                        <svg className="w-12 h-12 text-white absolute" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
-                        </svg>
+                    ) : (
+                      <div className="relative w-10 h-10">
+                        {/* Bank/Rupee Icon - Reduced size */}
+                        <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center relative">
+                          {/* Rupee symbol */}
+                          <svg className="w-12 h-12 text-white absolute" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
+                          </svg>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                {/* Text Content */}
-                <div className="flex-1">
-                  <h3 className={`${slide.bgColor === "bg-gray-700" ? "text-white" : "text-black"} text-sm font-semibold mb-0.5`}>
-                    {slide.title}
-                  </h3>
-                  <p className={`${slide.bgColor === "bg-gray-700" ? "text-white/90" : "text-black/80"} text-xs`}>
-                    {slide.subtitle}
-                  </p>
-                </div>
+                  {/* Text Content */}
+                  <div className="flex-1">
+                    <h3 className={`${slide.bgColor === "bg-gray-700" ? "text-white" : "text-black"} text-sm font-semibold mb-0.5`}>
+                      {slide.title}
+                    </h3>
+                    <p className={`${slide.bgColor === "bg-gray-700" ? "text-white/90" : "text-black/80"} text-xs`}>
+                      {slide.subtitle}
+                    </p>
+                  </div>
 
-                {/* Button */}
-                <button 
-                  onClick={() => {
-                    if (slide.id === 2) {
-                      navigate("/delivery/profile/details")
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-colors ${slide.bgColor === "bg-gray-700"
-                    ? "bg-gray-600 text-white hover:bg-gray-500"
-                    : "bg-yellow-300 text-black hover:bg-yellow-200"
-                  }`}>
-                  {slide.buttonText}
-                </button>
+                  {/* Button */}
+                  <button
+                    onClick={() => {
+                      if (slide.id === 2) {
+                        navigate("/delivery/profile/details")
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-colors ${slide.bgColor === "bg-gray-700"
+                      ? "bg-gray-600 text-white hover:bg-gray-500"
+                      : "bg-yellow-300 text-black hover:bg-yellow-200"
+                      }`}>
+                    {slide.buttonText}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* Carousel Indicators */}
-        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-          {carouselSlides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentCarouselSlide(index)}
-              className={`h-1.5 rounded-full transition-all duration-300 ${index === currentCarouselSlide
+          {/* Carousel Indicators */}
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            {carouselSlides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentCarouselSlide(index)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${index === currentCarouselSlide
                   ? (currentCarouselSlide === 0 ? "w-6 bg-white" : "w-6 bg-black")
                   : (index === 0 ? "w-1.5 bg-white/50" : "w-1.5 bg-black/30")
-                }`}
-            />
-          ))}
+                  }`}
+              />
+            ))}
+          </div>
         </div>
-      </div>
       )}
 
 
@@ -8294,671 +8298,670 @@ export default function DeliveryHome() {
         <>
           {/* Map View - Shows map with Hotspot or Select drop mode */}
           <div className="relative flex-1 overflow-hidden pb-16 md:pb-0" style={{ minHeight: 0, pointerEvents: 'auto' }}>
-          {/* Google Maps Container */}
-          <div
-            ref={mapContainerRef}
-            className="w-full h-full"
-            style={{ 
-              height: '100%', 
-              width: '100%', 
-              backgroundColor: '#e5e7eb', // Light gray background while loading
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              pointerEvents: 'auto',
-              zIndex: 0
-            }}
-          />
-          
-          {/* Loading indicator */}
-          {mapLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-              <div className="flex flex-col items-center gap-2">
-                <div className="text-gray-600 font-medium">Loading map...</div>
-                <div className="text-xs text-gray-500">Please wait</div>
-              </div>
-            </div>
-          )}
-
-          {/* Map Refresh Overlay - Professional Loading Indicator */}
-          {isRefreshingLocation && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
-            >
-              {/* Loading indicator container */}
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                className="relative"
-              >
-                {/* Outer pulsing ring */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.3, 1],
-                    opacity: [0.6, 0.3, 0.6]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: [0.4, 0, 0.6, 1], // Smooth ease-in-out
-                    type: "tween",
-                    times: [0, 0.5, 1]
-                  }}
-                  className="absolute inset-0 w-20 h-20 bg-blue-500/20 rounded-full"
-                />
-                
-                {/* Middle ring */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.5, 0.2, 0.5]
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: [0.4, 0, 0.6, 1], // Smooth ease-in-out
-                    type: "tween",
-                    delay: 0.3,
-                    times: [0, 0.5, 1]
-                  }}
-                  className="absolute inset-0 w-16 h-16 bg-blue-500/30 rounded-full m-2"
-                />
-                
-                {/* Inner spinner */}
-                <div className="relative w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 1.2,
-                      repeat: Infinity,
-                      ease: "linear",
-                      type: "tween"
-                    }}
-                    className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full"
-                  />
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* Floating Action Button - My Location */}
-          <motion.button
-            onClick={() => {
-              if (navigator.geolocation) {
-                setIsRefreshingLocation(true)
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    // Validate coordinates
-                    const latitude = position.coords.latitude
-                    const longitude = position.coords.longitude
-                    
-                    // Validate coordinates are valid numbers
-                    if (typeof latitude !== 'number' || typeof longitude !== 'number' || 
-                        isNaN(latitude) || isNaN(longitude) ||
-                        latitude < -90 || latitude > 90 || 
-                        longitude < -180 || longitude > 180) {
-                      console.warn("⚠️ Invalid coordinates received:", { latitude, longitude })
-                      setIsRefreshingLocation(false)
-                      return
-                    }
-                    
-                    const newLocation = [latitude, longitude] // [lat, lng] format
-                    
-                    // Calculate heading from previous location
-                    let heading = null
-                    if (lastLocationRef.current) {
-                      const [prevLat, prevLng] = lastLocationRef.current
-                      heading = calculateHeading(prevLat, prevLng, latitude, longitude)
-                    }
-                    
-                    // Save location to localStorage (for refresh handling)
-                    localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(newLocation))
-                    
-                    // Update route history
-                    if (lastLocationRef.current) {
-                      routeHistoryRef.current.push({
-                        lat: latitude,
-                        lng: longitude
-                      })
-                      if (routeHistoryRef.current.length > 1000) {
-                        routeHistoryRef.current.shift()
-                      }
-                    } else {
-                      routeHistoryRef.current = [{
-                        lat: latitude,
-                        lng: longitude
-                      }]
-                    }
-                    
-                    // Update bike marker (only if online - blue dot नहीं, bike icon)
-                    if (window.deliveryMapInstance) {
-                      // Always show bike marker on map (both offline and online)
-                      // Center map automatically (Zomato style) unless user is panning
-                      createOrUpdateBikeMarker(latitude, longitude, heading, !isUserPanningRef.current)
-                      updateRoutePolyline()
-                    }
-                    
-                    setRiderLocation(newLocation)
-                    lastLocationRef.current = newLocation
-                    
-                    console.log("📍 Location refreshed:", { 
-                      latitude, 
-                      longitude, 
-                      heading,
-                      accuracy: position.coords.accuracy,
-                      isOnline: isOnlineRef.current
-                    })
-                    
-                    // Stop refreshing animation after a short delay
-                    setTimeout(() => {
-                      setIsRefreshingLocation(false)
-                    }, 800)
-                  },
-                  (error) => {
-                    console.error('Error getting location:', error)
-                    setIsRefreshingLocation(false)
-                  },
-                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                )
-              }
-            }}
-            className="absolute bottom-44 right-3 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors z-20 overflow-visible"
-            whileTap={{ scale: 0.92 }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 300, 
-              damping: 25,
-              mass: 0.5
-            }}
-          >
-            <div className="relative w-full h-full flex items-center justify-center">
-              {/* Ripple effect */}
-              {isRefreshingLocation && (
-                <motion.div
-                  className="absolute inset-0 rounded-full bg-blue-500/20"
-                  initial={{ scale: 0.9, opacity: 0.6 }}
-                  animate={{ 
-                    scale: [0.9, 1.6, 1.8],
-                    opacity: [0.6, 0.3, 0]
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: [0.25, 0.46, 0.45, 0.94], // Smooth ease-out
-                    times: [0, 0.5, 1]
-                  }}
-                />
-              )}
-              
-              {/* Icon with smooth animations */}
-              <motion.div
-                className="relative z-10"
-                animate={{
-                  rotate: isRefreshingLocation ? 360 : 0,
-                  scale: isRefreshingLocation ? [1, 1.1, 1] : 1,
-                }}
-                transition={{
-                  rotate: {
-                    duration: 2,
-                    repeat: isRefreshingLocation ? Infinity : 0,
-                    ease: "linear", // Linear for smooth continuous rotation
-                    type: "tween"
-                  },
-                  scale: {
-                    duration: 1.5,
-                    repeat: isRefreshingLocation ? Infinity : 0,
-                    ease: [0.4, 0, 0.6, 1], // Smooth ease-in-out
-                    type: "tween",
-                    times: [0, 0.5, 1]
-                  }
-                }}
-              >
-                <MapPin 
-                  className={`w-6 h-6 transition-colors duration-500 ease-in-out ${
-                    isRefreshingLocation ? 'text-blue-600' : 'text-gray-700'
-                  }`} 
-                />
-              </motion.div>
-            </div>
-          </motion.button>
-
-          {/* Floating Banner - Status Message */}
-          {mapViewMode === "hotspot" && (deliveryStatus === "pending" || deliveryStatus === "blocked") && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-sm px-6 py-4 z-20 min-w-[96%] text-center"
-            >
-              {deliveryStatus === "pending" ? (
-                <>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">Verification Done in 24 Hours</h3>
-                  <p className="text-sm text-gray-600">Your account is under verification. You'll be notified once approved.</p>
-                </>
-              ) : deliveryStatus === "blocked" ? (
-                <>
-                  <h3 className="text-lg font-bold text-red-600 mb-2">Denied Verification</h3>
-                  {rejectionReason && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 text-left">
-                      <p className="text-xs font-semibold text-red-800 mb-2">Reason for Rejection:</p>
-                      <div className="text-xs text-red-700 space-y-1">
-                        {rejectionReason.split('\n').filter(line => line.trim()).length > 1 ? (
-                          <ul className="space-y-1 list-disc list-inside">
-                            {rejectionReason.split('\n').map((point, index) => (
-                              point.trim() && (
-                                <li key={index}>{point.trim()}</li>
-                              )
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-red-700">{rejectionReason}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-sm text-gray-700 mb-3">
-                    Please correct the above issues and click "Reverify" to resubmit your request for approval.
-                  </p>
-                  <button
-                    onClick={handleReverify}
-                    disabled={isReverifying}
-                    className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
-                  >
-                    {isReverifying ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      "Reverify"
-                    )}
-                  </button>
-                </>
-              ) : null}
-            </motion.div>
-          )}
-
-          {/* Bottom Swipeable Bar - Can be dragged up to show home sections */}
-          {!showHomeSections && (
-            <motion.div
-              ref={swipeBarRef}
-              initial={{ y: "100%" }}
-              animate={{
-                y: isDraggingSwipeBar
-                  ? `${-swipeBarPosition * (window.innerHeight * 0.8)}px`
-                  : 0
-              }}
-              transition={isDraggingSwipeBar ? { duration: 0 } : { type: "spring", damping: 30, stiffness: 300 }}
-              onTouchStart={handleSwipeBarTouchStart}
-              onTouchMove={handleSwipeBarTouchMove}
-              onTouchEnd={handleSwipeBarTouchEnd}
-              onMouseDown={handleSwipeBarMouseDown}
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-20"
+            {/* Google Maps Container */}
+            <div
+              ref={mapContainerRef}
+              className="w-full h-full"
               style={{
-                touchAction: 'pan-y',
-                pointerEvents: 'auto'
+                height: '100%',
+                width: '100%',
+                backgroundColor: '#e5e7eb', // Light gray background while loading
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                pointerEvents: 'auto',
+                zIndex: 0
+              }}
+            />
+
+            {/* Loading indicator */}
+            {mapLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="text-gray-600 font-medium">Loading map...</div>
+                  <div className="text-xs text-gray-500">Please wait</div>
+                </div>
+              </div>
+            )}
+
+            {/* Map Refresh Overlay - Professional Loading Indicator */}
+            {isRefreshingLocation && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
+              >
+                {/* Loading indicator container */}
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                  className="relative"
+                >
+                  {/* Outer pulsing ring */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.3, 1],
+                      opacity: [0.6, 0.3, 0.6]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: [0.4, 0, 0.6, 1], // Smooth ease-in-out
+                      type: "tween",
+                      times: [0, 0.5, 1]
+                    }}
+                    className="absolute inset-0 w-20 h-20 bg-blue-500/20 rounded-full"
+                  />
+
+                  {/* Middle ring */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.5, 0.2, 0.5]
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: [0.4, 0, 0.6, 1], // Smooth ease-in-out
+                      type: "tween",
+                      delay: 0.3,
+                      times: [0, 0.5, 1]
+                    }}
+                    className="absolute inset-0 w-16 h-16 bg-blue-500/30 rounded-full m-2"
+                  />
+
+                  {/* Inner spinner */}
+                  <div className="relative w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 1.2,
+                        repeat: Infinity,
+                        ease: "linear",
+                        type: "tween"
+                      }}
+                      className="w-8 h-8 border-[3px] border-blue-600 border-t-transparent rounded-full"
+                    />
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Floating Action Button - My Location */}
+            <motion.button
+              onClick={() => {
+                if (navigator.geolocation) {
+                  setIsRefreshingLocation(true)
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      // Validate coordinates
+                      const latitude = position.coords.latitude
+                      const longitude = position.coords.longitude
+
+                      // Validate coordinates are valid numbers
+                      if (typeof latitude !== 'number' || typeof longitude !== 'number' ||
+                        isNaN(latitude) || isNaN(longitude) ||
+                        latitude < -90 || latitude > 90 ||
+                        longitude < -180 || longitude > 180) {
+                        console.warn("⚠️ Invalid coordinates received:", { latitude, longitude })
+                        setIsRefreshingLocation(false)
+                        return
+                      }
+
+                      const newLocation = [latitude, longitude] // [lat, lng] format
+
+                      // Calculate heading from previous location
+                      let heading = null
+                      if (lastLocationRef.current) {
+                        const [prevLat, prevLng] = lastLocationRef.current
+                        heading = calculateHeading(prevLat, prevLng, latitude, longitude)
+                      }
+
+                      // Save location to localStorage (for refresh handling)
+                      localStorage.setItem('deliveryBoyLastLocation', JSON.stringify(newLocation))
+
+                      // Update route history
+                      if (lastLocationRef.current) {
+                        routeHistoryRef.current.push({
+                          lat: latitude,
+                          lng: longitude
+                        })
+                        if (routeHistoryRef.current.length > 1000) {
+                          routeHistoryRef.current.shift()
+                        }
+                      } else {
+                        routeHistoryRef.current = [{
+                          lat: latitude,
+                          lng: longitude
+                        }]
+                      }
+
+                      // Update bike marker (only if online - blue dot नहीं, bike icon)
+                      if (window.deliveryMapInstance) {
+                        // Always show bike marker on map (both offline and online)
+                        // Center map automatically (Zomato style) unless user is panning
+                        createOrUpdateBikeMarker(latitude, longitude, heading, !isUserPanningRef.current)
+                        updateRoutePolyline()
+                      }
+
+                      setRiderLocation(newLocation)
+                      lastLocationRef.current = newLocation
+
+                      console.log("📍 Location refreshed:", {
+                        latitude,
+                        longitude,
+                        heading,
+                        accuracy: position.coords.accuracy,
+                        isOnline: isOnlineRef.current
+                      })
+
+                      // Stop refreshing animation after a short delay
+                      setTimeout(() => {
+                        setIsRefreshingLocation(false)
+                      }, 800)
+                    },
+                    (error) => {
+                      console.error('Error getting location:', error)
+                      setIsRefreshingLocation(false)
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                  )
+                }
+              }}
+              className="absolute bottom-44 right-3 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors z-20 overflow-visible"
+              whileTap={{ scale: 0.92 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 25,
+                mass: 0.5
               }}
             >
-              {/* Swipe Handle */}
-              <div
-                className="flex flex-col items-center pt-4 pb-2 cursor-grab active:cursor-grabbing"
-                style={{ touchAction: 'none' }}
-              >
+              <div className="relative w-full h-full flex items-center justify-center">
+                {/* Ripple effect */}
+                {isRefreshingLocation && (
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-blue-500/20"
+                    initial={{ scale: 0.9, opacity: 0.6 }}
+                    animate={{
+                      scale: [0.9, 1.6, 1.8],
+                      opacity: [0.6, 0.3, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: [0.25, 0.46, 0.45, 0.94], // Smooth ease-out
+                      times: [0, 0.5, 1]
+                    }}
+                  />
+                )}
+
+                {/* Icon with smooth animations */}
                 <motion.div
-                  className="flex flex-col items-center gap-1"
+                  className="relative z-10"
                   animate={{
-                    y: isDraggingSwipeBar ? swipeBarPosition * 5 : 0,
-                    opacity: isDraggingSwipeBar ? 0.7 : 1
+                    rotate: isRefreshingLocation ? 360 : 0,
+                    scale: isRefreshingLocation ? [1, 1.1, 1] : 1,
                   }}
-                  transition={{ duration: 0.1 }}
+                  transition={{
+                    rotate: {
+                      duration: 2,
+                      repeat: isRefreshingLocation ? Infinity : 0,
+                      ease: "linear", // Linear for smooth continuous rotation
+                      type: "tween"
+                    },
+                    scale: {
+                      duration: 1.5,
+                      repeat: isRefreshingLocation ? Infinity : 0,
+                      ease: [0.4, 0, 0.6, 1], // Smooth ease-in-out
+                      type: "tween",
+                      times: [0, 0.5, 1]
+                    }
+                  }}
                 >
-                  <button
-                    onClick={handleChevronUpClick}
-                    className="flex items-center justify-center p-2 -m-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-                    aria-label="Slide up"
-                  >
-                    <ChevronUp className="!w-12 !h-8 scale-x-150 text-gray-400 -mt-2 font-bold" strokeWidth={3} />
-                  </button>
+                  <MapPin
+                    className={`w-6 h-6 transition-colors duration-500 ease-in-out ${isRefreshingLocation ? 'text-blue-600' : 'text-gray-700'
+                      }`}
+                  />
                 </motion.div>
               </div>
+            </motion.button>
 
-              {/* Content Area - Shows map info when down */}
-              <div className="px-4 pb-6">
-                {mapViewMode === "hotspot" ? (
-                  <div className="flex flex-col items-center">
-                    {/* <h3 className="text-lg font-bold text-gray-900 mb-2">No hotspots are available</h3>
+            {/* Floating Banner - Status Message */}
+            {mapViewMode === "hotspot" && (deliveryStatus === "pending" || deliveryStatus === "blocked") && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-sm px-6 py-4 z-20 min-w-[96%] text-center"
+              >
+                {deliveryStatus === "pending" ? (
+                  <>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">Verification Done in 24 Hours</h3>
+                    <p className="text-sm text-gray-600">Your account is under verification. You'll be notified once approved.</p>
+                  </>
+                ) : deliveryStatus === "blocked" ? (
+                  <>
+                    <h3 className="text-lg font-bold text-red-600 mb-2">Denied Verification</h3>
+                    {rejectionReason && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 text-left">
+                        <p className="text-xs font-semibold text-red-800 mb-2">Reason for Rejection:</p>
+                        <div className="text-xs text-red-700 space-y-1">
+                          {rejectionReason.split('\n').filter(line => line.trim()).length > 1 ? (
+                            <ul className="space-y-1 list-disc list-inside">
+                              {rejectionReason.split('\n').map((point, index) => (
+                                point.trim() && (
+                                  <li key={index}>{point.trim()}</li>
+                                )
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-red-700">{rejectionReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-700 mb-3">
+                      Please correct the above issues and click "Reverify" to resubmit your request for approval.
+                    </p>
+                    <button
+                      onClick={handleReverify}
+                      disabled={isReverifying}
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
+                    >
+                      {isReverifying ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Reverify"
+                      )}
+                    </button>
+                  </>
+                ) : null}
+              </motion.div>
+            )}
+
+            {/* Bottom Swipeable Bar - Can be dragged up to show home sections */}
+            {!showHomeSections && (
+              <motion.div
+                ref={swipeBarRef}
+                initial={{ y: "100%" }}
+                animate={{
+                  y: isDraggingSwipeBar
+                    ? `${-swipeBarPosition * (window.innerHeight * 0.8)}px`
+                    : 0
+                }}
+                transition={isDraggingSwipeBar ? { duration: 0 } : { type: "spring", damping: 30, stiffness: 300 }}
+                onTouchStart={handleSwipeBarTouchStart}
+                onTouchMove={handleSwipeBarTouchMove}
+                onTouchEnd={handleSwipeBarTouchEnd}
+                onMouseDown={handleSwipeBarMouseDown}
+                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-20"
+                style={{
+                  touchAction: 'pan-y',
+                  pointerEvents: 'auto'
+                }}
+              >
+                {/* Swipe Handle */}
+                <div
+                  className="flex flex-col items-center pt-4 pb-2 cursor-grab active:cursor-grabbing"
+                  style={{ touchAction: 'none' }}
+                >
+                  <motion.div
+                    className="flex flex-col items-center gap-1"
+                    animate={{
+                      y: isDraggingSwipeBar ? swipeBarPosition * 5 : 0,
+                      opacity: isDraggingSwipeBar ? 0.7 : 1
+                    }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    <button
+                      onClick={handleChevronUpClick}
+                      className="flex items-center justify-center p-2 -m-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                      aria-label="Slide up"
+                    >
+                      <ChevronUp className="!w-12 !h-8 scale-x-150 text-gray-400 -mt-2 font-bold" strokeWidth={3} />
+                    </button>
+                  </motion.div>
+                </div>
+
+                {/* Content Area - Shows map info when down */}
+                <div className="px-4 pb-6">
+                  {mapViewMode === "hotspot" ? (
+                    <div className="flex flex-col items-center">
+                      {/* <h3 className="text-lg font-bold text-gray-900 mb-2">No hotspots are available</h3>
                   <p className="text-sm text-gray-600 mb-4">Please go online to see hotspots</p> */}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    {/* <h3 className="text-lg font-bold text-gray-900 mb-2">Select drop location</h3>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      {/* <h3 className="text-lg font-bold text-gray-900 mb-2">Select drop location</h3>
                   <p className="text-sm text-gray-600 mb-4">Choose a drop location on the map</p> */}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </div>
         </>
       ) : (
         <>
           {/* Home Sections View - Full screen when swipe bar is dragged up */}
           <motion.div
-          ref={swipeBarRef}
-          initial={{ y: "100%" }}
-          animate={{
-            y: isDraggingSwipeBar
-              ? `${(1 - swipeBarPosition) * (window.innerHeight * 0.8)}px`
-              : 0
-          }}
-          exit={{ y: "100%" }}
-          transition={isDraggingSwipeBar ? { duration: 0 } : { type: "spring", damping: 30, stiffness: 300 }}
-          onTouchStart={handleSwipeBarTouchStart}
-          onTouchMove={handleSwipeBarTouchMove}
-          onTouchEnd={handleSwipeBarTouchEnd}
-          onMouseDown={handleSwipeBarMouseDown}
-          className="relative flex-1 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
-          style={{ height: 'calc(100vh - 200px)', touchAction: 'pan-y' }}
-        >
-          {/* Swipe Handle at Top - Can be dragged down to go back to map */}
-          <div
-            className="flex flex-col items-center pt-4 pb-2 cursor-grab active:cursor-grabbing bg-white sticky top-0 z-10"
-            style={{ touchAction: 'none' }}
-          >
-            <motion.div
-              className="flex flex-col items-center gap-1"
-              animate={{
-                y: isDraggingSwipeBar ? -swipeBarPosition * 5 : 0,
-                opacity: isDraggingSwipeBar ? 0.7 : 1
-              }}
-              transition={{ duration: 0.1 }}
-            >
-              <button
-                onClick={handleChevronDownClick}
-                className="flex items-center justify-center p-2 -m-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-                aria-label="Slide down"
-              >
-                <ChevronDown
-                  className="!w-12 !h-8 scale-x-150 text-gray-400 -mt-2 font-bold"
-                  strokeWidth={3}
-                />
-              </button>
-            </motion.div>
-          </div>
-
-          <div 
-            ref={homeSectionsScrollRef}
-            className="px-4 pt-4 pb-16 space-y-4 overflow-y-auto" 
-            style={{ 
-              height: 'calc(100vh - 250px)',
-              touchAction: 'pan-y', // Allow vertical scrolling
-              WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
+            ref={swipeBarRef}
+            initial={{ y: "100%" }}
+            animate={{
+              y: isDraggingSwipeBar
+                ? `${(1 - swipeBarPosition) * (window.innerHeight * 0.8)}px`
+                : 0
             }}
+            exit={{ y: "100%" }}
+            transition={isDraggingSwipeBar ? { duration: 0 } : { type: "spring", damping: 30, stiffness: 300 }}
+            onTouchStart={handleSwipeBarTouchStart}
+            onTouchMove={handleSwipeBarTouchMove}
+            onTouchEnd={handleSwipeBarTouchEnd}
+            onMouseDown={handleSwipeBarMouseDown}
+            className="relative flex-1 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
+            style={{ height: 'calc(100vh - 200px)', touchAction: 'pan-y' }}
           >
-            {/* Referral Bonus Banner */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              onClick={() => navigate("/delivery/refer-and-earn")}
-              className="w-full rounded-xl p-6 shadow-lg relative overflow-hidden min-h-[70px] cursor-pointer"
+            {/* Swipe Handle at Top - Can be dragged down to go back to map */}
+            <div
+              className="flex flex-col items-center pt-4 pb-2 cursor-grab active:cursor-grabbing bg-white sticky top-0 z-10"
+              style={{ touchAction: 'none' }}
+            >
+              <motion.div
+                className="flex flex-col items-center gap-1"
+                animate={{
+                  y: isDraggingSwipeBar ? -swipeBarPosition * 5 : 0,
+                  opacity: isDraggingSwipeBar ? 0.7 : 1
+                }}
+                transition={{ duration: 0.1 }}
+              >
+                <button
+                  onClick={handleChevronDownClick}
+                  className="flex items-center justify-center p-2 -m-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                  aria-label="Slide down"
+                >
+                  <ChevronDown
+                    className="!w-12 !h-8 scale-x-150 text-gray-400 -mt-2 font-bold"
+                    strokeWidth={3}
+                  />
+                </button>
+              </motion.div>
+            </div>
+
+            <div
+              ref={homeSectionsScrollRef}
+              className="px-4 pt-4 pb-16 space-y-4 overflow-y-auto"
               style={{
-                backgroundImage: `url(${referralBonusBg})`,
-                backgroundSize: '100% 100%',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat'
+                height: 'calc(100vh - 250px)',
+                touchAction: 'pan-y', // Allow vertical scrolling
+                WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
               }}
             >
-              <div className="relative z-10">
-                <div className="text-white text-3xl font-bold mb-1">₹6,000                 <span className="text-white/90 text-base font-medium mb-1">referral bonus</span>
-                 </div>
-                <div className="text-white/80 text-sm">Refer your friends now</div>
-              </div>
-            </motion.div>
-
-            {/* Unlock Offer Card */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              className="w-full rounded-xl p-6 shadow-lg bg-black text-white"
-            >
-              <div className="flex items-center text-center justify-center gap-2 mb-2">
-                <div className="text-4xl font-bold text-center">₹100</div>
-                <Lock className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-white/90 text-center text-sm mb-4">Complete 1 order to unlock ₹100</p>
-              <div className="flex items-center text-center justify-center gap-2 text-white/70 text-xs mb-4">
-                <Clock className="w-4 h-4" />
-                <span className="text-center">Valid till 10 December 2025</span>
-              </div>
-              <button
-                onClick={() => {
-                  if (isOnline) {
-                    goOffline()
-                  } else {
-                    // Always show the popup when offline (same as navbar behavior)
-                    setShowBookGigsPopup(true)
-                  }
+              {/* Referral Bonus Banner */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                onClick={() => navigate("/delivery/refer-and-earn")}
+                className="w-full rounded-xl p-6 shadow-lg relative overflow-hidden min-h-[70px] cursor-pointer"
+                style={{
+                  backgroundImage: `url(${referralBonusBg})`,
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
                 }}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
-                <span>Go online</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </motion.div>
+                <div className="relative z-10">
+                  <div className="text-white text-3xl font-bold mb-1">₹6,000                 <span className="text-white/90 text-base font-medium mb-1">referral bonus</span>
+                  </div>
+                  <div className="text-white/80 text-sm">Refer your friends now</div>
+                </div>
+              </motion.div>
 
-            
-            {/* Earnings Guarantee Card */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.25 }}
-              className="w-full rounded-xl overflow-hidden shadow-lg bg-white"
-            >
-              {/* Header */}
-              <div className="border-b  border-gray-100">
-                <div className="flex p-2 px-3 items-center justify-between bg-black">
-                  <div className="flex-1">
-                    <h2 className="text-lg font-bold text-white mb-1">Earnings Guarantee</h2>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-white">Valid till {weekEndDate}</span>
-                      {isOfferLive && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-sm text-green-600 font-medium">Live</span>
+              {/* Unlock Offer Card */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="w-full rounded-xl p-6 shadow-lg bg-black text-white"
+              >
+                <div className="flex items-center text-center justify-center gap-2 mb-2">
+                  <div className="text-4xl font-bold text-center">₹100</div>
+                  <Lock className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-white/90 text-center text-sm mb-4">Complete 1 order to unlock ₹100</p>
+                <div className="flex items-center text-center justify-center gap-2 text-white/70 text-xs mb-4">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-center">Valid till 10 December 2025</span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (isOnline) {
+                      goOffline()
+                    } else {
+                      // Always show the popup when offline (same as navbar behavior)
+                      setShowBookGigsPopup(true)
+                    }
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <span>Go online</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </motion.div>
+
+
+              {/* Earnings Guarantee Card */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.25 }}
+                className="w-full rounded-xl overflow-hidden shadow-lg bg-white"
+              >
+                {/* Header */}
+                <div className="border-b  border-gray-100">
+                  <div className="flex p-2 px-3 items-center justify-between bg-black">
+                    <div className="flex-1">
+                      <h2 className="text-lg font-bold text-white mb-1">Earnings Guarantee</h2>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-white">Valid till {weekEndDate}</span>
+                        {isOfferLive && (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm text-green-600 font-medium">Live</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Summary Box */}
+                    <div className="bg-black text-white px-4 py-3 rounded-lg text-center min-w-[80px]">
+                      <div className="text-2xl font-bold">₹{earningsGuaranteeTarget.toFixed(0)}</div>
+                      <div className="text-xs text-white/80 mt-1">{earningsGuaranteeOrdersTarget} orders</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Circles */}
+                <div className="px-6 py-6">
+                  <div className="flex items-center justify-around gap-6">
+                    {/* Orders Progress Circle */}
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.4, duration: 0.5, type: "spring" }}
+                      className="flex flex-col items-center"
+                    >
+                      <div className="relative w-32 h-32">
+                        <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
+                          {/* Background circle */}
+                          <circle
+                            cx="60"
+                            cy="60"
+                            r="50"
+                            fill="none"
+                            stroke="#e5e7eb"
+                            strokeWidth="8"
+                          />
+                          {/* Progress circle */}
+                          <motion.circle
+                            cx="60"
+                            cy="60"
+                            r="50"
+                            fill="none"
+                            stroke="#000000"
+                            strokeWidth="8"
+                            strokeLinecap="round"
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: ordersProgress }}
+                            transition={{ delay: 0.6, duration: 1, ease: "easeOut" }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xl font-bold text-gray-900">{earningsGuaranteeCurrentOrders} of {earningsGuaranteeOrdersTarget || 0}</span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  {/* Summary Box */}
-                  <div className="bg-black text-white px-4 py-3 rounded-lg text-center min-w-[80px]">
-                    <div className="text-2xl font-bold">₹{earningsGuaranteeTarget.toFixed(0)}</div>
-                    <div className="text-xs text-white/80 mt-1">{earningsGuaranteeOrdersTarget} orders</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress Circles */}
-              <div className="px-6 py-6">
-                <div className="flex items-center justify-around gap-6">
-                  {/* Orders Progress Circle */}
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.4, duration: 0.5, type: "spring" }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="relative w-32 h-32">
-                      <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
-                        {/* Background circle */}
-                        <circle
-                          cx="60"
-                          cy="60"
-                          r="50"
-                          fill="none"
-                          stroke="#e5e7eb"
-                          strokeWidth="8"
-                        />
-                        {/* Progress circle */}
-                        <motion.circle
-                          cx="60"
-                          cy="60"
-                          r="50"
-                          fill="none"
-                          stroke="#000000"
-                          strokeWidth="8"
-                          strokeLinecap="round"
-                          initial={{ pathLength: 0 }}
-                          animate={{ pathLength: ordersProgress }}
-                          transition={{ delay: 0.6, duration: 1, ease: "easeOut" }}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xl font-bold text-gray-900">{earningsGuaranteeCurrentOrders} of {earningsGuaranteeOrdersTarget || 0}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span className="text-sm font-medium text-gray-700">Orders</span>
-                    </div>
-                  </motion.div>
-
-                  {/* Earnings Progress Circle */}
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="relative w-32 h-32">
-                      <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
-                        {/* Background circle */}
-                        <circle
-                          cx="60"
-                          cy="60"
-                          r="50"
-                          fill="none"
-                          stroke="#e5e7eb"
-                          strokeWidth="8"
-                        />
-                        {/* Progress circle */}
-                        <motion.circle
-                          cx="60"
-                          cy="60"
-                          r="50"
-                          fill="none"
-                          stroke="#000000"
-                          strokeWidth="8"
-                          strokeLinecap="round"
-                          initial={{ pathLength: 0 }}
-                          animate={{ pathLength: earningsProgress }}
-                          transition={{ delay: 0.7, duration: 1, ease: "easeOut" }}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-lg font-bold text-gray-900">₹{earningsGuaranteeCurrentEarnings.toFixed(2)}</span>
+                      <div className="flex items-center gap-2 mt-3">
+                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-700">Orders</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <IndianRupee className="w-5 h-5 text-gray-700" />
-                      <span className="text-sm font-medium text-gray-700">Earnings</span>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+
+                    {/* Earnings Progress Circle */}
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
+                      className="flex flex-col items-center"
+                    >
+                      <div className="relative w-32 h-32">
+                        <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
+                          {/* Background circle */}
+                          <circle
+                            cx="60"
+                            cy="60"
+                            r="50"
+                            fill="none"
+                            stroke="#e5e7eb"
+                            strokeWidth="8"
+                          />
+                          {/* Progress circle */}
+                          <motion.circle
+                            cx="60"
+                            cy="60"
+                            r="50"
+                            fill="none"
+                            stroke="#000000"
+                            strokeWidth="8"
+                            strokeLinecap="round"
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: earningsProgress }}
+                            transition={{ delay: 0.7, duration: 1, ease: "easeOut" }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-lg font-bold text-gray-900">₹{earningsGuaranteeCurrentEarnings.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <IndianRupee className="w-5 h-5 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-700">Earnings</span>
+                      </div>
+                    </motion.div>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
 
-            {/* Today's Progress Card */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.3 }}
-              className="w-full rounded-xl overflow-hidden shadow-lg bg-white"
-            >
-              {/* Header */}
-              <div className="bg-black px-4 py-3 flex items-center gap-3">
-                <div className="relative">
-                  <Calendar className="w-5 h-5 text-white" />
-                  <CheckCircle className="w-3 h-3 text-green-500 absolute -top-1 -right-1 bg-white rounded-full" fill="currentColor" />
+              {/* Today's Progress Card */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+                className="w-full rounded-xl overflow-hidden shadow-lg bg-white"
+              >
+                {/* Header */}
+                <div className="bg-black px-4 py-3 flex items-center gap-3">
+                  <div className="relative">
+                    <Calendar className="w-5 h-5 text-white" />
+                    <CheckCircle className="w-3 h-3 text-green-500 absolute -top-1 -right-1 bg-white rounded-full" fill="currentColor" />
+                  </div>
+                  <span className="text-white font-semibold">Today's progress</span>
                 </div>
-                <span className="text-white font-semibold">Today's progress</span>
-              </div>
 
-              {/* Content */}
-              <div className="p-4">
-                {/* Grid Layout - 2x2 */}
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Top Left - Earnings */}
-                  <button
-                    onClick={() => navigate("/delivery/earnings")}
-                    className="flex flex-col items-start gap-1 hover:opacity-80 transition-opacity"
-                  >
-                    <span className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(todayEarnings)}
-                    </span>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <span>Earnings</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
-                  </button>
+                {/* Content */}
+                <div className="p-4">
+                  {/* Grid Layout - 2x2 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Top Left - Earnings */}
+                    <button
+                      onClick={() => navigate("/delivery/earnings")}
+                      className="flex flex-col items-start gap-1 hover:opacity-80 transition-opacity"
+                    >
+                      <span className="text-2xl font-bold text-gray-900">
+                        {formatCurrency(todayEarnings)}
+                      </span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <span>Earnings</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </button>
 
-                  {/* Top Right - Trips */}
-                  <button
-                    onClick={() => navigate("/delivery/trip-history")}
-                    className="flex flex-col items-end gap-1 hover:opacity-80 transition-opacity"
-                  >
-                    <span className="text-2xl font-bold text-gray-900">
-                      {todayTrips}
-                    </span>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <span>Trips</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
-                  </button>
+                    {/* Top Right - Trips */}
+                    <button
+                      onClick={() => navigate("/delivery/trip-history")}
+                      className="flex flex-col items-end gap-1 hover:opacity-80 transition-opacity"
+                    >
+                      <span className="text-2xl font-bold text-gray-900">
+                        {todayTrips}
+                      </span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <span>Trips</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </button>
 
-                  {/* Bottom Left - Time on orders */}
-                  <button
-                    onClick={() => navigate("/delivery/time-on-orders")}
-                    className="flex flex-col items-start gap-1 hover:opacity-80 transition-opacity"
-                  >
-                    <span className="text-2xl font-bold text-gray-900">
-                      {`${formatHours(todayHoursWorked)} hrs`}
-                    </span>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <span>Time on orders</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
-                  </button>
+                    {/* Bottom Left - Time on orders */}
+                    <button
+                      onClick={() => navigate("/delivery/time-on-orders")}
+                      className="flex flex-col items-start gap-1 hover:opacity-80 transition-opacity"
+                    >
+                      <span className="text-2xl font-bold text-gray-900">
+                        {`${formatHours(todayHoursWorked)} hrs`}
+                      </span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <span>Time on orders</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </button>
 
-                  {/* Bottom Right - Gigs History */}
-                  <button
-                    onClick={() => navigate("/delivery/gig")}
-                    className="flex flex-col items-end gap-1 hover:opacity-80 transition-opacity"
-                  >
-                    <span className="text-2xl font-bold text-gray-900">
-                      {`${todayGigsCount} Gigs`}
-                    </span>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <span>History</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
-                  </button>
+                    {/* Bottom Right - Gigs History */}
+                    <button
+                      onClick={() => navigate("/delivery/gig")}
+                      className="flex flex-col items-end gap-1 hover:opacity-80 transition-opacity"
+                    >
+                      <span className="text-2xl font-bold text-gray-900">
+                        {`${todayGigsCount} Gigs`}
+                      </span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <span>History</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
+              </motion.div>
+            </div>
+          </motion.div>
         </>
       )}
 
@@ -9125,7 +9128,7 @@ export default function DeliveryHome() {
               </div>
               <span className="text-teal-700 font-semibold">Gig details</span>
             </div>
-            
+
             {/* Body - White background */}
             <div className="bg-white px-4 py-4">
               <p className="text-gray-900 text-sm">Gig booking open in your zone</p>
@@ -9152,7 +9155,7 @@ export default function DeliveryHome() {
 
       {/* New Order Popup with Countdown Timer - Custom Implementation */}
       <AnimatePresence>
-        {showNewOrderPopup && (newOrder || selectedRestaurant) && isOnline && (
+        {showNewOrderPopup && (newOrder || selectedRestaurant) && (
           <>
             {/* Backdrop */}
             {!isNewOrderPopupMinimized && (
@@ -9192,22 +9195,22 @@ export default function DeliveryHome() {
             <motion.div
               ref={newOrderPopupRef}
               initial={{ y: "100%" }}
-              animate={{ 
-                y: isDraggingNewOrderPopup 
-                  ? newOrderDragY 
-                  : isNewOrderPopupMinimized 
+              animate={{
+                y: isDraggingNewOrderPopup
+                  ? newOrderDragY
+                  : isNewOrderPopupMinimized
                     ? (newOrderPopupRef.current?.offsetHeight || 600)
                     : 0
               }}
-              transition={isDraggingNewOrderPopup 
-                ? { duration: 0 } 
+              transition={isDraggingNewOrderPopup
+                ? { duration: 0 }
                 : isNewOrderPopupMinimized
                   ? { duration: 0.3, ease: "easeOut" } // Smooth transition when minimizing
-                  : { 
-                      type: "spring", 
-                      damping: 30, 
-                      stiffness: 300 
-                    }
+                  : {
+                    type: "spring",
+                    damping: 30,
+                    stiffness: 300
+                  }
               }
               exit={{ y: "100%" }}
               onTouchStart={handleNewOrderPopupTouchStart}
@@ -9227,10 +9230,10 @@ export default function DeliveryHome() {
                 <div className="absolute left-1/2 -translate-x-1/2 -top-5 z-20">
                   <div className="relative inline-flex items-center justify-center">
                     {/* Animated green border around badge - positioned behind badge, wider */}
-                    <svg 
+                    <svg
                       className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                      style={{ 
-                        width: 'calc(100% + 10px)', 
+                      style={{
+                        width: 'calc(100% + 10px)',
                         height: 'calc(100% + 10px)',
                         zIndex: 35
                       }}
@@ -9243,7 +9246,7 @@ export default function DeliveryHome() {
                           <stop offset="100%" stopColor="#16a34a" stopOpacity="1" />
                         </linearGradient>
                       </defs>
-                      
+
                       {/* Full white border path - rounded rectangle (background) */}
                       <path
                         d="M 30,5 L 170,5 A 25,25 0 0,1 195,30 L 195,30 A 25,25 0 0,1 170,55 L 30,55 A 25,25 0 0,1 5,30 L 5,30 A 25,25 0 0,1 30,5 Z"
@@ -9253,7 +9256,7 @@ export default function DeliveryHome() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
-                      
+
                       {/* Animated green progress border - starts from top center, decreases clockwise */}
                       <motion.path
                         d="M 100,5 L 170,5 A 25,25 0 0,1 195,30 L 195,30 A 25,25 0 0,1 170,55 L 30,55 A 25,25 0 0,1 5,30 L 5,30 A 25,25 0 0,1 30,5 L 100,5"
@@ -9269,7 +9272,7 @@ export default function DeliveryHome() {
                         }}
                         transition={{ duration: 1, ease: "linear" }}
                       />
-                      
+
                       {/* White segment indicator at top center */}
                       <rect
                         x="95"
@@ -9280,7 +9283,7 @@ export default function DeliveryHome() {
                         rx="1"
                       />
                     </svg>
-                    
+
                     {/* White pill-shaped badge - positioned above SVG */}
                     <div className="relative bg-white rounded-full px-6 py-2 shadow-lg" style={{ zIndex: 30 }}>
                       <div className="text-sm font-bold text-gray-900">
@@ -9303,7 +9306,7 @@ export default function DeliveryHome() {
                         const earnings = newOrder?.estimatedEarnings || selectedRestaurant?.estimatedEarnings || 0;
                         const fallback = newOrder?.deliveryFee ?? selectedRestaurant?.deliveryFee ?? selectedRestaurant?.amount ?? 0;
                         let value = 0;
-                        
+
                         console.log('💰 Display earnings calculation:', {
                           earnings,
                           earningsType: typeof earnings,
@@ -9311,7 +9314,7 @@ export default function DeliveryHome() {
                           selectedRestaurantEarnings: selectedRestaurant?.estimatedEarnings,
                           fallback
                         });
-                        
+
                         if (earnings) {
                           if (typeof earnings === 'object') {
                             // Handle earnings object
@@ -9325,12 +9328,12 @@ export default function DeliveryHome() {
                             value = earnings > 0 ? earnings : 0;
                           }
                         }
-                        
+
                         // If value is still 0, try fallback
                         if (value <= 0 && fallback > 0) {
                           value = Number(fallback);
                         }
-                        
+
                         console.log('💰 Final earnings value to display:', value);
                         return value > 0 ? value.toFixed(2) : '0.00';
                       })()}
@@ -9378,25 +9381,25 @@ export default function DeliveryHome() {
                         Pick up
                       </span>
                     </div>
-                    
+
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
                       {newOrder?.restaurantName || selectedRestaurant?.name || 'Restaurant'}
                     </h3>
                     <p className="text-sm text-gray-600 mb-3 leading-relaxed">
                       {newOrder?.restaurantLocation?.address || selectedRestaurant?.address || 'Address'}
                     </p>
-                    
+
                     <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-2">
                       <Clock className="w-4 h-4" />
                       <span>
-                        {selectedRestaurant?.timeAway && selectedRestaurant.timeAway !== 'Calculating...' 
+                        {selectedRestaurant?.timeAway && selectedRestaurant.timeAway !== 'Calculating...'
                           ? `${selectedRestaurant.timeAway} away`
                           : (newOrder?.pickupDistance && newOrder.pickupDistance !== '0 km' && newOrder.pickupDistance !== 'Calculating...'
                             ? `${calculateTimeAway(newOrder.pickupDistance)} away`
                             : 'Calculating...')}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-1.5 text-gray-500 text-sm">
                       <MapPin className="w-4 h-4" />
                       <span>
@@ -9524,16 +9527,14 @@ export default function DeliveryHome() {
                       <button
                         key={reason}
                         onClick={() => setRejectReason(reason)}
-                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                          rejectReason === reason
-                            ? "border-black bg-red-50"
-                            : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}
+                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${rejectReason === reason
+                          ? "border-black bg-red-50"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                          }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${
-                            rejectReason === reason ? "text-black" : "text-gray-900"
-                          }`}>
+                          <span className={`text-sm font-medium ${rejectReason === reason ? "text-black" : "text-gray-900"
+                            }`}>
                             {reason}
                           </span>
                           {rejectReason === reason && (
@@ -9560,11 +9561,10 @@ export default function DeliveryHome() {
                   <button
                     onClick={handleRejectConfirm}
                     disabled={!rejectReason}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                      rejectReason
-                        ? "!bg-black !text-white"
-                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}
+                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${rejectReason
+                      ? "!bg-black !text-white"
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      }`}
                   >
                     Confirm
                   </button>
@@ -9591,7 +9591,7 @@ export default function DeliveryHome() {
               key="directions-map-container" // Fixed key - don't remount on location change
               style={{ height: '100%', width: '100%', zIndex: 1 }}
             />
-            
+
             {/* Loading indicator */}
             {directionsMapLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
@@ -9631,11 +9631,11 @@ export default function DeliveryHome() {
             <p className="text-gray-600 mb-2 leading-relaxed">
               {(() => {
                 const address = selectedRestaurant?.address;
-                
+
                 // If address is default or missing, try to find it in other fields
                 if (!address || address === 'Restaurant Address' || address === 'Restaurant address') {
                   // Check if address might be in a different field
-                  const possibleAddress = 
+                  const possibleAddress =
                     selectedRestaurant?.restaurantAddress ||
                     selectedRestaurant?.restaurant?.address ||
                     selectedRestaurant?.restaurantId?.address ||
@@ -9643,14 +9643,14 @@ export default function DeliveryHome() {
                     selectedRestaurant?.restaurantId?.location?.address ||
                     selectedRestaurant?.location?.address ||
                     selectedRestaurant?.location?.formattedAddress;
-                  
+
                   if (possibleAddress && possibleAddress !== 'Restaurant Address' && possibleAddress !== 'Restaurant address') {
                     return possibleAddress;
                   }
                 }
-                
-                return address && address !== 'Restaurant Address' && address !== 'Restaurant address' 
-                  ? address 
+
+                return address && address !== 'Restaurant Address' && address !== 'Restaurant address'
+                  ? address
                   : 'Address will be updated...';
               })()}
             </p>
@@ -9661,15 +9661,15 @@ export default function DeliveryHome() {
 
           {/* Action Buttons */}
           <div className="flex gap-3 mb-6">
-            <button 
+            <button
               onClick={async () => {
                 // Try multiple paths to find restaurant phone number
-                let restaurantPhone = selectedRestaurant?.phone || 
-                                    selectedRestaurant?.restaurantId?.phone || 
-                                    selectedRestaurant?.ownerPhone ||
-                                    selectedRestaurant?.restaurant?.phone ||
-                                    null
-                
+                let restaurantPhone = selectedRestaurant?.phone ||
+                  selectedRestaurant?.restaurantId?.phone ||
+                  selectedRestaurant?.ownerPhone ||
+                  selectedRestaurant?.restaurant?.phone ||
+                  null
+
                 console.log('📞 Checking phone in selectedRestaurant:', {
                   phone: selectedRestaurant?.phone,
                   restaurantIdPhone: selectedRestaurant?.restaurantId?.phone,
@@ -9677,20 +9677,20 @@ export default function DeliveryHome() {
                   restaurantPhone: selectedRestaurant?.restaurant?.phone,
                   found: !!restaurantPhone
                 })
-                
+
                 // If phone not found in selectedRestaurant, try to fetch order details from backend
                 if (!restaurantPhone && selectedRestaurant?.orderId) {
                   try {
                     console.log('📞 [CALL] Phone not found in selectedRestaurant, fetching order details from backend...')
                     const orderId = selectedRestaurant.orderId || selectedRestaurant.id
                     console.log('📞 [CALL] Fetching order details for orderId:', orderId)
-                    
+
                     const response = await deliveryAPI.getOrderDetails(orderId)
                     console.log('📞 [CALL] Order details API response:', JSON.stringify(response.data, null, 2))
-                    
+
                     // Check multiple response formats
                     const order = response.data?.data?.order || response.data?.order || null
-                    
+
                     if (order) {
                       console.log('📞 [CALL] Order data extracted from API:', {
                         hasRestaurantId: !!order.restaurantId,
@@ -9699,19 +9699,19 @@ export default function DeliveryHome() {
                         restaurantIdOwnerPhone: order.restaurantId?.ownerPhone,
                         restaurantIdObject: order.restaurantId ? Object.keys(order.restaurantId) : null
                       })
-                      
+
                       // Try all possible paths in the API response
                       // Restaurant model has both 'phone' and 'ownerPhone' fields
-                      restaurantPhone = order.restaurantId?.phone || 
-                                       order.restaurantId?.ownerPhone ||
-                                       order.restaurant?.phone ||
-                                       order.restaurant?.ownerPhone ||
-                                       order.restaurantId?.contact?.phone ||
-                                       order.restaurantId?.owner?.phone ||
-                                       null
-                      
+                      restaurantPhone = order.restaurantId?.phone ||
+                        order.restaurantId?.ownerPhone ||
+                        order.restaurant?.phone ||
+                        order.restaurant?.ownerPhone ||
+                        order.restaurantId?.contact?.phone ||
+                        order.restaurantId?.owner?.phone ||
+                        null
+
                       console.log('📞 [CALL] Phone extracted from order:', restaurantPhone)
-                      
+
                       // If phone found, update selectedRestaurant for future use
                       if (restaurantPhone && selectedRestaurant) {
                         setSelectedRestaurant({
@@ -9721,13 +9721,13 @@ export default function DeliveryHome() {
                         })
                         console.log('✅ [CALL] Updated selectedRestaurant with phone:', restaurantPhone)
                       }
-                      
+
                       // If still not found, try restaurant API directly
                       if (!restaurantPhone && order.restaurantId) {
-                        const restaurantId = typeof order.restaurantId === 'string' 
-                          ? order.restaurantId 
+                        const restaurantId = typeof order.restaurantId === 'string'
+                          ? order.restaurantId
                           : (order.restaurantId._id || order.restaurantId.id || order.restaurantId.toString())
-                        
+
                         if (restaurantId) {
                           try {
                             console.log('📞 [CALL] Trying restaurant API directly with ID:', restaurantId)
@@ -9735,7 +9735,7 @@ export default function DeliveryHome() {
                             if (restaurantResponse.data?.success && restaurantResponse.data.data) {
                               const restaurant = restaurantResponse.data.data.restaurant || restaurantResponse.data.data
                               restaurantPhone = restaurant.phone || restaurant.ownerPhone || restaurant.primaryContactNumber
-                              
+
                               if (restaurantPhone) {
                                 setSelectedRestaurant({
                                   ...selectedRestaurant,
@@ -9750,7 +9750,7 @@ export default function DeliveryHome() {
                           }
                         }
                       }
-                      
+
                       if (!restaurantPhone) {
                         console.warn('⚠️ [CALL] Phone not found in order.restaurantId object:', order.restaurantId)
                       }
@@ -9769,7 +9769,7 @@ export default function DeliveryHome() {
                 } else if (!selectedRestaurant?.orderId) {
                   console.warn('⚠️ [CALL] Cannot fetch phone - orderId not found in selectedRestaurant:', selectedRestaurant)
                 }
-                
+
                 if (restaurantPhone) {
                   // Remove any spaces, dashes, or special characters except + and digits
                   const cleanPhone = restaurantPhone.replace(/[^\d+]/g, '')
@@ -9777,7 +9777,7 @@ export default function DeliveryHome() {
                   window.location.href = `tel:${cleanPhone}`
                 } else {
                   toast.error('Restaurant phone number not available. Please contact support.')
-                  console.error('❌ Restaurant phone not found in any path:', { 
+                  console.error('❌ Restaurant phone not found in any path:', {
                     selectedRestaurant,
                     hasPhone: !!selectedRestaurant?.phone,
                     hasRestaurantIdPhone: !!selectedRestaurant?.restaurantId?.phone,
@@ -9791,26 +9791,26 @@ export default function DeliveryHome() {
               <Phone className="w-5 h-5 text-gray-700" />
               <span className="text-gray-700 font-medium">Call</span>
             </button>
-            <button 
+            <button
               onClick={() => {
                 // Get restaurant location coordinates
                 const restaurantLat = selectedRestaurant?.lat
                 const restaurantLng = selectedRestaurant?.lng
-                
+
                 if (!restaurantLat || !restaurantLng) {
                   toast.error('Restaurant location not available')
-                  console.error('❌ Restaurant coordinates not found:', { 
-                    lat: restaurantLat, 
+                  console.error('❌ Restaurant coordinates not found:', {
+                    lat: restaurantLat,
                     lng: restaurantLng,
-                    selectedRestaurant 
+                    selectedRestaurant
                   })
                   return
                 }
 
-                console.log('🗺️ Opening Google Maps navigation to restaurant:', { 
-                  lat: restaurantLat, 
+                console.log('🗺️ Opening Google Maps navigation to restaurant:', {
+                  lat: restaurantLat,
                   lng: restaurantLng,
-                  name: selectedRestaurant?.name 
+                  name: selectedRestaurant?.name
                 })
 
                 // Detect platform (Android or iOS)
@@ -9823,10 +9823,10 @@ export default function DeliveryHome() {
                 if (isAndroid) {
                   // Android: Use google.navigation: scheme (opens directly in navigation mode)
                   mapsUrl = `google.navigation:q=${restaurantLat},${restaurantLng}&mode=b`
-                  
+
                   // Try to open Google Maps app first
                   window.location.href = mapsUrl
-                  
+
                   // Fallback to web URL after a short delay (in case app is not installed)
                   setTimeout(() => {
                     const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${restaurantLat},${restaurantLng}&travelmode=bicycling`
@@ -9835,10 +9835,10 @@ export default function DeliveryHome() {
                 } else if (isIOS) {
                   // iOS: Use comgooglemaps:// scheme (opens Google Maps app)
                   mapsUrl = `comgooglemaps://?daddr=${restaurantLat},${restaurantLng}&directionsmode=bicycling`
-                  
+
                   // Try to open Google Maps app first
                   window.location.href = mapsUrl
-                  
+
                   // Fallback to web URL after a short delay (in case app is not installed)
                   setTimeout(() => {
                     const webUrl = `https://maps.google.com/?daddr=${restaurantLat},${restaurantLng}&directionsmode=bicycling`
@@ -9945,7 +9945,7 @@ export default function DeliveryHome() {
             <p className="text-gray-600 text-sm mb-4">
               Please verify the order ID with the restaurant before pickup
             </p>
-            
+
             {/* Order ID Display - single line, scroll horizontally if needed */}
             <div className="bg-gray-50 rounded-xl p-6 mb-6 overflow-hidden">
               <p className="text-gray-500 text-xs mb-2">Order ID</p>
@@ -9959,19 +9959,18 @@ export default function DeliveryHome() {
               <p className="text-gray-600 text-sm mb-3 text-center">
                 {billImageUploaded ? '✅ Bill image uploaded' : 'Please capture bill image'}
               </p>
-              
+
               {/* Camera Button */}
               <div className="flex justify-center mb-4">
                 <button
                   onClick={handleCameraCapture}
                   disabled={isUploadingBill}
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg transition-colors ${
-                    isUploadingBill
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : billImageUploaded
+                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg transition-colors ${isUploadingBill
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : billImageUploaded
                       ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-blue-600 hover:bg-blue-700'
-                  } text-white font-medium`}
+                    } text-white font-medium`}
                 >
                   {isUploadingBill ? (
                     <>
@@ -10008,10 +10007,9 @@ export default function DeliveryHome() {
             <div className="relative w-full">
               <motion.div
                 ref={orderIdConfirmButtonRef}
-                className={`relative w-full rounded-full overflow-hidden shadow-xl ${
-                  billImageUploaded ? 'bg-green-600' : 'bg-gray-400 cursor-not-allowed'
-                }`}
-                style={{ 
+                className={`relative w-full rounded-full overflow-hidden shadow-xl ${billImageUploaded ? 'bg-green-600' : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                style={{
                   touchAction: billImageUploaded ? 'pan-x' : 'none',
                   opacity: billImageUploaded ? 1 : 0.6
                 }}
@@ -10064,11 +10062,11 @@ export default function DeliveryHome() {
                         damping: 25
                       } : { duration: 0 }}
                     >
-                      {!billImageUploaded 
-                        ? 'Upload Bill First' 
-                        : orderIdConfirmButtonProgress > 0.5 
-                        ? 'Release to Confirm' 
-                        : 'Order Picked Up'}
+                      {!billImageUploaded
+                        ? 'Upload Bill First'
+                        : orderIdConfirmButtonProgress > 0.5
+                          ? 'Release to Confirm'
+                          : 'Order Picked Up'}
                     </motion.span>
                   </div>
                 </div>
@@ -10079,77 +10077,77 @@ export default function DeliveryHome() {
       </BottomPopup>
 
       {/* Start Navigation Button Card - Show when order is out_for_delivery */}
-      {selectedRestaurant && 
-       (selectedRestaurant.orderStatus === 'out_for_delivery' || 
-        selectedRestaurant.deliveryPhase === 'en_route_to_delivery') && 
-       !showReachedDropPopup && 
-       !showOrderDeliveredAnimation &&
-       !showCustomerReviewPopup &&
-       !showPaymentPage && (
-        <div className="fixed bottom-24 left-0 right-0 px-4 z-50">
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="bg-white rounded-2xl shadow-2xl p-5 border border-gray-100"
-          >
-            {/* Customer Info */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-teal-600"
-                  >
-                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-gray-900">
-                    Head to Customer Location
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-0.5">
-                    {selectedRestaurant?.customerName || 'Customer'}
-                  </p>
-                </div>
-              </div>
-              {selectedRestaurant?.customerAddress && (
-                <p className="text-xs text-gray-500 ml-13 truncate">
-                  {selectedRestaurant.customerAddress}
-                </p>
-              )}
-            </div>
-
-            {/* Start Navigation Button */}
-            <button
-              onClick={handleStartNavigation}
-              className="w-full bg-[#4285F4] hover:bg-[#357ae8] text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-95"
+      {selectedRestaurant &&
+        (selectedRestaurant.orderStatus === 'out_for_delivery' ||
+          selectedRestaurant.deliveryPhase === 'en_route_to_delivery') &&
+        !showReachedDropPopup &&
+        !showOrderDeliveredAnimation &&
+        !showCustomerReviewPopup &&
+        !showPaymentPage && (
+          <div className="fixed bottom-24 left-0 right-0 px-4 z-50">
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="bg-white rounded-2xl shadow-2xl p-5 border border-gray-100"
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-              </svg>
-              <span>START NAVIGATION</span>
-            </button>
+              {/* Customer Info */}
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-teal-600"
+                    >
+                      <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      Head to Customer Location
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      {selectedRestaurant?.customerName || 'Customer'}
+                    </p>
+                  </div>
+                </div>
+                {selectedRestaurant?.customerAddress && (
+                  <p className="text-xs text-gray-500 ml-13 truncate">
+                    {selectedRestaurant.customerAddress}
+                  </p>
+                )}
+              </div>
 
-            <p className="text-center text-xs text-gray-500 mt-3">
-              Opens Google Maps in Bike Mode 🏍️
-            </p>
-          </motion.div>
-        </div>
-      )}
+              {/* Start Navigation Button */}
+              <button
+                onClick={handleStartNavigation}
+                className="w-full bg-[#4285F4] hover:bg-[#357ae8] text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-95"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                </svg>
+                <span>START NAVIGATION</span>
+              </button>
+
+              <p className="text-center text-xs text-gray-500 mt-3">
+                Opens Google Maps in Bike Mode 🏍️
+              </p>
+            </motion.div>
+          </div>
+        )}
 
       {/* Reached Drop Popup - shown instantly after Order Picked Up confirmation */}
       <BottomPopup
@@ -10299,10 +10297,10 @@ export default function DeliveryHome() {
                   <span className="text-gray-600 text-sm">Trip distance</span>
                 </div>
                 <span className="text-gray-900 font-semibold">
-                  {tripDistance !== null 
-                    ? (tripDistance >= 1000 
-                        ? `${(tripDistance / 1000).toFixed(1)} kms` 
-                        : `${tripDistance.toFixed(0)} m`)
+                  {tripDistance !== null
+                    ? (tripDistance >= 1000
+                      ? `${(tripDistance / 1000).toFixed(1)} kms`
+                      : `${tripDistance.toFixed(0)} m`)
                     : (selectedRestaurant?.tripDistance || 'Calculating...')}
                 </span>
               </div>
@@ -10312,10 +10310,10 @@ export default function DeliveryHome() {
                   <span className="text-gray-600 text-sm">Trip time</span>
                 </div>
                 <span className="text-gray-900 font-semibold">
-                  {tripTime !== null 
-                    ? (tripTime >= 60 
-                        ? `${Math.round(tripTime / 60)} mins` 
-                        : `${tripTime} secs`)
+                  {tripTime !== null
+                    ? (tripTime >= 60
+                      ? `${Math.round(tripTime / 60)} mins`
+                      : `${tripTime} secs`)
                     : (selectedRestaurant?.tripTime || 'Calculating...')}
                 </span>
               </div>
@@ -10425,7 +10423,7 @@ export default function DeliveryHome() {
             <p className="text-gray-600 text-sm mb-6">
               How was your delivery experience?
             </p>
-            
+
             {/* Star Rating */}
             <div className="flex justify-center gap-2 mb-6">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -10461,12 +10459,12 @@ export default function DeliveryHome() {
             <button
               onClick={async () => {
                 // Get order ID - use MongoDB _id for API call
-                const orderIdForApi = selectedRestaurant?.id || 
-                                    newOrder?.orderMongoId || 
-                                    newOrder?._id ||
-                                    selectedRestaurant?.orderId || 
-                                    newOrder?.orderId
-                
+                const orderIdForApi = selectedRestaurant?.id ||
+                  newOrder?.orderMongoId ||
+                  newOrder?._id ||
+                  selectedRestaurant?.orderId ||
+                  newOrder?.orderId
+
                 // Save review by calling completeDelivery API with rating and review
                 if (orderIdForApi) {
                   try {
@@ -10475,33 +10473,33 @@ export default function DeliveryHome() {
                       rating: customerRating,
                       review: customerReviewText
                     })
-                    
+
                     // Call completeDelivery API with rating and review
                     const response = await deliveryAPI.completeDelivery(
                       orderIdForApi,
                       customerRating > 0 ? customerRating : null,
                       customerReviewText.trim() || ''
                     )
-                    
+
                     if (response.data?.success) {
                       // Get updated earnings from response
                       // Note: completeDelivery API already adds earnings and COD cash collected to wallet
-                      const earnings = response.data.data?.earnings?.amount || 
-                                     response.data.data?.totalEarning ||
-                                     orderEarnings
+                      const earnings = response.data.data?.earnings?.amount ||
+                        response.data.data?.totalEarning ||
+                        orderEarnings
                       setOrderEarnings(earnings)
-                      
+
                       console.log('✅ Delivery completed and earnings added to wallet:', earnings)
                       console.log('✅ Wallet transaction:', response.data.data?.walletTransaction)
-                      
+
                       // Notify wallet listeners (Pocket balance, Pocket page) so cash collected updates
                       window.dispatchEvent(new Event('deliveryWalletStateUpdated'))
-                      
+
                       // Show success message
                       if (earnings > 0) {
                         toast.success(`₹${earnings.toFixed(2)} added to your wallet! 💰`)
                       }
-                      
+
                       // Close review popup and show payment page
                       setShowCustomerReviewPopup(false)
                       setShowPaymentPage(true)
@@ -10569,7 +10567,7 @@ export default function DeliveryHome() {
             <div className="px-6 py-6 pb-6 h-full flex flex-col justify-between">
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Payment Details</h3>
-                
+
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-gray-600">Trip pay</span>
@@ -10588,12 +10586,12 @@ export default function DeliveryHome() {
                       return (earnings - 5).toFixed(2);
                     })()}</span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-gray-600">Long distance return pay</span>
                     <span className="text-gray-900 font-semibold">₹5.00</span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center py-2">
                     <span className="text-lg font-bold text-gray-900">Total Earnings</span>
                     <span className="text-lg font-bold text-gray-900">₹{(() => {
@@ -10622,22 +10620,22 @@ export default function DeliveryHome() {
                   setShowReachedDropPopup(false)
                   setShowOrderDeliveredAnimation(false)
                   setShowCustomerReviewPopup(false)
-                  
+
                   // Clear selected restaurant/order to prevent showing popups for delivered order
                   setSelectedRestaurant(null)
-                  
+
                   // CRITICAL: Clear active order from localStorage to prevent it from showing again
                   localStorage.removeItem('deliveryActiveOrder')
                   localStorage.removeItem('activeOrder')
-                  
+
                   // Clear newOrder from notifications hook (if available)
                   if (typeof clearNewOrder === 'function') {
                     clearNewOrder()
                   }
-                  
+
                   // Clear accepted orders list when order is completed
                   acceptedOrderIdsRef.current.clear();
-                  
+
                   navigate("/delivery")
                   // Reset states
                   setTimeout(() => {

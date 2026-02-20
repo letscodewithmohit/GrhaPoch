@@ -27,7 +27,7 @@ export default function RestaurantOTP() {
     if (stored) {
       const data = JSON.parse(stored)
       setAuthData(data)
-      
+
       // Handle both phone and email
       if (data.method === "email" && data.email) {
         setContactType("email")
@@ -148,7 +148,7 @@ export default function RestaurantOTP() {
 
   const handleVerify = async (otpValue = null) => {
     const code = otpValue || otp.join("")
-    
+
     if (code.length !== 6) {
       setError("Please enter the complete 6-digit code")
       return
@@ -199,7 +199,7 @@ export default function RestaurantOTP() {
         nameToSend = authData.name
       }
 
-      const response = await restaurantAPI.verifyOTP(phone, code, purpose, nameToSend, email)
+      const response = await restaurantAPI.verifyOTP(phone, code, purpose, nameToSend, email, authData?.businessModel)
 
       // Extract restaurant and token or special flags (like needsName) from backend response
       const data = response?.data?.data || response?.data
@@ -235,14 +235,14 @@ export default function RestaurantOTP() {
       if (accessToken && restaurant) {
         // Store auth data using utility function to ensure proper module-specific token storage
         setRestaurantAuthData("restaurant", accessToken, restaurant)
-        
+
         // Dispatch custom event for same-tab updates
         window.dispatchEvent(new Event("restaurantAuthChanged"))
 
         sessionStorage.removeItem("restaurantAuthData")
 
         setTimeout(async () => {
-          console.log({authData})
+          console.log({ authData })
           // After signup, send to onboarding
           if (authData?.isSignUp) {
             navigate("/restaurant/onboarding", { replace: true })
@@ -293,7 +293,7 @@ export default function RestaurantOTP() {
       const purpose = authData.isSignUp ? "register" : "login"
       const phone = authData.method === "phone" ? authData.phone : null
       const email = authData.method === "email" ? authData.email : null
-      
+
       await restaurantAPI.sendOTP(phone, purpose, email)
     } catch (err) {
       const message =
@@ -355,7 +355,7 @@ export default function RestaurantOTP() {
             {otp.map((digit, index) => {
               const hasValue = digit !== ""
               const isFocused = focusedIndex === index
-              
+
               return (
                 <div key={index} className="relative flex flex-col items-center min-w-[48px] py-2" style={{ minHeight: '60px' }}>
                   {/* Clickable Input Area - Large clickable zone */}
@@ -413,11 +413,10 @@ export default function RestaurantOTP() {
                   if (nameError) setNameError("")
                 }}
                 placeholder="Enter your full name"
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
-                  nameError
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${nameError
                     ? "border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:ring-blue-500"
-                }`}
+                  }`}
                 disabled={isLoading}
               />
               <p className="mt-1 text-xs text-gray-500">
@@ -464,11 +463,10 @@ export default function RestaurantOTP() {
           <Button
             onClick={() => handleVerify()}
             disabled={isLoading || !isOtpComplete}
-            className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${
-              !isLoading && isOtpComplete
+            className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${!isLoading && isOtpComplete
                 ? "bg-blue-600 hover:bg-blue-700 text-white"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+              }`}
           >
             {isLoading ? "Verifying..." : "Continue"}
           </Button>

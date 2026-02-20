@@ -13,7 +13,7 @@ export default function ZoneSetup() {
   const markerRef = useRef(null)
   const autocompleteInputRef = useRef(null)
   const autocompleteRef = useRef(null)
-  
+
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -34,31 +34,31 @@ export default function ZoneSetup() {
         types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'in' } // Restrict to India
       })
-      
+
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace()
         if (place.geometry && place.geometry.location && mapInstanceRef.current) {
           const location = place.geometry.location
           const lat = location.lat()
           const lng = location.lng()
-          
+
           // Center map on selected location
           mapInstanceRef.current.setCenter(location)
           mapInstanceRef.current.setZoom(17) // Zoom in when location is selected
-          
+
           // Set the search input value
           const address = place.formatted_address || place.name || ""
           setLocationSearch(address)
           setSelectedAddress(address)
-          
+
           // Update marker position
           updateMarker(lat, lng, address)
-          
+
           // Set selected location
           setSelectedLocation({ lat, lng, address })
         }
       })
-      
+
       autocompleteRef.current = autocomplete
     }
   }, [mapLoading])
@@ -69,7 +69,7 @@ export default function ZoneSetup() {
       const location = restaurantData.location
       let lat = null
       let lng = null
-      
+
       // Get coordinates from different possible structures
       if (location.coordinates && Array.isArray(location.coordinates) && location.coordinates.length >= 2) {
         lng = location.coordinates[0]
@@ -78,17 +78,17 @@ export default function ZoneSetup() {
         lat = parseFloat(location.latitude)
         lng = parseFloat(location.longitude)
       }
-      
+
       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
         const locationObj = new window.google.maps.LatLng(lat, lng)
         mapInstanceRef.current.setCenter(locationObj)
         mapInstanceRef.current.setZoom(17)
-        
+
         const address = location.formattedAddress || location.address || formatAddress(location) || ""
         setLocationSearch(address)
         setSelectedAddress(address)
         setSelectedLocation({ lat, lng, address })
-        
+
         updateMarker(lat, lng, address)
       }
     }
@@ -109,13 +109,13 @@ export default function ZoneSetup() {
   const loadGoogleMaps = async () => {
     try {
       console.log("📍 Starting Google Maps load...")
-      
+
       // Fetch API key from database
       let apiKey = null
       try {
         apiKey = await getGoogleMapsApiKey()
         console.log("📍 API Key received:", apiKey ? `Yes (${apiKey.substring(0, 10)}...)` : "No")
-        
+
         if (!apiKey || apiKey.trim() === "") {
           console.error("❌ API key is empty or not found in database")
           setMapLoading(false)
@@ -128,13 +128,13 @@ export default function ZoneSetup() {
         alert("Failed to fetch Google Maps API key from database. Please check your connection or contact administrator.")
         return
       }
-      
+
       setGoogleMapsApiKey(apiKey)
-      
+
       // Wait for Google Maps to be loaded from main.jsx if it's loading
       let retries = 0
       const maxRetries = 100 // Wait up to 10 seconds
-      
+
       console.log("📍 Waiting for Google Maps to load from main.jsx...")
       while (!window.google && retries < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 100))
@@ -205,9 +205,12 @@ export default function ZoneSetup() {
         zoom: 5,
         mapTypeControl: true,
         mapTypeControlOptions: {
-          style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-          position: google.maps.ControlPosition.TOP_RIGHT,
-          mapTypeIds: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE]
+          style: google.maps.MapTypeControlStyle ? google.maps.MapTypeControlStyle.HORIZONTAL_BAR : 0,
+          position: google.maps.ControlPosition ? google.maps.ControlPosition.TOP_RIGHT : 1,
+          mapTypeIds: [
+            google.maps.MapTypeId ? google.maps.MapTypeId.ROADMAP : 'roadmap',
+            google.maps.MapTypeId ? google.maps.MapTypeId.SATELLITE : 'satellite'
+          ]
         },
         zoomControl: true,
         streetViewControl: false,
@@ -224,7 +227,7 @@ export default function ZoneSetup() {
       map.addListener('click', (event) => {
         const lat = event.latLng.lat()
         const lng = event.latLng.lng()
-        
+
         // Reverse geocode to get address
         const geocoder = new google.maps.Geocoder()
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
@@ -289,7 +292,7 @@ export default function ZoneSetup() {
     marker.addListener('dragend', (event) => {
       const newLat = event.latLng.lat()
       const newLng = event.latLng.lng()
-      
+
       // Reverse geocode new position
       const geocoder = new window.google.maps.Geocoder()
       geocoder.geocode({ location: { lat: newLat, lng: newLng } }, (results, status) => {
@@ -312,15 +315,15 @@ export default function ZoneSetup() {
 
   const formatAddress = (location) => {
     if (!location) return ""
-    
+
     if (location.formattedAddress && location.formattedAddress.trim() !== "") {
       return location.formattedAddress.trim()
     }
-    
+
     if (location.address && location.address.trim() !== "") {
       return location.address.trim()
     }
-    
+
     const parts = []
     if (location.addressLine1) parts.push(location.addressLine1.trim())
     if (location.addressLine2) parts.push(location.addressLine2.trim())
@@ -328,7 +331,7 @@ export default function ZoneSetup() {
     if (location.city) parts.push(location.city.trim())
     if (location.state) parts.push(location.state.trim())
     if (location.zipCode || location.pincode) parts.push((location.zipCode || location.pincode).trim())
-    
+
     return parts.length > 0 ? parts.join(", ") : ""
   }
 
@@ -340,9 +343,9 @@ export default function ZoneSetup() {
 
     try {
       setSaving(true)
-      
+
       const { lat, lng, address } = selectedLocation
-      
+
       // Update restaurant location
       const response = await restaurantAPI.updateProfile({
         location: {
@@ -357,7 +360,7 @@ export default function ZoneSetup() {
       if (response?.data?.data?.restaurant) {
         setRestaurantData(response.data.data.restaurant)
         alert("Location saved successfully!")
-        
+
         // Refresh the page to update navbar
         window.location.reload()
       } else {

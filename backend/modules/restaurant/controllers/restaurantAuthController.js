@@ -6,6 +6,9 @@ import { successResponse, errorResponse } from '../../../shared/utils/response.j
 import { asyncHandler } from '../../../shared/middleware/asyncHandler.js';
 import { normalizePhoneNumber } from '../../../shared/utils/phoneUtils.js';
 import winston from 'winston';
+import { checkSubscriptionExpiry } from './subscriptionController.js';
+import SubscriptionPlan from '../../admin/models/SubscriptionPlan.js';
+import RestaurantCommission from '../../admin/models/RestaurantCommission.js';
 
 /**
  * Build phone query that searches in multiple formats (with/without country code)
@@ -13,7 +16,7 @@ import winston from 'winston';
  */
 const buildPhoneQuery = (normalizedPhone) => {
   if (!normalizedPhone) return null;
-  
+
   // Check if normalized phone has country code (starts with 91 and is 12 digits)
   if (normalizedPhone.startsWith('91') && normalizedPhone.length === 12) {
     // Search for both: with country code (917610416911) and without (7610416911)
@@ -94,7 +97,7 @@ export const sendOTP = asyncHandler(async (req, res) => {
  * POST /api/restaurant/auth/verify-otp
  */
 export const verifyOTP = asyncHandler(async (req, res) => {
-  const { phone, email, otp, purpose = 'login', name, password } = req.body;
+  const { phone, email, otp, purpose = 'login', name, password, businessModel } = req.body;
 
   // Validate that either phone or email is provided
   if ((!phone && !email) || !otp) {
@@ -108,7 +111,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     if (phone && !normalizedPhone) {
       return errorResponse(res, 400, 'Invalid phone number format');
     }
-    
+
     const identifier = normalizedPhone || email;
     const identifierType = normalizedPhone ? 'phone' : 'email';
 
@@ -116,7 +119,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       // Registration flow
       // Check if restaurant already exists with normalized phone
       // For phone, search in both formats (with and without country code) to handle old data
-      const findQuery = normalizedPhone 
+      const findQuery = normalizedPhone
         ? buildPhoneQuery(normalizedPhone)
         : { email: email?.toLowerCase().trim() };
       restaurant = await Restaurant.findOne(findQuery);
@@ -135,7 +138,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
       const restaurantData = {
         name,
-        signupMethod: normalizedPhone ? 'phone' : 'email'
+        signupMethod: normalizedPhone ? 'phone' : 'email',
+        businessModel: businessModel || 'None'
       };
 
       if (normalizedPhone) {
@@ -179,8 +183,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
         } else {
           restaurant = await Restaurant.create(restaurantData);
         }
-        logger.info(`New restaurant registered: ${restaurant._id}`, { 
-          [identifierType]: identifier, 
+        logger.info(`New restaurant registered: ${restaurant._id}`, {
+          [identifierType]: identifier,
           restaurantId: restaurant._id
         });
       } catch (createError) {
@@ -191,7 +195,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
           email,
           restaurantData: { ...restaurantData, password: '***' }
         });
-        
+
         // Handle duplicate key error (email, phone, or slug)
         if (createError.code === 11000) {
           // Check if it's an email null duplicate key error (common with phone signups)
@@ -223,8 +227,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
             }
             try {
               restaurant = await Restaurant.create(retryRestaurantData);
-              logger.info(`New restaurant registered (fixed email null issue): ${restaurant._id}`, { 
-                [identifierType]: identifier, 
+              logger.info(`New restaurant registered (fixed email null issue): ${restaurant._id}`, {
+                [identifierType]: identifier,
                 restaurantId: restaurant._id
               });
             } catch (retryError) {
@@ -244,13 +248,13 @@ export const verifyOTP = asyncHandler(async (req, res) => {
               }
               throw new Error(`Failed to create restaurant: ${retryError.message}. Please contact support.`);
             }
-            } else if (createError.keyPattern && createError.keyPattern.phone) {
-              // Phone duplicate key error - search in both formats
-              const phoneQuery = buildPhoneQuery(normalizedPhone) || { phone: normalizedPhone };
-              restaurant = await Restaurant.findOne(phoneQuery);
-                if (restaurant) {
-                  return errorResponse(res, 400, `Restaurant already exists with this phone number. Please login.`);
-                }
+          } else if (createError.keyPattern && createError.keyPattern.phone) {
+            // Phone duplicate key error - search in both formats
+            const phoneQuery = buildPhoneQuery(normalizedPhone) || { phone: normalizedPhone };
+            restaurant = await Restaurant.findOne(phoneQuery);
+            if (restaurant) {
+              return errorResponse(res, 400, `Restaurant already exists with this phone number. Please login.`);
+            }
             throw new Error(`Phone number already exists: ${createError.message}`);
           } else if (createError.keyPattern && createError.keyPattern.slug) {
             // Check if it's a slug conflict
@@ -268,15 +272,15 @@ export const verifyOTP = asyncHandler(async (req, res) => {
             restaurantData.slug = uniqueSlug;
             try {
               restaurant = await Restaurant.create(restaurantData);
-              logger.info(`New restaurant registered with unique slug: ${restaurant._id}`, { 
-                [identifierType]: identifier, 
+              logger.info(`New restaurant registered with unique slug: ${restaurant._id}`, {
+                [identifierType]: identifier,
                 restaurantId: restaurant._id,
                 slug: uniqueSlug
               });
             } catch (retryError) {
               // If still fails, check if restaurant exists
-              const findQuery = normalizedPhone 
-                ? { phone: normalizedPhone } 
+              const findQuery = normalizedPhone
+                ? { phone: normalizedPhone }
                 : { email: email?.toLowerCase().trim() };
               restaurant = await Restaurant.findOne(findQuery);
               if (!restaurant) {
@@ -286,8 +290,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
             }
           } else {
             // Other duplicate key errors (email, phone)
-            const findQuery = normalizedPhone 
-              ? { phone: normalizedPhone } 
+            const findQuery = normalizedPhone
+              ? { phone: normalizedPhone }
               : { email: email?.toLowerCase().trim() };
             restaurant = await Restaurant.findOne(findQuery);
             if (!restaurant) {
@@ -401,8 +405,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
           } else {
             restaurant = await Restaurant.create(restaurantData);
           }
-          logger.info(`New restaurant auto-registered: ${restaurant._id}`, { 
-            [identifierType]: identifier, 
+          logger.info(`New restaurant auto-registered: ${restaurant._id}`, {
+            [identifierType]: identifier,
             restaurantId: restaurant._id
           });
         } catch (createError) {
@@ -413,7 +417,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
             email,
             restaurantData: { ...restaurantData, password: '***' }
           });
-          
+
           if (createError.code === 11000) {
             // Check if it's an email null duplicate key error (common with phone signups)
             if (createError.keyPattern && createError.keyPattern.email && phone && !email) {
@@ -446,8 +450,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
                 }
                 try {
                   restaurant = await Restaurant.create(retryRestaurantData);
-                  logger.info(`New restaurant auto-registered (fixed email null issue): ${restaurant._id}`, { 
-                    [identifierType]: identifier, 
+                  logger.info(`New restaurant auto-registered (fixed email null issue): ${restaurant._id}`, {
+                    [identifierType]: identifier,
                     restaurantId: restaurant._id
                   });
                 } catch (retryError) {
@@ -497,15 +501,15 @@ export const verifyOTP = asyncHandler(async (req, res) => {
               restaurantData.slug = uniqueSlug;
               try {
                 restaurant = await Restaurant.create(restaurantData);
-                logger.info(`New restaurant auto-registered with unique slug: ${restaurant._id}`, { 
-                  [identifierType]: identifier, 
+                logger.info(`New restaurant auto-registered with unique slug: ${restaurant._id}`, {
+                  [identifierType]: identifier,
                   restaurantId: restaurant._id,
                   slug: uniqueSlug
                 });
               } catch (retryError) {
                 // If still fails, check if restaurant exists
-                const findQuery = phone 
-                  ? { phone } 
+                const findQuery = phone
+                  ? { phone }
                   : { email };
                 restaurant = await Restaurant.findOne(findQuery);
                 if (!restaurant) {
@@ -515,8 +519,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
               }
             } else {
               // Other duplicate key errors (email, phone)
-              const findQuery = phone 
-                ? { phone } 
+              const findQuery = phone
+                ? { phone }
                 : { email };
               restaurant = await Restaurant.findOne(findQuery);
               if (!restaurant) {
@@ -565,7 +569,9 @@ export const verifyOTP = asyncHandler(async (req, res) => {
         signupMethod: restaurant.signupMethod,
         profileImage: restaurant.profileImage,
         isActive: restaurant.isActive,
-        onboarding: restaurant.onboarding
+        onboarding: restaurant.onboarding,
+        dishLimit: restaurant.dishLimit,
+        businessModel: restaurant.businessModel
       }
     });
   } catch (error) {
@@ -592,7 +598,7 @@ export const register = asyncHandler(async (req, res) => {
   }
 
   // Check if restaurant already exists
-  const existingRestaurant = await Restaurant.findOne({ 
+  const existingRestaurant = await Restaurant.findOne({
     $or: [
       { email: email.toLowerCase().trim() },
       ...(normalizedPhone ? [{ phone: normalizedPhone }] : [])
@@ -619,13 +625,13 @@ export const register = asyncHandler(async (req, res) => {
     // Set isActive to false - restaurant needs admin approval before becoming active
     isActive: false
   };
-  
+
   // Only include phone if provided (don't set to null)
   if (normalizedPhone) {
     restaurantData.phone = normalizedPhone;
     restaurantData.ownerPhone = ownerPhone ? normalizePhoneNumber(ownerPhone) : normalizedPhone;
   }
-  
+
   const restaurant = await Restaurant.create(restaurantData);
 
   // Generate tokens (email may be null for phone signups)
@@ -656,7 +662,9 @@ export const register = asyncHandler(async (req, res) => {
       phoneVerified: restaurant.phoneVerified,
       signupMethod: restaurant.signupMethod,
       profileImage: restaurant.profileImage,
-      isActive: restaurant.isActive
+      isActive: restaurant.isActive,
+      dishLimit: restaurant.dishLimit,
+      businessModel: restaurant.businessModel
     }
   });
 });
@@ -723,7 +731,9 @@ export const login = asyncHandler(async (req, res) => {
       signupMethod: restaurant.signupMethod,
       profileImage: restaurant.profileImage,
       isActive: restaurant.isActive,
-      onboarding: restaurant.onboarding
+      onboarding: restaurant.onboarding,
+      dishLimit: restaurant.dishLimit,
+      businessModel: restaurant.businessModel
     }
   });
 });
@@ -833,34 +843,95 @@ export const logout = asyncHandler(async (req, res) => {
  */
 export const getCurrentRestaurant = asyncHandler(async (req, res) => {
   // Restaurant is attached by authenticate middleware
+  let restaurant = req.restaurant;
+
+  // Check for subscription expiry
+  restaurant = await checkSubscriptionExpiry(restaurant);
+
+  let daysRemaining = null;
+  let showWarning = false;
+  let planName = null;
+
+  if (restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
+    const now = new Date();
+    const endDate = new Date(restaurant.subscription.endDate);
+    const diffTime = endDate - now;
+    daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    if (daysRemaining <= 5) {
+      showWarning = true;
+    }
+
+    if (restaurant.subscription.planId) {
+      if (restaurant.subscription.planName) {
+        planName = restaurant.subscription.planName;
+      } else {
+        try {
+          // Check if planId is a valid ObjectId before querying
+          if (restaurant.subscription.planId.match(/^[0-9a-fA-F]{24}$/)) {
+            const plan = await SubscriptionPlan.findById(restaurant.subscription.planId);
+            if (plan) planName = plan.name;
+          } else {
+            // Fallback for legacy string IDs
+            planName = restaurant.subscription.planId;
+          }
+        } catch (err) {
+          console.error('Error fetching plan name:', err);
+        }
+      }
+    }
+  }
+
+  // Fetch commission rate
+  let commissionRate = 10; // Default
+  try {
+    const commission = await RestaurantCommission.findOne({ restaurant: restaurant._id });
+    if (commission && commission.defaultCommission) {
+      commissionRate = commission.defaultCommission.value;
+    }
+  } catch (err) {
+    console.error('Error fetching commission rate:', err);
+  }
+
+
+
   return successResponse(res, 200, 'Restaurant retrieved successfully', {
     restaurant: {
-      id: req.restaurant._id,
-      restaurantId: req.restaurant.restaurantId,
-      name: req.restaurant.name,
-      email: req.restaurant.email,
-      phone: req.restaurant.phone,
-      phoneVerified: req.restaurant.phoneVerified,
-      signupMethod: req.restaurant.signupMethod,
-      profileImage: req.restaurant.profileImage,
-      isActive: req.restaurant.isActive,
-      onboarding: req.restaurant.onboarding,
-      ownerName: req.restaurant.ownerName,
-      ownerEmail: req.restaurant.ownerEmail,
-      ownerPhone: req.restaurant.ownerPhone,
+      id: restaurant._id,
+      restaurantId: restaurant.restaurantId,
+      name: restaurant.name,
+      email: restaurant.email,
+      phone: restaurant.phone,
+      phoneVerified: restaurant.phoneVerified,
+      signupMethod: restaurant.signupMethod,
+      profileImage: restaurant.profileImage,
+      isActive: restaurant.isActive,
+      onboarding: restaurant.onboarding,
+      ownerName: restaurant.ownerName,
+      ownerEmail: restaurant.ownerEmail,
+      ownerPhone: restaurant.ownerPhone,
       // Include additional restaurant details
-      cuisines: req.restaurant.cuisines,
-      openDays: req.restaurant.openDays,
-      location: req.restaurant.location,
-      primaryContactNumber: req.restaurant.primaryContactNumber,
-      deliveryTimings: req.restaurant.deliveryTimings,
-      menuImages: req.restaurant.menuImages,
-      slug: req.restaurant.slug,
-      isAcceptingOrders: req.restaurant.isAcceptingOrders,
+      cuisines: restaurant.cuisines,
+      openDays: restaurant.openDays,
+      location: restaurant.location,
+      primaryContactNumber: restaurant.primaryContactNumber,
+      deliveryTimings: restaurant.deliveryTimings,
+      menuImages: restaurant.menuImages,
+      slug: restaurant.slug,
+      isAcceptingOrders: restaurant.isAcceptingOrders,
       // Include verification status
-      rejectionReason: req.restaurant.rejectionReason || null,
-      approvedAt: req.restaurant.approvedAt || null,
-      rejectedAt: req.restaurant.rejectedAt || null
+      rejectionReason: restaurant.rejectionReason || null,
+      approvedAt: restaurant.approvedAt || null,
+      rejectedAt: restaurant.rejectedAt || null,
+      dishLimit: restaurant.dishLimit,
+      businessModel: restaurant.businessModel,
+      commissionRate: commissionRate,
+      subscription: restaurant.subscription,
+      subscriptionStatus: {
+        daysRemaining,
+        showWarning
+      },
+      subscriptionPlanName: planName || restaurant.subscription?.planName || 'Basic'
     }
   });
 });
@@ -1059,7 +1130,9 @@ export const firebaseGoogleLogin = asyncHandler(async (req, res) => {
         signupMethod: restaurant.signupMethod,
         profileImage: restaurant.profileImage,
         isActive: restaurant.isActive,
-        onboarding: restaurant.onboarding
+        onboarding: restaurant.onboarding,
+        dishLimit: restaurant.dishLimit,
+        businessModel: restaurant.businessModel
       }
     });
   } catch (error) {

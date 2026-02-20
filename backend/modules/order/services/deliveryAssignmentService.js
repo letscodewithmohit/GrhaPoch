@@ -106,32 +106,6 @@ export async function findNearestDeliveryBoys(restaurantLat, restaurantLng, rest
 
     console.log(`📊 Found ${deliveryPartners?.length || 0} online delivery partners matching query`);
 
-    if (!deliveryPartners || deliveryPartners.length === 0) {
-      // If COD and cash limit was applied, try again without it
-      if (isCod && cashLimitApplied) {
-        console.warn(`⚠️ No partners found with cash limit. Retrying without cash limit restriction...`);
-        delete deliveryQuery._id;
-        const fallbackPartners = await Delivery.find(deliveryQuery)
-          .select('_id name phone availability.currentLocation availability.lastLocationUpdate status isActive zoneId')
-          .lean();
-        console.log(`📊 Fallback search found ${fallbackPartners?.length || 0} partners`);
-        if (fallbackPartners && fallbackPartners.length > 0) {
-          // Continue with fallback partners
-          return processFallbackPartners(fallbackPartners, restaurantLat, restaurantLng, priorityDistance, limit, zone);
-        }
-      }
-
-      // Debug: Check if ANY delivery partners exist
-      const totalPartners = await Delivery.countDocuments({});
-      const onlinePartners = await Delivery.countDocuments({ 'availability.isOnline': true });
-      const approvedPartners = await Delivery.countDocuments({ status: { $in: ['approved', 'active'] } });
-      console.warn(`⚠️ No delivery partners found. Debug info:`);
-      console.warn(`   Total partners in DB: ${totalPartners}`);
-      console.warn(`   Online partners: ${onlinePartners}`);
-      console.warn(`   Approved partners: ${approvedPartners}`);
-      return [];
-    }
-
     // Calculate distance and filter
     const deliveryPartnersWithDistance = deliveryPartners
       .map(partner => {
@@ -145,7 +119,7 @@ export async function findNearestDeliveryBoys(restaurantLat, restaurantLng, rest
           return null;
         }
 
-        // Zone filtering (same as findNearestDeliveryBoy)
+        // Zone filtering
         if (zone) {
           if (partner.zoneId && partner.zoneId.toString() !== zone._id.toString()) {
             return null;
@@ -175,7 +149,33 @@ export async function findNearestDeliveryBoys(restaurantLat, restaurantLng, rest
           zoneId: partner.zoneId || null
         };
       })
-      .filter(partner => partner !== null && partner.distance <= priorityDistance)
+      .filter(partner => partner !== null && partner.distance <= priorityDistance);
+
+    // If no partners found (or all filtered out by zone/distance) AND we were applying cash limit
+    if (deliveryPartnersWithDistance.length === 0 && isCod && cashLimitApplied) {
+      console.warn(`⚠️ No priority partners found within criteria with cash limit. Retrying without cash limit restriction...`);
+      delete deliveryQuery._id;
+      const fallbackPartners = await Delivery.find(deliveryQuery)
+        .select('_id name phone availability.currentLocation availability.lastLocationUpdate status isActive zoneId')
+        .lean();
+
+      console.log(`📊 Fallback priority search found ${fallbackPartners?.length || 0} partners total`);
+      if (fallbackPartners && fallbackPartners.length > 0) {
+        return processFallbackPartners(fallbackPartners, restaurantLat, restaurantLng, priorityDistance, limit, zone);
+      }
+    }
+
+    if (!deliveryPartners || deliveryPartners.length === 0) {
+      // Debug: Check if ANY delivery partners exist
+      const totalPartners = await Delivery.countDocuments({});
+      const onlinePartners = await Delivery.countDocuments({ 'availability.isOnline': true });
+      const approvedPartners = await Delivery.countDocuments({ status: { $in: ['approved', 'active'] } });
+      console.warn(`⚠️ No delivery partners found at all. Debug info:`);
+      console.warn(`   Total partners in DB: ${totalPartners}`);
+      console.warn(`   Online partners: ${onlinePartners}`);
+      console.warn(`   Approved partners: ${approvedPartners}`);
+      return [];
+    }
     // Sort by distance (nearest first)
     let results = deliveryPartnersWithDistance.sort((a, b) => a.distance - b.distance);
 
@@ -306,57 +306,14 @@ export async function findNearestDeliveryBoy(restaurantLat, restaurantLng, resta
       }
     }
 
-    // Find all online delivery partners (with zone filter if applicable)
+    // Find all online delivery partners matching criteria
     const deliveryPartners = await Delivery.find(deliveryQuery)
       .select('_id name phone availability.currentLocation availability.lastLocationUpdate status isActive zoneId')
       .lean();
 
-    console.log(`📊 Found ${deliveryPartners?.length || 0} online delivery partners in database`);
+    console.log(`📊 Found ${deliveryPartners?.length || 0} online delivery partners matching initial query`);
 
-    if (!deliveryPartners || deliveryPartners.length === 0) {
-      // If COD and cash limit was applied, try again without it
-      if (isCod && cashLimitApplied) {
-        console.warn(`⚠️ No partners found with cash limit. Retrying without cash limit restriction...`);
-        // Remove the cash limit filter
-        if (deliveryQuery._id && deliveryQuery._id.$in) {
-          delete deliveryQuery._id;
-          // Re-add exclude IDs if they exist
-          if (excludeIds && excludeIds.length > 0) {
-            const excludeObjectIds = excludeIds
-              .filter(id => mongoose.Types.ObjectId.isValid(id))
-              .map(id => new mongoose.Types.ObjectId(id));
-            if (excludeObjectIds.length > 0) {
-              deliveryQuery._id = { $nin: excludeObjectIds };
-            }
-          }
-        }
-        const fallbackPartners = await Delivery.find(deliveryQuery)
-          .select('_id name phone availability.currentLocation availability.lastLocationUpdate status isActive zoneId')
-          .lean();
-        console.log(`📊 Fallback search found ${fallbackPartners?.length || 0} partners`);
-        if (fallbackPartners && fallbackPartners.length > 0) {
-          // Continue processing with fallback partners
-          return processSingleFallbackPartner(fallbackPartners, restaurantLat, restaurantLng, maxDistance, zone);
-        }
-      }
-
-      console.log('⚠️ No online delivery partners found');
-      console.log('⚠️ Checking all delivery partners to see why...');
-
-      // Debug: Check all delivery partners to see their status
-      const allPartners = await Delivery.find({})
-        .select('_id name availability.isOnline status isActive availability.currentLocation')
-        .lean();
-
-      console.log(`📊 Total delivery partners in database: ${allPartners.length}`);
-      allPartners.forEach(partner => {
-        console.log(`  - ${partner.name} (${partner._id}): online=${partner.availability?.isOnline}, status=${partner.status}, active=${partner.isActive}, hasLocation=${!!partner.availability?.currentLocation?.coordinates}`);
-      });
-
-      return null;
-    }
-
-    // Calculate distance for each delivery partner and filter by zone if applicable
+    // Calculate distance and filter by zone/distance
     const deliveryPartnersWithDistance = deliveryPartners
       .map(partner => {
         const location = partner.availability?.currentLocation;
@@ -364,49 +321,34 @@ export async function findNearestDeliveryBoy(restaurantLat, restaurantLng, resta
           return null;
         }
 
-        const [lng, lat] = location.coordinates; // GeoJSON format: [longitude, latitude]
-
-        // Skip if coordinates are invalid
+        const [lng, lat] = location.coordinates;
         if (lat === 0 && lng === 0) {
           return null;
         }
 
-        // Filter by zone if zone exists
+        // Zone filtering
         if (zone) {
-          // Option A: Check zoneId match (when zoneId is added to Delivery model)
           if (partner.zoneId && partner.zoneId.toString() !== zone._id.toString()) {
-            console.log(`⚠️ Delivery partner ${partner._id} not in zone ${zone.name} (partner zone: ${partner.zoneId}, required zone: ${zone._id})`);
-            return null; // Skip delivery partners not in the restaurant's zone
+            return null;
           }
 
-          // Option B: Geo-spatial check (point-in-polygon) if zoneId not available
-          // Simple point-in-polygon using ray casting algorithm
           if (!partner.zoneId && zone.coordinates && zone.coordinates.length >= 3) {
-            // Zone coordinates: [{ latitude, longitude }, ...]
             const zoneCoords = zone.coordinates;
             let inside = false;
-
             for (let i = 0, j = zoneCoords.length - 1; i < zoneCoords.length; j = i++) {
               const xi = zoneCoords[i].longitude;
               const yi = zoneCoords[i].latitude;
               const xj = zoneCoords[j].longitude;
               const yj = zoneCoords[j].latitude;
-
               const intersect = ((yi > lat) !== (yj > lat)) &&
                 (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
-
               if (intersect) inside = !inside;
             }
-
-            if (!inside) {
-              console.log(`⚠️ Delivery partner ${partner._id} location (${lat}, ${lng}) not within zone ${zone.name} boundary`);
-              return null;
-            }
+            if (!inside) return null;
           }
         }
 
         const distance = calculateDistance(restaurantLat, restaurantLng, lat, lng);
-
         return {
           ...partner,
           distance,
@@ -415,20 +357,45 @@ export async function findNearestDeliveryBoy(restaurantLat, restaurantLng, resta
           zoneId: partner.zoneId || null
         };
       })
-      .filter(partner => partner !== null && partner.distance <= maxDistance)
-      .sort((a, b) => a.distance - b.distance); // Sort by distance (nearest first)
+      .filter(partner => partner !== null && partner.distance <= maxDistance);
+
+    // If no suitable partners found and we were restricted by cash limit
+    if (deliveryPartnersWithDistance.length === 0 && isCod && cashLimitApplied) {
+      console.warn(`⚠️ No suitable delivery partners found with current criteria/cash limit. Retrying without cash limit...`);
+      // Remove the cash limit filter
+      if (deliveryQuery._id && deliveryQuery._id.$in) {
+        delete deliveryQuery._id;
+        // Re-add exclude IDs if they exist
+        if (excludeIds && excludeIds.length > 0) {
+          const excludeObjectIds = excludeIds
+            .filter(id => mongoose.Types.ObjectId.isValid(id))
+            .map(id => new mongoose.Types.ObjectId(id));
+          if (excludeObjectIds.length > 0) {
+            deliveryQuery._id = { $nin: excludeObjectIds };
+          }
+        }
+      }
+      const fallbackPartners = await Delivery.find(deliveryQuery)
+        .select('_id name phone availability.currentLocation availability.lastLocationUpdate status isActive zoneId')
+        .lean();
+
+      console.log(`📊 Fallback single search found ${fallbackPartners?.length || 0} partners total`);
+      if (fallbackPartners && fallbackPartners.length > 0) {
+        return processSingleFallbackPartner(fallbackPartners, restaurantLat, restaurantLng, maxDistance, zone);
+      }
+    }
 
     if (deliveryPartnersWithDistance.length === 0) {
-      console.log(`⚠️ No delivery partners found within ${maxDistance}km`);
+      console.log(`⚠️ No online delivery partners found matching criteria within ${maxDistance}km`);
       return null;
     }
 
-    // Get the nearest delivery partner
-    const nearestPartner = deliveryPartnersWithDistance[0];
+    // Sort by distance (nearest first)
+    const sortedPartners = deliveryPartnersWithDistance.sort((a, b) => a.distance - b.distance);
+    const nearestPartner = sortedPartners[0];
 
     console.log(`✅ Found nearest delivery partner: ${nearestPartner.name} (ID: ${nearestPartner._id})`);
     console.log(`✅ Distance: ${nearestPartner.distance.toFixed(2)}km away`);
-    console.log(`✅ Location: ${nearestPartner.latitude}, ${nearestPartner.longitude}`);
     console.log(`✅ Phone: ${nearestPartner.phone}`);
 
     return {

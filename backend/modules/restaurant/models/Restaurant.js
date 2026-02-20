@@ -264,8 +264,8 @@ const restaurantSchema = new mongoose.Schema(
     },
     businessModel: {
       type: String,
-      enum: ['Commission Base', 'Subscription Base'],
-      default: 'Commission Base',
+      enum: ['Commission Base', 'Subscription Base', 'None'],
+      default: 'None',
     },
     // Subscription details
     subscription: {
@@ -278,11 +278,16 @@ const restaurantSchema = new mongoose.Schema(
         enum: ['active', 'expired', 'pending_approval', 'inactive', 'rejected'],
         default: 'inactive'
       },
+      planName: String,
       startDate: Date,
       endDate: Date,
       requestedAt: Date,
       paymentId: String,
       orderId: String
+    },
+    dishLimit: {
+      type: Number,
+      default: 0
     },
   },
   {
@@ -297,6 +302,12 @@ restaurantSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 
 // Hash password before saving
 restaurantSchema.pre('save', async function (next) {
+  // Initialize dishLimit to 0 (unlimited) for all restaurants
+  if (this.isNew && (this.dishLimit === undefined || this.dishLimit === null)) {
+    this.dishLimit = 0; // Unlimited by default as requested
+    console.log(`ℹ️ Setting default unlimited dish limit (0) for ${this.name || this.restaurantId}`);
+  }
+
   // Generate restaurantId FIRST (before any validation)
   if (!this.restaurantId) {
     const timestamp = Date.now();

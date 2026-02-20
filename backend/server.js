@@ -221,7 +221,7 @@ restaurantNamespace.on('connection', (socket) => {
         room: room,
         socketId: socket.id
       });
-      
+
       // Log all rooms this socket is now in
       const socketRooms = Array.from(socket.rooms).filter(r => r.startsWith('restaurant:'));
       console.log(`📋 Socket ${socket.id} is now in restaurant rooms:`, socketRooms);
@@ -642,6 +642,37 @@ function initializeScheduledTasks() {
     console.log('✅ Auto-reject order scheduler initialized (runs every 30 seconds)');
   }).catch((error) => {
     console.error('❌ Failed to initialize auto-reject service:', error);
+  });
+
+  // Import subscription expiry service
+  import('./modules/restaurant/services/subscriptionExpiryService.js').then(({ processSubscriptionExpiries }) => {
+    // Run every hour to check for expired subscriptions
+    cron.schedule('0 * * * *', async () => {
+      try {
+        const result = await processSubscriptionExpiries();
+        if (result.expired > 0) {
+          console.log(`[Subscription Expiry Cron] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[Subscription Expiry Cron] Error:', error);
+      }
+    });
+
+    // Also run once on startup (after a short delay)
+    setTimeout(async () => {
+      try {
+        const result = await processSubscriptionExpiries();
+        if (result.expired > 0) {
+          console.log(`[Subscription Expiry Startup] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[Subscription Expiry Startup] Error:', error);
+      }
+    }, 10000);
+
+    console.log('✅ Subscription expiry scheduler initialized (runs every hour)');
+  }).catch((error) => {
+    console.error('❌ Failed to initialize subscription expiry service:', error);
   });
 }
 

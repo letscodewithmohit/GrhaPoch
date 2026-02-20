@@ -3,6 +3,7 @@
 import { asyncHandler } from '../../../shared/middleware/asyncHandler.js';
 import { successResponse, errorResponse } from '../../../shared/utils/response.js';
 import Order from '../../order/models/Order.js';
+import OrderSettlement from '../../order/models/OrderSettlement.js';
 import Payment from '../../payment/models/Payment.js';
 import Restaurant from '../../restaurant/models/Restaurant.js';
 import mongoose from 'mongoose';
@@ -70,23 +71,43 @@ export const getTripHistory = asyncHandler(async (req, res) => {
         endDate.setHours(23, 59, 59, 999);
     }
 
+    // Map frontend status to backend status
+    const statusMap = {
+      'Completed': 'delivered',
+      'Cancelled': 'cancelled',
+      'Pending': { $in: ['confirmed', 'preparing', 'ready', 'out_for_delivery'] }
+    };
+
     // Build query
     const query = {
-      deliveryPartnerId: delivery._id,
-      createdAt: {
-        $gte: startDate,
-        $lte: endDate
-      }
+      deliveryPartnerId: delivery._id
     };
+
+    // Date range query - check createdAt, deliveredAt, or cancelledAt
+    // This ensures orders delivered today show up in today's history even if created yesterday
+    query.$or = [
+      {
+        createdAt: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      },
+      {
+        deliveredAt: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      },
+      {
+        cancelledAt: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      }
+    ];
 
     // Status filter
     if (status && status !== 'ALL TRIPS') {
-      // Map frontend status to backend status
-      const statusMap = {
-        'Completed': 'delivered',
-        'Cancelled': 'cancelled',
-        'Pending': 'pending'
-      };
       query.status = statusMap[status] || status.toLowerCase();
     }
 
@@ -166,6 +187,16 @@ export const getTripHistory = asyncHandler(async (req, res) => {
       }
     }
 
+    // Fetch settlements for earnings data
+    const settlements = await OrderSettlement.find({
+      orderId: { $in: orderIds }
+    }).select('orderId deliveryPartnerEarning').lean();
+
+    const settlementMap = new Map();
+    settlements.forEach(s => {
+      settlementMap.set(s.orderId.toString(), s);
+    });
+
     // Format response
     const formattedTrips = orders.map((order, index) => {
       // Map backend status to frontend status
@@ -196,18 +227,35 @@ export const getTripHistory = asyncHandler(async (req, res) => {
           'Unknown Restaurant';
       }
 
-      // Get order amount (delivery fee or total)
-      const amount = order.pricing?.deliveryFee || order.pricing?.total || 0;
+      // Get settlement for earnings
+      const settlement = settlementMap.get(order._id.toString());
+
+      // Get order earnings from settlement if available
+      // The amount shown to delivery partner should be their total earning (Fee + Distance + Tip)
+      let amount = 0;
+      let tip = 0;
+
+      if (settlement && settlement.deliveryPartnerEarning) {
+        amount = settlement.deliveryPartnerEarning.totalEarning || 0;
+        tip = settlement.deliveryPartnerEarning.tip || 0;
+
+        // If settlement earning is 0 (because it wasn't recalculated) but order has delivery fee,
+        // and it's not a cancelled order, show estimated earning
+        if (amount === 0 && displayStatus !== 'Cancelled') {
+          amount = (order.pricing?.deliveryFee || 0) + (order.pricing?.tip || 0);
+          // Note: This is an estimate (doesn't include distance commission if not calculated yet)
+        }
+      } else {
+        // Fallback if settlement not found (should not happen usually)
+        amount = (order.pricing?.deliveryFee || 0) + (order.pricing?.tip || 0);
+        tip = order.pricing?.tip || 0;
+      }
 
       // Get payment method - check Payment collection as fallback (for COD orders)
       let paymentMethod = order.payment?.method || 'razorpay';
-      // If order.payment.method is not 'cash', check Payment collection for COD
       if (paymentMethod !== 'cash' && codOrderIds.has(order._id?.toString())) {
         paymentMethod = 'cash';
       }
-
-      // Get tip amount
-      const tip = order.pricing?.tip || 0;
 
       return {
         id: order._id.toString(),

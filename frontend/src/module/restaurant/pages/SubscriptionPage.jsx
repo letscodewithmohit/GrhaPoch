@@ -27,6 +27,20 @@ export default function SubscriptionPage() {
     const [submittingPlanId, setSubmittingPlanId] = useState(null);
     const [currentSubscription, setCurrentSubscription] = useState(null);
     const [restaurantData, setRestaurantData] = useState(null);
+    const [isSwitchPopupOpen, setIsSwitchPopupOpen] = useState(false);
+
+    const getDaysLeft = () => {
+        if (!currentSubscription?.endDate) return 0;
+        const end = new Date(currentSubscription.endDate);
+        const now = new Date();
+        const diffTime = end - now;
+        if (diffTime <= 0) return 0;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    const handleSwitchToCommission = () => {
+        setIsSwitchPopupOpen(true);
+    };
 
     const fetchStatus = async () => {
         try {
@@ -86,6 +100,13 @@ export default function SubscriptionPage() {
 
     const handleSubscribe = async (plan) => {
         if (submittingPlanId) return;
+
+        // Restriction: Cannot switch plans if one is already active
+        if (currentSubscription && currentSubscription.status === 'active') {
+            toast.info("You already have an active subscription. Please wait for it to expire.");
+            setIsSwitchPopupOpen(true);
+            return;
+        }
 
         if (!window.Razorpay) {
             toast.error("Razorpay SDK not loaded. Please refresh the page.");
@@ -192,31 +213,27 @@ export default function SubscriptionPage() {
 
             <div className="max-w-7xl mx-auto px-4 py-10 pb-20">
                 {/* Hero Section */}
-                <div className="text-center mb-16 space-y-4">
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-semibold border border-indigo-100 shadow-sm"
-                    >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Premium Features Unlocked</span>
-                    </motion.div>
+                <div className="text-center mb-10 space-y-4">
+                    {/* Active Plan Indicator for Commission Base */}
+                    {(!currentSubscription || currentSubscription.status !== 'active') && !loading && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="inline-flex items-center gap-2 bg-amber-50 text-amber-800 px-4 py-2 rounded-lg border border-amber-200"
+                        >
+                            <span className="font-semibold">Current Plan:</span> Commission Based
+                        </motion.div>
+                    )}
+
                     <motion.h2
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight"
+                        className="text-2xl md:text-3xl font-bold text-slate-900 mt-8"
                     >
-                        Supercharge Your Restaurant
+                        Choose Your Business Plan
                     </motion.h2>
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed"
-                    >
-                        Choose a plan that fits your growth. Zero commission, enhanced visibility, and powerful analytics.
-                    </motion.p>
                 </div>
 
                 {/* Plans Grid */}
@@ -233,7 +250,7 @@ export default function SubscriptionPage() {
                         <AnimatePresence>
                             {plans.map((plan, index) => {
                                 const Icon = plan.icon;
-                                const isCurrentPlan = currentSubscription?.planId === plan.id;
+                                const isCurrentPlan = currentSubscription?.planId?.toString() === plan.id?.toString();
                                 const status = currentSubscription?.status;
                                 const isPending = status === 'pending_approval';
                                 const isActive = status === 'active';
@@ -288,6 +305,12 @@ export default function SubscriptionPage() {
                                             {/* Features list */}
                                             <div className="space-y-4 mb-8">
                                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Everything Included</p>
+                                                <div className="flex items-start gap-3 text-slate-600 group/item">
+                                                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-indigo-500 group-hover/item:text-white transition-colors">
+                                                        <Check className="w-3 h-3 text-indigo-600 group-hover/item:text-white" />
+                                                    </div>
+                                                    <span className="font-bold text-slate-900">{plan.dishLimit === 0 ? 'Unlimited' : plan.dishLimit} Dishes Included</span>
+                                                </div>
                                                 {plan.features.map((feature, idx) => (
                                                     <div key={idx} className="flex items-start gap-3 text-slate-600 group/item">
                                                         <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-green-500 group-hover/item:text-white transition-colors">
@@ -303,10 +326,10 @@ export default function SubscriptionPage() {
                                         <div className="p-8 pt-0 mt-auto">
                                             <button
                                                 onClick={() => handleSubscribe(plan)}
-                                                disabled={isDisabled}
+                                                disabled={isDisabled || (isCurrentPlan && isActive)}
                                                 className={`w-full py-4 rounded-xl font-bold text-base transition-all transform active:scale-95 shadow-md flex items-center justify-center gap-2
                                                     ${isCurrentPlan && isActive
-                                                        ? 'bg-green-50 text-green-700 border-2 border-green-200 cursor-default hover:bg-green-100'
+                                                        ? 'bg-green-100 text-green-800 border-2 border-green-500 cursor-default'
                                                         : isPopular
                                                             ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200'
                                                             : 'bg-slate-900 text-white hover:bg-slate-800'
@@ -320,7 +343,7 @@ export default function SubscriptionPage() {
                                                         Processing...
                                                     </>
                                                 ) : isCurrentPlan && isActive ? (
-                                                    <>Current Plan</>
+                                                    <><Check className="w-5 h-5" /> Current Active Plan</>
                                                 ) : (
                                                     <>Get Started <ArrowLeft className="w-4 h-4 rotate-180" /></>
                                                 )}
@@ -337,33 +360,66 @@ export default function SubscriptionPage() {
                     </div>
                 )}
 
-                {/* Bottom Trust Section */}
-                <div className="border-t border-slate-200 pt-16">
-                    <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
-                                <ShieldCheck className="w-6 h-6" />
-                            </div>
-                            <h4 className="font-bold text-slate-900 mb-2">Secure Payments</h4>
-                            <p className="text-sm text-slate-500">Bank-grade encryption ensures your transaction data is always safe.</p>
-                        </div>
-                        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-                            <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-4">
-                                <Zap className="w-6 h-6" />
-                            </div>
-                            <h4 className="font-bold text-slate-900 mb-2">Instant Activation</h4>
-                            <p className="text-sm text-slate-500">Get access to all premium features immediately after payment confirmation.</p>
-                        </div>
-                        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-                            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-4">
-                                <Headphones className="w-6 h-6" />
-                            </div>
-                            <h4 className="font-bold text-slate-900 mb-2">Priority Support</h4>
-                            <p className="text-sm text-slate-500">Subscribers get dedicated support line for faster resolution.</p>
-                        </div>
+                {/* Switch to Commission Based Section - Only for Active Subscribers */}
+                {currentSubscription?.status === 'active' && !loading && (
+                    <div className="max-w-2xl mx-auto mt-12 text-center p-8 bg-amber-50 rounded-2xl border border-amber-200">
+                        <h3 className="text-xl font-bold text-amber-900 mb-2">Want to switch to Commission Based?</h3>
+                        <p className="text-amber-700 mb-6">
+                            You are currently on an active subscription plan.
+                            Switching to commission based model will take effect after your current plan expires.
+                        </p>
+                        <button
+                            onClick={handleSwitchToCommission}
+                            className="px-6 py-3 bg-white text-amber-600 border border-amber-300 rounded-xl font-semibold hover:bg-amber-100 transition-colors shadow-sm"
+                        >
+                            Switch to Commission Based
+                        </button>
                     </div>
-                </div>
+                )}
+
+                {/* Days Left Popup */}
+                <AnimatePresence>
+                    {isSwitchPopupOpen && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsSwitchPopupOpen(false)}
+                                className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                            />
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-xl z-50 w-full max-w-sm overflow-hidden"
+                            >
+                                <div className="p-6 text-center">
+                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <span className="text-xl font-bold text-blue-600">i</span>
+                                        </div>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">Active Subscription</h3>
+                                    <p className="text-gray-500 mb-6">
+                                        You have <span className="font-bold text-gray-900">{getDaysLeft()} days</span> left in your current subscription.
+                                    </p>
+                                    <p className="text-sm text-gray-400 mb-6">
+                                        You can continue using premium features until your plan expires. After expiry, you will be automatically switched to Commission Base.
+                                    </p>
+                                    <button
+                                        onClick={() => setIsSwitchPopupOpen(false)}
+                                        className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+                                    >
+                                        Understood
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
+
             </div>
-        </div>
+        </div >
     );
 }

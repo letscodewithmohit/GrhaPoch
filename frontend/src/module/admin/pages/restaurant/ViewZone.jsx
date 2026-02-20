@@ -11,7 +11,7 @@ export default function ViewZone() {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const polygonRef = useRef(null)
-  
+
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
   const [zone, setZone] = useState(null)
@@ -60,11 +60,11 @@ export default function ViewZone() {
       console.log("Loading Google Maps...")
       const apiKey = await getGoogleMapsApiKey()
       setGoogleMapsApiKey(apiKey || "loaded")
-      
+
       // Wait for Google Maps to be loaded from main.jsx if it's loading
       let retries = 0
       const maxRetries = 50
-      
+
       while (!window.google && retries < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 100))
         retries++
@@ -105,7 +105,7 @@ export default function ViewZone() {
 
   const initializeMap = (google) => {
     console.log("initializeMap called, mapRef.current:", mapRef.current)
-    
+
     if (!mapRef.current) {
       console.log("Map ref not available, retrying...")
       setTimeout(() => initializeMap(google), 300)
@@ -115,7 +115,7 @@ export default function ViewZone() {
     // Check if container has dimensions, retry if not
     const container = mapRef.current
     console.log("Container dimensions:", container.offsetWidth, "x", container.offsetHeight)
-    
+
     if (container.offsetWidth === 0 || container.offsetHeight === 0) {
       console.log("Map container has no dimensions, retrying...")
       setTimeout(() => initializeMap(google), 300)
@@ -127,16 +127,19 @@ export default function ViewZone() {
       const initialLocation = { lat: 20.5937, lng: 78.9629 }
 
       console.log("Creating Google Map with container:", container)
-      
+
       // Create map
       const map = new google.maps.Map(container, {
         center: initialLocation,
         zoom: 5,
         mapTypeControl: true,
         mapTypeControlOptions: {
-          style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-          position: google.maps.ControlPosition.TOP_RIGHT,
-          mapTypeIds: [google.maps.MapTypeId.ROADMAP, google.maps.MapTypeId.SATELLITE]
+          style: google.maps.MapTypeControlStyle ? google.maps.MapTypeControlStyle.HORIZONTAL_BAR : 0,
+          position: google.maps.ControlPosition ? google.maps.ControlPosition.TOP_RIGHT : 1,
+          mapTypeIds: [
+            google.maps.MapTypeId ? google.maps.MapTypeId.ROADMAP : 'roadmap',
+            google.maps.MapTypeId ? google.maps.MapTypeId.SATELLITE : 'satellite'
+          ]
         },
         zoomControl: true,
         streetViewControl: false,
@@ -148,18 +151,18 @@ export default function ViewZone() {
 
       mapInstanceRef.current = map
       console.log("Map instance created successfully, map:", map)
-      
+
       // Wait for map to be ready before hiding loading
       google.maps.event.addListenerOnce(map, 'idle', () => {
         console.log("Map is idle, hiding loading overlay")
         setMapLoading(false)
-        
+
         // Trigger resize to ensure map renders properly
         setTimeout(() => {
           if (mapInstanceRef.current) {
             google.maps.event.trigger(mapInstanceRef.current, 'resize')
             console.log("Map resize triggered after idle")
-            
+
             // Draw zone polygon if zone data is available
             if (zone && zone.coordinates && zone.coordinates.length >= 3) {
               console.log("Drawing zone polygon from initializeMap")
@@ -168,7 +171,7 @@ export default function ViewZone() {
           }
         }, 200)
       })
-      
+
       // Fallback: hide loading after timeout
       setTimeout(() => {
         if (mapLoading) {
@@ -176,7 +179,7 @@ export default function ViewZone() {
           setMapLoading(false)
         }
       }, 2000)
-      
+
     } catch (error) {
       console.error("Error initializing map:", error)
       setMapLoading(false)
@@ -273,7 +276,7 @@ export default function ViewZone() {
       hasGoogle: !!window.google,
       mapLoading
     })
-    
+
     // Only draw if map is not loading
     if (zone && zone.coordinates && zone.coordinates.length >= 3 && mapInstanceRef.current && window.google && !mapLoading) {
       console.log("All conditions met, drawing polygon...")
@@ -362,7 +365,7 @@ export default function ViewZone() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Zone Details</h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Name</label>
@@ -381,9 +384,8 @@ export default function ViewZone() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Status</label>
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                    zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"
-                  }`}>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"
+                    }`}>
                     {zone.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
@@ -402,20 +404,20 @@ export default function ViewZone() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Zone Map</h2>
-              
+
               <div className="relative" style={{ height: "600px", minHeight: "600px" }}>
-                <div 
-                  ref={mapRef} 
+                <div
+                  ref={mapRef}
                   className="w-full h-full rounded-lg"
-                  style={{ 
-                    width: "100%", 
-                    height: "600px", 
+                  style={{
+                    width: "100%",
+                    height: "600px",
                     minHeight: "600px",
                     backgroundColor: "#e5e7eb",
                     position: "relative"
                   }}
                 />
-                
+
                 {mapLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg" style={{ zIndex: 10, pointerEvents: "none" }}>
                     <div className="text-center">
