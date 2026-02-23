@@ -126,17 +126,28 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
 
     const loadGoogleMaps = async () => {
       try {
+        console.log("📍 Initializing Google Maps Loader...")
         const loader = new Loader({
           apiKey: GOOGLE_MAPS_API_KEY,
           version: "weekly",
           libraries: ["places", "geocoding"]
         })
-        await loader.load()
-        console.log("✅ Google Maps SDK with Places loaded")
+
+        // Force load both libraries
+        await Promise.all([
+          loader.importLibrary("places"),
+          loader.importLibrary("geocoding")
+        ]);
+
+        console.log("✅ Google Maps SDK (Places & Geocoding) loaded")
         setMapsLoaded(true)
       } catch (error) {
         console.error("❌ Error loading Google Maps SDK:", error)
         setMapsLoaded(false)
+        // If it fails, we might be hitting a network issue or invalid key
+        if (error.message?.includes("InvalidKey")) {
+          toast.error("Google Maps API Key is invalid. Please check admin settings.")
+        }
       }
     }
     loadGoogleMaps()
@@ -163,6 +174,20 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
     }
   }, [isOpen, location?.latitude, location?.longitude])
 
+  const autocompleteServiceRef = useRef(null)
+  const sessionTokenRef = useRef(null)
+
+  // Initialize Autocomplete Service
+  useEffect(() => {
+    if (mapsLoaded && window.google && window.google.maps && window.google.maps.places) {
+      if (!autocompleteServiceRef.current) {
+        autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+        sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+        console.log("✅ Autocomplete Service initialized")
+      }
+    }
+  }, [mapsLoaded])
+
   // Search Predictions Logic
   useEffect(() => {
     if (!searchValue || searchValue.trim().length < 2) {
@@ -171,45 +196,67 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
       return
     }
 
+    if (!mapsLoaded || !window.google || !window.google.maps || !window.google.maps.places) {
+      // If maps not loaded yet, wait for them
+      return
+    }
+
     let isMounted = true
     const fetchPredictions = async () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        setIsSearching(true)
-        try {
-          const service = new window.google.maps.places.AutocompleteService()
+      setIsSearching(true)
+      try {
+        if (!autocompleteServiceRef.current) {
+          autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+        }
+        if (!sessionTokenRef.current) {
+          sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+        }
 
-          // Use timeout to prevent infinite loading if Google service hangs
-          const timeout = setTimeout(() => {
-            if (isMounted) setIsSearching(false)
-          }, 5000)
+        const service = autocompleteServiceRef.current
 
-          service.getPlacePredictions(
-            {
-              input: searchValue.trim(),
-              componentRestrictions: { country: 'in' },
-              types: ['geocode', 'establishment']
-            },
-            (results, status) => {
-              clearTimeout(timeout)
-              if (!isMounted) return
+        // Use timeout to prevent infinite loading if Google service hangs
+        const timeout = setTimeout(() => {
+          if (isMounted) {
+            console.warn("⚠️ Autocomplete search timed out")
+            setIsSearching(false)
+          }
+        }, 5000)
 
-              console.log("🔍 Search Status:", status, "Results count:", results?.length || 0)
+        console.log("🔍 Fetching predictions for:", searchValue.trim())
 
-              if (status === "OK" && results) {
-                setPredictions(results)
+        service.getPlacePredictions(
+          {
+            input: searchValue.trim(),
+            componentRestrictions: { country: 'in' },
+            types: ['geocode', 'establishment'],
+            sessionToken: sessionTokenRef.current
+          },
+          (results, status) => {
+            clearTimeout(timeout)
+            if (!isMounted) return
+
+            console.log("🔍 Search Status:", status, "Results count:", results?.length || 0)
+
+            if (status === "OK" && results) {
+              setPredictions(results)
+            } else {
+              setPredictions([])
+              if (status === "ZERO_RESULTS") {
+                console.log("ℹ️ No results found for:", searchValue)
               } else {
-                setPredictions([])
-                if (status !== "ZERO_RESULTS") {
-                  console.warn("⚠️ Autocomplete error status:", status)
+                console.error("❌ Autocomplete error status:", status)
+                // If denied, it might be due to API key restrictions or quota
+                if (status === "REQUEST_DENIED") {
+                  toast.error("Google Search looks restricted. Please check API Key settings.")
                 }
               }
-              setIsSearching(false)
             }
-          )
-        } catch (error) {
-          console.error("Error fetching predictions:", error)
-          if (isMounted) setIsSearching(false)
-        }
+            setIsSearching(false)
+          }
+        )
+      } catch (error) {
+        console.error("❌ Error in fetchPredictions:", error)
+        if (isMounted) setIsSearching(false)
       }
     }
 
@@ -2285,8 +2332,17 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               placeholder="Search for area, street name..."
-              className="pl-12 pr-4 h-12 w-full bg-gray-50 dark:bg-[#2a2a2a] border-gray-200 dark:border-gray-700 focus:border-green-600 dark:focus:border-green-600 rounded-xl"
+              autoComplete="off"
+              className="pl-12 pr-10 h-12 w-full bg-gray-50 dark:bg-[#2a2a2a] border-gray-200 dark:border-gray-700 focus:border-green-600 dark:focus:border-green-600 rounded-xl"
             />
+            {searchValue && (
+              <button
+                onClick={() => setSearchValue("")}
+                className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             {isSearching && (
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
                 <div className="animate-spin h-4 w-4 border-2 border-green-600 border-t-transparent rounded-full"></div>
@@ -2295,7 +2351,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
 
             {/* Search Results Dropdown */}
             {predictions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-100 dark:border-gray-800 rounded-xl z-[99999] max-h-[400px] overflow-y-auto w-full">
+              <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-100 dark:border-gray-800 rounded-xl z-[10001] max-h-[400px] overflow-y-auto w-full">
                 {predictions.map((prediction) => (
                   <button
                     key={prediction.place_id}
@@ -2310,10 +2366,10 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                        {prediction.structured_formatting.main_text}
+                        {prediction.structured_formatting?.main_text || prediction.description}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {prediction.structured_formatting.secondary_text}
+                        {prediction.structured_formatting?.secondary_text || ""}
                       </p>
                     </div>
                   </button>
@@ -2531,8 +2587,17 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             placeholder="Search for area, street name..."
-            className="pl-12 pr-4 h-12 w-full bg-gray-50 dark:bg-[#2a2a2a] border-gray-200 dark:border-gray-700 focus:border-primary-orange dark:focus:border-primary-orange rounded-xl text-base dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+            autoComplete="off"
+            className="pl-12 pr-10 h-12 w-full bg-gray-50 dark:bg-[#2a2a2a] border-gray-200 dark:border-gray-700 focus:border-primary-orange dark:focus:border-primary-orange rounded-xl text-base dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
+          {searchValue && (
+            <button
+              onClick={() => setSearchValue("")}
+              className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
           {isSearching && (
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
               <div className="animate-spin h-4 w-4 border-2 border-primary-orange border-t-transparent rounded-full"></div>
@@ -2541,7 +2606,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
 
           {/* Search Results Dropdown for Main View */}
           {predictions.length > 0 && !showAddressForm && (
-            <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-100 dark:border-gray-800 rounded-xl z-[99999] max-h-[400px] overflow-y-auto w-full">
+            <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-[#1a1a1a] shadow-2xl border border-gray-100 dark:border-gray-800 rounded-xl z-[10001] max-h-[400px] overflow-y-auto w-full">
               {predictions.map((prediction) => (
                 <button
                   key={prediction.place_id}
@@ -2556,10 +2621,10 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                      {prediction.structured_formatting.main_text}
+                      {prediction.structured_formatting?.main_text || prediction.description}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                      {prediction.structured_formatting.secondary_text}
+                      {prediction.structured_formatting?.secondary_text || ""}
                     </p>
                   </div>
                 </button>
@@ -2567,6 +2632,17 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
             </div>
           )}
         </div>
+
+        {/* Select on Map Button */}
+        <button
+          onClick={() => setShowAddressForm(true)}
+          className="mt-2 flex items-center gap-2 text-primary-orange font-semibold text-sm hover:opacity-80 transition-opacity px-1"
+        >
+          <div className="h-6 w-6 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+            <MapPin className="h-3.5 w-3.5" />
+          </div>
+          <span>Select location on map</span>
+        </button>
       </div>
 
       {/* Scrollable Content */}
