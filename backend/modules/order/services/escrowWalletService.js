@@ -326,6 +326,21 @@ const creditAdminWallet = async (orderId, adminEarning, orderNumber, restaurantI
       });
     }
 
+    // 6. Deduct delivery partner payout from admin wallet
+    // The admin collects the delivery fee from the user but pays out the commission to the partner.
+    // The partner's base earning (total - tip) is paid by the admin.
+    const partnerBaseEarning = (settlement?.deliveryPartnerEarning?.totalEarning || 0) - (settlement?.deliveryPartnerEarning?.tip || 0);
+    if (partnerBaseEarning > 0) {
+      wallet.addTransaction({
+        amount: partnerBaseEarning,
+        type: 'deduction',
+        status: 'Completed',
+        description: `Payout to delivery partner for order ${orderNumber} (Distance: ${settlement?.deliveryPartnerEarning?.distance?.toFixed(2)} km)`,
+        orderId: orderId
+      });
+      console.log(`💸 Deducted ₹${partnerBaseEarning.toFixed(2)} from admin wallet for partner payout`);
+    }
+
     await wallet.save();
 
     // Create audit log
@@ -343,9 +358,10 @@ const creditAdminWallet = async (orderId, adminEarning, orderNumber, restaurantI
         type: 'platform_earning',
         status: 'success',
         orderId: orderId,
-        walletType: 'admin'
+        walletType: 'admin',
+        partnerPayout: partnerBaseEarning
       },
-      description: `Admin wallet credited for order ${orderNumber}`
+      description: `Admin wallet credited for order ${orderNumber}. Net earning: ₹${adminEarning.totalEarning} (after ₹${partnerBaseEarning} partner payout)`
     });
   } catch (error) {
     console.error('Error crediting admin wallet:', error);

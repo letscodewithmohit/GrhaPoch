@@ -37,14 +37,14 @@ function CompletedOrders({ onSelectOrder }) {
     const fetchOrders = async () => {
       try {
         const response = await restaurantAPI.getOrders()
-        
+
         if (!isMounted) return
-        
+
         if (response.data?.success && response.data.data?.orders) {
           const completedOrders = response.data.data.orders.filter(
             order => order.status === 'delivered' || order.status === 'completed'
           )
-          
+
           const transformedOrders = completedOrders.map(order => ({
             orderId: order.orderId || order._id,
             mongoId: order._id,
@@ -59,13 +59,13 @@ function CompletedOrders({ onSelectOrder }) {
             photoAlt: order.items?.[0]?.name || 'Order',
             amount: order.pricing?.total || order.total || 0
           }))
-          
+
           transformedOrders.sort((a, b) => {
             const dateA = new Date(a.deliveredAt)
             const dateB = new Date(b.deliveredAt)
             return dateB - dateA
           })
-          
+
           if (isMounted) {
             setOrders(transformedOrders)
             setLoading(false)
@@ -78,11 +78,11 @@ function CompletedOrders({ onSelectOrder }) {
         }
       } catch (error) {
         if (!isMounted) return
-        
+
         if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404) {
           console.error('Error fetching completed orders:', error)
         }
-        
+
         if (isMounted) {
           setOrders([])
           setLoading(false)
@@ -96,7 +96,7 @@ function CompletedOrders({ onSelectOrder }) {
         fetchOrders()
       }
     }, 10000)
-    
+
     return () => {
       isMounted = false
       if (intervalId) {
@@ -132,16 +132,16 @@ function CompletedOrders({ onSelectOrder }) {
       ) : (
         <div>
           {orders.map((order) => {
-            const deliveredDate = order.deliveredAt 
-              ? new Date(order.deliveredAt).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })
+            const deliveredDate = order.deliveredAt
+              ? new Date(order.deliveredAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
               : 'N/A'
-            
+
             return (
               <div key={order.orderId || order.mongoId} className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
                 <button
@@ -239,15 +239,15 @@ function CancelledOrders({ onSelectOrder }) {
     const fetchOrders = async () => {
       try {
         const response = await restaurantAPI.getOrders()
-        
+
         if (!isMounted) return
-        
+
         if (response.data?.success && response.data.data?.orders) {
           // Filter cancelled orders (both restaurant and user cancelled)
           const cancelledOrders = response.data.data.orders.filter(
             order => order.status === 'cancelled'
           )
-          
+
           const transformedOrders = cancelledOrders.map(order => ({
             orderId: order.orderId || order._id,
             mongoId: order._id,
@@ -264,13 +264,13 @@ function CancelledOrders({ onSelectOrder }) {
             photoAlt: order.items?.[0]?.name || 'Order',
             amount: order.pricing?.total || order.total || 0
           }))
-          
+
           transformedOrders.sort((a, b) => {
             const dateA = new Date(a.cancelledAt)
             const dateB = new Date(b.cancelledAt)
             return dateB - dateA
           })
-          
+
           if (isMounted) {
             setOrders(transformedOrders)
             setLoading(false)
@@ -283,11 +283,11 @@ function CancelledOrders({ onSelectOrder }) {
         }
       } catch (error) {
         if (!isMounted) return
-        
+
         if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404) {
           console.error('Error fetching cancelled orders:', error)
         }
-        
+
         if (isMounted) {
           setOrders([])
           setLoading(false)
@@ -301,7 +301,7 @@ function CancelledOrders({ onSelectOrder }) {
         fetchOrders()
       }
     }, 10000)
-    
+
     return () => {
       isMounted = false
       if (intervalId) {
@@ -337,22 +337,22 @@ function CancelledOrders({ onSelectOrder }) {
       ) : (
         <div>
           {orders.map((order) => {
-            const cancelledDate = order.cancelledAt 
-              ? new Date(order.cancelledAt).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })
+            const cancelledDate = order.cancelledAt
+              ? new Date(order.cancelledAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
               : 'N/A'
-            
-            const cancelledByText = order.cancelledBy === 'user' 
-              ? 'Cancelled by User' 
+
+            const cancelledByText = order.cancelledBy === 'user'
+              ? 'Cancelled by User'
               : order.cancelledBy === 'restaurant'
-              ? 'Cancelled by Restaurant'
-              : 'Cancelled'
-            
+                ? 'Cancelled by Restaurant'
+                : 'Cancelled'
+
             return (
               <div key={order.orderId || order.mongoId} className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
                 <button
@@ -398,14 +398,12 @@ function CancelledOrders({ onSelectOrder }) {
                       </div>
 
                       <div className="flex flex-col items-end gap-1">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
-                          order.cancelledBy === 'user'
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${order.cancelledBy === 'user'
                             ? 'border-orange-500 text-orange-600'
                             : 'border-red-500 text-red-600'
-                        }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${
-                            order.cancelledBy === 'user' ? 'bg-orange-500' : 'bg-red-500'
-                          }`} />
+                          }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${order.cancelledBy === 'user' ? 'bg-orange-500' : 'bg-red-500'
+                            }`} />
                           {cancelledByText}
                         </span>
                         <span className="text-[11px] text-gray-500 text-right">
@@ -512,7 +510,7 @@ export default function OrdersMain() {
             onboarding: restaurant.onboarding || null,
             isLoading: false
           })
-          
+
           // Check if onboarding is incomplete and redirect if needed
           const completedSteps = restaurant.onboarding?.completedSteps || 0
           if (completedSteps < 4) {
@@ -553,7 +551,7 @@ export default function OrdersMain() {
     try {
       setIsReverifying(true)
       await restaurantAPI.reverify()
-      
+
       // Refresh restaurant status
       const response = await restaurantAPI.getCurrentRestaurant()
       const restaurant = response?.data?.data?.restaurant || response?.data?.restaurant
@@ -565,17 +563,17 @@ export default function OrdersMain() {
           isLoading: false
         })
       }
-      
+
       // Trigger profile refresh event
       window.dispatchEvent(new Event('restaurantProfileRefresh'))
-      
+
       alert('Restaurant reverified successfully! Verification will be done in 24 hours.')
     } catch (error) {
       // Don't log network/timeout errors (backend might be down)
       if (error.code !== 'ERR_NETWORK' && error.code !== 'ECONNABORTED' && !error.message?.includes('timeout')) {
         console.error("Error reverifying restaurant:", error)
       }
-      
+
       // Handle 401 Unauthorized errors (token expired/invalid)
       if (error.response?.status === 401) {
         const errorMessage = error.response?.data?.message || 'Your session has expired. Please login again.'
@@ -635,11 +633,11 @@ export default function OrdersMain() {
   // Track popup state with ref to avoid stale closures
   const showNewOrderPopupRef = useRef(showNewOrderPopup)
   const newOrderRef = useRef(newOrder)
-  
+
   useEffect(() => {
     showNewOrderPopupRef.current = showNewOrderPopup
   }, [showNewOrderPopup])
-  
+
   useEffect(() => {
     newOrderRef.current = newOrder
   }, [newOrder])
@@ -649,21 +647,21 @@ export default function OrdersMain() {
     const checkConfirmedOrders = async () => {
       // Skip if popup is already showing or Socket.IO order exists
       if (showNewOrderPopupRef.current || newOrderRef.current) return
-      
+
       try {
         const response = await restaurantAPI.getOrders()
         if (response.data?.success && response.data.data?.orders) {
           // Find confirmed orders that haven't been shown yet
           const confirmedOrders = response.data.data.orders.filter(
-            order => order.status === 'confirmed' && 
-                    !shownOrdersRef.current.has(order.orderId || order._id)
+            order => order.status === 'confirmed' &&
+              !shownOrdersRef.current.has(order.orderId || order._id)
           )
-          
+
           // Show the most recent confirmed order in popup (double-check state)
           if (confirmedOrders.length > 0 && !showNewOrderPopupRef.current && !newOrderRef.current) {
             const latestConfirmedOrder = confirmedOrders[0]
             const orderId = latestConfirmedOrder.orderId || latestConfirmedOrder._id
-            
+
             // Transform order to match newOrder format (include payment so COD shows correctly)
             const orderForPopup = {
               orderId: latestConfirmedOrder.orderId,
@@ -681,7 +679,7 @@ export default function OrdersMain() {
               paymentMethod: latestConfirmedOrder.paymentMethod ?? latestConfirmedOrder.payment?.method,
               payment: latestConfirmedOrder.payment
             }
-            
+
             console.log('📦 Found confirmed order (fallback):', orderForPopup)
             shownOrdersRef.current.add(orderId)
             setPopupOrder(orderForPopup)
@@ -700,7 +698,7 @@ export default function OrdersMain() {
 
     // Check every 5 seconds for new confirmed orders (fallback mechanism)
     const interval = setInterval(checkConfirmedOrders, 5000)
-    
+
     // Check immediately on mount
     checkConfirmedOrders()
 
@@ -743,10 +741,10 @@ export default function OrdersMain() {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
     }
-    
+
     // Use popupOrder (from Socket.IO or API fallback) or newOrder (from hook)
     const orderToAccept = popupOrder || newOrder
-    
+
     // Accept order via API if we have a real order
     if (orderToAccept?.orderMongoId || orderToAccept?.orderId) {
       try {
@@ -756,10 +754,10 @@ export default function OrdersMain() {
         toast.success('Order accepted successfully')
       } catch (error) {
         console.error('❌ Error accepting order:', error)
-        const errorMessage = error.response?.data?.message || 
-                           error.message || 
-                           'Failed to accept order. Please try again.'
-        
+        const errorMessage = error.response?.data?.message ||
+          error.message ||
+          'Failed to accept order. Please try again.'
+
         // Show specific error message
         if (error.response?.status === 400) {
           toast.error(errorMessage)
@@ -771,13 +769,13 @@ export default function OrdersMain() {
         return
       }
     }
-    
+
     setShowNewOrderPopup(false)
     setPopupOrder(null)
     clearNewOrder()
     setCountdown(240)
     setPrepTime(11)
-    
+
     // Note: PreparingOrders component will automatically refresh orders via its own useEffect
     // No need to manually refresh here as the component polls every 10 seconds
   }
@@ -789,10 +787,10 @@ export default function OrdersMain() {
 
   const handleRejectConfirm = async () => {
     if (!rejectReason) return
-    
+
     // Use popupOrder (from Socket.IO or API fallback) or newOrder (from hook)
     const orderToReject = popupOrder || newOrder
-    
+
     // Reject order via API if we have a real order
     if (orderToReject?.orderMongoId || orderToReject?.orderId) {
       try {
@@ -805,7 +803,7 @@ export default function OrdersMain() {
         return
       }
     }
-    
+
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
@@ -836,7 +834,7 @@ export default function OrdersMain() {
 
   const handleCancelConfirm = async () => {
     if (!cancelReason.trim() || !orderToCancel) return
-    
+
     try {
       const orderId = orderToCancel.mongoId || orderToCancel.orderId
       await restaurantAPI.rejectOrder(orderId, cancelReason.trim())
@@ -878,37 +876,37 @@ export default function OrdersMain() {
     try {
       // Create new PDF document
       const doc = new jsPDF()
-      
+
       // Set font
       doc.setFont('helvetica', 'bold')
-      
+
       // Header
       doc.setFontSize(20)
       doc.text('Order Receipt', 105, 20, { align: 'center' })
-      
+
       // Restaurant name
       doc.setFontSize(14)
       doc.setFont('helvetica', 'normal')
       doc.text(orderToPrint.restaurantName || 'Restaurant', 105, 30, { align: 'center' })
-      
+
       // Order details
       doc.setFontSize(10)
       doc.setFont('helvetica', 'bold')
       doc.text(`Order ID: ${orderToPrint.orderId || 'N/A'}`, 20, 45)
       doc.setFont('helvetica', 'normal')
-      
-      const orderDate = orderToPrint.createdAt 
-        ? new Date(orderToPrint.createdAt).toLocaleString('en-GB', { 
-            day: 'numeric', 
-            month: 'short', 
-            year: 'numeric',
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })
+
+      const orderDate = orderToPrint.createdAt
+        ? new Date(orderToPrint.createdAt).toLocaleString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
         : new Date().toLocaleString('en-GB')
-      
+
       doc.text(`Date: ${orderDate}`, 20, 52)
-      
+
       // Customer address
       if (orderToPrint.customerAddress) {
         doc.setFont('helvetica', 'bold')
@@ -922,14 +920,14 @@ export default function OrdersMain() {
         const addressLines = doc.splitTextToSize(addressText, 170)
         doc.text(addressLines, 20, 69)
       }
-      
+
       // Items table
       let yPos = 85
       if (orderToPrint.items && orderToPrint.items.length > 0) {
         doc.setFont('helvetica', 'bold')
         doc.text('Items:', 20, yPos)
         yPos += 8
-        
+
         // Prepare table data
         const tableData = orderToPrint.items.map(item => [
           item.name || 'Item',
@@ -937,7 +935,7 @@ export default function OrdersMain() {
           `₹${(item.price || 0).toFixed(2)}`,
           `₹${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`
         ])
-        
+
         autoTable(doc, {
           startY: yPos,
           head: [['Item', 'Qty', 'Price', 'Total']],
@@ -952,27 +950,27 @@ export default function OrdersMain() {
             3: { cellWidth: 35, halign: 'right' }
           }
         })
-        
+
         yPos = doc.lastAutoTable.finalY + 10
       }
-      
+
       // Total
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(12)
       doc.text(`Total: ₹${(orderToPrint.total || 0).toFixed(2)}`, 20, yPos)
-      
+
       // Payment status
       yPos += 10
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.text(`Payment Status: ${orderToPrint.status === 'confirmed' ? 'Paid' : 'Pending'}`, 20, yPos)
-      
+
       // Estimated delivery time
       if (orderToPrint.estimatedDeliveryTime) {
         yPos += 8
         doc.text(`Estimated Delivery: ${orderToPrint.estimatedDeliveryTime} minutes`, 20, yPos)
       }
-      
+
       // Notes
       if (orderToPrint.note) {
         yPos += 10
@@ -982,14 +980,14 @@ export default function OrdersMain() {
         const noteLines = doc.splitTextToSize(orderToPrint.note, 170)
         doc.text(noteLines, 20, yPos + 7)
       }
-      
+
       // Send cutlery
       if (orderToPrint.sendCutlery) {
         yPos += 15
         doc.setFont('helvetica', 'normal')
         doc.text('✓ Send cutlery requested', 20, yPos)
       }
-      
+
       // Footer
       const pageHeight = doc.internal.pageSize.height
       doc.setFontSize(8)
@@ -1000,11 +998,11 @@ export default function OrdersMain() {
         pageHeight - 10,
         { align: 'center' }
       )
-      
+
       // Download PDF
       const fileName = `Order-${orderToPrint.orderId || 'Receipt'}-${Date.now()}.pdf`
       doc.save(fileName)
-      
+
       console.log('✅ PDF generated successfully:', fileName)
     } catch (error) {
       console.error('❌ Error generating PDF:', error)
@@ -1024,13 +1022,13 @@ export default function OrdersMain() {
     if (!isSwiping.current) {
       const deltaX = Math.abs(e.touches[0].clientX - touchStartX.current)
       const deltaY = Math.abs(e.touches[0].clientY - touchStartY.current)
-      
+
       // Determine if this is a horizontal swipe
       if (deltaX > deltaY && deltaX > 10) {
         isSwiping.current = true
       }
     }
-    
+
     if (isSwiping.current) {
       touchEndX.current = e.touches[0].clientX
     }
@@ -1050,7 +1048,7 @@ export default function OrdersMain() {
     if (swipeVelocity > minSwipeDistance && !isTransitioning) {
       const currentIndex = filterTabs.findIndex(tab => tab.id === activeFilter)
       let newIndex = currentIndex
-      
+
       if (swipeDistance > 0 && currentIndex < filterTabs.length - 1) {
         // Swipe left - go to next filter (right side)
         newIndex = currentIndex + 1
@@ -1061,12 +1059,12 @@ export default function OrdersMain() {
 
       if (newIndex !== currentIndex) {
         setIsTransitioning(true)
-        
+
         // Smooth transition with animation
         setTimeout(() => {
           setActiveFilter(filterTabs[newIndex].id)
           scrollToFilter(newIndex)
-          
+
           // Reset transition state after animation
           setTimeout(() => {
             setIsTransitioning(false)
@@ -1074,7 +1072,7 @@ export default function OrdersMain() {
         }, 50)
       }
     }
-    
+
     // Reset touch positions
     touchStartX.current = 0
     touchEndX.current = 0
@@ -1093,7 +1091,7 @@ export default function OrdersMain() {
         const buttonWidth = button.offsetWidth
         const containerWidth = container.offsetWidth
         const scrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2)
-        
+
         container.scrollTo({
           left: scrollLeft,
           behavior: 'smooth'
@@ -1147,7 +1145,7 @@ export default function OrdersMain() {
 
       {/* Top Filter Bar - Sticky below navbar */}
       <div className="sticky top-[50px] z-40 pb-2 bg-gray-100">
-        <div 
+        <div
           ref={filterBarRef}
           className="flex gap-2 overflow-x-auto scrollbar-hide bg-transparent rounded-full px-3 py-2 mt-2"
           style={{
@@ -1163,7 +1161,7 @@ export default function OrdersMain() {
           `}</style>
           {filterTabs.map((tab, index) => {
             const isActive = activeFilter === tab.id
-            
+
             return (
               <motion.button
                 key={tab.id}
@@ -1175,11 +1173,10 @@ export default function OrdersMain() {
                     setTimeout(() => setIsTransitioning(false), 300)
                   }
                 }}
-                className={`shrink-0 px-6 py-3.5 rounded-full font-medium text-sm whitespace-nowrap relative overflow-hidden ${
-                  isActive
+                className={`shrink-0 px-6 py-3.5 rounded-full font-medium text-sm whitespace-nowrap relative overflow-hidden ${isActive
                     ? 'text-white'
                     : 'bg-white text-black'
-                }`}
+                  }`}
                 animate={{
                   scale: isActive ? 1.05 : 1,
                   opacity: isActive ? 1 : 0.7,
@@ -1210,7 +1207,7 @@ export default function OrdersMain() {
       </div>
 
       {/* Content Area - Scrollable */}
-      <div 
+      <div
         ref={contentRef}
         className="flex-1 overflow-y-auto px-4 pb-24 content-scroll"
         onTouchStart={handleTouchStart}
@@ -1243,7 +1240,7 @@ export default function OrdersMain() {
             if (Math.abs(swipeDistance) > minSwipeDistance && !isTransitioning) {
               const currentIndex = filterTabs.findIndex(tab => tab.id === activeFilter)
               let newIndex = currentIndex
-              
+
               if (swipeDistance > 0 && currentIndex < filterTabs.length - 1) {
                 newIndex = currentIndex + 1
               } else if (swipeDistance < 0 && currentIndex > 0) {
@@ -1260,7 +1257,7 @@ export default function OrdersMain() {
               }
             }
           }
-          
+
           isMouseDown.current = false
           isSwiping.current = false
           mouseStartX.current = 0
@@ -1280,74 +1277,73 @@ export default function OrdersMain() {
             display: none;
           }
         `}</style>
-        
+
         {/* Verification Pending Card - Show if onboarding is complete (all 4 steps) and restaurant is not active */}
-        {!restaurantStatus.isLoading && 
-         !restaurantStatus.isActive && 
-         restaurantStatus.onboarding?.completedSteps === 4 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className={`mt-4 mb-4 rounded-2xl shadow-sm px-6 py-4 ${
-              restaurantStatus.rejectionReason
-                ? 'bg-white border border-red-200'
-                : 'bg-white border border-yellow-200'
-            }`}
-          >
-            {restaurantStatus.rejectionReason ? (
-              <>
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="flex-shrink-0 rounded-full p-2 bg-red-100">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-red-600 mb-2">Denied Verification</h3>
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                      <p className="text-xs font-semibold text-red-800 mb-2">Reason for Rejection:</p>
-                      <div className="text-xs text-red-700 space-y-1">
-                        {restaurantStatus.rejectionReason.split('\n').filter(line => line.trim()).length > 1 ? (
-                          <ul className="space-y-1 list-disc list-inside">
-                            {restaurantStatus.rejectionReason.split('\n').map((point, index) => (
-                              point.trim() && (
-                                <li key={index}>{point.trim()}</li>
-                              )
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-red-700">{restaurantStatus.rejectionReason}</p>
-                        )}
+        {!restaurantStatus.isLoading &&
+          !restaurantStatus.isActive &&
+          restaurantStatus.onboarding?.completedSteps === 4 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className={`mt-4 mb-4 rounded-2xl shadow-sm px-6 py-4 ${restaurantStatus.rejectionReason
+                  ? 'bg-white border border-red-200'
+                  : 'bg-white border border-yellow-200'
+                }`}
+            >
+              {restaurantStatus.rejectionReason ? (
+                <>
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="flex-shrink-0 rounded-full p-2 bg-red-100">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-red-600 mb-2">Denied Verification</h3>
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                        <p className="text-xs font-semibold text-red-800 mb-2">Reason for Rejection:</p>
+                        <div className="text-xs text-red-700 space-y-1">
+                          {restaurantStatus.rejectionReason.split('\n').filter(line => line.trim()).length > 1 ? (
+                            <ul className="space-y-1 list-disc list-inside">
+                              {restaurantStatus.rejectionReason.split('\n').map((point, index) => (
+                                point.trim() && (
+                                  <li key={index}>{point.trim()}</li>
+                                )
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-red-700">{restaurantStatus.rejectionReason}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <p className="text-sm text-gray-700 mb-3">
-                  Please correct the above issues and click "Reverify" to resubmit your request for approval.
-                </p>
-                <button
-                  onClick={handleReverify}
-                  disabled={isReverifying}
-                  className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isReverifying ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    "Reverify"
-                  )}
-                </button>
-              </>
-            ) : (
-              <>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Verification Done in 24 Hours</h3>
-                <p className="text-sm text-gray-600">Your account is under verification. You'll be notified once approved.</p>
-              </>
-            )}
-          </motion.div>
-        )}
-        
+                  <p className="text-sm text-gray-700 mb-3">
+                    Please correct the above issues and click "Reverify" to resubmit your request for approval.
+                  </p>
+                  <button
+                    onClick={handleReverify}
+                    disabled={isReverifying}
+                    className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isReverifying ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      "Reverify"
+                    )}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">Verification Done in 24 Hours</h3>
+                  <p className="text-sm text-gray-600">Your account is under verification. You'll be notified once approved.</p>
+                </>
+              )}
+            </motion.div>
+          )}
+
         <AnimatePresence mode="wait">
           <motion.div
             key={activeFilter}
@@ -1422,7 +1418,7 @@ export default function OrdersMain() {
                       {(popupOrder || newOrder)?.items?.[0]?.name || 'New Order'}
                     </h4>
                     <p className="text-xs text-gray-500 mt-1">
-                      {(popupOrder || newOrder)?.createdAt 
+                      {(popupOrder || newOrder)?.createdAt
                         ? new Date((popupOrder || newOrder).createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                         : 'Just now'}
                     </p>
@@ -1475,8 +1471,8 @@ export default function OrdersMain() {
                                 </div>
                               </div>
                             )) || (
-                              <p className="text-sm text-gray-500">No items</p>
-                            )}
+                                <p className="text-sm text-gray-500">No items</p>
+                              )}
                           </div>
                         </motion.div>
                       )}
@@ -1620,16 +1616,14 @@ export default function OrdersMain() {
                       <button
                         key={reason}
                         onClick={() => setRejectReason(reason)}
-                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                          rejectReason === reason
+                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${rejectReason === reason
                             ? "border-black bg-black/5"
                             : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${
-                            rejectReason === reason ? "text-black" : "text-gray-900"
-                          }`}>
+                          <span className={`text-sm font-medium ${rejectReason === reason ? "text-black" : "text-gray-900"
+                            }`}>
                             {reason}
                           </span>
                           {rejectReason === reason && (
@@ -1656,11 +1650,10 @@ export default function OrdersMain() {
                   <button
                     onClick={handleRejectConfirm}
                     disabled={!rejectReason}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                      rejectReason
+                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${rejectReason
                         ? "!bg-black !text-white"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     Confirm Rejection
                   </button>
@@ -1706,19 +1699,17 @@ export default function OrdersMain() {
                         key={reason}
                         type="button"
                         onClick={() => setCancelReason(reason)}
-                        className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${
-                          cancelReason === reason
+                        className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${cancelReason === reason
                             ? "border-red-500 bg-red-50"
                             : "border-gray-200 hover:border-gray-300"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              cancelReason === reason
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${cancelReason === reason
                                 ? "border-red-500 bg-red-500"
                                 : "border-gray-300"
-                            }`}
+                              }`}
                           >
                             {cancelReason === reason && (
                               <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1726,9 +1717,8 @@ export default function OrdersMain() {
                               </svg>
                             )}
                           </div>
-                          <span className={`text-sm font-medium ${
-                            cancelReason === reason ? "text-red-700" : "text-gray-700"
-                          }`}>
+                          <span className={`text-sm font-medium ${cancelReason === reason ? "text-red-700" : "text-gray-700"
+                            }`}>
                             {reason}
                           </span>
                         </div>
@@ -1748,11 +1738,10 @@ export default function OrdersMain() {
                   <button
                     onClick={handleCancelConfirm}
                     disabled={!cancelReason}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                      cancelReason
+                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${cancelReason
                         ? "!bg-red-600 !text-white hover:bg-red-700"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     Confirm Cancellation
                   </button>
@@ -1803,18 +1792,16 @@ export default function OrdersMain() {
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
-                      selectedOrder.status === "Ready"
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${selectedOrder.status === "Ready"
                         ? "border-green-500 text-green-600"
                         : "border-gray-800 text-gray-900"
-                    }`}
+                      }`}
                   >
                     <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        selectedOrder.status === "Ready"
+                      className={`h-1.5 w-1.5 rounded-full ${selectedOrder.status === "Ready"
                           ? "bg-green-500"
                           : "bg-gray-800"
-                      }`}
+                        }`}
                     />
                     {selectedOrder.status}
                   </span>
@@ -1872,22 +1859,21 @@ function ResendNotificationButton({ orderId, mongoId, onSuccess }) {
       setLoading(true);
       const id = mongoId || orderId;
       const response = await restaurantAPI.resendDeliveryNotification(id);
-      
+
       if (response.data?.success) {
-        toast.success(`Notification sent to ${response.data.data?.notifiedCount || 0} delivery partners`);
-        // Refresh orders if onSuccess callback is provided
-        if (onSuccess) {
-          // Trigger a refresh by calling onSuccess with a special flag
-          setTimeout(() => {
-            window.location.reload(); // Simple refresh for now
-          }, 1000);
+        const count = response.data.data?.notifiedCount || 0;
+        if (count > 0) {
+          toast.success(`Notification sent to ${count} delivery partner${count === 1 ? '' : 's'}`);
+        } else {
+          toast.info('No delivery partners available nearby. Will try again automatically.');
         }
       } else {
         toast.error(response.data?.message || 'Failed to send notification');
       }
     } catch (error) {
       console.error('Error resending notification:', error);
-      toast.error(error.response?.data?.message || 'Failed to send notification. Please try again.');
+      const errMsg = error.response?.data?.message || error.message || 'Failed to send notification. Please try again.';
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -1966,103 +1952,99 @@ function OrderCard({
         }
         className="w-full text-left flex gap-3 items-stretch cursor-pointer"
       >
-      {/* Photo */}
-      <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
-        {photoUrl ? (
-          <img
-            src={photoUrl}
-            alt={photoAlt}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
-            <span className="text-[11px] font-medium text-gray-500 text-center leading-tight">
-              {photoAlt}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col justify-between min-h-[80px]">
-        {/* Top row */}
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-semibold text-black leading-tight">
-              Order #{orderId}
-            </p>
-            <p className="text-[11px] text-gray-500 mt-1">
-              {customerName}
-            </p>
-          </div>
-
-          <div className="flex flex-col items-end gap-1">
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
-                isReady
-                  ? "border-green-500 text-green-600"
-                  : "border-gray-800 text-gray-900"
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  isReady ? "bg-green-500" : "bg-gray-800"
-                }`}
-              />
-              {status}
-            </span>
-            <span className="text-[11px] text-gray-500 text-right">
-              {timePlaced}
-            </span>
-          </div>
-        </div>
-
-        {/* Middle row */}
-        <div className="mt-2">
-          <p className="text-xs text-gray-600 line-clamp-1">
-            {itemsSummary}
-          </p>
-        </div>
-
-        {/* Bottom row */}
-        <div className="mt-2 flex items-end justify-between gap-2">
-          <div className="flex flex-col gap-1">
-            <p className="text-[11px] text-gray-500">
-              {type}
-              {tableOrToken ? ` • ${tableOrToken}` : ""}
-            </p>
-            {/* Delivery Assignment Status - Only show for preparing orders */}
-            {status === 'preparing' && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                  deliveryPartnerId 
-                    ? 'bg-green-100 text-green-700 border border-green-300' 
-                    : 'bg-orange-100 text-orange-700 border border-orange-300'
-                }`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${
-                    deliveryPartnerId ? 'bg-green-500' : 'bg-orange-500'
-                  }`} />
-                  {deliveryPartnerId ? 'Assigned' : 'Not Assigned'}
-                </span>
-                {!deliveryPartnerId && (
-                  <ResendNotificationButton orderId={orderId} mongoId={mongoId} onSuccess={onSelect} />
-                )}
-              </div>
-            )}
-          </div>
-          {/* Hide ETA for ready orders */}
-          {status !== 'ready' && eta && (
-            <div className="flex items-baseline gap-1">
-              <span className="text-[11px] text-gray-500">ETA</span>
-              <span className="text-xs font-medium text-black">
-                {eta}
+        {/* Photo */}
+        <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={photoAlt}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
+              <span className="text-[11px] font-medium text-gray-500 text-center leading-tight">
+                {photoAlt}
               </span>
             </div>
           )}
         </div>
+
+        {/* Content */}
+        <div className="flex-1 flex flex-col justify-between min-h-[80px]">
+          {/* Top row */}
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-black leading-tight">
+                Order #{orderId}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {customerName}
+              </p>
+            </div>
+
+            <div className="flex flex-col items-end gap-1">
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${isReady
+                    ? "border-green-500 text-green-600"
+                    : "border-gray-800 text-gray-900"
+                  }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isReady ? "bg-green-500" : "bg-gray-800"
+                    }`}
+                />
+                {status}
+              </span>
+              <span className="text-[11px] text-gray-500 text-right">
+                {timePlaced}
+              </span>
+            </div>
+          </div>
+
+          {/* Middle row */}
+          <div className="mt-2">
+            <p className="text-xs text-gray-600 line-clamp-1">
+              {itemsSummary}
+            </p>
+          </div>
+
+          {/* Bottom row */}
+          <div className="mt-2 flex items-end justify-between gap-2">
+            <div className="flex flex-col gap-1">
+              <p className="text-[11px] text-gray-500">
+                {type}
+                {tableOrToken ? ` • ${tableOrToken}` : ""}
+              </p>
+              {/* Delivery Assignment Status - Only show for preparing orders */}
+              {status === 'preparing' && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${deliveryPartnerId
+                      ? 'bg-green-100 text-green-700 border border-green-300'
+                      : 'bg-orange-100 text-orange-700 border border-orange-300'
+                    }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${deliveryPartnerId ? 'bg-green-500' : 'bg-orange-500'
+                      }`} />
+                    {deliveryPartnerId ? 'Assigned' : 'Not Assigned'}
+                  </span>
+                  {!deliveryPartnerId && (
+                    <ResendNotificationButton orderId={orderId} mongoId={mongoId} onSuccess={onSelect} />
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Hide ETA for ready orders */}
+            {status !== 'ready' && eta && (
+              <div className="flex items-baseline gap-1">
+                <span className="text-[11px] text-gray-500">ETA</span>
+                <span className="text-xs font-medium text-black">
+                  {eta}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
-  </div>
   )
 }
 
@@ -2081,9 +2063,9 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
       try {
         // Fetch all orders and filter for 'preparing' status on frontend
         const response = await restaurantAPI.getOrders()
-        
+
         if (!isMounted) return
-        
+
         if (response.data?.success && response.data.data?.orders) {
           // Filter orders with 'preparing' status only
           // 'confirmed' orders should only appear in popup notification, not in preparing list
@@ -2091,13 +2073,13 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
           const preparingOrders = response.data.data.orders.filter(
             order => order.status === 'preparing'
           )
-          
+
           const transformedOrders = preparingOrders.map(order => {
             const initialETA = order.estimatedDeliveryTime || 30 // in minutes
-            const preparingTimestamp = order.tracking?.preparing?.timestamp 
+            const preparingTimestamp = order.tracking?.preparing?.timestamp
               ? new Date(order.tracking.preparing.timestamp)
               : new Date(order.createdAt) // Fallback to createdAt if preparing timestamp not available
-            
+
             return {
               orderId: order.orderId || order._id,
               mongoId: order._id,
@@ -2114,7 +2096,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
               deliveryPartnerId: order.deliveryPartnerId || null // Track if delivery partner is assigned
             }
           })
-          
+
           if (isMounted) {
             setOrders(transformedOrders)
             setLoading(false)
@@ -2127,7 +2109,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
         }
       } catch (error) {
         if (!isMounted) return
-        
+
         // Don't log network errors, 404, or 401 errors
         // 401 is handled by axios interceptor (token refresh/redirect)
         // 404 means no orders found (normal)
@@ -2135,7 +2117,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
         if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404 && error.response?.status !== 401) {
           console.error('Error fetching preparing orders:', error)
         }
-        
+
         if (isMounted) {
           setOrders([])
           setLoading(false)
@@ -2144,7 +2126,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
     }
 
     fetchOrders()
-    
+
     // Refresh orders every 10 seconds
     intervalId = setInterval(() => {
       if (isMounted) {
@@ -2158,7 +2140,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
         setCurrentTime(new Date())
       }
     }, 1000)
-    
+
     return () => {
       isMounted = false
       if (intervalId) {
@@ -2180,22 +2162,22 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
     const checkAndMarkReady = async () => {
       for (const order of orders) {
         const orderKey = order.mongoId || order.orderId
-        
+
         // Skip if already marked as ready
         if (markedReadyOrdersRef.current.has(orderKey)) {
           continue
         }
-        
+
         // Calculate remaining ETA
         const elapsedMs = currentTime - order.preparingTimestamp
         const elapsedMinutes = Math.floor(elapsedMs / 60000)
         const remainingMinutes = Math.max(0, order.initialETA - elapsedMinutes)
-        
+
         // If ETA has reached 0 (or slightly past), mark as ready
         if (remainingMinutes <= 0 && order.status === 'preparing') {
           const elapsedSeconds = Math.floor(elapsedMs / 1000)
           const totalETASeconds = order.initialETA * 60
-          
+
           // Mark as ready when ETA time has elapsed (with 2 second buffer)
           if (elapsedSeconds >= totalETASeconds - 2) {
             try {
@@ -2224,12 +2206,12 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
 
     // Check every 2 seconds for orders that need to be marked ready
     const readyCheckInterval = setInterval(checkAndMarkReady, 2000)
-    
+
     return () => {
       clearInterval(readyCheckInterval)
     }
   }, [currentTime, orders])
-  
+
   // Clear marked orders when orders list changes (orders moved to ready)
   useEffect(() => {
     const currentOrderKeys = new Set(orders.map(o => o.mongoId || o.orderId))
@@ -2272,7 +2254,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
             const elapsedMs = currentTime - order.preparingTimestamp
             const elapsedMinutes = Math.floor(elapsedMs / 60000)
             const remainingMinutes = Math.max(0, order.initialETA - elapsedMinutes)
-            
+
             // Format ETA display
             let etaDisplay = ''
             if (remainingMinutes <= 0) {
@@ -2325,15 +2307,15 @@ function ReadyOrders({ onSelectOrder }) {
       try {
         // Fetch all orders and filter for 'ready' status on frontend
         const response = await restaurantAPI.getOrders()
-        
+
         if (!isMounted) return
-        
+
         if (response.data?.success && response.data.data?.orders) {
           // Filter orders with 'ready' status
           const readyOrders = response.data.data.orders.filter(
             order => order.status === 'ready'
           )
-          
+
           const transformedOrders = readyOrders.map(order => ({
             orderId: order.orderId || order._id,
             mongoId: order._id,
@@ -2347,7 +2329,7 @@ function ReadyOrders({ onSelectOrder }) {
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || 'Order'
           }))
-          
+
           if (isMounted) {
             setOrders(transformedOrders)
             setLoading(false)
@@ -2360,12 +2342,12 @@ function ReadyOrders({ onSelectOrder }) {
         }
       } catch (error) {
         if (!isMounted) return
-        
+
         // Don't log network errors repeatedly - they're expected if backend is down
         if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404) {
           console.error('Error fetching ready orders:', error)
         }
-        
+
         if (isMounted) {
           setOrders([])
           setLoading(false)
@@ -2374,14 +2356,14 @@ function ReadyOrders({ onSelectOrder }) {
     }
 
     fetchOrders()
-    
+
     // Refresh every 10 seconds (reduced frequency to avoid spam if backend is down)
     intervalId = setInterval(() => {
       if (isMounted) {
         fetchOrders()
       }
     }, 10000)
-    
+
     return () => {
       isMounted = false
       if (intervalId) {
@@ -2442,15 +2424,15 @@ const OutForDeliveryOrders = ({ onSelectOrder }) => {
       try {
         // Fetch all orders and filter for 'out_for_delivery' status on frontend
         const response = await restaurantAPI.getOrders()
-        
+
         if (!isMounted) return
-        
+
         if (response.data?.success && response.data.data?.orders) {
           // Filter orders with 'out_for_delivery' status
           const outForDeliveryOrders = response.data.data.orders.filter(
             order => order.status === 'out_for_delivery'
           )
-          
+
           const transformedOrders = outForDeliveryOrders.map(order => ({
             orderId: order.orderId || order._id,
             mongoId: order._id,
@@ -2464,7 +2446,7 @@ const OutForDeliveryOrders = ({ onSelectOrder }) => {
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || 'Order'
           }))
-          
+
           if (isMounted) {
             setOrders(transformedOrders)
             setLoading(false)
@@ -2477,12 +2459,12 @@ const OutForDeliveryOrders = ({ onSelectOrder }) => {
         }
       } catch (error) {
         if (!isMounted) return
-        
+
         // Don't log network errors repeatedly - they're expected if backend is down
         if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404) {
           console.error('Error fetching out for delivery orders:', error)
         }
-        
+
         if (isMounted) {
           setOrders([])
           setLoading(false)
@@ -2491,14 +2473,14 @@ const OutForDeliveryOrders = ({ onSelectOrder }) => {
     }
 
     fetchOrders()
-    
+
     // Refresh every 10 seconds
     intervalId = setInterval(() => {
       if (isMounted) {
         fetchOrders()
       }
     }, 10000)
-    
+
     return () => {
       isMounted = false
       if (intervalId) {
@@ -2552,10 +2534,10 @@ function EmptyState({ message = "Temporarily closed" }) {
     <div className="flex flex-col items-center justify-center min-h-[60vh] py-12">
       {/* Store Illustration */}
       <div className="mb-6">
-        <svg 
-          width="200" 
-          height="200" 
-          viewBox="0 0 200 200" 
+        <svg
+          width="200"
+          height="200"
+          viewBox="0 0 200 200"
           className="text-gray-300"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -2574,12 +2556,12 @@ function EmptyState({ message = "Temporarily closed" }) {
           <rect x="80" y="170" width="40" height="20" stroke="currentColor" strokeWidth="1.5" fill="white" />
         </svg>
       </div>
-      
+
       {/* Message */}
       <h2 className="text-lg font-semibold text-gray-600 mb-4 text-center">
         {message}
       </h2>
-      
+
       {/* View Status Button */}
       <button className="bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors">
         View status

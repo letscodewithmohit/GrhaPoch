@@ -181,13 +181,24 @@ export default function PageNavbar({
       return coordPattern.test(str.trim())
     }
 
+    // Check if string is a Google Plus Code (e.g., "QV38+QP6")
+    const isPlusCode = (str) => {
+      if (!str) return false
+      return /^[A-Z0-9]{4,}\+[A-Z0-9]{2,}/.test(str.trim())
+    }
+
+    // Skip junk values for display
+    const isJunk = (str) => !str || isCoordinates(str) || isPlusCode(str) || str === "Select location"
+
+
     // Priority 0: Use mainTitle (ZOMATO-STYLE) - Exact building/cafe name
     // This is the most accurate - directly from Google Maps components
     // If mainTitle is available, show it with area if area is different
-    if (location?.mainTitle && location.mainTitle.trim() !== "" && location.mainTitle !== "Location Found") {
+    if (location?.mainTitle && location.mainTitle.trim() !== "" && location.mainTitle !== "Location Found" && !isPlusCode(location.mainTitle)) {
       mainLocation = location.mainTitle;
       // If area is available and different from mainTitle, append it
       if (location?.area && location.area.trim() !== "" &&
+        !isPlusCode(location.area) &&
         location.area.toLowerCase() !== location.mainTitle.toLowerCase() &&
         location.area.toLowerCase() !== location?.city?.toLowerCase()) {
         mainLocation = `${location.mainTitle}, ${location.area}`;
@@ -197,8 +208,8 @@ export default function PageNavbar({
 
     // Priority 1: Use formattedAddress if it contains complete detailed address (has multiple parts)
     // Format: "Mama Loca Cafe, 501 Princess Center, 5th Floor, New Palasia, Indore, Madhya Pradesh 452001"
-    if (!mainLocation && location?.formattedAddress && !isCoordinates(location.formattedAddress) && location.formattedAddress !== "Select location") {
-      const formattedParts = location.formattedAddress.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    if (!mainLocation && location?.formattedAddress && !isCoordinates(location.formattedAddress) && !isPlusCode(location.formattedAddress) && location.formattedAddress !== "Select location") {
+      const formattedParts = location.formattedAddress.split(',').map(p => p.trim()).filter(p => p.length > 0 && !isPlusCode(p))
 
       // Check if formattedAddress has complete address (4+ parts means it has POI, building, area, city, state)
       if (formattedParts.length >= 4) {
@@ -921,36 +932,36 @@ export default function PageNavbar({
       className={`relative ${zIndexClass} w-full px-1 pr-2 sm:px-2 sm:pr-3 md:px-3 lg:px-6 xl:px-8 py-1.5 sm:py-3 lg:py-4`}
       onClick={onNavClick}
     >
-      <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4 lg:gap-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 max-w-7xl mx-auto w-full overflow-hidden">
         {/* Left: Location - Hidden on desktop, shown on mobile */}
-        <div className="flex md:hidden items-center gap-3 sm:gap-4 min-w-0">
+        <div className="flex md:hidden items-center min-w-0 flex-1 overflow-hidden max-w-[55%]">
           {/* Location Button */}
           <Button
             variant="ghost"
             onClick={handleLocationClick}
             disabled={loading}
-            className="h-auto px-0 py-0 hover:bg-transparent transition-colors flex-shrink-0"
+            className="h-auto px-0 py-0 hover:bg-transparent transition-colors min-w-0 w-full"
           >
             {loading ? (
               <span className={`text-sm font-bold ${textColorClass} ${textColor === "white" ? "drop-shadow-lg" : ""}`}>
                 Loading...
               </span>
             ) : (
-              <div className="flex flex-col items-start min-w-0">
-                <div className="flex items-center gap-1.5">
+              <div className="flex flex-col items-start min-w-0 w-full">
+                <div className="flex items-center gap-1 min-w-0 w-full">
                   <FaLocationDot
-                    className={`h-6 w-6 sm:h-7 sm:w-7 ${textColorClass} flex-shrink-0 ${textColor === "white" ? "drop-shadow-lg" : ""}`}
+                    className={`h-5 w-5 sm:h-6 sm:w-6 ${textColorClass} flex-shrink-0 ${textColor === "white" ? "drop-shadow-lg" : ""}`}
                     fill={iconFill}
                     strokeWidth={2}
                   />
-                  <span className={`text-md sm:text-lg font-bold ${textColorClass} whitespace-nowrap ${textColor === "white" ? "drop-shadow-lg" : ""}`}>
+                  <span className={`text-sm sm:text-base font-bold ${textColorClass} truncate ${textColor === "white" ? "drop-shadow-lg" : ""}`}>
                     {mainLocationName}
                   </span>
-                  <ChevronDown className={`h-4 w-4 sm:h-5 sm:w-5 ${textColorClass} flex-shrink-0 ${textColor === "white" ? "drop-shadow-lg" : ""}`} strokeWidth={2.5} />
+                  <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${textColorClass} flex-shrink-0 ${textColor === "white" ? "drop-shadow-lg" : ""}`} strokeWidth={2.5} />
                 </div>
                 {/* Show sub location (city, state) in second line */}
                 {subLocationName && (
-                  <span className={`text-xs font-bold ${textColorClass}${textColor === "white" ? "/90" : ""} whitespace-nowrap mt-0.5 ${textColor === "white" ? "drop-shadow-md" : ""}`}>
+                  <span className={`text-[10px] sm:text-xs font-bold ${textColorClass}${textColor === "white" ? "/90" : ""} truncate mt-0.5 w-full ${textColor === "white" ? "drop-shadow-md" : ""}`}>
                     {subLocationName}
                   </span>
                 )}
@@ -960,7 +971,7 @@ export default function PageNavbar({
         </div>
 
         {/* Center: Company Logo or Name - Show on all screen sizes */}
-        <Link to="/user" className="flex items-center justify-center">
+        <Link to="/user" className="flex items-center justify-center flex-shrink-0">
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -978,7 +989,7 @@ export default function PageNavbar({
         </Link>
 
         {/* Right: Actions - Hidden on desktop, shown on mobile */}
-        <div className="flex md:hidden items-center gap-2 sm:gap-3 flex-shrink-0">
+        <div className="flex md:hidden items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* Wallet Icon */}
           <Link to="/user/wallet">
             <Button

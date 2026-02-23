@@ -13,7 +13,7 @@ export default function BusinessSetup() {
   const [faviconFile, setFaviconFile] = useState(null);
   const logoInputRef = useRef(null);
   const faviconInputRef = useRef(null);
-  
+
   const [formData, setFormData] = useState({
     companyName: "",
     email: "",
@@ -34,7 +34,7 @@ export default function BusinessSetup() {
       setLoading(true);
       const response = await adminAPI.getBusinessSettings();
       const settings = response?.data?.data || response?.data;
-      
+
       if (settings) {
         setFormData({
           companyName: settings.companyName || "",
@@ -45,7 +45,7 @@ export default function BusinessSetup() {
           state: settings.state || "",
           pincode: settings.pincode || "",
         });
-        
+
         // Set logo and favicon previews if they exist
         if (settings.logo?.url) {
           setLogoPreview(settings.logo.url);
@@ -113,7 +113,7 @@ export default function BusinessSetup() {
       if (updatedSettings) {
         // Clear cache to force reload
         clearCache();
-        
+
         // Update previews with new URLs if files were uploaded
         if (updatedSettings.logo?.url) {
           setLogoPreview(updatedSettings.logo.url);
@@ -132,7 +132,7 @@ export default function BusinessSetup() {
       }
 
       toast.success("Business settings saved successfully");
-      
+
       // Dispatch event to notify other components (like AdminNavbar)
       window.dispatchEvent(new Event('businessSettingsUpdated'));
     } catch (error) {
@@ -230,7 +230,7 @@ export default function BusinessSetup() {
                 </label>
                 <div className="flex gap-2">
                   <div className="relative w-32">
-                    <select 
+                    <select
                       value={formData.phoneCountryCode}
                       onChange={(e) => handleInputChange("phoneCountryCode", e.target.value)}
                       className="w-full pl-8 pr-6 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
@@ -677,9 +677,8 @@ function ToggleSwitch({ initial = false }) {
     <button
       type="button"
       onClick={() => setEnabled((prev) => !prev)}
-      className={`inline-flex items-center w-10 h-5 rounded-full border transition-all ${
-        enabled ? "bg-blue-600 border-blue-600 justify-end" : "bg-slate-200 border-slate-300 justify-start"
-      }`}
+      className={`inline-flex items-center w-10 h-5 rounded-full border transition-all ${enabled ? "bg-blue-600 border-blue-600 justify-end" : "bg-slate-200 border-slate-300 justify-start"
+        }`}
     >
       <span className="h-4 w-4 rounded-full bg-white shadow-sm" />
     </button>

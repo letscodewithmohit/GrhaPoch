@@ -8,6 +8,7 @@ import SearchOverlay from "./SearchOverlay"
 import LocationSelectorOverlay from "./LocationSelectorOverlay"
 import BottomNavigation from "./BottomNavigation"
 import DesktopNavbar from "./DesktopNavbar"
+import { UserLocationProvider } from "../context/UserLocationContext"
 
 // Create SearchOverlay context with default value
 const SearchOverlayContext = createContext({
@@ -19,7 +20,7 @@ const SearchOverlayContext = createContext({
   openSearch: () => {
     console.warn("SearchOverlayProvider not available")
   },
-  closeSearch: () => {}
+  closeSearch: () => { }
 })
 
 export function useSearchOverlay() {
@@ -60,7 +61,7 @@ const LocationSelectorContext = createContext({
   openLocationSelector: () => {
     console.warn("LocationSelectorProvider not available")
   },
-  closeLocationSelector: () => {}
+  closeLocationSelector: () => { }
 })
 
 export function useLocationSelector() {
@@ -111,33 +112,35 @@ export default function UserLayout() {
   // UserLayout should not interfere with authentication redirects
 
   // Show bottom navigation only on home page, dining page, under-250 page, and profile page
-  const showBottomNav = location.pathname === "/" || 
-                        location.pathname === "/user" ||
-                        location.pathname === "/dining" ||
-                        location.pathname === "/user/dining" ||
-                        location.pathname === "/under-250" ||
-                        location.pathname === "/user/under-250" ||
-                        location.pathname === "/profile" ||
-                        location.pathname === "/user/profile" ||
-                        location.pathname.startsWith("/user/profile")
+  const showBottomNav = location.pathname === "/" ||
+    location.pathname === "/user" ||
+    location.pathname === "/dining" ||
+    location.pathname === "/user/dining" ||
+    location.pathname === "/under-250" ||
+    location.pathname === "/user/under-250" ||
+    location.pathname === "/profile" ||
+    location.pathname === "/user/profile" ||
+    location.pathname.startsWith("/user/profile")
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a] transition-colors duration-200">
-      <CartProvider>
-        <ProfileProvider>
-          <OrdersProvider>
-            <SearchOverlayProvider>
-              <LocationSelectorProvider>
-                {/* <Navbar /> */}
-                {showBottomNav && <DesktopNavbar />}
-                <LocationPrompt />
-                <Outlet />
-                {showBottomNav && <BottomNavigation />}
-              </LocationSelectorProvider>
-            </SearchOverlayProvider>
-          </OrdersProvider>
-        </ProfileProvider>
-      </CartProvider>
+      <UserLocationProvider>
+        <CartProvider>
+          <ProfileProvider>
+            <OrdersProvider>
+              <SearchOverlayProvider>
+                <LocationSelectorProvider>
+                  {/* <Navbar /> */}
+                  {showBottomNav && <DesktopNavbar />}
+                  <LocationPrompt />
+                  <Outlet />
+                  {showBottomNav && <BottomNavigation />}
+                </LocationSelectorProvider>
+              </SearchOverlayProvider>
+            </OrdersProvider>
+          </ProfileProvider>
+        </CartProvider>
+      </UserLocationProvider>
     </div>
   )
 }

@@ -37,7 +37,6 @@ export default function RestaurantCommission() {
     restaurantId: true,
     businessModel: true,
     defaultCommission: true,
-    dishLimit: true,
     status: true,
     actions: true,
   })
@@ -167,8 +166,7 @@ export default function RestaurantCommission() {
         type: "percentage",
         value: "10"
       },
-      notes: "",
-      dishLimit: "0"
+      notes: ""
     })
     setFormErrors({})
     setIsRestaurantSelectOpen(true)
@@ -223,7 +221,7 @@ export default function RestaurantCommission() {
             value: commissionData.defaultCommission?.value || "10"
           },
           notes: commissionData.notes || "",
-          dishLimit: commissionData.restaurant?.dishLimit?.toString() || "50"
+
         })
         setFormErrors({})
         setIsAddEditOpen(true)
@@ -294,8 +292,7 @@ export default function RestaurantCommission() {
           type: formData.defaultCommission.type,
           value: parseFloat(formData.defaultCommission.value)
         },
-        notes: formData.notes,
-        dishLimit: parseInt(formData.dishLimit, 10)
+        notes: formData.notes
       }
 
       if (selectedCommission) {
@@ -324,7 +321,7 @@ export default function RestaurantCommission() {
     restaurantId: "Restaurant ID",
     businessModel: "Business Model",
     defaultCommission: "Default Commission",
-    dishLimit: "Dish Limit",
+
     status: "Status",
     actions: "Actions",
   }
@@ -402,11 +399,7 @@ export default function RestaurantCommission() {
                         Default Commission
                       </th>
                     )}
-                    {visibleColumns.dishLimit && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Dish Limit
-                      </th>
-                    )}
+
                     {visibleColumns.status && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                         Status
@@ -479,13 +472,7 @@ export default function RestaurantCommission() {
                             </div>
                           </td>
                         )}
-                        {visibleColumns.dishLimit && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-slate-700">
-                              {commission.restaurant?.dishLimit === 0 ? 'Unlimited' : (commission.restaurant?.dishLimit || 'Unlimited')}
-                            </span>
-                          </td>
-                        )}
+
                         {visibleColumns.status && (
                           <td className="px-6 py-4 whitespace-nowrap">
                             <button
@@ -629,25 +616,7 @@ export default function RestaurantCommission() {
               </div>
             </div>
 
-            {/* Dish Limit */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Dish Limit <span className="text-slate-400 font-normal">(Max items restaurant can add)</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={formData.dishLimit}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dishLimit: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., 50 (0 for unlimited)"
-                  min="0"
-                />
-                {formData.dishLimit === "0" && (
-                  <p className="text-[10px] text-blue-600 mt-1 font-medium italic">Unlimited dishes allowed</p>
-                )}
-              </div>
-            </div>
+
 
             {/* Notes */}
             <div>

@@ -11,6 +11,7 @@ import RestaurantCommission from '../../admin/models/RestaurantCommission.js';
 import AdminCommission from '../../admin/models/AdminCommission.js';
 import { calculateRoute } from '../../order/services/routeCalculationService.js';
 import { calculateOrderSettlement } from '../../order/services/orderSettlementService.js';
+import { calculateDistance, normalizeCoordinates } from '../../order/services/orderCalculationService.js';
 import mongoose from 'mongoose';
 import winston from 'winston';
 
@@ -435,18 +436,18 @@ export const acceptOrder = asyncHandler(async (req, res) => {
         const restaurantId = order.restaurantId?._id || order.restaurantId;
         console.log(`🔍 Fetching restaurant with ID: ${restaurantId}`);
 
-        const restaurant = await Restaurant.findById(restaurantId);
+        // Use a more robust lookup to handle both ObjectId and custom String ID
+        const restaurant = mongoose.Types.ObjectId.isValid(restaurantId)
+          ? await Restaurant.findById(restaurantId)
+          : await Restaurant.findOne({ restaurantId: restaurantId });
+
         if (restaurant && restaurant.location && restaurant.location.coordinates) {
           [restaurantLng, restaurantLat] = restaurant.location.coordinates;
           console.log(`📍 Restaurant location from database: lat=${restaurantLat}, lng=${restaurantLng}`);
+          // Store for subsequent calculations
+          order.restaurantId = restaurant;
         } else {
           console.error(`❌ Restaurant location not found for restaurant ID: ${restaurantId}`);
-          console.error(`❌ Restaurant data:`, {
-            restaurantExists: !!restaurant,
-            hasLocation: !!(restaurant?.location),
-            hasCoordinates: !!(restaurant?.location?.coordinates),
-            locationType: typeof restaurant?.location
-          });
           return errorResponse(res, 400, 'Restaurant location not found');
         }
       }
@@ -623,21 +624,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     }
 
     // Calculate delivery distance (restaurant to customer) to save in assignment info
-    let deliveryDistanceForSave = 0;
-    if (order.restaurantId?.location?.coordinates && order.address?.location?.coordinates) {
-      const [restLng, restLat] = order.restaurantId.location.coordinates;
-      const [custLng, custLat] = order.address.location.coordinates;
-
-      // Calculate distance using Haversine formula
-      const R = 6371; // Earth radius in km
-      const dLat = (custLat - restLat) * Math.PI / 180;
-      const dLng = (custLng - restLng) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(restLat * Math.PI / 180) * Math.cos(custLat * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      deliveryDistanceForSave = R * c;
-    }
+    const deliveryDistanceForSave = calculateDistance(order.restaurantId, order.address) || 0;
 
     let updatedOrder;
     try {
@@ -679,21 +666,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     console.log(`📍 Route calculated: ${routeData.distance.toFixed(2)} km, ${routeData.duration.toFixed(1)} mins`);
 
     // Calculate delivery distance (restaurant to customer) for earnings calculation
-    let deliveryDistance = 0;
-    if (updatedOrder.restaurantId?.location?.coordinates && updatedOrder.address?.location?.coordinates) {
-      const [restaurantLng, restaurantLat] = updatedOrder.restaurantId.location.coordinates;
-      const [customerLng, customerLat] = updatedOrder.address.location.coordinates;
-
-      // Calculate distance using Haversine formula
-      const R = 6371; // Earth radius in km
-      const dLat = (customerLat - restaurantLat) * Math.PI / 180;
-      const dLng = (customerLng - restaurantLng) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(restaurantLat * Math.PI / 180) * Math.cos(customerLat * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      deliveryDistance = R * c;
-    }
+    const deliveryDistance = calculateDistance(updatedOrder.restaurantId, updatedOrder.address) || 0;
 
     // Calculate estimated earnings based on delivery distance
     let estimatedEarnings = null;
@@ -712,18 +685,21 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       const breakdown = commissionResult.breakdown || {};
       const rule = commissionResult.rule || { minDistance: 4 };
 
+      const tip = Number(order.pricing?.tip) || 0;
       estimatedEarnings = {
         basePayout: Math.round((breakdown.basePayout || 10) * 100) / 100,
         distance: Math.round(deliveryDistance * 100) / 100,
         commissionPerKm: Math.round((breakdown.commissionPerKm || 5) * 100) / 100,
         distanceCommission: Math.round((breakdown.distanceCommission || 0) * 100) / 100,
-        totalEarning: Math.round(commissionResult.commission * 100) / 100,
+        tip: tip,
+        totalEarning: Math.round((commissionResult.commission + tip) * 100) / 100,
         breakdown: {
           basePayout: breakdown.basePayout || 10,
           distance: deliveryDistance,
           commissionPerKm: breakdown.commissionPerKm || 5,
           distanceCommission: breakdown.distanceCommission || 0,
-          minDistance: rule.minDistance || 4
+          minDistance: rule.minDistance || 4,
+          tip: tip
         }
       };
 
@@ -732,18 +708,21 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       console.error('❌ Error calculating estimated earnings:', earningsError);
       console.error('❌ Earnings error stack:', earningsError.stack);
       // Fallback to default
+      const tip = Number(order.pricing?.tip) || 0;
       estimatedEarnings = {
         basePayout: 10,
         distance: Math.round(deliveryDistance * 100) / 100,
         commissionPerKm: 5,
         distanceCommission: deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0,
-        totalEarning: 10 + (deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0),
+        tip: tip,
+        totalEarning: 10 + (deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0) + tip,
         breakdown: {
           basePayout: 10,
           distance: deliveryDistance,
           commissionPerKm: 5,
           distanceCommission: deliveryDistance > 4 ? deliveryDistance * 5 : 0,
-          minDistance: 4
+          minDistance: 4,
+          tip: tip
         }
       };
     }
@@ -1650,18 +1629,31 @@ export const completeDelivery = asyncHandler(async (req, res) => {
       const [restaurantLng, restaurantLat] = order.restaurantId.location.coordinates;
       const [customerLng, customerLat] = order.address.location.coordinates;
 
-      // Calculate distance using Haversine formula
-      const R = 6371; // Earth radius in km
-      const dLat = (customerLat - restaurantLat) * Math.PI / 180;
-      const dLng = (customerLng - restaurantLng) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(restaurantLat * Math.PI / 180) * Math.cos(customerLat * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      deliveryDistance = R * c;
+      // Sanity check: If coordinates are [0,0], use distance 0 to avoid massive payouts
+      if ((restaurantLng === 0 && restaurantLat === 0) || (customerLng === 0 && customerLat === 0)) {
+        console.warn(`⚠️ Invalid coordinates [0,0] detected for order ${orderIdForLog}. Using 0 distance fallback.`);
+        deliveryDistance = 0;
+      } else {
+        // Calculate distance using Haversine formula
+        const R = 6371; // Earth radius in km
+        const dLat = (customerLat - restaurantLat) * Math.PI / 180;
+        const dLng = (customerLng - restaurantLng) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(restaurantLat * Math.PI / 180) * Math.cos(customerLat * Math.PI / 180) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        deliveryDistance = R * c;
+      }
     }
 
-    console.log(`📏 Delivery distance: ${deliveryDistance.toFixed(2)} km for order ${orderIdForLog}`);
+    // Safety Cap: If distance is unreasonably high (e.g. > 50km), cap it or use fallback
+    // This prevents massive payouts if something goes wrong with GPS or route service
+    if (deliveryDistance > 50) {
+      console.warn(`⚠️ Extremely high distance detected: ${deliveryDistance.toFixed(2)} km. Capping to 0 for safety (requires manual review).`);
+      deliveryDistance = 0; // Better to pay base fee only then thousands by mistake
+    }
+
+    console.log(`📏 Final delivery distance: ${deliveryDistance.toFixed(2)} km for order ${orderIdForLog}`);
 
     // Calculate earnings using admin's commission rules
     let totalEarning = 0;
@@ -1740,6 +1732,10 @@ export const completeDelivery = asyncHandler(async (req, res) => {
         }
 
         await wallet.save();
+
+        // Include tip in the total earning returned to UI
+        const finalTotalEarning = totalEarning + tipAmount;
+        totalEarning = finalTotalEarning; // Update for responseData below
 
         // COD: add cash collected (order total) to cashInHand so Pocket balance shows it
         const codAmount = Number(order.pricing?.total) || 0;
@@ -1927,11 +1923,15 @@ export const completeDelivery = asyncHandler(async (req, res) => {
         amount: totalEarning,
         currency: 'INR',
         distance: deliveryDistance,
-        breakdown: commissionBreakdown || {
+        breakdown: commissionBreakdown ? {
+          ...commissionBreakdown,
+          tip: Number(order.pricing?.tip) || 0
+        } : {
           basePayout: 0,
           distance: deliveryDistance,
           commissionPerKm: 0,
-          distanceCommission: 0
+          distanceCommission: 0,
+          tip: Number(order.pricing?.tip) || 0
         }
       },
       wallet: walletTransaction ? {

@@ -1,6 +1,7 @@
 import Restaurant from '../../restaurant/models/Restaurant.js';
 import Offer from '../../restaurant/models/Offer.js';
 import FeeSettings from '../../admin/models/FeeSettings.js';
+import DeliveryBoyCommission from '../../admin/models/DeliveryBoyCommission.js';
 import mongoose from 'mongoose';
 
 /**
@@ -39,43 +40,122 @@ const getFeeSettings = async () => {
 };
 
 /**
+ * Normalize coordinate input to [longitude, latitude] array
+ * Handles:
+ * 1. [lng, lat] array
+ * 2. { latitude, longitude } object
+ * 3. { lat, lng } object
+ * 4. { coordinates: [lng, lat] } GeoJSON object
+ * 5. { location: { coordinates: [lng, lat] } } Nested GeoJSON
+ * 6. { location: { latitude, longitude } } Nested flat object
+ */
+export const normalizeCoordinates = (input) => {
+  if (!input) return null;
+
+  // 1. If it's already an array [lng, lat]
+  if (Array.isArray(input) && input.length >= 2) {
+    return [Number(input[0]), Number(input[1])];
+  }
+
+  // 2. If it's a nested location object (like from address or restaurant model)
+  if (input.location) {
+    return normalizeCoordinates(input.location);
+  }
+
+  // 3. If it's a GeoJSON object { coordinates: [lng, lat] }
+  if (input.coordinates && Array.isArray(input.coordinates)) {
+    return [Number(input.coordinates[0]), Number(input.coordinates[1])];
+  }
+
+  // 4. If it's a flat object with latitude/longitude
+  const lat = input.latitude ?? input.lat;
+  const lng = input.longitude ?? input.lng;
+
+  if (lat !== undefined && lng !== undefined) {
+    return [Number(lng), Number(lat)];
+  }
+
+  return null;
+};
+
+/**
+ * Calculate distance between two points (Haversine formula)
+ * @param {Array|Object} point1 - First coordinate point
+ * @param {Array|Object} point2 - Second coordinate point
+ * @returns {number|null} - Distance in kilometers
+ */
+export const calculateDistance = (point1, point2) => {
+  const coord1 = normalizeCoordinates(point1);
+  const coord2 = normalizeCoordinates(point2);
+
+  if (!coord1 || !coord2) return null;
+
+  const [lng1, lat1] = coord1;
+  const [lng2, lat2] = coord2;
+
+  // If any coordinates are [0,0], return 0 to avoid massive incorrect distances
+  if ((lng1 === 0 && lat1 === 0) || (lng2 === 0 && lat2 === 0)) {
+    return 0;
+  }
+
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+
+  return distance;
+};
+
+/**
  * Calculate delivery fee based on order value, distance, and restaurant settings
  */
 export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddress = null) => {
   // Get fee settings from database
   const feeSettings = await getFeeSettings();
 
-  // Check restaurant settings for free delivery threshold (takes priority)
-  if (restaurant?.freeDeliveryAbove) {
-    if (orderValue >= restaurant.freeDeliveryAbove) {
-      return 0; // Free delivery
-    }
-  } else {
-    // Use admin settings for free delivery threshold
-    const freeDeliveryThreshold = feeSettings.freeDeliveryThreshold || 149;
-    if (orderValue >= freeDeliveryThreshold) {
-      return 0;
+  // 1. Free delivery threshold check DISABLED
+
+
+  // 2. Dynamic distance-based calculation
+  const distance = calculateDistance(restaurant, deliveryAddress);
+
+  if (distance !== null) {
+    try {
+      const commissionResult = await DeliveryBoyCommission.calculateCommission(distance);
+      if (commissionResult && commissionResult.commission > 0) {
+        if (process.env.DEBUG_PRICING_LOGS === 'true') {
+          console.log(`[Pricing] Dynamic Delivery Fee Applied: ₹${commissionResult.commission} for ${distance.toFixed(2)}km`);
+        }
+        return commissionResult.commission;
+      }
+    } catch (error) {
+      console.error('Error calculating dynamic delivery fee:', error);
     }
   }
 
-  // Check if delivery fee ranges are configured
+  // 3. Restaurant free delivery DISABLED
+
+
+  // 4. Fallback to order-value based ranges if distance calculation failed
   if (feeSettings.deliveryFeeRanges && Array.isArray(feeSettings.deliveryFeeRanges) && feeSettings.deliveryFeeRanges.length > 0) {
-    // Sort ranges by min value to ensure proper checking
     const sortedRanges = [...feeSettings.deliveryFeeRanges].sort((a, b) => a.min - b.min);
 
-    // Find matching range (orderValue >= min && orderValue < max)
-    // For the last range, we check orderValue >= min && orderValue <= max
     for (let i = 0; i < sortedRanges.length; i++) {
       const range = sortedRanges[i];
       const isLastRange = i === sortedRanges.length - 1;
 
       if (isLastRange) {
-        // Last range: include max value
         if (orderValue >= range.min && orderValue <= range.max) {
           return range.fee;
         }
       } else {
-        // Other ranges: exclude max value (handled by next range)
         if (orderValue >= range.min && orderValue < range.max) {
           return range.fee;
         }
@@ -83,19 +163,8 @@ export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddre
     }
   }
 
-  // Fallback to default delivery fee if no range matches
-  const baseDeliveryFee = feeSettings.deliveryFee || 25;
-
-  // TODO: Add distance-based calculation when address coordinates are available
-  // if (deliveryAddress?.location?.coordinates && restaurant?.location?.coordinates) {
-  //   const distance = calculateDistance(
-  //     restaurant.location.coordinates,
-  //     deliveryAddress.location.coordinates
-  //   );
-  //   deliveryFee = baseFee + (distance * perKmFee);
-  // }
-
-  return baseDeliveryFee;
+  // 5. Ultimate fallback
+  return feeSettings.deliveryFee || 25;
 };
 
 /**
@@ -173,28 +242,6 @@ export const calculateDiscount = (coupon, subtotal) => {
   return Math.min(coupon.discount || 0, subtotal);
 };
 
-/**
- * Calculate distance between two coordinates (Haversine formula)
- * Returns distance in kilometers
- */
-export const calculateDistance = (coord1, coord2) => {
-  const [lng1, lat1] = coord1;
-  const [lng2, lat2] = coord2;
-
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-
-  return distance;
-};
 
 /**
  * Main function to calculate order pricing
@@ -325,14 +372,8 @@ export const calculateOrderPricing = async ({
     // Apply free delivery from coupon
     const finalDeliveryFee = appliedCoupon?.freeDelivery ? 0 : deliveryFee;
 
-    // Calculate distance for platform fee (if delivery address and restaurant location available)
-    let distanceInKm = null;
-    if (deliveryAddress?.location?.coordinates && restaurant?.location?.coordinates) {
-      distanceInKm = calculateDistance(
-        restaurant.location.coordinates,
-        deliveryAddress.location.coordinates
-      );
-    }
+    // Calculate distance for platform fee
+    const distanceInKm = calculateDistance(restaurant, deliveryAddress);
 
     // Calculate platform fee based on distance
     const platformFee = await calculatePlatformFee(distanceInKm);
@@ -357,6 +398,8 @@ export const calculateOrderPricing = async ({
       donation: Number(donation),
       total: Math.round(total),
       savings: Math.round(savings),
+      distance: distanceInKm ? Math.round(distanceInKm * 100) / 100 : null,
+      distanceStr: distanceInKm ? `${distanceInKm.toFixed(1)} km` : null,
       appliedCoupon: appliedCoupon ? {
         code: appliedCoupon.code,
         discount: discount,
@@ -371,11 +414,11 @@ export const calculateOrderPricing = async ({
         gst: gst,
         tip: Number(tip),
         donation: Number(donation),
-        total: Math.round(total)
+        total: Math.round(total),
+        distance: distanceInKm ? Math.round(distanceInKm * 100) / 100 : null
       }
     };
   } catch (error) {
     throw new Error(`Failed to calculate order pricing: ${error.message}`);
   }
 };
-

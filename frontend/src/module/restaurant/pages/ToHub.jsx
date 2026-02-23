@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { DateRangeCalendar } from "@/components/ui/date-range-calendar"
-import { Bell, HelpCircle, Menu, Search, TrendingUp, BarChart3, Users, CalendarRange, Download, MoreVertical, ChevronLeft, ChevronRight, Wand2, X, MapPin, Crown, ArrowRight } from "lucide-react"
+import { Bell, HelpCircle, Menu, Search, TrendingUp, BarChart3, Users, CalendarRange, Download, MoreVertical, ChevronLeft, ChevronRight, Wand2, X, MapPin, Crown, ArrowRight, AlertCircle, Sparkles } from "lucide-react"
 import {
   FaPhone,
   FaHistory,
@@ -43,6 +43,18 @@ export default function ToHub() {
   const [loadingRestaurant, setLoadingRestaurant] = useState(true)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isExpiredModalOpen, setIsExpiredModalOpen] = useState(false)
+  const [isKptVideoOpen, setIsKptVideoOpen] = useState(false)
+
+  // Check for expired subscription on mount
+  useEffect(() => {
+    if (restaurantData?.subscription?.status === 'expired') {
+      const lastDismissed = localStorage.getItem(`dismissed_expiry_${restaurantData.subscription.paymentId || 'default'}`)
+      if (!lastDismissed) {
+        setIsExpiredModalOpen(true)
+      }
+    }
+  }, [restaurantData])
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -326,7 +338,7 @@ export default function ToHub() {
     { id: "feedback", label: "Share your feedback", icon: FaCommentDots, route: "/restaurant/Share-Feedback" },
     { id: "zone-setup", label: "Zone Setup", icon: MapPin, route: "/restaurant/zone-setup" },
     { id: "settings", label: "Settings", icon: FaCog, route: "/restaurant/delivery-settings" },
-    { id: "business-plan", label: "Business Plan", icon: Crown, route: "/restaurant/business-plan" },
+    { id: "business-plan", label: "Business Plan", icon: Crown, route: "/restaurant/subscription-plans" },
     { id: "show-all", label: "Show all", icon: FaThLarge, route: "/restaurant/explore" },
   ]
 
@@ -356,7 +368,6 @@ export default function ToHub() {
   const [complaintsView, setComplaintsView] = useState("all")
   const [rejectionsReasonsView] = useState("all")
   const [complaintsTabView, setComplaintsTabView] = useState("all")
-  const [isKptVideoOpen, setIsKptVideoOpen] = useState(false)
   const [offersCustomerView, setOffersCustomerView] = useState("affinity")
   const [adImpressionsCustomerView, setAdImpressionsCustomerView] = useState("affinity")
   const [impressionsData] = useState([
@@ -675,7 +686,7 @@ export default function ToHub() {
     const calculatePercentage = (count, total) => {
       if (total === 0) return "- 0%"
       const percentage = ((count / total) * 100).toFixed(1)
-      return `${percentage}%`
+      return `${percentage}% `
     }
 
     return [
@@ -807,12 +818,12 @@ export default function ToHub() {
             hasMore = false
           }
         } catch (pageError) {
-          console.error(`Error fetching orders page ${page}:`, pageError)
+          console.error(`Error fetching orders page ${page}: `, pageError)
           hasMore = false
         }
       }
 
-      console.log(`📊 Fetched ${allOrders.length} orders for date range:`, {
+      console.log(`📊 Fetched ${allOrders.length} orders for date range: `, {
         startDate: startDateISO.toISOString(),
         endDate: endDateISO.toISOString(),
         rangeId
@@ -833,7 +844,7 @@ export default function ToHub() {
         })
 
         setChartData(newChartData)
-        setTotalSales(`₹ ${newTotalSales.toLocaleString("en-IN")}`)
+        setTotalSales(`₹ ${newTotalSales.toLocaleString("en-IN")} `)
         setTotalOrders(newTotalOrders.toString())
         setMealtimeMetrics(mealtimeData)
         setLastUpdated(new Date())
@@ -923,22 +934,22 @@ export default function ToHub() {
     const r = getDateRanges()
     switch (selectedDateRange) {
       case "today":
-        return `Today • ${formatDateLong(r.today)}`
+        return `Today • ${formatDateLong(r.today)} `
       case "yesterday":
-        return `Yesterday • ${formatDateLong(r.yesterday)}`
+        return `Yesterday • ${formatDateLong(r.yesterday)} `
       case "thisWeek":
-        return `This week • ${formatDateShort(r.thisWeekStart)} - ${formatDateShort(r.thisWeekEnd)}`
+        return `This week • ${formatDateShort(r.thisWeekStart)} - ${formatDateShort(r.thisWeekEnd)} `
       case "lastWeek":
-        return `Last week • ${formatDateShort(r.lastWeekStart)} - ${formatDateShort(r.lastWeekEnd)}`
+        return `Last week • ${formatDateShort(r.lastWeekStart)} - ${formatDateShort(r.lastWeekEnd)} `
       case "thisMonth":
-        return `This month • ${formatDateShort(r.thisMonthStart)} - ${formatDateShort(r.thisMonthEnd)}`
+        return `This month • ${formatDateShort(r.thisMonthStart)} - ${formatDateShort(r.thisMonthEnd)} `
       case "lastMonth":
-        return `Last month • ${formatDateShort(r.lastMonthStart)} - ${formatDateShort(r.lastMonthEnd)}`
+        return `Last month • ${formatDateShort(r.lastMonthStart)} - ${formatDateShort(r.lastMonthEnd)} `
       case "last5days":
-        return `Last 5 days • ${formatDateShort(r.last5DaysStart)} - ${formatDateShort(r.last5DaysEnd)}`
+        return `Last 5 days • ${formatDateShort(r.last5DaysStart)} - ${formatDateShort(r.last5DaysEnd)} `
       case "custom":
         if (customDateRange.start && customDateRange.end) {
-          return `${formatDateShort(customDateRange.start)} - ${formatDateShort(customDateRange.end)}`
+          return `${formatDateShort(customDateRange.start)} - ${formatDateShort(customDateRange.end)} `
         }
         return "Custom range"
       default:
@@ -1121,16 +1132,16 @@ export default function ToHub() {
           </div>
           <div className="h-48 chart-shell">
             <style>{`
-              .chart-shell *:focus {
-                outline: none !important;
-                box-shadow: none !important;
-              }
-              .recharts-wrapper:focus,
-              .recharts-surface:focus,
-              .recharts-responsive-container:focus {
-                outline: none !important;
-              }
-            `}</style>
+  .chart - shell *:focus {
+  outline: none!important;
+  box - shadow: none!important;
+}
+              .recharts - wrapper: focus,
+              .recharts - surface: focus,
+              .recharts - responsive - container:focus {
+  outline: none!important;
+}
+`}</style>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                 <defs>
@@ -1246,7 +1257,7 @@ export default function ToHub() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                     <defs>
-                      <linearGradient id={`mini-${section.dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id={`mini - ${section.dataKey} `} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={section.color} stopOpacity={0.5} />
                         <stop offset="95%" stopColor={section.color} stopOpacity={0.05} />
                       </linearGradient>
@@ -1255,7 +1266,7 @@ export default function ToHub() {
                     <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "#9ca3af" }} />
                     <YAxis hide />
                     <Tooltip />
-                    <Area type="monotone" dataKey={section.dataKey} stroke={section.color} fill={`url(#mini-${section.dataKey})`} />
+                    <Area type="monotone" dataKey={section.dataKey} stroke={section.color} fill={`url(#mini - ${section.dataKey})`} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -1347,7 +1358,7 @@ export default function ToHub() {
               <p className="text-base font-bold text-gray-900">Orders by mealtime</p>
               <p className="text-xs text-gray-500">
                 {lastUpdated
-                  ? `Last updated: ${formatTimeAgo(lastUpdated)}`
+                  ? `Last updated: ${formatTimeAgo(lastUpdated)} `
                   : "Last updated: a day ago"}
               </p>
             </div>
@@ -1471,6 +1482,64 @@ export default function ToHub() {
     </div>
   )
 
+  const ExpiredSubscriptionModal = () => (
+    <AnimatePresence>
+      {isExpiredModalOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[14000] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4"
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative overflow-hidden"
+          >
+            {/* Decorative background circle */}
+            <div className="absolute -right-10 -top-10 w-32 h-32 bg-red-50 rounded-full"></div>
+
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 ring-4 ring-red-50">
+                <AlertCircle className="w-10 h-10 text-red-600" />
+              </div>
+
+              <h2 className="text-2xl font-black text-gray-900 mb-2">Plan Expired!</h2>
+              <p className="text-gray-600 text-sm mb-8 leading-relaxed">
+                Your subscription plan has ended. You have been switched to <span className="font-bold text-red-600">Commission Base</span> mode for new orders. Renew now to enjoy 0% commission.
+              </p>
+
+              <div className="w-full space-y-3">
+                <button
+                  onClick={() => {
+                    navigate('/restaurant/subscription-plans')
+                    setIsExpiredModalOpen(false)
+                  }}
+                  className="w-full bg-black text-white py-4 rounded-xl font-bold text-base shadow-lg hover:bg-gray-800 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  Renew Plan <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (restaurantData?.subscription?.paymentId) {
+                      localStorage.setItem(`dismissed_expiry_${restaurantData.subscription.paymentId}`, 'true')
+                    }
+                    setIsExpiredModalOpen(false)
+                  }}
+                  className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-all"
+                >
+                  I'll do it later
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   const KitchenVideoModal = () => (
     <AnimatePresence>
       {isKptVideoOpen && (
@@ -1579,7 +1648,7 @@ export default function ToHub() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                       <defs>
-                        <linearGradient id={`mini-${section.dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id={`mini - ${section.dataKey} `} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={section.color} stopOpacity={0.5} />
                           <stop offset="95%" stopColor={section.color} stopOpacity={0.05} />
                         </linearGradient>
@@ -1588,7 +1657,7 @@ export default function ToHub() {
                       <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "#9ca3af" }} />
                       <YAxis hide />
                       <Tooltip />
-                      <Area type="monotone" dataKey={section.dataKey} stroke={section.color} fill={`url(#mini-${section.dataKey})`} />
+                      <Area type="monotone" dataKey={section.dataKey} stroke={section.color} fill={`url(#mini - ${section.dataKey})`} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -1665,7 +1734,7 @@ export default function ToHub() {
                   <YAxis
                     yAxisId="left"
                     tick={{ fontSize: 10, fill: "#9ca3af" }}
-                    tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
+                    tickFormatter={(value) => `₹${value.toLocaleString("en-IN")} `}
                     tickLine={false}
                     axisLine={{ stroke: "#e5e7eb" }}
                     allowDecimals={false}
@@ -1777,7 +1846,7 @@ export default function ToHub() {
                   />
                   <YAxis
                     tick={{ fontSize: 10, fill: "#9ca3af" }}
-                    tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
+                    tickFormatter={(value) => `₹${value.toLocaleString("en-IN")} `}
                     tickLine={false}
                     axisLine={{ stroke: "#e5e7eb" }}
                     allowDecimals={false}
@@ -1808,7 +1877,7 @@ export default function ToHub() {
                 <p className="text-base font-bold text-gray-900">Orders by mealtime</p>
                 <p className="text-xs text-gray-500">
                   {lastUpdated
-                    ? `Last updated: ${formatTimeAgo(lastUpdated)}`
+                    ? `Last updated: ${formatTimeAgo(lastUpdated)} `
                     : "Last updated: a day ago"}
                 </p>
               </div>
@@ -1872,12 +1941,12 @@ export default function ToHub() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <style>{`
-        .chart-shell *, .chart-shell, .chart-shell-mini *, .chart-shell-mini,
-        .recharts-wrapper:focus, .recharts-surface:focus, .recharts-responsive-container:focus {
-          outline: none !important;
-          box-shadow: none !important;
-        }
-      `}</style>
+  .chart - shell *, .chart - shell, .chart - shell - mini *, .chart - shell - mini,
+        .recharts - wrapper: focus, .recharts - surface: focus, .recharts - responsive - container:focus {
+  outline: none!important;
+  box - shadow: none!important;
+}
+`}</style>
       <div className="">
         {/* Reuse Feedback-like navbar */}
         <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -1927,10 +1996,10 @@ export default function ToHub() {
             }}
           >
             <style>{`
-            .scrollbar-hide::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
+  .scrollbar - hide:: -webkit - scrollbar {
+  display: none;
+}
+`}</style>
             {topTabs.map((tab) => {
               const isActive = activeTopTab === tab.id
               return (
@@ -1943,7 +2012,7 @@ export default function ToHub() {
                       setTimeout(() => setIsTransitioning(false), 300)
                     }
                   }}
-                  className={`shrink-0 px-6 py-3.5 rounded-full font-medium text-sm whitespace-nowrap relative overflow-hidden ${isActive ? 'text-white' : 'bg-white text-black'}`}
+                  className={`shrink - 0 px - 6 py - 3.5 rounded - full font - medium text - sm whitespace - nowrap relative overflow - hidden ${isActive ? 'text-white' : 'bg-white text-black'} `}
                   animate={{ scale: isActive ? 1.05 : 1, opacity: isActive ? 1 : 0.7 }}
                   transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
                   whileTap={{ scale: 0.95 }}
@@ -1984,17 +2053,23 @@ export default function ToHub() {
             </div>
             <div>
               <h3 className="font-bold text-sm flex items-center gap-1.5">
-                Commission Base Mode
-                <span className="bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter">Active</span>
+                {restaurantData?.subscription?.status === 'expired' ? 'Plan Expired' : 'Commission Base Mode'}
+                <span className={`bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter ${restaurantData?.subscription?.status === 'expired' ? 'bg-red-500/40 border-red-200' : ''}`}>
+                  {restaurantData?.subscription?.status === 'expired' ? 'Action Required' : 'Active'}
+                </span>
               </h3>
-              <p className="text-[10px] text-white/80 font-medium">Get 0% extra commission with Subscription plans</p>
+              <p className="text-[10px] text-white/80 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                {restaurantData?.subscription?.status === 'expired'
+                  ? 'Your plan has ended. Renew for 0% commission.'
+                  : 'Get 0% extra commission with Subscription plans'}
+              </p>
             </div>
           </div>
           <button
             onClick={() => navigate('/restaurant/subscription-plans')}
-            className="bg-white text-indigo-700 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10"
+            className={`bg-white px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10 ${restaurantData?.subscription?.status === 'expired' ? 'text-red-700 hover:bg-red-50' : 'text-indigo-700 hover:bg-indigo-50'}`}
           >
-            Upgrade
+            {restaurantData?.subscription?.status === 'expired' ? 'Renew' : 'Upgrade'}
             <ArrowRight className="w-3 h-3" />
           </button>
         </motion.div>
@@ -2009,7 +2084,7 @@ export default function ToHub() {
 
           <div className="flex items-center gap-3 relative z-10">
             <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/30 shadow-inner">
-              <FaExclamationTriangle className="w-5 h-5 text-white" />
+              <AlertCircle className="w-5 h-5 text-white" />
             </div>
             <div>
               <h3 className="font-bold text-sm flex items-center gap-1.5">
@@ -2022,45 +2097,82 @@ export default function ToHub() {
             </div>
           </div>
           <button
-            onClick={() => navigate('/restaurant/business-plan')}
+            onClick={() => navigate('/restaurant/subscription-plans')}
             className="bg-white text-orange-700 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10"
           >
             Renew
             <ArrowRight className="w-3 h-3" />
           </button>
         </motion.div>
-      ) : (
+      ) : (!restaurantData?.subscription || restaurantData?.subscription?.status === 'inactive' || restaurantData?.subscription?.status === 'expired') ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mx-4 mt-4 bg-gradient-to-r from-green-600 to-teal-700 rounded-2xl p-4 text-white shadow-lg shadow-green-200 flex items-center justify-between overflow-hidden relative"
+          className="mx-4 mt-4 bg-gradient-to-r from-blue-600 to-cyan-700 rounded-2xl p-4 text-white shadow-lg shadow-blue-200 flex items-center justify-between overflow-hidden relative"
         >
           {/* Decorative background circle */}
           <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
 
           <div className="flex items-center gap-3 relative z-10">
             <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/30 shadow-inner">
-              <Crown className="w-5 h-5 text-yellow-300 fill-yellow-300" />
+              <Sparkles className="w-5 h-5 text-yellow-200" />
             </div>
             <div>
               <h3 className="font-bold text-sm flex items-center gap-1.5">
-                Subscription Base Mode
-                <span className="bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter">
-                  {restaurantData?.subscriptionPlanName || 'Premium'}
-                </span>
+                Subscription Pending
+                <span className="bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter">Payment Required</span>
               </h3>
-              <p className="text-[10px] text-white/80 font-medium">Enjoying 0% commission on all orders</p>
+              <p className="text-[10px] text-white/80 font-medium">Complete payment to activate 0% commission & premium features</p>
             </div>
           </div>
           <button
-            onClick={() => navigate('/restaurant/business-plan')}
-            className="bg-white text-green-700 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10"
+            onClick={() => navigate('/restaurant/subscription-plans')}
+            className="bg-white text-blue-700 px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10"
           >
-            My Plan
+            Pay Now
             <ArrowRight className="w-3 h-3" />
           </button>
         </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mt-5 bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-5 text-white shadow-xl shadow-emerald-100 flex items-center justify-between overflow-hidden relative border border-emerald-500/30"
+        >
+          {/* Enhanced decorative patterns */}
+          <div className="absolute -right-6 -top-10 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-emerald-400/10 rounded-full blur-2xl"></div>
+
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="bg-white/15 p-3 rounded-2xl backdrop-blur-md border border-white/20 shadow-lg shrink-0">
+              <Crown className="w-6 h-6 text-yellow-300 fill-yellow-300 animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h3 className="font-bold text-[15px] tracking-tight whitespace-nowrap">
+                  Subscription Base Mode
+                </h3>
+                <span className="bg-emerald-400/20 text-emerald-50 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-bold uppercase tracking-widest backdrop-blur-sm">
+                  {restaurantData?.subscription?.planName || 'Active'}
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-50/80 font-medium leading-tight">
+                Premium status • 0% Commission active
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/restaurant/subscription-plans')}
+            className="bg-white text-emerald-800 px-5 py-2.5 rounded-xl text-xs font-extra-bold hover:bg-emerald-50 transition-all shadow-xl active:scale-95 flex items-center gap-2 relative z-10 shrink-0 border border-emerald-100/50"
+          >
+            <span className="font-bold whitespace-nowrap">My Plan</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </motion.div>
       )}
+
+      <ExpiredSubscriptionModal />
 
       <AnimatePresence mode="wait">
         <motion.div

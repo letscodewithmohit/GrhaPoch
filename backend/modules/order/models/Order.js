@@ -64,7 +64,7 @@ const orderSchema = new mongoose.Schema({
   address: {
     label: {
       type: String,
-      enum: ['Home', 'Office', 'Other']
+      enum: ['Home', 'Office', 'Other', 'Current Location']
     },
     street: String,
     additionalDetails: String,
@@ -300,7 +300,16 @@ const orderSchema = new mongoose.Schema({
     zoneId: String,
     zoneName: String,
     deliveryPartnerId: String,
-    assignedAt: Date
+    assignedAt: Date,
+    // Priority-based notification tracking
+    priorityDeliveryPartnerIds: [String],
+    priorityNotifiedAt: Date,
+    expandedDeliveryPartnerIds: [String],
+    expandedNotifiedAt: Date,
+    notificationPhase: {
+      type: String,
+      enum: ['priority', 'expanded', 'immediate']
+    }
   },
   deliveryState: {
     status: {

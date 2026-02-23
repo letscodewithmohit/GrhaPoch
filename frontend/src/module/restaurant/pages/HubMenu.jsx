@@ -59,7 +59,7 @@ export default function HubMenu() {
   const [isAddAddonModalOpen, setIsAddAddonModalOpen] = useState(false)
   const [addons, setAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
-  const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false)
+
 
   // Add-on form state
   const [addonName, setAddonName] = useState("")
@@ -686,23 +686,8 @@ export default function HubMenu() {
     }
   }
 
-  // Handle Add Item Click with limit check
+  // Handle Add Item Click
   const handleAddItemClick = () => {
-    // Count total items across all sections and subsections
-    let totalItems = 0;
-    menuData.forEach(section => {
-      totalItems += (section.items?.length || 0);
-      section.subsections?.forEach(sub => {
-        totalItems += (sub.items?.length || 0);
-      });
-    });
-
-    const dishLimit = restaurantData?.dishLimit !== undefined ? restaurantData.dishLimit : 5;
-
-    if (dishLimit !== 0 && totalItems >= dishLimit) {
-      setIsLimitPopupOpen(true);
-      return;
-    }
     setIsAddPopupOpen(true);
   };
 
@@ -1633,52 +1618,7 @@ export default function HubMenu() {
         )}
       </div>
 
-      {/* Limit Reached Popup */}
-      <AnimatePresence>
-        {isLimitPopupOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsLimitPopupOpen(false)}
-              className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-xl z-50 w-full max-w-sm overflow-hidden"
-            >
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                    <span className="text-xl font-bold text-red-600">!</span>
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Dish Limit Reached</h3>
-                <p className="text-gray-500 mb-6">
-                  You have reached the limit of {restaurantData?.dishLimit} dishes. Upgrade your plan to add more items to your menu.
-                </p>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => navigate("/restaurant/subscription-plans")}
-                    className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors"
-                  >
-                    View Subscription Plans
-                  </button>
-                  <button
-                    onClick={() => setIsLimitPopupOpen(false)}
-                    className="w-full py-3 text-gray-500 font-medium hover:text-gray-900 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
 
       {/* Category Options Popup */}
       <AnimatePresence>

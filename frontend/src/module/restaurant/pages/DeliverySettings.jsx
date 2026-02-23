@@ -99,7 +99,7 @@ export default function DeliverySettings() {
 
         const startMinutes = parseTime(slot.start, slot.startPeriod || "am")
         const endMinutes = parseTime(slot.end, slot.endPeriod || "pm")
-        
+
         // Handle slots that span midnight (e.g., 11pm to 2am)
         if (endMinutes < startMinutes) {
           // Slot spans midnight
@@ -127,7 +127,7 @@ export default function DeliverySettings() {
     try {
       localStorage.setItem(DELIVERY_STATUS_KEY, JSON.stringify(status))
       setDeliveryStatus(status)
-      
+
       if (status) {
         showToast("Delivery is now ON - You're receiving orders")
       } else {
@@ -161,7 +161,7 @@ export default function DeliverySettings() {
   const handleConfirmStatusChange = () => {
     saveDeliveryStatus(pendingStatus)
     setShowConfirmDialog(false)
-    
+
     // Show warning if enabled outside timings
     if (pendingStatus && !canEnableDelivery) {
       setShowWarning(true)
@@ -179,7 +179,7 @@ export default function DeliverySettings() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Go back"
@@ -215,7 +215,7 @@ export default function DeliverySettings() {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-base font-bold text-gray-900 mb-1.5">Turn on delivery</p>
-                  <motion.div 
+                  <motion.div
                     className="flex items-center gap-2"
                     initial={false}
                     animate={{ scale: deliveryStatus ? 1.05 : 1 }}
@@ -228,7 +228,7 @@ export default function DeliverySettings() {
                   </motion.div>
                   <AnimatePresence>
                     {!canEnableDelivery && !deliveryStatus && (
-                      <motion.p 
+                      <motion.p
                         initial={{ opacity: 0, y: -5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -5 }}
@@ -239,7 +239,7 @@ export default function DeliverySettings() {
                       </motion.p>
                     )}
                     {showWarning && deliveryStatus && (
-                      <motion.p 
+                      <motion.p
                         initial={{ opacity: 0, y: -5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -5 }}
@@ -291,7 +291,7 @@ export default function DeliverySettings() {
               className="fixed inset-0 bg-black/50 z-[100]"
               onClick={handleCancelStatusChange}
             />
-            
+
             {/* Dialog */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -303,19 +303,17 @@ export default function DeliverySettings() {
             >
               <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
                 <div className="flex justify-center mb-4">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                    pendingStatus ? "bg-orange-100" : "bg-red-100"
-                  }`}>
-                    <AlertCircle className={`w-10 h-10 ${
-                      pendingStatus ? "text-orange-600" : "text-red-600"
-                    }`} />
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${ndingStatus ? "bg-orange-100" : "bg-red-100"
+                    }`}>
+                    <AlertCircle className={`w-10 h-10 ${ndingStatus ? "text-orange-600" : "text-red-600"
+                      }`} />
                   </div>
                 </div>
-                
+
                 <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
                   {pendingStatus ? "Enable Delivery?" : "Disable Delivery?"}
                 </h3>
-                
+
                 <p className="text-sm text-gray-600 mb-6 text-center">
                   {pendingStatus ? (
                     !canEnableDelivery ? (
@@ -327,7 +325,7 @@ export default function DeliverySettings() {
                     <>Customers won't be able to place delivery orders. You can turn it back on anytime.</>
                   )}
                 </p>
-                
+
                 <div className="flex gap-3">
                   <button
                     onClick={handleCancelStatusChange}
@@ -337,11 +335,10 @@ export default function DeliverySettings() {
                   </button>
                   <button
                     onClick={handleConfirmStatusChange}
-                    className={`flex-1 px-4 py-3 font-semibold rounded-lg transition-colors ${
-                      pendingStatus 
-                        ? "bg-green-600 hover:bg-green-700 text-white"
-                        : "bg-red-600 hover:bg-red-700 text-white"
-                    }`}
+                    className={`flex-1 px-4 py-3 font-semibold rounded-lg transition-colors ${ndingStatus
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : "bg-red-600 hover:bg-red-700 text-white"
+                      }`}
                   >
                     {pendingStatus ? "Enable" : "Disable"}
                   </button>

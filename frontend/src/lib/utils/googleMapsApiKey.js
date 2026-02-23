@@ -27,12 +27,12 @@ export async function getGoogleMapsApiKey() {
     try {
       const { adminAPI } = await import('../api/index.js');
       const response = await adminAPI.getPublicEnvVariables();
-      
+
       if (response.data.success && response.data.data?.VITE_GOOGLE_MAPS_API_KEY) {
         cachedApiKey = response.data.data.VITE_GOOGLE_MAPS_API_KEY;
         return cachedApiKey;
       }
-      
+
       // No fallback - return empty if not in database
       console.warn('⚠️ Google Maps API key not found in database. Please set it in Admin → System → Environment Variables');
       return '';

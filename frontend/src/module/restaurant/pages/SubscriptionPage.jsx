@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ArrowLeft, Crown, Sparkles, TrendingUp, Loader2, ShieldCheck, Zap, Headphones } from 'lucide-react';
+import { Check, ArrowLeft, Crown, Sparkles, TrendingUp, Loader2, History, Calendar, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { restaurantAPI } from '@/lib/api';
@@ -27,26 +27,26 @@ export default function SubscriptionPage() {
     const [submittingPlanId, setSubmittingPlanId] = useState(null);
     const [currentSubscription, setCurrentSubscription] = useState(null);
     const [restaurantData, setRestaurantData] = useState(null);
-    const [isSwitchPopupOpen, setIsSwitchPopupOpen] = useState(false);
+    const [subscriptionMeta, setSubscriptionMeta] = useState({ daysRemaining: null, showWarning: false, warningDays: 5 });
+    const [subscriptionHistory, setSubscriptionHistory] = useState([]);
+    const [businessModel, setBusinessModel] = useState(null);
 
-    const getDaysLeft = () => {
-        if (!currentSubscription?.endDate) return 0;
-        const end = new Date(currentSubscription.endDate);
-        const now = new Date();
-        const diffTime = end - now;
-        if (diffTime <= 0) return 0;
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    };
-
-    const handleSwitchToCommission = () => {
-        setIsSwitchPopupOpen(true);
-    };
 
     const fetchStatus = async () => {
         try {
             const res = await restaurantAPI.getSubscriptionStatus();
-            if (res.data?.data?.subscription) {
-                setCurrentSubscription(res.data.data.subscription);
+            const data = res.data?.data;
+            if (data?.subscription) {
+                setCurrentSubscription(data.subscription);
+            }
+            setBusinessModel(data?.businessModel || null);
+            setSubscriptionMeta({
+                daysRemaining: data?.daysRemaining ?? null,
+                showWarning: data?.showWarning ?? false,
+                warningDays: data?.warningDays ?? 5
+            });
+            if (Array.isArray(data?.subscriptionHistory)) {
+                setSubscriptionHistory(data.subscriptionHistory);
             }
         } catch (error) {
             console.error('Failed to fetch subscription status', error);
@@ -101,10 +101,15 @@ export default function SubscriptionPage() {
     const handleSubscribe = async (plan) => {
         if (submittingPlanId) return;
 
-        // Restriction: Cannot switch plans if one is already active
-        if (currentSubscription && currentSubscription.status === 'active') {
-            toast.info("You already have an active subscription. Please wait for it to expire.");
-            setIsSwitchPopupOpen(true);
+        // Restriction: Cannot switch plans if one is already active (unless it's nearing expiry)
+        const isNearExpiry = subscriptionMeta.showWarning;
+        if (currentSubscription && currentSubscription.status === 'active' && !isNearExpiry) {
+            const endDate = currentSubscription.endDate
+                ? new Date(currentSubscription.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+                : null;
+            const warningDays = subscriptionMeta.warningDays ?? 5;
+            const endDatePart = endDate ? ` Your plan expires on ${endDate}.` : '';
+            toast.info(`You already have an active subscription.${endDatePart} You can switch plans in the last ${warningDays} day${warningDays !== 1 ? 's' : ''} before expiry.`);
             return;
         }
 
@@ -309,7 +314,7 @@ export default function SubscriptionPage() {
                                                     <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-indigo-500 group-hover/item:text-white transition-colors">
                                                         <Check className="w-3 h-3 text-indigo-600 group-hover/item:text-white" />
                                                     </div>
-                                                    <span className="font-bold text-slate-900">{plan.dishLimit === 0 ? 'Unlimited' : plan.dishLimit} Dishes Included</span>
+                                                    <span className="font-bold text-slate-900">Unlimited Menu Items</span>
                                                 </div>
                                                 {plan.features.map((feature, idx) => (
                                                     <div key={idx} className="flex items-start gap-3 text-slate-600 group/item">
@@ -360,64 +365,113 @@ export default function SubscriptionPage() {
                     </div>
                 )}
 
-                {/* Switch to Commission Based Section - Only for Active Subscribers */}
-                {currentSubscription?.status === 'active' && !loading && (
-                    <div className="max-w-2xl mx-auto mt-12 text-center p-8 bg-amber-50 rounded-2xl border border-amber-200">
-                        <h3 className="text-xl font-bold text-amber-900 mb-2">Want to switch to Commission Based?</h3>
-                        <p className="text-amber-700 mb-6">
-                            You are currently on an active subscription plan.
-                            Switching to commission based model will take effect after your current plan expires.
-                        </p>
-                        <button
-                            onClick={handleSwitchToCommission}
-                            className="px-6 py-3 bg-white text-amber-600 border border-amber-300 rounded-xl font-semibold hover:bg-amber-100 transition-colors shadow-sm"
-                        >
-                            Switch to Commission Based
-                        </button>
-                    </div>
-                )}
 
-                {/* Days Left Popup */}
-                <AnimatePresence>
-                    {isSwitchPopupOpen && (
-                        <>
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setIsSwitchPopupOpen(false)}
-                                className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-                            />
-                            <motion.div
-                                initial={{ scale: 0.95, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.95, opacity: 0 }}
-                                className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-xl z-50 w-full max-w-sm overflow-hidden"
-                            >
-                                <div className="p-6 text-center">
-                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                            <span className="text-xl font-bold text-blue-600">i</span>
+                {/* My Subscriptions Section — only shows when there is an active plan OR real history */}
+                {(currentSubscription?.status === 'active' || subscriptionHistory.length > 0) && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="max-w-4xl mx-auto mt-10 mb-16 px-4"
+                    >
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="p-2 bg-slate-100 rounded-xl">
+                                <History className="w-5 h-5 text-slate-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800">My Subscriptions</h3>
+                                <p className="text-sm text-slate-500">Your current and past subscription plans</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {/* Current Active Plan — only shown when actually active */}
+                            {currentSubscription?.status === 'active' && currentSubscription?.planId && (
+                                <div className="bg-white rounded-2xl border-2 border-green-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+                                        <Crown className="w-5 h-5 text-green-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                                            <span className="font-bold text-slate-900 text-sm">{currentSubscription.planName || 'Current Plan'}</span>
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${currentSubscription.status === 'active'
+                                                ? 'bg-green-100 text-green-700'
+                                                : currentSubscription.status === 'expired'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : 'bg-slate-100 text-slate-600'
+                                                }`}>
+                                                {currentSubscription.status === 'active' ? '✓ Active' : currentSubscription.status}
+                                            </span>
+                                            {subscriptionMeta.daysRemaining !== null && currentSubscription.status === 'active' && (
+                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${subscriptionMeta.showWarning ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'
+                                                    }`}>
+                                                    {subscriptionMeta.daysRemaining} day{subscriptionMeta.daysRemaining !== 1 ? 's' : ''} remaining
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {currentSubscription.startDate
+                                                    ? new Date(currentSubscription.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                    : 'N/A'}
+                                                {' → '}
+                                                {currentSubscription.endDate
+                                                    ? new Date(currentSubscription.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                    : 'N/A'}
+                                            </span>
                                         </div>
                                     </div>
-                                    <h3 className="text-xl font-bold text-gray-900 mb-2">Active Subscription</h3>
-                                    <p className="text-gray-500 mb-6">
-                                        You have <span className="font-bold text-gray-900">{getDaysLeft()} days</span> left in your current subscription.
-                                    </p>
-                                    <p className="text-sm text-gray-400 mb-6">
-                                        You can continue using premium features until your plan expires. After expiry, you will be automatically switched to Commission Base.
-                                    </p>
-                                    <button
-                                        onClick={() => setIsSwitchPopupOpen(false)}
-                                        className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
-                                    >
-                                        Understood
-                                    </button>
+                                    {currentSubscription.paymentId && (
+                                        <div className="text-xs text-slate-400 font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 truncate max-w-[180px]" title={currentSubscription.paymentId}>
+                                            {currentSubscription.paymentId}
+                                        </div>
+                                    )}
                                 </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
+                            )}
+
+                            {/* Past Plans */}
+                            {subscriptionHistory.map((entry, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: idx * 0.07 }}
+                                    className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                                        <RefreshCw className="w-5 h-5 text-indigo-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                                            <span className="font-bold text-slate-700 text-sm">{entry.planName || 'Plan'}</span>
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${entry.status === 'renewed' ? 'bg-blue-100 text-blue-700'
+                                                : entry.status === 'expired' ? 'bg-red-100 text-red-700'
+                                                    : 'bg-slate-100 text-slate-600'
+                                                }`}>
+                                                {entry.status === 'renewed' ? 'Renewed' : entry.status === 'expired' ? 'Expired' : entry.status}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {entry.startDate ? new Date(entry.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                {' → '}
+                                                {entry.endDate ? new Date(entry.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {entry.paymentId && (
+                                        <div className="text-xs text-slate-400 font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 truncate max-w-[180px]" title={entry.paymentId}>
+                                            {entry.paymentId}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+
 
             </div>
         </div >

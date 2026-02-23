@@ -570,7 +570,6 @@ export const verifyOTP = asyncHandler(async (req, res) => {
         profileImage: restaurant.profileImage,
         isActive: restaurant.isActive,
         onboarding: restaurant.onboarding,
-        dishLimit: restaurant.dishLimit,
         businessModel: restaurant.businessModel
       }
     });
@@ -663,7 +662,6 @@ export const register = asyncHandler(async (req, res) => {
       signupMethod: restaurant.signupMethod,
       profileImage: restaurant.profileImage,
       isActive: restaurant.isActive,
-      dishLimit: restaurant.dishLimit,
       businessModel: restaurant.businessModel
     }
   });
@@ -732,7 +730,6 @@ export const login = asyncHandler(async (req, res) => {
       profileImage: restaurant.profileImage,
       isActive: restaurant.isActive,
       onboarding: restaurant.onboarding,
-      dishLimit: restaurant.dishLimit,
       businessModel: restaurant.businessModel
     }
   });
@@ -858,7 +855,17 @@ export const getCurrentRestaurant = asyncHandler(async (req, res) => {
     const diffTime = endDate - now;
     daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-    if (daysRemaining <= 5) {
+    // Fetch warning threshold from business settings
+    let warningThreshold = 5;
+    try {
+      const { default: BusinessSettings } = await import('../../admin/models/BusinessSettings.js');
+      const settings = await BusinessSettings.getSettings();
+      warningThreshold = settings?.subscriptionExpiryWarningDays || 5;
+    } catch (err) {
+      console.error('Error fetching warning threshold:', err);
+    }
+
+    if (daysRemaining <= warningThreshold) {
       showWarning = true;
     }
 
@@ -923,7 +930,6 @@ export const getCurrentRestaurant = asyncHandler(async (req, res) => {
       rejectionReason: restaurant.rejectionReason || null,
       approvedAt: restaurant.approvedAt || null,
       rejectedAt: restaurant.rejectedAt || null,
-      dishLimit: restaurant.dishLimit,
       businessModel: restaurant.businessModel,
       commissionRate: commissionRate,
       subscription: restaurant.subscription,
@@ -1131,7 +1137,6 @@ export const firebaseGoogleLogin = asyncHandler(async (req, res) => {
         profileImage: restaurant.profileImage,
         isActive: restaurant.isActive,
         onboarding: restaurant.onboarding,
-        dishLimit: restaurant.dishLimit,
         businessModel: restaurant.businessModel
       }
     });

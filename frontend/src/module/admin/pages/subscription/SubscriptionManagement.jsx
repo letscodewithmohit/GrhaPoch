@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Search, Crown, Check, Plus, Edit2, Trash2, X, AlertCircle, Loader2, Sparkles, TrendingUp, Eye, Phone, Mail, Calendar, CreditCard, User, Building2, MapPin, Download, FileText, FileSpreadsheet, ChevronDown } from "lucide-react"
+import { Search, Crown, Check, Plus, Edit2, Trash2, X, AlertCircle, Loader2, Sparkles, TrendingUp, Eye, Phone, Mail, Calendar, CreditCard, User, Building2, MapPin, Download, FileText, FileSpreadsheet, ChevronDown, History, RefreshCw } from "lucide-react"
 import { exportSubscriptionsToExcel, exportSubscriptionsToPDF } from "../../components/subscription/subscriptionExportUtils"
 import { adminAPI } from "../../../../lib/api"
 import { toast } from "sonner"
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export default function SubscriptionManagement() {
-    const [activeTab, setActiveTab] = useState("plans") // 'plans' or 'requests'
+    const [activeTab, setActiveTab] = useState("plans") // 'plans', 'requests', or 'settings'
     const [plans, setPlans] = useState([])
     const [restaurants, setRestaurants] = useState([])
     const [loading, setLoading] = useState(true)
@@ -38,6 +38,20 @@ export default function SubscriptionManagement() {
     const [viewDetailsOpen, setViewDetailsOpen] = useState(false)
     const [selectedRestaurant, setSelectedRestaurant] = useState(null)
 
+    // Edit Subscription Modal State
+    const [isEditSubModalOpen, setIsEditSubModalOpen] = useState(false)
+    const [editingSub, setEditingSub] = useState(null)
+    const [subForm, setSubForm] = useState({
+        status: "",
+        planId: "",
+        endDate: ""
+    })
+    const [savingSub, setSavingSub] = useState(false)
+
+    // Global Subscription Settings
+    const [expiryWarningDays, setExpiryWarningDays] = useState(5)
+    const [savingSettings, setSavingSettings] = useState(false)
+
     // Fetch Initial Data
     useEffect(() => {
         fetchData()
@@ -47,7 +61,6 @@ export default function SubscriptionManagement() {
         setLoading(true)
         try {
             // Always fetch plans to ensure we have mapping data
-            // In a real app we might cache this or optimize, but for now this ensures consistency
             const plansRes = await adminAPI.getSubscriptionPlans()
             if (plansRes.data?.success) {
                 setPlans(plansRes.data.data)
@@ -57,6 +70,14 @@ export default function SubscriptionManagement() {
                 const res = await adminAPI.getSubscriptionRequests()
                 if (res.data?.data?.restaurants) {
                     setRestaurants(res.data.data.restaurants)
+                }
+            }
+
+            if (activeTab === "settings") {
+                const res = await adminAPI.getBusinessSettings()
+                const settings = res?.data?.data || res?.data
+                if (settings) {
+                    setExpiryWarningDays(settings.subscriptionExpiryWarningDays || 5)
                 }
             }
         } catch (error) {
@@ -216,7 +237,7 @@ export default function SubscriptionManagement() {
         if (!window.confirm(`Are you sure you want to cancel the subscription for ${restaurant.name}?`)) return
 
         try {
-            await adminAPI.updateSubscriptionStatus(restaurant._id || restaurant.id, 'inactive')
+            await adminAPI.updateSubscriptionStatus(restaurant._id || restaurant.id, { status: 'inactive' })
             toast.success("Subscription cancelled successfully")
             // Refresh list
             if (activeTab === "requests") {
@@ -231,12 +252,53 @@ export default function SubscriptionManagement() {
         }
     }
 
+    const handleEditSubscription = (restaurant) => {
+        setEditingSub(restaurant)
+        setSubForm({
+            status: restaurant.subscription?.status || "active",
+            planId: restaurant.subscription?.planId || "",
+            endDate: restaurant.subscription?.endDate ? new Date(restaurant.subscription.endDate).toISOString().split('T')[0] : ""
+        })
+        setIsEditSubModalOpen(true)
+    }
+
+    const handleSaveSubscription = async () => {
+        if (!editingSub) return
+        setSavingSub(true)
+        try {
+            await adminAPI.updateSubscriptionStatus(editingSub._id || editingSub.id, subForm)
+            toast.success("Subscription updated successfully")
+            setIsEditSubModalOpen(false)
+            fetchData()
+        } catch (error) {
+            console.error("Error updating subscription:", error)
+            toast.error(error.response?.data?.message || "Failed to update subscription")
+        } finally {
+            setSavingSub(false)
+        }
+    }
+
     const handleExport = (type) => {
         const dataToExport = filteredRestaurants.length > 0 ? filteredRestaurants : restaurants
         if (type === 'excel') {
             exportSubscriptionsToExcel(dataToExport, plans, "subscription_list")
         } else if (type === 'pdf') {
             exportSubscriptionsToPDF(dataToExport, plans, "subscription_list")
+        }
+    }
+
+    const handleUpdateSettings = async () => {
+        setSavingSettings(true)
+        try {
+            await adminAPI.updateBusinessSettings({
+                subscriptionExpiryWarningDays: Number(expiryWarningDays)
+            })
+            toast.success("Settings updated successfully")
+        } catch (error) {
+            console.error("Error updating settings:", error)
+            toast.error("Failed to update settings")
+        } finally {
+            setSavingSettings(false)
         }
     }
 
@@ -273,6 +335,15 @@ export default function SubscriptionManagement() {
                                 }`}
                         >
                             Subscribers
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("settings")}
+                            className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === "settings"
+                                ? "bg-white shadow-sm text-slate-900 ring-1 ring-slate-200"
+                                : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                                }`}
+                        >
+                            Setup
                         </button>
                     </div>
                 </div>
@@ -407,7 +478,7 @@ export default function SubscriptionManagement() {
                             </div>
                         )}
                     </div>
-                ) : (
+                ) : activeTab === "requests" ? (
                     <div className="space-y-6">
                         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                             <div className="relative w-full max-w-md">
@@ -520,12 +591,20 @@ export default function SubscriptionManagement() {
                                                         className="text-slate-400 hover:text-slate-600"
                                                         onClick={() => handleViewDetails(res)}
                                                     >
-                                                        <Eye className="w-4 h-4 mr-1" /> View Details
+                                                        <Eye className="w-4 h-4 mr-1" /> View
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 ml-1"
+                                                        className="text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50"
+                                                        onClick={() => handleEditSubscription(res)}
+                                                    >
+                                                        <Edit2 className="w-4 h-4 mr-1" /> Edit
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50"
                                                         onClick={() => handleCancelSubscription(res)}
                                                         title="Cancel Subscription"
                                                     >
@@ -538,6 +617,48 @@ export default function SubscriptionManagement() {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                ) : (
+                    <div className="max-w-2xl">
+                        <Card className="border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 text-indigo-600" />
+                                    Global Subscription Settings
+                                </h3>
+                            </div>
+                            <CardContent className="p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold text-slate-700">Subscription Expiry Warning (Days)</Label>
+                                    <p className="text-xs text-slate-500 mb-2">
+                                        Number of days before natural expiry to show the renewal warning banner to restaurant owners.
+                                    </p>
+                                    <div className="flex gap-4">
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            value={expiryWarningDays}
+                                            onChange={(e) => setExpiryWarningDays(e.target.value)}
+                                            className="max-w-[200px] h-10 border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/10"
+                                        />
+                                        <Button
+                                            onClick={handleUpdateSettings}
+                                            disabled={savingSettings}
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 min-w-[120px]"
+                                        >
+                                            {savingSettings ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                            Update Settings
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                                    <p className="text-xs text-amber-800 leading-relaxed">
+                                        <strong>Note:</strong> This setting applies globally to all restaurants using the subscription-based model. Restaurants will see a blue warning banner on their dashboard starting from these many days before their plan ends.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
             </div>
@@ -797,12 +918,111 @@ export default function SubscriptionManagement() {
                         </div>
                     )}
 
+                    {/* Subscription History */}
+                    {selectedRestaurant && selectedRestaurant.subscriptionHistory && selectedRestaurant.subscriptionHistory.length > 0 && (
+                        <div className="px-6 pb-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <History className="w-4 h-4 text-slate-500" />
+                                <h4 className="font-semibold text-slate-700 text-sm">Plan History</h4>
+                                <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{selectedRestaurant.subscriptionHistory.length} records</span>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                {[...selectedRestaurant.subscriptionHistory].reverse().map((entry, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 bg-slate-50 rounded-xl border border-slate-100 p-3">
+                                        <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                                            <RefreshCw className="w-3.5 h-3.5 text-indigo-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-slate-800">{entry.planName || 'Plan'}</span>
+                                                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${entry.status === 'renewed' ? 'bg-blue-100 text-blue-700'
+                                                        : entry.status === 'expired' ? 'bg-red-100 text-red-700'
+                                                            : 'bg-slate-200 text-slate-600'
+                                                    }`}>
+                                                    {entry.status === 'renewed' ? 'Renewed' : entry.status === 'expired' ? 'Expired' : entry.status}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-400 mt-0.5">
+                                                {entry.startDate ? new Date(entry.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                {' → '}
+                                                {entry.endDate ? new Date(entry.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
                         <Button
                             onClick={() => setViewDetailsOpen(false)}
                             className="bg-slate-900 text-white hover:bg-slate-800"
                         >
                             Close Details
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Subscription Modal */}
+            <Dialog open={isEditSubModalOpen} onOpenChange={setIsEditSubModalOpen}>
+                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl bg-white">
+                    <DialogHeader className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                        <DialogTitle className="text-xl font-bold text-slate-900">Edit Subscription</DialogTitle>
+                        <DialogDescription className="text-slate-500">
+                            Manually update the subscription for {editingSub?.name}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-slate-700">Select Plan</Label>
+                            <select
+                                value={subForm.planId}
+                                onChange={(e) => setSubForm({ ...subForm, planId: e.target.value })}
+                                className="w-full h-10 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+                            >
+                                <option value="">Select a plan</option>
+                                {plans.map(plan => (
+                                    <option key={plan._id} value={plan._id}>{plan.name} (₹{plan.price})</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-slate-700">Status</Label>
+                            <select
+                                value={subForm.status}
+                                onChange={(e) => setSubForm({ ...subForm, status: e.target.value })}
+                                className="w-full h-10 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+                            >
+                                <option value="active">Active</option>
+                                <option value="expired">Expired</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-slate-700">Expiry Date</Label>
+                            <Input
+                                type="date"
+                                value={subForm.endDate}
+                                onChange={(e) => setSubForm({ ...subForm, endDate: e.target.value })}
+                                className="h-10 border-slate-200"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <Button variant="ghost" onClick={() => setIsEditSubModalOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={handleSaveSubscription}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            disabled={savingSub}
+                        >
+                            {savingSub && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                            Save Changes
                         </Button>
                     </div>
                 </DialogContent>

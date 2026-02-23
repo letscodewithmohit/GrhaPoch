@@ -1,0 +1,65 @@
+{
+  "_id": "699c0615c08573767b624a11",
+  "deliveryId": "699c05a0c08573767b62495d",
+  "totalBalance": 52,
+  "cashInHand": 311,
+  "totalWithdrawn": 0,
+  "totalEarned": 85649.02,
+  "joiningBonusClaimed": false,
+  "joiningBonusAmount": 0,
+  "isActive": true,
+  "transactions": [
+    {
+      "amount": 21,
+      "type": "payment",
+      "status": "Completed",
+      "description": "Delivery earnings for Order #ORD-1771837683838-780 (Distance: Fixed (COORDS_ERROR))",
+      "orderId": "699c18f49ec5f229681539ca",
+      "paymentCollected": false,
+      "metadata": {
+        "baseEarning": 42819.48,
+        "distance": 8563.496648174405,
+        "orderNumber": "ORD-1771837683838-780"
+      },
+      "_id": "699c1d5344b946cded7cac1e",
+      "createdAt": "2026-02-23T09:26:43.908Z",
+      "updatedAt": "2026-02-23T10:00:54.967Z"
+    },
+    {
+      "amount": 21,
+      "type": "payment",
+      "status": "Completed",
+      "description": "Delivery earnings for Order #ORD-1771839820929-586 (Distance: Fixed (COORDS_ERROR))",
+      "orderId": "699c214da9f25605770759b3",
+      "paymentCollected": false,
+      "metadata": {
+        "baseEarning": 42819.54,
+        "distance": 8563.507061235994,
+        "orderNumber": "ORD-1771839820929-586"
+      },
+      "_id": "699c21b0a9f2560577075d85",
+      "createdAt": "2026-02-23T09:45:20.138Z",
+      "updatedAt": "2026-02-23T10:00:54.967Z"
+    },
+    {
+      "amount": 10,
+      "type": "tip",
+      "status": "Completed",
+      "description": "Customer tip for Order #ORD-1771839820929-586",
+      "orderId": "699c214da9f25605770759b3",
+      "paymentCollected": false,
+      "metadata": {
+        "tipAmount": 10,
+        "orderNumber": "ORD-1771839820929-586"
+      },
+      "_id": "699c21b0a9f2560577075d86",
+      "createdAt": "2026-02-23T09:45:20.140Z",
+      "updatedAt": "2026-02-23T09:45:20.140Z"
+    }
+  ],
+  "withdrawalRequests": [],
+  "createdAt": "2026-02-23T07:47:33.542Z",
+  "updatedAt": "2026-02-23T10:00:54.968Z",
+  "__v": 2,
+  "lastTransactionAt": "2026-02-23T09:45:20.141Z"
+}

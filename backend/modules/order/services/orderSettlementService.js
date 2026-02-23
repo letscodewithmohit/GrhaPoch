@@ -116,25 +116,24 @@ export const calculateOrderSettlement = async (orderId) => {
       status: 'pending'
     };
 
-    if (order.deliveryPartnerId && order.assignmentInfo?.distance) {
+    if (order.deliveryPartnerId && order.assignmentInfo?.distance !== undefined && order.assignmentInfo?.distance !== null) {
       const distance = order.assignmentInfo.distance;
       const deliveryCommission = await DeliveryBoyCommission.calculateCommission(distance);
 
-      // NEW LOGIC: Base Payout is User's Delivery Fee OR Minimum Base Payout from Rule (whichever is higher)
-      // This ensures driver gets paid even if delivery is free for user
-      const ruleBasePayout = deliveryCommission.breakdown.basePayout || 0;
-      const basePayout = Math.max(userPayment.deliveryFee, ruleBasePayout);
+      // NEW LOGIC: Base Payout is the ENTIRE delivery fee paid by the user (which already includes distance commission)
+      // Or the total commission according to rules (whichever is higher)
+      const commissionFromRule = deliveryCommission.commission || 0;
+      const basePayout = Math.max(userPayment.deliveryFee, commissionFromRule);
 
-      // Calculate distance commission (ON TOP of the base payout)
-      // distanceCommission comes from the rules (e.g. ₹5/km for distance > 4km)
-      const distanceCommission = deliveryCommission.breakdown.distanceCommission;
+      // Distance commission is now 0 because it's already included in the basePayout
+      const distanceCommission = 0;
 
       // Get surge multiplier
       const surgeMultiplier = order.assignmentInfo?.surgeMultiplier || 1;
-      const surgeAmount = 0; // Keeping 0 for now as per previous logic, or implement surge calc if needed
+      const surgeAmount = 0;
 
-      // Total Earning = Delivery Fee (Base) + Distance Commission + Surge + Tip
-      const deliveryPartnerTotal = basePayout + distanceCommission + surgeAmount + userPayment.tip;
+      // Total Earning = Base Payout (which includes distance) + Surge + Tip
+      const deliveryPartnerTotal = basePayout + surgeAmount + userPayment.tip;
 
       deliveryPartnerEarning = {
         basePayout: basePayout, // This is now userPayment.deliveryFee
@@ -172,7 +171,7 @@ export const calculateOrderSettlement = async (orderId) => {
     const adminGST = Math.round(userPayment.gst * 100) / 100;
     const adminFixedFee = Math.round((userPayment.fixedFee || 0) * 100) / 100;
     const adminDonation = Math.round((userPayment.donation || 0) * 100) / 100;
-    const adminTotal = Math.round((adminCommission + adminPlatformFee + adminDeliveryFee + adminGST + adminFixedFee + adminDonation) * 100) / 100;
+    const adminTotal = Math.round((adminCommission + adminPlatformFee + deliveryMargin + adminGST + adminFixedFee + adminDonation) * 100) / 100;
 
     const adminEarning = {
       commission: adminCommission,
@@ -234,8 +233,8 @@ export const calculateOrderSettlement = async (orderId) => {
 
     return settlement;
   } catch (error) {
-    console.error('Error calculating order settlement:', error);
-    throw new Error(`Failed to calculate order settlement: ${error.message}`);
+    console.error(`❌ Error in calculateOrderSettlement for order ${orderId}:`, error);
+    throw new Error(error.message || 'Failed to calculate order settlement');
   }
 };
 

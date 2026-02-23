@@ -21,36 +21,7 @@ const countDishes = (menu) => {
   return count;
 };
 
-// Helper function to check if restaurant can add more dishes
-const canAddDish = async (restaurantId, additionalCount = 1) => {
-  let restaurant = await Restaurant.findById(restaurantId);
-  restaurant = await checkSubscriptionExpiry(restaurant);
-  const menu = await Menu.findOne({ restaurant: restaurantId });
 
-  const currentCount = countDishes(menu);
-  const totalWanted = currentCount + additionalCount;
-
-  // Get limit from restaurant or from BusinessSettings if not set
-  let limit = restaurant.dishLimit;
-  if (limit === undefined || limit === null) {
-    const settings = await BusinessSettings.getSettings();
-    limit = settings.initialRestaurantDishLimit !== undefined ? settings.initialRestaurantDishLimit : 0;
-  }
-
-  // If limit is 0, it means unlimited
-  if (limit === 0) return { allowed: true };
-
-  if (totalWanted > limit) {
-    return {
-      allowed: false,
-      currentCount,
-      limit,
-      message: `Dish limit reached (${limit}). Please upgrade your subscription to add more dishes.`
-    };
-  }
-
-  return { allowed: true };
-};
 
 // Get menu for a restaurant
 export const getMenu = asyncHandler(async (req, res) => {
@@ -92,28 +63,7 @@ export const updateMenu = asyncHandler(async (req, res) => {
   const existingMenu = await Menu.findOne({ restaurant: restaurantId });
   console.log('[UPDATE MENU] Existing menu found:', existingMenu ? 'Yes' : 'No');
 
-  // Check dish limit
-  let incomingCount = 0;
-  if (sections && Array.isArray(sections)) {
-    sections.forEach(section => {
-      incomingCount += (section.items || []).length;
-      (section.subsections || []).forEach(subsection => {
-        incomingCount += (subsection.items || []).length;
-      });
-    });
-  }
 
-  let restaurant = await Restaurant.findById(restaurantId);
-  restaurant = await checkSubscriptionExpiry(restaurant);
-  let limit = restaurant.dishLimit;
-  if (limit === undefined || limit === null) {
-    const settings = await BusinessSettings.getSettings();
-    limit = settings.initialRestaurantDishLimit !== undefined ? settings.initialRestaurantDishLimit : 0;
-  }
-
-  if (limit !== 0 && incomingCount > limit) {
-    return errorResponse(res, 400, `Dish limit reached (${limit}). You are trying to save ${incomingCount} dishes. Please upgrade your subscription.`);
-  }
 
   if (existingMenu) {
     console.log('[UPDATE MENU] Existing sections count:', existingMenu.sections?.length || 0);
@@ -446,11 +396,8 @@ export const addItemToSection = asyncHandler(async (req, res) => {
     return errorResponse(res, 400, 'Item name and price are required');
   }
 
-  // Check dish limit
-  const limitCheck = await canAddDish(restaurantId, 1);
-  if (!limitCheck.allowed) {
-    return errorResponse(res, 403, limitCheck.message);
-  }
+  // No dish limit for any restaurant model. Unlimited food items allowed.
+
 
   // Find menu
   const menu = await Menu.findOne({ restaurant: restaurantId });
@@ -590,11 +537,8 @@ export const addItemToSubsection = asyncHandler(async (req, res) => {
     return errorResponse(res, 400, 'Item name and price are required');
   }
 
-  // Check dish limit
-  const limitCheck = await canAddDish(restaurantId, 1);
-  if (!limitCheck.allowed) {
-    return errorResponse(res, 403, limitCheck.message);
-  }
+  // No dish limit for any restaurant model. Unlimited food items allowed.
+
 
   // Find menu
   const menu = await Menu.findOne({ restaurant: restaurantId });

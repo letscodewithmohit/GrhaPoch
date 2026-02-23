@@ -44,7 +44,7 @@ export const getRestaurantCommissions = asyncHandler(async (req, res) => {
 
     // Get commissions
     const commissions = await RestaurantCommission.find(query)
-      .populate('restaurant', 'name restaurantId isActive email phone businessModel dishLimit')
+      .populate('restaurant', 'name restaurantId isActive email phone businessModel')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .sort({ createdAt: -1 })
@@ -161,7 +161,7 @@ export const getRestaurantCommissionById = asyncHandler(async (req, res) => {
     }
 
     const commission = await RestaurantCommission.findById(id)
-      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel dishLimit')
+      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .lean();
@@ -192,7 +192,7 @@ export const getCommissionByRestaurantId = asyncHandler(async (req, res) => {
     }
 
     const commission = await RestaurantCommission.findOne({ restaurant: restaurantId })
-      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel dishLimit')
+      .populate('restaurant', 'name restaurantId isActive email phone ownerName businessModel')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .lean();
@@ -221,8 +221,7 @@ export const createRestaurantCommission = asyncHandler(async (req, res) => {
       commissionRules,
       defaultCommission,
       status,
-      notes,
-      dishLimit
+      notes
     } = req.body;
 
     const adminId = req.user._id;
@@ -305,10 +304,7 @@ export const createRestaurantCommission = asyncHandler(async (req, res) => {
 
     await commission.save();
 
-    // Update dish limit if provided
-    if (dishLimit !== undefined) {
-      await Restaurant.findByIdAndUpdate(restaurantId, { $set: { dishLimit: Number(dishLimit) } });
-    }
+
 
     // Create audit log
     try {
@@ -366,8 +362,7 @@ export const updateRestaurantCommission = asyncHandler(async (req, res) => {
       commissionRules,
       defaultCommission,
       status,
-      notes,
-      dishLimit
+      notes
     } = req.body;
 
     const adminId = req.user._id;
@@ -453,10 +448,7 @@ export const updateRestaurantCommission = asyncHandler(async (req, res) => {
 
     await commission.save();
 
-    // Update dish limit if provided
-    if (dishLimit !== undefined) {
-      await Restaurant.findByIdAndUpdate(commission.restaurant, { $set: { dishLimit: Number(dishLimit) } });
-    }
+
 
     // Create audit log for commission change
     if (defaultCommission && (
@@ -623,8 +615,7 @@ export const upgradeToSubscription = asyncHandler(async (req, res) => {
     // Set business model to Subscription Base
     restaurant.businessModel = 'Subscription Base';
 
-    // Set dish limit to 0 (unlimited) for everyone as per requirements
-    restaurant.dishLimit = 0;
+
 
     await restaurant.save();
 
@@ -650,8 +641,7 @@ export const upgradeToSubscription = asyncHandler(async (req, res) => {
       restaurant: {
         _id: restaurant._id,
         name: restaurant.name,
-        businessModel: restaurant.businessModel,
-        dishLimit: restaurant.dishLimit
+        businessModel: restaurant.businessModel
       }
     });
   } catch (error) {

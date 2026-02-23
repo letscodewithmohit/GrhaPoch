@@ -42,7 +42,7 @@ export async function findNearestDeliveryBoys(restaurantLat, restaurantLng, rest
     let deliveryQuery = {
       'availability.isOnline': true,
       status: { $in: ['approved', 'active'] },
-      isActive: true,
+      isActive: { $ne: false }, // include partners where isActive is true OR undefined/null
       'availability.currentLocation.coordinates': {
         $exists: true,
         $ne: [0, 0]
@@ -219,7 +219,7 @@ export async function findNearestDeliveryBoy(restaurantLat, restaurantLng, resta
     let deliveryQuery = {
       'availability.isOnline': true,
       status: { $in: ['approved', 'active'] },
-      isActive: true,
+      isActive: { $ne: false }, // include partners where isActive is true OR undefined/null
       'availability.currentLocation.coordinates': {
         $exists: true,
         $ne: [0, 0] // Exclude default/null coordinates

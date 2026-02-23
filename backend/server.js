@@ -13,6 +13,22 @@ import mongoose from 'mongoose';
 // Load environment variables
 dotenv.config();
 
+// Silence noisy debug logs unless explicitly enabled
+if (process.env.DEBUG_SOCKET_LOGS !== 'true') {
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    const first = args?.[0];
+    const message = typeof first === 'string' ? first : '';
+    if (
+      message.includes('Socket.IO: Allowing connection') ||
+      message.includes('Socket.IO: Allowing localhost connection')
+    ) {
+      return;
+    }
+    originalConsoleLog(...args);
+  };
+}
+
 // Import configurations
 import { connectDB } from './config/database.js';
 import { connectRedis } from './config/redis.js';
@@ -644,9 +660,10 @@ function initializeScheduledTasks() {
     console.error('❌ Failed to initialize auto-reject service:', error);
   });
 
-  // Import subscription expiry service
-  import('./modules/restaurant/services/subscriptionExpiryService.js').then(({ processSubscriptionExpiries }) => {
-    // Run every hour to check for expired subscriptions
+  // Import subscription expiry + warning service
+  import('./modules/restaurant/services/subscriptionExpiryService.js').then(({ processSubscriptionExpiries, processSubscriptionWarnings }) => {
+
+    // ── Hourly: expire overdue subscriptions ──────────────────────────────
     cron.schedule('0 * * * *', async () => {
       try {
         const result = await processSubscriptionExpiries();
@@ -658,7 +675,19 @@ function initializeScheduledTasks() {
       }
     });
 
-    // Also run once on startup (after a short delay)
+    // ── Daily at 9:00 AM: warn restaurants nearing expiry ─────────────────
+    cron.schedule('0 9 * * *', async () => {
+      try {
+        const result = await processSubscriptionWarnings();
+        if (result.warned > 0) {
+          console.log(`[Subscription Warning Cron] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[Subscription Warning Cron] Error:', error);
+      }
+    });
+
+    // ── Run expiry check once on startup (after a short delay) ────────────
     setTimeout(async () => {
       try {
         const result = await processSubscriptionExpiries();
@@ -671,6 +700,7 @@ function initializeScheduledTasks() {
     }, 10000);
 
     console.log('✅ Subscription expiry scheduler initialized (runs every hour)');
+    console.log('✅ Subscription warning scheduler initialized (runs daily at 9:00 AM)');
   }).catch((error) => {
     console.error('❌ Failed to initialize subscription expiry service:', error);
   });

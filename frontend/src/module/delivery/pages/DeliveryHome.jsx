@@ -9348,7 +9348,7 @@ export default function DeliveryHome() {
                             <p className="text-green-700 text-xs">
                               Base: ₹{earnings.basePayout?.toFixed(0) || '0'}
                               {earnings.distanceCommission > 0 && (
-                                <> + Distance ({earnings.distance?.toFixed(1)} km × ₹{earnings.commissionPerKm?.toFixed(0)}/km) = ₹{earnings.distanceCommission?.toFixed(0)}</>
+                                <> + Distance ({(earnings.distance - earnings.minDistance)?.toFixed(1)} km × ₹{earnings.commissionPerKm?.toFixed(0)}/km) = ₹{earnings.distanceCommission?.toFixed(0)}</>
                               )}
                             </p>
                             {earnings.distance <= earnings.minDistance && earnings.distanceCommission === 0 && (
@@ -10489,6 +10489,14 @@ export default function DeliveryHome() {
                         orderEarnings
                       setOrderEarnings(earnings)
 
+                      // Update selectedRestaurant with the final breakdown
+                      if (response.data.data?.earnings?.breakdown) {
+                        setSelectedRestaurant(prev => ({
+                          ...prev,
+                          estimatedEarnings: response.data.data.earnings.breakdown
+                        }))
+                      }
+
                       console.log('✅ Delivery completed and earnings added to wallet:', earnings)
                       console.log('✅ Wallet transaction:', response.data.data?.walletTransaction)
 
@@ -10570,27 +10578,49 @@ export default function DeliveryHome() {
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Trip pay</span>
+                    <span className="text-gray-600">Base Pay</span>
                     <span className="text-gray-900 font-semibold">₹{(() => {
-                      let earnings = 0;
-                      if (orderEarnings > 0) {
-                        earnings = orderEarnings;
-                      } else {
-                        const estEarnings = selectedRestaurant?.amount || selectedRestaurant?.estimatedEarnings || 0;
-                        if (typeof estEarnings === 'object' && estEarnings.totalEarning) {
-                          earnings = estEarnings.totalEarning;
-                        } else if (typeof estEarnings === 'number') {
-                          earnings = estEarnings;
-                        }
+                      const earningsObj = selectedRestaurant?.estimatedEarnings;
+                      // Primary: check breakdown from backend
+                      if (typeof earningsObj === 'object' && earningsObj.basePayout != null) {
+                        return Number(earningsObj.basePayout).toFixed(2);
                       }
-                      return (earnings - 5).toFixed(2);
+
+                      // Fallback: If no breakdown, use a default base pay if total is large
+                      const total = orderEarnings > 0 ? orderEarnings : (typeof earningsObj === 'object' ? (earningsObj.totalEarning || 0) : (typeof selectedRestaurant?.amount === 'number' ? selectedRestaurant.amount : 0));
+                      const distComm = (typeof earningsObj === 'object' && earningsObj.distanceCommission) ? earningsObj.distanceCommission : 0;
+                      const tip = (typeof earningsObj === 'object' && earningsObj.tip) ? earningsObj.tip : 0;
+                      return Math.max(0, total - distComm - tip).toFixed(2);
                     })()}</span>
                   </div>
 
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Long distance return pay</span>
-                    <span className="text-gray-900 font-semibold">₹5.00</span>
-                  </div>
+                  {/* Show Distance Bonus only if it's more than 0 */}
+                  {(() => {
+                    const distComm = selectedRestaurant?.estimatedEarnings?.distanceCommission || 0;
+                    if (distComm > 0) {
+                      return (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-gray-600">Distance Bonus</span>
+                          <span className="text-gray-900 font-semibold">₹{Number(distComm).toFixed(2)}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Show Customer Tip only if it's more than 0 */}
+                  {(() => {
+                    const tip = selectedRestaurant?.estimatedEarnings?.tip || 0;
+                    if (tip > 0) {
+                      return (
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100 italic text-green-700">
+                          <span className="font-medium">Customer Tip ❤️</span>
+                          <span className="font-bold">₹{Number(tip).toFixed(2)}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   <div className="flex justify-between items-center py-2">
                     <span className="text-lg font-bold text-gray-900">Total Earnings</span>
@@ -10598,7 +10628,6 @@ export default function DeliveryHome() {
                       if (orderEarnings > 0) {
                         return orderEarnings.toFixed(2);
                       }
-                      // Handle estimatedEarnings - can be number or object
                       const earnings = selectedRestaurant?.amount || selectedRestaurant?.estimatedEarnings || 0;
                       if (typeof earnings === 'object' && earnings.totalEarning) {
                         return earnings.totalEarning.toFixed(2);

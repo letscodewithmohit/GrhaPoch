@@ -214,8 +214,8 @@ export default function DeliverySignIn() {
                   autoComplete="off"
                   autoFocus={false}
                   className={`w-full px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 text-base border rounded-lg min-w-0 bg-white ${error && formData.phone.length > 0
-                      ? "border-red-500 focus:ring-red-500 focus:border-red-500"
-                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                    ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                     }`}
                   style={{ height: '48px' }}
                 />
@@ -230,8 +230,8 @@ export default function DeliverySignIn() {
               onClick={handleSendOTP}
               disabled={!isValid || isSending}
               className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${isValid && !isSending
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
             >
               {isSending ? "Sending OTP..." : "Send OTP"}

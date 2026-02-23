@@ -965,10 +965,10 @@ export const adminAPI = {
   getSubscriptionRequests: () => {
     return apiClient.get(API_ENDPOINTS.ADMIN.RESTAURANTS_SUBSCRIPTIONS);
   },
-  updateSubscriptionStatus: (restaurantId, status, planId) => {
+  updateSubscriptionStatus: (restaurantId, data) => {
     return apiClient.put(
       API_ENDPOINTS.ADMIN.RESTAURANTS_SUBSCRIPTION_UPDATE.replace(':restaurantId', restaurantId),
-      { status, planId }
+      data
     );
   },
 

@@ -63,7 +63,8 @@ export const updateBusinessSettings = asyncHandler(async (req, res) => {
       pincode,
       maintenanceMode,
       donationAmounts,
-      deliveryTipAmounts
+      deliveryTipAmounts,
+      subscriptionExpiryWarningDays
     } = req.body;
 
     // Get existing settings
@@ -112,6 +113,9 @@ export const updateBusinessSettings = asyncHandler(async (req, res) => {
       } else if (typeof deliveryTipAmounts === 'string') {
         settings.deliveryTipAmounts = deliveryTipAmounts.split(',').map(val => Number(val.trim())).filter(n => !isNaN(n));
       }
+    }
+    if (subscriptionExpiryWarningDays !== undefined) {
+      settings.subscriptionExpiryWarningDays = Number(subscriptionExpiryWarningDays) || 5;
     }
 
     // Handle logo upload

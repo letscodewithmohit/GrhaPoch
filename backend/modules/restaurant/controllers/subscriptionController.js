@@ -31,6 +31,27 @@ export const createSubscriptionOrder = async (req, res) => {
             return errorResponse(res, 404, 'Restaurant not found');
         }
 
+        // Guard: block payment if subscription is still active and not in warning window
+        if (
+            restaurant.businessModel === 'Subscription Base' &&
+            restaurant.subscription?.status === 'active' &&
+            restaurant.subscription?.endDate
+        ) {
+            const settings = await BusinessSettings.getSettings();
+            const warningDays = settings?.subscriptionExpiryWarningDays || 5;
+            const now = new Date();
+            const endDate = new Date(restaurant.subscription.endDate);
+            const daysRemaining = Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
+
+            if (daysRemaining > warningDays) {
+                return errorResponse(
+                    res,
+                    400,
+                    `You already have an active subscription. You can renew in the last ${warningDays} days before expiry (${daysRemaining} days remaining).`
+                );
+            }
+        }
+
         const amount = plan.price * 100; // Convert to paise
 
         // Create Razorpay order using centralized service
@@ -60,6 +81,7 @@ export const createSubscriptionOrder = async (req, res) => {
     }
 };
 
+
 // Verify payment and activate subscription
 export const verifyPaymentAndActivate = async (req, res) => {
     try {
@@ -86,22 +108,58 @@ export const verifyPaymentAndActivate = async (req, res) => {
         }
 
         const now = new Date();
-        const durationDays = plan.durationMonths * 30; // Approximation
-        const endDate = new Date(now);
-        endDate.setDate(endDate.getDate() + durationDays);
+        let startDate = now;
+        let endDate = new Date(now);
+
+        // If subscription is already active (renewal during warning window),
+        // the new plan starts exactly when the old plan ends.
+        // This ensures the remaining days of the old plan are NOT lost.
+        const isRenewing = restaurant.businessModel === 'Subscription Base' &&
+            restaurant.subscription?.status === 'active' &&
+            restaurant.subscription?.endDate;
+
+        if (isRenewing) {
+            // New billing period begins at the old plan's end date
+            startDate = new Date(restaurant.subscription.endDate);
+            endDate = new Date(restaurant.subscription.endDate);
+        }
+
+        endDate.setMonth(endDate.getMonth() + plan.durationMonths);
+
+        // Ensure we handle month-end overflow (e.g., Jan 31 -> Feb 28/29)
+        const expectedDay = startDate.getDate();
+        if (endDate.getDate() !== expectedDay) {
+            endDate.setDate(0); // Roll back to last day of previous month
+        }
+
+        // If renewing, archive the old subscription into history before overwriting
+        if (isRenewing && restaurant.subscription) {
+            if (!restaurant.subscriptionHistory) {
+                restaurant.subscriptionHistory = [];
+            }
+            restaurant.subscriptionHistory.push({
+                planId: restaurant.subscription.planId,
+                planName: restaurant.subscription.planName,
+                status: 'renewed',
+                startDate: restaurant.subscription.startDate,
+                endDate: restaurant.subscription.endDate,
+                paymentId: restaurant.subscription.paymentId,
+                orderId: restaurant.subscription.orderId,
+                activatedAt: restaurant.subscription.startDate || now
+            });
+        }
 
         restaurant.subscription = {
             planId: planId,
             planName: plan.name,
             status: 'active',
-            startDate: now,
+            startDate: startDate,
             endDate: endDate,
             paymentId: razorpay_payment_id,
             orderId: razorpay_order_id
         };
         restaurant.businessModel = 'Subscription Base';
         restaurant.isActive = true;
-        restaurant.dishLimit = 0; // Set to 0 (unlimited) for everyone
 
         await restaurant.save();
 
@@ -117,8 +175,6 @@ export const verifyPaymentAndActivate = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Save subscription payment record
-
         // Save subscription payment record for revenue tracking
         try {
             await SubscriptionPayment.create({
@@ -129,12 +185,16 @@ export const verifyPaymentAndActivate = async (req, res) => {
                 razorpayPaymentId: razorpay_payment_id,
                 razorpayOrderId: razorpay_order_id,
                 status: 'success',
-                paymentDate: now
+                paymentDate: now,
+                startDate: startDate,
+                endDate: endDate,
+                renewalType: isRenewing ? 'renewal' : 'new'
             });
         } catch (paymentError) {
             console.error('Error saving subscription payment record:', paymentError);
             // Don't fail the activation, just log error
         }
+
         try {
             await AuditLog.createLog({
                 entityType: 'restaurant',
@@ -203,8 +263,6 @@ export const checkSubscriptionExpiry = async (restaurant) => {
 
             restaurant.businessModel = 'Commission Base';
             restaurant.subscription.status = 'expired';
-            // Set dish limit to 0 (unlimited) for everyone
-            restaurant.dishLimit = 0;
 
             await restaurant.save();
 
@@ -259,7 +317,7 @@ export const checkSubscriptionExpiry = async (restaurant) => {
 export const getSubscriptionStatus = async (req, res) => {
     try {
         const restaurantId = req.restaurant._id;
-        let restaurant = await Restaurant.findById(restaurantId).select('subscription isActive businessModel dishLimit');
+        let restaurant = await Restaurant.findById(restaurantId).select('subscription subscriptionHistory isActive businessModel');
 
         if (!restaurant) {
             return errorResponse(res, 404, 'Restaurant not found');
@@ -271,24 +329,34 @@ export const getSubscriptionStatus = async (req, res) => {
         let daysRemaining = null;
         let showWarning = false;
 
+        // Fetch the dynamic warning threshold from business settings
+        const settings = await BusinessSettings.getSettings();
+        const warningDays = settings?.subscriptionExpiryWarningDays || 5;
+
         if (restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
             const now = new Date();
             const endDate = new Date(restaurant.subscription.endDate);
             const diffTime = endDate - now;
             daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-            if (daysRemaining <= 5) {
+            if (daysRemaining <= warningDays) {
                 showWarning = true;
             }
         }
 
+        // Return history in reverse chronological order (latest first)
+        const subscriptionHistory = (restaurant.subscriptionHistory || [])
+            .slice()
+            .reverse();
+
         return successResponse(res, 200, 'Subscription status retrieved', {
             subscription: restaurant.subscription,
+            subscriptionHistory,
             isActive: restaurant.isActive,
             businessModel: restaurant.businessModel,
-            dishLimit: restaurant.dishLimit,
             daysRemaining,
-            showWarning
+            showWarning,
+            warningDays
         });
     } catch (error) {
         console.error('Get status error:', error);
@@ -306,7 +374,7 @@ export const getAllSubscriptions = async (req, res) => {
                 { 'subscription.status': 'pending_approval' }
             ]
         })
-            .select('name email phone subscription isActive createdAt businessModel')
+            .select('name email phone subscription subscriptionHistory isActive createdAt businessModel')
             .lean();
 
         // Get all unique plan IDs
@@ -363,7 +431,7 @@ export const getAllSubscriptions = async (req, res) => {
 export const updateSubscriptionStatus = async (req, res) => {
     try {
         const { restaurantId } = req.params;
-        const { status, planId } = req.body;
+        const { status, planId, startDate, endDate } = req.body;
 
         const restaurant = await Restaurant.findById(restaurantId);
         if (!restaurant) {
@@ -395,34 +463,43 @@ export const updateSubscriptionStatus = async (req, res) => {
                 plan = await SubscriptionPlan.findById(effectivePlanId);
             }
 
-            if (!plan) {
-                // Fallback for old string IDs if necessary, or error
-                // For now assuming we moved to dynamic plans completely.
-                // But let's support old strings just in case logic is mixed, or error out.
-                if (['1_month', '6_months', '12_months'].includes(effectivePlanId)) {
-                    // Backward compat logic
-                    const now = new Date();
-                    const durationDays = effectivePlanId === '1_month' ? 30 : effectivePlanId === '6_months' ? 180 : 365;
-                    const endDate = new Date(now);
-                    endDate.setDate(endDate.getDate() + durationDays);
-                    updateFields['subscription.startDate'] = now;
-                    updateFields['subscription.endDate'] = endDate;
-                } else {
-                    return errorResponse(res, 404, 'Plan not found to calculate duration');
-                }
-            } else {
-                const now = new Date();
-                const durationDays = plan.durationMonths * 30;
-                const endDate = new Date(now);
-                endDate.setDate(endDate.getDate() + durationDays);
+            const now = new Date();
 
+            // Use provided dates if available, otherwise calculate
+            if (startDate) {
+                updateFields['subscription.startDate'] = new Date(startDate);
+            } else if (!restaurant.subscription?.startDate) {
                 updateFields['subscription.startDate'] = now;
-                updateFields['subscription.endDate'] = endDate;
+            }
+
+            if (endDate) {
+                updateFields['subscription.endDate'] = new Date(endDate);
+            } else {
+                // Calculate based on plan — use setMonth() for correct month-length handling
+                if (!plan) {
+                    if (['1_month', '6_months', '12_months'].includes(effectivePlanId)) {
+                        const durationMonths = effectivePlanId === '1_month' ? 1 : effectivePlanId === '6_months' ? 6 : 12;
+                        const calcEndDate = new Date(updateFields['subscription.startDate'] || now);
+                        calcEndDate.setMonth(calcEndDate.getMonth() + durationMonths);
+                        updateFields['subscription.endDate'] = calcEndDate;
+                    } else {
+                        return errorResponse(res, 404, 'Plan not found to calculate duration');
+                    }
+                } else {
+                    // Use setMonth for accurate calendar months (not flat 30-day approximation)
+                    const calcStartDate = new Date(updateFields['subscription.startDate'] || now);
+                    const calcEndDate = new Date(calcStartDate);
+                    calcEndDate.setMonth(calcEndDate.getMonth() + plan.durationMonths);
+                    // Handle month-end overflow (e.g. Jan 31 + 1 month = Feb 28)
+                    if (calcEndDate.getDate() !== calcStartDate.getDate()) {
+                        calcEndDate.setDate(0);
+                    }
+                    updateFields['subscription.endDate'] = calcEndDate;
+                }
             }
 
             updateFields['isActive'] = true;
             updateFields['businessModel'] = 'Subscription Base';
-            updateFields['dishLimit'] = plan ? plan.dishLimit : 0; // Fallback to 0 (unlimited) for legacy plans
 
         } else if (status === 'inactive' || status === 'expired') {
             updateFields['businessModel'] = 'Commission Base';

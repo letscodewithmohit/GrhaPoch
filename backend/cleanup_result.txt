@@ -1,0 +1,30 @@
+﻿
+==============================
+  DATABASE STATUS AFTER CLEANUP
+==============================
+
+DELETED (should all be 0):
+  OK                 Orders: 0
+  OK                 Order Settlements: 0
+  STILL HAS DATA     Deliveries: 1
+  OK                 Delivery Wallets: 0
+  OK                 User Wallets: 0
+  OK                 Subscription Payments: 0
+  OK                 Restaurant Wallets: 0
+  OK                 Restaurant Withdrawals: 0
+  OK                 Donations: 0
+  STILL HAS DATA     OTPs: 1
+  OK                 Notifications: 0
+
+SAFE DATA (should have values):
+  SAFE               Restaurants (SAFE): 3
+  SAFE               Menus (SAFE): 4
+  SAFE               Subscription Plans (SAFE): 3
+  SAFE               Business Settings (SAFE): 1
+  SAFE               Env Variables (SAFE): 4
+  SAFE               Fee Settings (SAFE): 14
+
+USERS BY ROLE:
+
+==============================
+

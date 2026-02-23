@@ -20,7 +20,7 @@ const deliveryBoyCommissionSchema = new mongoose.Schema(
       type: Number,
       default: null, // null means unlimited
       validate: {
-        validator: function(value) {
+        validator: function (value) {
           // Allow null (unlimited)
           if (value === null || value === undefined) return true;
           // If value is provided, it must be greater than minDistance
@@ -83,56 +83,56 @@ deliveryBoyCommissionSchema.index({ createdAt: -1 });
 deliveryBoyCommissionSchema.index({ createdBy: 1 });
 
 // Method to check if a distance falls within this commission range
-deliveryBoyCommissionSchema.methods.isDistanceInRange = function(distance) {
+deliveryBoyCommissionSchema.methods.isDistanceInRange = function (distance) {
   if (distance < this.minDistance) return false;
   if (this.maxDistance !== null && distance > this.maxDistance) return false;
   return true;
 };
 
 // Static method to find applicable commission rule for a distance
-deliveryBoyCommissionSchema.statics.findApplicableRule = async function(distance) {
+deliveryBoyCommissionSchema.statics.findApplicableRule = async function (distance) {
   const rules = await this.find({ status: true }).sort({ minDistance: 1 });
-  
+
   for (const rule of rules) {
     if (rule.isDistanceInRange(distance)) {
       return rule;
     }
   }
-  
+
   // If no exact match, find the nearest rule
   // For distances less than minimum, return the first rule
   // For distances greater than maximum, return the last rule (or unlimited rule)
   const firstRule = rules[0];
   const lastRule = rules[rules.length - 1];
-  
+
   if (distance < firstRule.minDistance) {
     return firstRule;
   }
-  
+
   // Find unlimited rule (maxDistance === null)
   const unlimitedRule = rules.find(r => r.maxDistance === null);
   if (unlimitedRule && distance > unlimitedRule.minDistance) {
     return unlimitedRule;
   }
-  
+
   // Return last rule as fallback
   return lastRule || firstRule;
 };
 
 // Static method to calculate commission for a given distance
-deliveryBoyCommissionSchema.statics.calculateCommission = async function(distance) {
+deliveryBoyCommissionSchema.statics.calculateCommission = async function (distance) {
   // Get all active rules sorted by minDistance (ascending)
   const rules = await this.find({ status: true }).sort({ minDistance: 1 });
-  
+
   if (!rules || rules.length === 0) {
     throw new Error('No commission rules found');
   }
-  
+
   // Find the applicable rule based on distance
   // Logic: Find the rule where distance falls within the range (minDistance <= distance <= maxDistance)
   // Or find the highest tier rule if distance exceeds all maxDistance limits
   let applicableRule = null;
-  
+
   // First, try to find exact match (distance within rule's range)
   for (const rule of rules) {
     if (distance >= rule.minDistance) {
@@ -151,52 +151,51 @@ deliveryBoyCommissionSchema.statics.calculateCommission = async function(distanc
       applicableRule = rule;
     }
   }
-  
+
   // If distance is less than all minDistances, use first rule (lowest tier)
   // This should typically be 0-4km with base payout only
   if (!applicableRule || distance < applicableRule.minDistance) {
     applicableRule = rules[0];
   }
-  
+
   // If still no rule found (edge case), use first rule
   if (!applicableRule) {
     applicableRule = rules[0];
   }
-  
+
   // Calculate commission
   // IMPORTANT: Base payout is ALWAYS given to delivery boy
   let basePayout = applicableRule.basePayout;
   let distanceCommission = 0;
-  
+
   // Per km commission logic based on user requirement:
-  // - Base payout: ₹10 (always given)
-  // - If distance > 4 km: Additional ₹5 per km for the entire distance
-  // Example scenarios:
-  // - Distance = 4 km: commission = ₹10 (base only, 4 is not > 4)
-  // - Distance = 5 km: commission = ₹10 + (5 × ₹5) = ₹35
-  // - Distance = 6 km: commission = ₹10 + (6 × ₹5) = ₹40
-  // - Distance = 2 km: commission = ₹10 (base only, 2 < 4)
+  // - Base payout: Fixed amount (e.g., ₹22)
+  // - Distance commission: Applied ONLY to the distance exceeding the threshold (minDistance)
+  // Example scenarios (assuming base=₹22, min=4km, rate=₹5/km):
+  // - Distance = 4 km: commission = ₹22 (base only)
+  // - Distance = 5.422 km: commission = ₹22 + ((5.422 - 4) × ₹5) = ₹22 + (1.422 × 5) = ₹29.11
   if (distance > applicableRule.minDistance) {
-    // Apply per km commission for the entire distance if distance > minDistance
-    // Example: If minDistance = 4, commissionPerKm = 5, distance = 5
-    // Then: 5 × 5 = ₹25 additional, total = ₹10 + ₹25 = ₹35
-    distanceCommission = distance * applicableRule.commissionPerKm;
+    // Apply per km commission ONLY for the extra distance beyond minDistance
+    const extraDistance = distance - applicableRule.minDistance;
+    distanceCommission = extraDistance * applicableRule.commissionPerKm;
   }
   // If distance <= minDistance, only base payout is given (distanceCommission = 0)
-  
+
   const commission = basePayout + distanceCommission;
-  
-  console.log(`📊 Commission calculation for ${distance.toFixed(2)} km:`, {
-    rule: applicableRule.name,
-    minDistance: applicableRule.minDistance,
-    maxDistance: applicableRule.maxDistance,
-    basePayout: basePayout,
-    commissionPerKm: applicableRule.commissionPerKm,
-    perKmApplied: distance >= applicableRule.minDistance,
-    distanceCommission: distanceCommission,
-    totalCommission: commission
-  });
-  
+
+  if (process.env.DEBUG_PRICING_LOGS === 'true') {
+    console.log(`📊 Commission calculation for ${distance.toFixed(2)} km:`, {
+      rule: applicableRule.name,
+      minDistance: applicableRule.minDistance,
+      maxDistance: applicableRule.maxDistance,
+      basePayout: basePayout,
+      commissionPerKm: applicableRule.commissionPerKm,
+      perKmApplied: distance >= applicableRule.minDistance,
+      distanceCommission: distanceCommission,
+      totalCommission: commission
+    });
+  }
+
   return {
     rule: applicableRule,
     commission: Math.round(commission * 100) / 100, // Round to 2 decimal places
@@ -216,4 +215,3 @@ deliveryBoyCommissionSchema.statics.calculateCommission = async function(distanc
 const DeliveryBoyCommission = mongoose.model('DeliveryBoyCommission', deliveryBoyCommissionSchema);
 
 export default DeliveryBoyCommission;
-

@@ -670,7 +670,7 @@ export const markOrderPreparing = asyncHandler(async (req, res) => {
     // Assign order to nearest delivery boy and notify them (if not already assigned)
     // This is critical - even if order is already preparing, we need to assign delivery partner
     // Reload order first to get the latest state (in case it was updated elsewhere)
-    const freshOrder = await Order.findById(order._id);
+    let freshOrder = await Order.findById(order._id);
     if (!freshOrder) {
       console.error(`❌ Order ${order.orderId} not found after save`);
       return errorResponse(res, 404, 'Order not found after update');
@@ -943,60 +943,63 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
       restaurant.restaurantId ||
       restaurant.id;
 
-    // Try to find order by MongoDB _id or orderId
+    // Build all possible restaurantId forms for ownership check
+    const restaurantIdVariations = new Set();
+    if (restaurant._id) restaurantIdVariations.add(restaurant._id.toString());
+    if (restaurant.restaurantId) restaurantIdVariations.add(restaurant.restaurantId.toString());
+    if (restaurant.id) restaurantIdVariations.add(restaurant.id.toString());
+    if (restaurantId) restaurantIdVariations.add(restaurantId);
+
+    console.log(`🔍 [ResendNotification] Looking for order: "${id}"`);
+    console.log(`🔍 [ResendNotification] Restaurant ID variations: ${[...restaurantIdVariations].join(', ')}`);
+
+    // Step 1: Find the order by _id or orderId (without restaurantId restriction)
     let order = null;
-
-    console.log(`🔍 [ResendNotification] Searching for order: ${id} (Restaurant: ${restaurantId})`);
-
     if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
-      order = await Order.findOne({
-        _id: id,
-        $or: [
-          { restaurantId: restaurantId },
-          { restaurantId: restaurant.restaurantId }
-        ].filter(Boolean)
-      });
-      if (order) console.log(`✅ [ResendNotification] Found order by _id: ${order.orderId}`);
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId: id });
     }
 
     if (!order) {
-      order = await Order.findOne({
-        orderId: id,
-        $or: [
-          { restaurantId: restaurantId },
-          { restaurantId: restaurant.restaurantId }
-        ].filter(Boolean)
-      });
-      if (order) console.log(`✅ [ResendNotification] Found order by orderId: ${order.orderId}`);
+      console.warn(`❌ [ResendNotification] Order not found in DB: ${id}`);
+      return errorResponse(res, 404, 'Order not found');
     }
 
-    if (!order) {
-      console.warn(`❌ [ResendNotification] Order not found: ${id} for restaurant ${restaurantId}`);
-      // Debug: see if order exists at all
-      const exists = await Order.findById(id).lean();
-      if (exists) {
-        console.warn(`💡 [ResendNotification] Order exists but restaurantId mismatch: Order.restaurantId=${exists.restaurantId}, Auth.restaurantId=${restaurantId}`);
-      }
-      return errorResponse(res, 404, 'Order not found or access denied');
+    console.log(`✅ [ResendNotification] Found order: ${order.orderId} (status: ${order.status}, restaurantId: ${order.restaurantId})`);
+
+    // Step 2: Verify restaurant owns this order
+    const orderRestaurantId = order.restaurantId?.toString() || '';
+    const isOwner = restaurantIdVariations.has(orderRestaurantId);
+
+    if (!isOwner) {
+      console.warn(`⚠️ [ResendNotification] Ownership mismatch! Order.restaurantId="${orderRestaurantId}" not in [${[...restaurantIdVariations].join(', ')}]`);
+      return errorResponse(res, 403, 'Access denied: order belongs to a different restaurant');
     }
 
-    // Check if order is in valid status (preparing or ready)
+    // Step 3: Check order status
     if (!['preparing', 'ready'].includes(order.status)) {
       return errorResponse(res, 400, `Cannot resend notification. Order status must be 'preparing' or 'ready'. Current status: ${order.status}`);
     }
 
-    // Get restaurant location
-    const restaurantDoc = await Restaurant.findById(restaurantId)
-      .select('location')
-      .lean();
+    // Step 4: Get restaurant location
+    let restaurantDoc = restaurant;
+    if (!restaurantDoc?.location?.coordinates) {
+      restaurantDoc = await Restaurant.findById(restaurant._id)
+        .select('location')
+        .lean();
+    }
 
     if (!restaurantDoc || !restaurantDoc.location || !restaurantDoc.location.coordinates) {
-      return errorResponse(res, 400, 'Restaurant location not found. Please update restaurant location.');
+      console.warn(`⚠️ [ResendNotification] Restaurant location not found for: ${restaurant._id}`);
+      return errorResponse(res, 400, 'Restaurant location not found. Please update your restaurant location in settings.');
     }
 
     const [restaurantLng, restaurantLat] = restaurantDoc.location.coordinates;
+    console.log(`📍 [ResendNotification] Restaurant coords: lat=${restaurantLat}, lng=${restaurantLng}`);
 
-    // Find nearest delivery boys
+    // Step 5: Find nearest delivery boys
     const isCod = order.payment?.method === 'cash' || order.payment?.method === 'cod';
     const priorityDeliveryBoys = await findNearestDeliveryBoys(
       restaurantLat,
@@ -1031,17 +1034,15 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
       if (populatedOrder) {
         const deliveryPartnerIds = allDeliveryBoys.map(db => db.deliveryPartnerId);
 
-        // Update assignment info
         await Order.findByIdAndUpdate(order._id, {
           $set: {
             'assignmentInfo.priorityDeliveryPartnerIds': deliveryPartnerIds,
-            'assignmentInfo.assignedBy': 'manual_resend',
+            'assignmentInfo.assignedBy': 'manual',
             'assignmentInfo.assignedAt': new Date()
           }
         });
 
         await notifyMultipleDeliveryBoys(populatedOrder, deliveryPartnerIds, 'priority');
-
         console.log(`✅ Resent notification to ${deliveryPartnerIds.length} delivery partners for order ${order.orderId}`);
 
         return successResponse(res, 200, `Notification sent to ${deliveryPartnerIds.length} delivery partners`, {
@@ -1059,17 +1060,15 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
       if (populatedOrder) {
         const priorityIds = priorityDeliveryBoys.map(db => db.deliveryPartnerId);
 
-        // Update assignment info
         await Order.findByIdAndUpdate(order._id, {
           $set: {
             'assignmentInfo.priorityDeliveryPartnerIds': priorityIds,
-            'assignmentInfo.assignedBy': 'manual_resend',
+            'assignmentInfo.assignedBy': 'manual',
             'assignmentInfo.assignedAt': new Date()
           }
         });
 
         await notifyMultipleDeliveryBoys(populatedOrder, priorityIds, 'priority');
-
         console.log(`✅ Resent notification to ${priorityIds.length} priority delivery partners for order ${order.orderId}`);
 
         return successResponse(res, 200, `Notification sent to ${priorityIds.length} delivery partners`, {

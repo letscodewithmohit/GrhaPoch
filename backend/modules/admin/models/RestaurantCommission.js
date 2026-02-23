@@ -211,9 +211,9 @@ restaurantCommissionSchema.statics.getCommissionForRestaurant = async function (
 // Static method to calculate commission for a restaurant and order amount/items
 restaurantCommissionSchema.statics.calculateCommissionForOrder = async function (restaurantId, orderAmount, items = []) {
   const Restaurant = mongoose.model('Restaurant');
-  const restaurant = await Restaurant.findById(restaurantId).select('businessModel');
+  const restaurant = await Restaurant.findById(restaurantId).select('businessModel subscription');
 
-  if (restaurant && restaurant.businessModel === 'Subscription Base') {
+  if (restaurant && restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
     return {
       commission: 0,
       type: 'percentage',
@@ -221,7 +221,7 @@ restaurantCommissionSchema.statics.calculateCommissionForOrder = async function 
       orderAmount: orderAmount,
       rule: null,
       defaultUsed: false,
-      message: 'No commission for subscription-based restaurants'
+      message: 'No commission for active subscription-based restaurants'
     };
   }
 

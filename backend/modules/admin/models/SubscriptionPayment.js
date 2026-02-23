@@ -42,6 +42,21 @@ const subscriptionPaymentSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
         index: true
+    },
+    // Subscription period covered by this payment
+    startDate: {
+        type: Date,
+        default: null
+    },
+    endDate: {
+        type: Date,
+        default: null
+    },
+    // Whether this was a fresh subscription or a renewal of an existing one
+    renewalType: {
+        type: String,
+        enum: ['new', 'renewal'],
+        default: 'new'
     }
 }, {
     timestamps: true
@@ -53,3 +68,4 @@ subscriptionPaymentSchema.index({ createdAt: -1 });
 const SubscriptionPayment = mongoose.model('SubscriptionPayment', subscriptionPaymentSchema);
 
 export default SubscriptionPayment;
+

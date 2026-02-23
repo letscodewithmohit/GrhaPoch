@@ -399,7 +399,7 @@ export default function App() {
         path="/restaurant/business-plan"
         element={
           <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
-            <BusinessPlanPage />
+            <Navigate to="/restaurant/subscription-plans" replace />
           </ProtectedRoute>
         }
       />

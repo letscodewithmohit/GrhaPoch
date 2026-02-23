@@ -209,14 +209,10 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       $and: [
         {
           $or: [
-            { 'onboarding.completedSteps': 4 },
+            { 'onboarding.completedSteps': { $gte: 1 } },
             {
               $and: [
-                { 'name': { $exists: true, $ne: null, $ne: '' } },
-                { 'cuisines': { $exists: true, $ne: null, $not: { $size: 0 } } },
-                { 'openDays': { $exists: true, $ne: null, $not: { $size: 0 } } },
-                { 'estimatedDeliveryTime': { $exists: true, $ne: null, $ne: '' } },
-                { 'featuredDish': { $exists: true, $ne: null, $ne: '' } }
+                { 'name': { $exists: true, $ne: null, $ne: '' } }
               ]
             }
           ]
@@ -1224,16 +1220,11 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
       // This handles both cases: restaurants with proper tracking AND restaurants that completed onboarding before tracking was added
       const completionCheck = {
         $or: [
-          { 'onboarding.completedSteps': 4 },
-          // Fallback: If completedSteps is not 4 (or doesn't exist), check if restaurant has all main fields filled
-          // This matches restaurants that have completed onboarding even if completedSteps field wasn't set to 4
+          { 'onboarding.completedSteps': { $gte: 1 } },
+          // Fallback: If completedSteps missing, check if restaurant has a name
           {
             $and: [
-              { 'name': { $exists: true, $ne: null, $ne: '' } }, // Has restaurant name
-              { 'cuisines': { $exists: true, $ne: null, $not: { $size: 0 } } }, // Has cuisines (array with items)
-              { 'openDays': { $exists: true, $ne: null, $not: { $size: 0 } } }, // Has open days (array with items)
-              { 'estimatedDeliveryTime': { $exists: true, $ne: null, $ne: '' } }, // Has delivery time (from step 4)
-              { 'featuredDish': { $exists: true, $ne: null, $ne: '' } } // Has featured dish (from step 4)
+              { 'name': { $exists: true, $ne: null, $ne: '' } }
             ]
           }
         ]
@@ -1245,11 +1236,10 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
       query['rejectionReason'] = { $exists: true, $ne: null };
       // For rejected, also check if onboarding is complete
       query.$or = [
-        { 'onboarding.completedSteps': 4 },
+        { 'onboarding.completedSteps': { $gte: 1 } },
         {
           $and: [
-            { 'name': { $exists: true, $ne: null, $ne: '' } },
-            { 'estimatedDeliveryTime': { $exists: true, $ne: null, $ne: '' } }
+            { 'name': { $exists: true, $ne: null, $ne: '' } }
           ]
         }
       ];
@@ -1452,9 +1442,6 @@ export const approveRestaurant = asyncHandler(async (req, res) => {
     restaurant.approvedAt = new Date();
     restaurant.approvedBy = adminId;
     restaurant.rejectionReason = undefined; // Clear any previous rejection
-
-    // Set default dish limit to 0 (unlimited)
-    restaurant.dishLimit = 0;
 
     await restaurant.save();
 
@@ -1870,8 +1857,7 @@ export const createRestaurant = asyncHandler(async (req, res) => {
         featuredPrice: featuredPrice || 249,
         offer: offer || ''
       },
-      completedSteps: 4,
-      dishLimit: 0 // Unlimited dishes for all by default
+      completedSteps: 4
     };
 
     // Create restaurant

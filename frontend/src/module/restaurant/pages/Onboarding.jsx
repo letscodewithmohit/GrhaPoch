@@ -979,9 +979,14 @@ export default function RestaurantOnboarding() {
 
         // Wait a moment to ensure data is saved, then navigate
         setTimeout(() => {
-          // Navigate to restaurant home page after onboarding completion
-          console.log('🚀 Navigating to restaurant home page...')
-          navigate("/restaurant", { replace: true })
+          // Navigate to subscription plans page if they chose Subscription model
+          if (step5.businessModel === "Subscription Base") {
+            console.log('🚀 Navigating to subscription plans page...')
+            navigate("/restaurant/subscription-plans", { replace: true })
+          } else {
+            console.log('🚀 Navigating to restaurant home page...')
+            navigate("/restaurant", { replace: true })
+          }
         }, 800)
       }
     } catch (err) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Truck, Leaf, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, PlusCircle } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Truck, Leaf, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, PlusCircle, Navigation, Locate } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -11,6 +11,7 @@ import { useProfile } from "../../context/ProfileContext"
 import { useOrders } from "../../context/OrdersContext"
 import { useLocation as useUserLocation } from "../../hooks/useLocation"
 import { useZone } from "../../hooks/useZone"
+import { useLocationSelector } from "../../components/UserLayout"
 import { orderAPI, restaurantAPI, adminAPI, userAPI, API_ENDPOINTS } from "@/lib/api"
 import { API_BASE_URL } from "@/lib/api/config"
 import { initRazorpayPayment } from "@/lib/utils/razorpay"
@@ -38,7 +39,8 @@ const formatFullAddress = (address) => {
 
   // Priority 1: Use formattedAddress if available (for live location addresses)
   if (address.formattedAddress && address.formattedAddress !== "Select location") {
-    return address.formattedAddress
+    // Remove "India" from the end if present
+    return address.formattedAddress.replace(/, India$/, "").trim()
   }
 
   // Priority 2: Build address from parts
@@ -55,10 +57,27 @@ const formatFullAddress = (address) => {
 
   // Priority 3: Use address field if available
   if (address.address && address.address !== "Select location") {
-    return address.address
+    return address.address.replace(/, India$/, "").trim()
   }
 
   return ""
+}
+
+/**
+ * Get the best display name for a location (Label > Area > City > "Location")
+ * @param {Object} address - Address object
+ * @returns {String} Display name
+ */
+const getLocationDisplayName = (address) => {
+  if (!address) return "Location"
+
+  // If we have a specific label like "Home" or "Office", use it
+  if (address.label && address.label !== "Current Location") {
+    return address.label
+  }
+
+  // For dynamic/GPS locations, try to show the area or city instead of "Current Location"
+  return address.area || address.city || address.label || "Location"
 }
 
 export default function Cart() {
@@ -92,8 +111,9 @@ export default function Cart() {
   const { cart, updateQuantity, addToCart, getCartCount, clearCart, cleanCartForRestaurant } = cartContext;
   const { getDefaultAddress, getDefaultPaymentMethod, addresses, paymentMethods, userProfile } = useProfile()
   const { createOrder } = useOrders()
-  const { location: currentLocation } = useUserLocation() // Get live location address
+  const { location: currentLocation, setManualLocation, requestLocation } = useUserLocation() // Get live location address
   const { zoneId } = useZone(currentLocation) // Get user's zone
+  const { openLocationSelector } = useLocationSelector()
 
   const [showCoupons, setShowCoupons] = useState(false)
   const [appliedCoupon, setAppliedCoupon] = useState(null)
@@ -145,21 +165,32 @@ export default function Cart() {
   const cartCount = getCartCount()
   const savedAddress = getDefaultAddress()
   // Priority: Use live location if available, otherwise use saved address
-  const defaultAddress = currentLocation?.formattedAddress && currentLocation.formattedAddress !== "Select location"
-    ? {
-      ...savedAddress,
-      formattedAddress: currentLocation.formattedAddress,
-      address: currentLocation.address || currentLocation.formattedAddress,
-      street: currentLocation.street || currentLocation.address,
-      city: currentLocation.city,
-      state: currentLocation.state,
-      zipCode: currentLocation.postalCode,
-      area: currentLocation.area,
-      location: currentLocation.latitude && currentLocation.longitude ? {
-        coordinates: [currentLocation.longitude, currentLocation.latitude]
-      } : savedAddress?.location
+  const defaultAddress = useMemo(() => {
+    // If we have a location with a specific label (Home/Office/Other) or a non-placeholder formattedAddress, use it
+    const hasValidLocation = currentLocation?.formattedAddress &&
+      currentLocation.formattedAddress !== "Select location" &&
+      currentLocation.formattedAddress !== "Detecting location...";
+
+    if (hasValidLocation) {
+      return {
+        ...currentLocation,
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        location: {
+          type: 'Point',
+          coordinates: [Number(currentLocation.longitude), Number(currentLocation.latitude)]
+        },
+        address: currentLocation.address || currentLocation.formattedAddress,
+        street: currentLocation.street || currentLocation.address || currentLocation.formattedAddress,
+        city: currentLocation.city,
+        state: currentLocation.state,
+        zipCode: currentLocation.zipCode || currentLocation.postalCode
+      };
     }
-    : savedAddress
+
+    // Fallback to saved address from profile
+    return savedAddress;
+  }, [currentLocation, savedAddress]);
   const defaultPayment = getDefaultPaymentMethod()
 
   // Get restaurant ID from cart or restaurant data
@@ -582,7 +613,6 @@ export default function Cart() {
     }
 
     calculatePricing()
-    calculatePricing()
   }, [cart, defaultAddress, appliedCoupon, couponCode, deliveryFleet, restaurantId, tipAmount, donationAmount])
 
   // Fetch wallet balance
@@ -677,22 +707,12 @@ export default function Cart() {
         longitude,
         formattedAddress: address.additionalDetails
           ? `${address.additionalDetails}, ${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
-          : `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
+          : `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`,
+        label: address.label || "Address"
       }
-      localStorage.setItem("userLocation", JSON.stringify(locationData))
-
+      setManualLocation(locationData)
       toast.success(`Address selected!`)
-
-      // Close sheet
       setShowAddressSheet(false)
-
-      // Instead of reload, we could trigger a re-fetch of location from useLocation hook 
-      // but the easiest for now to ensure consistency across all hooks (useZone, etc) is still a quick reload
-      // or we can just update the currentLocation object manually if it was possible.
-      // For now, let's keep the reload but make it feel faster
-      setTimeout(() => {
-        window.location.reload()
-      }, 500)
     } catch (error) {
       console.error(`Error selecting address:`, error)
       toast.error(`Failed to select address. Please try again.`)
@@ -1310,7 +1330,7 @@ export default function Cart() {
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName === 'MoGrocery' ? 'GrhaPoch' : restaurantName}</p>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
-                  {restaurantData?.estimatedDeliveryTime || "10-15 mins"} to <button onClick={() => setShowAddressSheet(true)} className="font-semibold hover:text-red-600 transition-colors">{defaultAddress?.label || "Location"}</button>
+                  {restaurantData?.estimatedDeliveryTime || "10-15 mins"} to <button onClick={() => setShowAddressSheet(true)} className="font-semibold hover:text-red-600 transition-colors">{getLocationDisplayName(defaultAddress)}</button>
                   <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">{defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || defaultAddress?.city || "Select address") : "Select address"}</span>
                 </p>
               </div>
@@ -1644,26 +1664,37 @@ export default function Cart() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 md:gap-4">
                       <MapPin className="h-4 w-4 md:h-5 md:w-5 text-gray-500 dark:text-gray-400" />
-                      <button onClick={() => setShowAddressSheet(true)} className="flex-1 text-left">
+                      <button onClick={openLocationSelector} className="flex-1 text-left">
                         <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
-                          Delivery at <span className="font-semibold">{defaultAddress?.label || "Location"}</span>
+                          Delivery at <span className="font-semibold">{getLocationDisplayName(currentLocation) || getLocationDisplayName(defaultAddress)}</span>
                         </p>
                         <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                          {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Add delivery address") : "Add delivery address"}
+                          {currentLocation ? (currentLocation.formattedAddress || currentLocation.address) : (defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address) : "Add delivery address")}
                         </p>
+                      </button>
+                      <button
+                        onClick={openLocationSelector}
+                        className="text-xs font-bold text-red-600 dark:text-red-400 hover:text-red-700 uppercase tracking-tight flex-shrink-0"
+                      >
+                        Change
                       </button>
                     </div>
                     {/* Address Selection Buttons */}
                     <div className="flex gap-2 mt-2 ml-7 md:ml-9">
-                      {["Home", "Office", "Other"].map((label) => {
-                        const addressExists = addresses.some(addr => addr.label === label)
+                      {["Home", "Work", "Other"].map((label) => {
+                        // Check for both 'Work' and 'Office' labels
+                        const backendLabel = label === "Work" ? "Office" : label
+                        const addressExists = addresses.some(addr =>
+                          addr.label === label || (label === "Work" && addr.label === "Office")
+                        )
                         return (
                           <button
                             key={label}
                             onClick={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
-                              handleSelectAddressByLabel(label)
+                              const realLabel = label === "Work" ? "Office" : label
+                              handleSelectAddressByLabel(realLabel)
                             }}
                             disabled={!addressExists}
                             className={`text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 rounded-md border transition-colors ${addressExists
@@ -1802,7 +1833,7 @@ export default function Cart() {
                       <span className="text-gray-800 dark:text-gray-200">₹{subtotal.toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
+                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee {pricing?.distanceStr && <span className="text-[10px] opacity-70">(For {pricing.distanceStr})</span>}</span>
                       <span className={deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
                         {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
                       </span>
@@ -1855,7 +1886,7 @@ export default function Cart() {
                       <span className="text-gray-800 dark:text-gray-200">₹{subtotal.toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
+                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee {pricing?.distanceStr && <span className="text-[10px] opacity-70">(For {pricing.distanceStr})</span>}</span>
                       <span className={deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
                         {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
                       </span>
@@ -2006,7 +2037,7 @@ export default function Cart() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-lg font-semibold text-gray-900">Delivering to {defaultAddress?.label || "Location"}</p>
+                    <p className="text-lg font-semibold text-gray-900">Delivering to {getLocationDisplayName(defaultAddress)}</p>
                     <p className="text-sm text-gray-600 mt-1">
                       {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address") : "Add address"}
                     </p>
@@ -2138,7 +2169,7 @@ export default function Cart() {
                     </svg>
                   </div>
                   <h2 className="text-2xl font-bold text-gray-900">
-                    {defaultAddress?.label || defaultAddress?.city || "Location"}
+                    {getLocationDisplayName(defaultAddress)}
                   </h2>
                 </div>
                 <p className="text-gray-500 text-base">
@@ -2178,6 +2209,52 @@ export default function Cart() {
 
           <div className="px-6 pb-8 overflow-y-auto max-h-[calc(80vh-100px)]">
             <div className="space-y-4 mt-4">
+              {/* Primary Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <button
+                  onClick={async () => {
+                    try {
+                      setShowAddressSheet(false);
+                      const freshLoc = await requestLocation(true);
+                      toast.success(`Location updated to ${freshLoc.city || 'Current Location'}`);
+                    } catch (err) {
+                      toast.error("Failed to detect location. Please check permissions.");
+                    }
+                  }}
+                  className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-100 bg-red-50/50 hover:bg-red-50 hover:border-red-200 transition-all group"
+                >
+                  <div className="h-9 w-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Locate className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-sm text-red-700">Detect Location</p>
+                    <p className="text-[11px] text-red-600/70">Use GPS coordinates</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowAddressSheet(false);
+                    openLocationSelector();
+                  }}
+                  className="flex items-center gap-3 p-4 rounded-xl border-2 border-blue-100 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-200 transition-all group"
+                >
+                  <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Navigation className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-sm text-blue-700">Select on Map</p>
+                    <p className="text-[11px] text-blue-600/70">Pin precise location</p>
+                  </div>
+                </button>
+              </div>
+
+              <div className="relative flex items-center py-2">
+                <div className="flex-grow border-t border-gray-100 dark:border-gray-800"></div>
+                <span className="flex-shrink mx-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Saved Addresses</span>
+                <div className="flex-grow border-t border-gray-100 dark:border-gray-800"></div>
+              </div>
+
               {addresses.length > 0 ? (
                 addresses.map((address) => {
                   const isCurrent = defaultAddress?.id === address.id ||

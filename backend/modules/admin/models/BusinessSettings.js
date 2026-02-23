@@ -98,10 +98,11 @@ const businessSettingsSchema = new mongoose.Schema(
       type: [Number],
       default: [10, 20, 30, 50]
     },
-    initialRestaurantDishLimit: {
+    // New: Subscription expiry warning threshold in days
+    subscriptionExpiryWarningDays: {
       type: Number,
-      default: 0,
-      min: 0
+      default: 5,
+      min: 1
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,

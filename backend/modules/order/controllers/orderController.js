@@ -5,7 +5,7 @@ import Restaurant from '../../restaurant/models/Restaurant.js';
 import Zone from '../../admin/models/Zone.js';
 import mongoose from 'mongoose';
 import winston from 'winston';
-import { calculateOrderPricing } from '../services/orderCalculationService.js';
+import { calculateOrderPricing, normalizeCoordinates } from '../services/orderCalculationService.js';
 import { getRazorpayCredentials } from '../../../shared/utils/envService.js';
 import { notifyRestaurantNewOrder } from '../services/restaurantNotificationService.js';
 import { calculateOrderSettlement } from '../services/orderSettlementService.js';
@@ -293,6 +293,53 @@ export const createOrder = async (req, res) => {
       pricing.couponCode = pricing.appliedCoupon.code;
     }
 
+    // ── SERVER-SIDE PRICING VALIDATION ───────────────────────────────────────
+    // Recalculate pricing independently and compare with frontend-sent total.
+    // This prevents tampered requests (e.g. paying ₹1 for a ₹500 order).
+    try {
+      const serverPricing = await calculateOrderPricing({
+        items,
+        restaurantId: restaurant._id.toString(),
+        deliveryAddress: address,
+        couponCode: pricing.couponCode || null,
+        deliveryFleet: deliveryFleet || 'standard',
+        tip: pricing.tip || 0,
+        donation: pricing.donation || 0
+      });
+
+      const clientTotal = Math.round(Number(pricing.total));
+      const serverTotal = Math.round(serverPricing.total);
+
+      // Allow a ₹5 tolerance for rounding differences
+      const tolerance = 5;
+      const diff = Math.abs(clientTotal - serverTotal);
+
+      if (diff > tolerance) {
+        logger.warn('⚠️ Pricing tamper detected:', {
+          clientTotal,
+          serverTotal,
+          diff,
+          userId,
+          restaurantId: restaurant._id
+        });
+        return res.status(400).json({
+          success: false,
+          message: 'Order total mismatch. Please refresh and try again.',
+          data: { clientTotal, serverTotal }
+        });
+      }
+
+      logger.info('✅ Server-side pricing validated:', {
+        clientTotal,
+        serverTotal,
+        diff
+      });
+    } catch (pricingValidationError) {
+      // Log but don't block — pricing service failure shouldn't block orders
+      logger.error('❌ Server-side pricing validation failed (non-blocking):', pricingValidationError.message);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // --- COMMISSION CALCULATION SNAPSHOT LOGIC ---
     let commissionSnapshot = {
       amount: 0,
@@ -398,6 +445,16 @@ export const createOrder = async (req, res) => {
     }
     // ---------------------------------------------
 
+    // Normalize address location coordinates for GeoJSON compatibility
+    const coordinates = normalizeCoordinates(address);
+    const normalizedAddress = {
+      ...address,
+      location: {
+        type: 'Point',
+        coordinates: coordinates || [0, 0]
+      }
+    };
+
     // Create order in database with pending status
     const order = new Order({
       orderId: generatedOrderId,
@@ -405,7 +462,7 @@ export const createOrder = async (req, res) => {
       restaurantId: assignedRestaurantId,
       restaurantName: assignedRestaurantName,
       items,
-      address,
+      address: normalizedAddress,
       pricing: {
         ...pricing,
         couponCode: pricing.couponCode || null,

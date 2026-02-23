@@ -98,6 +98,23 @@ export const upsertOnboarding = async (req, res) => {
 
 
 
+    // Sync fields to main restaurant document if onboarding steps are valid
+    if (step1 || step2 || step4) {
+      try {
+        console.log('🔄 Syncing onboarding data to restaurant schema...');
+        const syncData = {
+          step1: step1 || onboarding.step1,
+          step2: step2 || onboarding.step2,
+          step4: step4 || onboarding.step4,
+        };
+        await createRestaurantFromOnboarding(syncData, restaurantId);
+        console.log('✅ Onboarding data synced to restaurant schema successfully');
+      } catch (syncError) {
+        console.error('⚠️ Error syncing onboarding data to restaurant schema:', syncError);
+        // We continue anyway so onboarding state is at least saved
+      }
+    }
+
     // Update restaurant schema when completing onboarding (step 5)
     if (finalCompletedSteps >= 5 && (step5 || businessModel)) {
       console.log('🔄 Step5/Final completed, updating restaurant schema with businessModel...');
@@ -112,13 +129,12 @@ export const upsertOnboarding = async (req, res) => {
 
         if (Object.keys(updateData).length > 0) {
           const updated = await Restaurant.findByIdAndUpdate(restaurantId, { $set: updateData }, { new: true });
-          console.log('✅ Restaurant schema updated with businessModel:', {
-            businessModel: updated?.businessModel,
-            dishLimit: updated?.dishLimit
+          console.log('✅ Restaurant schema updated with final data:', {
+            businessModel: updated?.businessModel
           });
         }
       } catch (bmUpdateError) {
-        console.error('⚠️ Error updating restaurant schema with businessModel:', bmUpdateError);
+        console.error('⚠️ Error updating restaurant schema with final data:', bmUpdateError);
       }
     }
 
@@ -126,12 +142,6 @@ export const upsertOnboarding = async (req, res) => {
       requestCompletedSteps: completedSteps,
       savedCompletedSteps: onboarding.completedSteps,
       finalCompletedSteps,
-      hasStep1: !!step1,
-      hasStep2: !!step2,
-      hasStep3: !!step3,
-      hasStep4: !!step4,
-      hasStep5: !!step5,
-      hasBusinessModel: !!businessModel,
       restaurantId: restaurantId.toString(),
       willUpdateRestaurant: finalCompletedSteps === 5,
     });
@@ -145,8 +155,7 @@ export const upsertOnboarding = async (req, res) => {
 
       console.log('📋 Final restaurant data verification:', {
         name: completeRestaurant?.name,
-        businessModel: completeRestaurant?.businessModel,
-        dishLimit: completeRestaurant?.dishLimit
+        businessModel: completeRestaurant?.businessModel
       });
 
       // Return success response with restaurant info
@@ -159,7 +168,6 @@ export const upsertOnboarding = async (req, res) => {
           slug: completeRestaurant?.slug,
           isActive: completeRestaurant?.isActive,
           businessModel: completeRestaurant?.businessModel,
-          dishLimit: completeRestaurant?.dishLimit
         },
       });
     }

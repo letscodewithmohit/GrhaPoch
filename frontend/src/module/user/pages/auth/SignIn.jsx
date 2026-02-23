@@ -643,17 +643,12 @@ export default function SignIn() {
     <AnimatedPage className="max-h-screen flex flex-col bg-white dark:bg-[#0a0a0a] overflow-hidden !pb-0 md:flex-row md:overflow-hidden">
 
       {/* Mobile: Top Section - Banner Image */}
-      {/* Desktop: Left Section - Banner Image */}
-      <div className="relative md:hidden w-full shrink-0" style={{ height: "45vh", minHeight: "300px" }}>
+      <div className="relative md:hidden w-full shrink-0 bg-[#cb202d]" style={{ height: "42vh", minHeight: "320px" }}>
         <img
           src={loginBanner}
           alt="Food Banner"
           className="w-full h-full object-cover object-center"
         />
-        {/* Precise overlay to replace appzeto food text */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-2">
-          <span className="text-white text-4xl font-black italic tracking-tighter bg-[#cb202d] scale-x-110">GrhaPoch</span>
-        </div>
       </div>
 
       <div className="relative hidden md:block w-full shrink-0 md:w-1/2 md:h-screen md:sticky md:top-0">
@@ -662,18 +657,13 @@ export default function SignIn() {
           alt="Food Banner"
           className="w-full h-full object-cover object-center"
         />
-        {/* Precise overlay to replace appzeto food text */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-4">
-          <span className="text-white text-6xl lg:text-7xl font-black italic tracking-tighter bg-[#cb202d] scale-x-110">GrhaPoch</span>
-        </div>
-        {/* Overlay gradient for better text readability on desktop */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-transparent" />
       </div>
 
-      {/* Mobile: Bottom Section - White Login Form */}
+      {/* Mobile: Bottom Section - White Login Form with Premium Overlap */}
       {/* Desktop: Right Section - Login Form */}
-      <div className="bg-white dark:bg-[#1a1a1a] p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 overflow-y-auto md:w-1/2 md:flex md:items-center md:justify-center md:h-screen">
-        <div className="max-w-md lg:max-w-lg xl:max-w-xl mx-auto space-y-6 md:space-y-8 lg:space-y-10 w-full">
+      <div className="bg-white dark:bg-[#1a1a1a] -mt-10 rounded-t-[2.5rem] md:rounded-t-none relative z-10 p-5 sm:p-6 md:p-8 lg:p-10 overflow-y-auto md:w-1/2 md:flex md:items-center md:justify-center md:h-screen">
+        <div className="max-w-md lg:max-w-lg xl:max-w-xl mx-auto space-y-6 md:space-y-8 lg:space-y-10 w-full pt-2 md:pt-0">
           {/* Heading */}
           <div className="text-center space-y-2 md:space-y-3">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-black dark:text-white leading-tight">

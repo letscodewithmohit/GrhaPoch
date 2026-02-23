@@ -10,7 +10,7 @@ import mongoose from 'mongoose';
  */
 export const getCommissionRules = asyncHandler(async (req, res) => {
   try {
-    const { 
+    const {
       status,
       search,
       page = 1,
@@ -30,7 +30,7 @@ export const getCommissionRules = asyncHandler(async (req, res) => {
       query.$or = [
         { name: { $regex: search, $options: 'i' } }
       ];
-      
+
       // Also search by distance if it's a number
       const searchNumber = parseFloat(search);
       if (!isNaN(searchNumber)) {
@@ -113,15 +113,15 @@ export const getCommissionRuleById = asyncHandler(async (req, res) => {
 export const createCommissionRule = asyncHandler(async (req, res) => {
   try {
     const { name, minDistance, maxDistance, commissionPerKm, basePayout, status } = req.body;
-    
+
     // Check if admin is authenticated
     if (!req.admin || !req.admin._id) {
       console.error('Admin authentication missing:', { hasAdmin: !!req.admin, hasId: !!req.admin?._id });
       return errorResponse(res, 401, 'Admin authentication required');
     }
-    
+
     const adminId = req.admin._id;
-    
+
     // Validate adminId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(adminId)) {
       console.error('Invalid admin ID:', adminId);
@@ -174,18 +174,18 @@ export const createCommissionRule = asyncHandler(async (req, res) => {
       // Check for overlap - two ranges overlap if they share any common distance
       // Range A: [newMinDist, newMaxDist] (or [newMinDist, Infinity) if newMaxDist is null)
       // Range B: [ruleMin, ruleMax] (or [ruleMin, Infinity) if ruleMax is null)
-      
+
       let overlaps = false;
-      
+
       if (newMaxDist === null && ruleMax === null) {
         // Both are unlimited - they overlap if min distances are compatible
         overlaps = true; // Both cover everything from their min, so they overlap
       } else if (newMaxDist === null) {
         // New range is unlimited, overlaps if it starts before or at rule's end
-        overlaps = newMinDist <= ruleMax;
+        overlaps = newMinDist < ruleMax;
       } else if (ruleMax === null) {
         // Existing rule is unlimited, overlaps if it starts before or at new range's end
-        overlaps = ruleMin <= newMaxDist;
+        overlaps = ruleMin < newMaxDist;
       } else {
         // Both have finite ranges - check if they overlap
         // Ranges overlap if: newMinDist < ruleMax && ruleMin < newMaxDist
@@ -195,19 +195,19 @@ export const createCommissionRule = asyncHandler(async (req, res) => {
       }
 
       if (overlaps) {
-        const ruleRangeStr = ruleMax === null 
-          ? `${ruleMin}km - Unlimited` 
+        const ruleRangeStr = ruleMax === null
+          ? `${ruleMin}km - Unlimited`
           : `${ruleMin}km - ${ruleMax}km`;
-        const newRangeStr = newMaxDist === null 
-          ? `${newMinDist}km - Unlimited` 
+        const newRangeStr = newMaxDist === null
+          ? `${newMinDist}km - Unlimited`
           : `${newMinDist}km - ${newMaxDist}km`;
-        
+
         console.log('Overlap detected!', {
           existingRule: rule.name,
           existingRange: ruleRangeStr,
           newRange: newRangeStr
         });
-        
+
         return errorResponse(
           res,
           400,
@@ -226,12 +226,12 @@ export const createCommissionRule = asyncHandler(async (req, res) => {
       status: status !== undefined ? status : true,
       createdBy: new mongoose.Types.ObjectId(adminId)
     };
-    
+
     console.log('Creating commission with data:', {
       ...commissionData,
       createdBy: commissionData.createdBy.toString()
     });
-    
+
     const commission = new DeliveryBoyCommission(commissionData);
 
     try {
@@ -270,31 +270,31 @@ export const createCommissionRule = asyncHandler(async (req, res) => {
     console.error('Request body:', JSON.stringify(req.body, null, 2));
     console.error('Admin ID:', req.admin?._id);
     console.error('Admin object:', req.admin ? { _id: req.admin._id, name: req.admin.name, email: req.admin.email } : 'null');
-    
+
     // Handle validation errors
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map(e => e.message).join(', ');
       console.error('Validation errors:', validationErrors);
       return errorResponse(res, 400, `Validation error: ${validationErrors}`);
     }
-    
+
     // Handle duplicate key errors
     if (error.code === 11000) {
       console.error('Duplicate key error:', error.keyPattern);
       return errorResponse(res, 400, 'A commission rule with this name already exists');
     }
-    
+
     // Handle cast errors
     if (error.name === 'CastError') {
       console.error('Cast error:', error.path, error.value);
       return errorResponse(res, 400, `Invalid value for ${error.path}: ${error.value}`);
     }
-    
+
     // Generic error - return detailed message in development
-    const errorMsg = process.env.NODE_ENV === 'development' 
-      ? `Failed to create commission rule: ${error.message}` 
+    const errorMsg = process.env.NODE_ENV === 'development'
+      ? `Failed to create commission rule: ${error.message}`
       : 'Failed to create commission rule. Please check server logs for details.';
-    
+
     console.error('Returning error response:', errorMsg);
     return errorResponse(res, 500, errorMsg);
   }
@@ -325,7 +325,7 @@ export const updateCommissionRule = asyncHandler(async (req, res) => {
     }
 
     const newMinDist = minDistance !== undefined ? parseFloat(minDistance) : commission.minDistance;
-    const newMaxDist = maxDistance !== undefined 
+    const newMaxDist = maxDistance !== undefined
       ? (maxDistance === null ? null : parseFloat(maxDistance))
       : commission.maxDistance;
 
@@ -346,7 +346,7 @@ export const updateCommissionRule = asyncHandler(async (req, res) => {
     }
 
     // Check for overlapping ranges (excluding current rule)
-    const existingRules = await DeliveryBoyCommission.find({ 
+    const existingRules = await DeliveryBoyCommission.find({
       status: true,
       _id: { $ne: id }
     });
@@ -357,16 +357,16 @@ export const updateCommissionRule = asyncHandler(async (req, res) => {
 
       // Check for overlap - two ranges overlap if they share any common distance
       let overlaps = false;
-      
+
       if (newMaxDist === null && ruleMax === null) {
         // Both are unlimited - they overlap if min distances are compatible
         overlaps = true;
       } else if (newMaxDist === null) {
         // New range is unlimited, overlaps if it starts before or at rule's end
-        overlaps = newMinDist <= ruleMax;
+        overlaps = newMinDist < ruleMax;
       } else if (ruleMax === null) {
         // Existing rule is unlimited, overlaps if it starts before or at new range's end
-        overlaps = ruleMin <= newMaxDist;
+        overlaps = ruleMin < newMaxDist;
       } else {
         // Both have finite ranges - check if they overlap
         // Ranges overlap if: newMinDist < ruleMax && ruleMin < newMaxDist
@@ -374,13 +374,13 @@ export const updateCommissionRule = asyncHandler(async (req, res) => {
       }
 
       if (overlaps) {
-        const ruleRangeStr = ruleMax === null 
-          ? `${ruleMin}km - Unlimited` 
+        const ruleRangeStr = ruleMax === null
+          ? `${ruleMin}km - Unlimited`
           : `${ruleMin}km - ${ruleMax}km`;
-        const newRangeStr = newMaxDist === null 
-          ? `${newMinDist}km - Unlimited` 
+        const newRangeStr = newMaxDist === null
+          ? `${newMinDist}km - Unlimited`
           : `${newMinDist}km - ${newMaxDist}km`;
-        
+
         return errorResponse(
           res,
           400,
