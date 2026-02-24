@@ -1,0 +1,30 @@
+[
+  {
+    "_id": "699960f57db4a63f87f9be98",
+    "name": "0 - 4",
+    "minDistance": 0,
+    "maxDistance": 4,
+    "commissionPerKm": 0,
+    "basePayout": 19,
+    "status": true,
+    "createdBy": "6992fc34cbacf56097752015",
+    "createdAt": "2026-02-21T07:38:29.695Z",
+    "updatedAt": "2026-02-23T15:38:40.197Z",
+    "__v": 0,
+    "updatedBy": "6992fc34cbacf56097752015"
+  },
+  {
+    "_id": "699968b56e003cd4c8834e45",
+    "name": "4-above",
+    "minDistance": 4,
+    "maxDistance": null,
+    "commissionPerKm": 5,
+    "basePayout": 20,
+    "status": true,
+    "createdBy": "6992fc34cbacf56097752015",
+    "createdAt": "2026-02-21T08:11:33.792Z",
+    "updatedAt": "2026-02-23T15:31:50.031Z",
+    "__v": 0,
+    "updatedBy": "6992fc34cbacf56097752015"
+  }
+]

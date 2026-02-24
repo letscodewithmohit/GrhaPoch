@@ -1,0 +1,150 @@
+[
+  {
+    "_id": "699c18f49ec5f229681539ca",
+    "orderId": "ORD-1771837683838-780",
+    "userId": "699c0587c08573767b6248ae",
+    "restaurantId": "69983c612eac5cdb81c159b6",
+    "restaurantName": "mohit restaurant 96",
+    "items": [
+      {
+        "itemId": "item-1771660438503-0.12967310613440597",
+        "name": "momos",
+        "price": 100,
+        "quantity": 1,
+        "image": "https://res.cloudinary.com/dvjmxvlhg/image/upload/v1771660452/appzeto/restaurant/menu-items/fncavw0errv2oltfxqdk.jpg",
+        "description": "momos",
+        "isVeg": true,
+        "_id": "699c18f49ec5f229681539cb"
+      }
+    ],
+    "address": {
+      "label": "Current Location",
+      "street": "PV6X+9XP",
+      "city": "Indore",
+      "state": "Madhya Pradesh",
+      "formattedAddress": "PV6X+9XP, 214, Rajshri Palace Colony, Pipliyahana, Indore, Madhya Pradesh 452018, India",
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      }
+    },
+    "pricing": {
+      "subtotal": 100,
+      "deliveryFee": 21,
+      "platformFee": 5,
+      "tax": 0,
+      "discount": 0,
+      "fixedFee": 0,
+      "total": 126,
+      "tip": 0,
+      "donation": 0,
+      "couponCode": null,
+      "commission": {
+        "amount": 10,
+        "rate": 10,
+        "type": "percentage",
+        "model": "Commission Base"
+      }
+    },
+    "payment": {
+      "method": "cash",
+      "status": "pending"
+    },
+    "status": "delivered",
+    "tracking": {
+      "confirmed": {
+        "status": true,
+        "timestamp": "2026-02-23T09:08:04.610Z"
+      },
+      "preparing": {
+        "status": true,
+        "timestamp": "2026-02-23T09:08:10.339Z"
+      },
+      "ready": {
+        "status": false
+      },
+      "outForDelivery": {
+        "status": true,
+        "timestamp": "2026-02-23T09:25:55.214Z"
+      },
+      "delivered": {
+        "status": true,
+        "timestamp": "2026-02-23T09:26:43.145Z"
+      }
+    },
+    "deliveryFleet": "standard",
+    "note": "",
+    "sendCutlery": true,
+    "estimatedDeliveryTime": 39,
+    "eta": {
+      "min": 36,
+      "max": 41,
+      "additionalTime": 11,
+      "lastUpdated": "2026-02-23T09:08:10.340Z"
+    },
+    "preparationTime": 0,
+    "billImageUrl": "https://res.cloudinary.com/dvjmxvlhg/image/upload/v1771838765/appzeto/delivery/bills/cpxxwcjrnofyqcyv19jv.jpg",
+    "cancelledBy": null,
+    "assignmentInfo": {
+      "assignedBy": "delivery_accept",
+      "deliveryPartnerId": "699c05a0c08573767b62495d",
+      "assignedAt": "2026-02-23T09:25:13.463Z",
+      "priorityDeliveryPartnerIds": [
+        "699c05a0c08573767b62495d"
+      ],
+      "expandedDeliveryPartnerIds": [],
+      "distance": 0
+    },
+    "deliveryState": {
+      "routeToPickup": {
+        "coordinates": [
+          [
+            22.71101,
+            75.900288
+          ],
+          [
+            22.711023,
+            75.900021
+          ],
+          [
+            22.711055,
+            75.899735
+          ]
+        ],
+        "distance": 0.0571,
+        "duration": 0.13499999999999998,
+        "calculatedAt": "2026-02-23T09:25:16.717Z",
+        "method": "osrm"
+      },
+      "routeToDelivery": {
+        "coordinates": [
+          [
+            22.71105942595438,
+            75.90015326069548
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "distance": 0,
+        "duration": 17126.99329634881,
+        "calculatedAt": "2026-02-23T09:25:55.214Z",
+        "method": "haversine"
+      },
+      "status": "delivered",
+      "currentPhase": "completed",
+      "acceptedAt": "2026-02-23T09:25:16.861Z",
+      "reachedPickupAt": "2026-02-23T09:25:23.373Z",
+      "orderIdConfirmedAt": "2026-02-23T09:25:55.214Z"
+    },
+    "createdAt": "2026-02-23T09:08:04.518Z",
+    "updatedAt": "2026-02-23T10:00:54.854Z",
+    "__v": 0,
+    "deliveryPartnerId": "699c05a0c08573767b62495d",
+    "deliveredAt": "2026-02-23T09:26:43.145Z"
+  }
+]

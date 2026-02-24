@@ -1655,30 +1655,64 @@ export const completeDelivery = asyncHandler(async (req, res) => {
 
     console.log(`📏 Final delivery distance: ${deliveryDistance.toFixed(2)} km for order ${orderIdForLog}`);
 
-    // Calculate earnings using admin's commission rules
+    // Calculate earnings using OrderSettlement (this is the single source of truth)
     let totalEarning = 0;
     let commissionBreakdown = null;
 
     try {
-      // Use DeliveryBoyCommission model to calculate commission based on distance
-      const commissionResult = await DeliveryBoyCommission.calculateCommission(deliveryDistance);
-      totalEarning = commissionResult.commission;
-      commissionBreakdown = commissionResult.breakdown;
+      // Try to find if settlement was already calculated
+      const OrderSettlement = (await import('../../order/models/OrderSettlement.js')).default;
+      let settlement = await OrderSettlement.findOne({ orderId: orderMongoId });
 
-      console.log(`💰 Delivery earnings calculated using commission rules: ₹${totalEarning.toFixed(2)} for order ${orderIdForLog}`);
-      console.log(`📊 Commission breakdown:`, {
-        rule: commissionResult.rule.name,
-        basePayout: commissionResult.breakdown.basePayout,
-        distance: commissionResult.breakdown.distance,
-        commissionPerKm: commissionResult.breakdown.commissionPerKm,
-        distanceCommission: commissionResult.breakdown.distanceCommission,
-        total: totalEarning
-      });
+      if (!settlement) {
+        console.log(`ℹ️ Settlement not found for order ${orderIdForLog}, calculating now...`);
+        const { calculateOrderSettlement } = await import('../../order/services/orderSettlementService.js');
+        settlement = await calculateOrderSettlement(orderMongoId);
+      }
+
+      if (settlement && settlement.deliveryPartnerEarning) {
+        totalEarning = settlement.deliveryPartnerEarning.totalEarning || 0;
+
+        // Construct breakdown for UI from settlement data
+        // Note: settlement.deliveryPartnerEarning.totalEarning already includes tips
+        const tipAmount = Number(order.pricing?.tip) || 0;
+        // Important: totalEarning from settlement includes tips.
+        // We subtract it here because the subsequent code adds tips as a separate transaction.
+        totalEarning = (settlement.deliveryPartnerEarning.totalEarning || 0) - tipAmount;
+
+        commissionBreakdown = {
+          basePayout: settlement.deliveryPartnerEarning.basePayout || (totalEarning),
+          distance: settlement.deliveryPartnerEarning.distance || deliveryDistance,
+          commissionPerKm: settlement.deliveryPartnerEarning.commissionPerKm || 0,
+          distanceCommission: settlement.deliveryPartnerEarning.distanceCommission || 0,
+          total: totalEarning
+        };
+
+        console.log(`💰 Delivery earnings (excluding tip) from settlement: ₹${totalEarning.toFixed(2)} for order ${orderIdForLog}`);
+      } else {
+        throw new Error('Settlement calculation failed');
+      }
     } catch (commissionError) {
-      console.error('⚠️ Error calculating commission using rules:', commissionError.message);
-      // Fallback: Use delivery fee as earnings if commission calculation fails
-      totalEarning = order.pricing?.deliveryFee || 0;
-      console.warn(`⚠️ Using fallback earnings (delivery fee): ₹${totalEarning.toFixed(2)}`);
+      console.error('⚠️ Error fetching earnings from settlement:', commissionError.message);
+      // Fallback: Use rule calculation if settlement fails
+      try {
+        const commissionResult = await DeliveryBoyCommission.calculateCommission(deliveryDistance);
+        const rulePay = commissionResult.commission;
+        const userFee = order.pricing?.deliveryFee || 0;
+
+        // Use higher of user fee or rule pay
+        totalEarning = Math.max(userFee, rulePay);
+
+        commissionBreakdown = {
+          ...commissionResult.breakdown,
+          basePayout: Math.max(commissionResult.breakdown.basePayout, userFee - (commissionResult.breakdown.distanceCommission || 0)),
+          total: totalEarning
+        };
+        console.warn(`⚠️ Using fallback breakdown: ₹${totalEarning.toFixed(2)}`);
+      } catch (fallbackError) {
+        totalEarning = (order.pricing?.deliveryFee || 0);
+        console.warn(`⚠️ Using absolute fallback (Fee): ₹${totalEarning.toFixed(2)}`);
+      }
     }
 
     // Add earning to delivery boy's wallet

@@ -119,27 +119,30 @@ export const calculateOrderSettlement = async (orderId) => {
     if (order.deliveryPartnerId && order.assignmentInfo?.distance !== undefined && order.assignmentInfo?.distance !== null) {
       const distance = order.assignmentInfo.distance;
       const deliveryCommission = await DeliveryBoyCommission.calculateCommission(distance);
+      const ruleCommission = deliveryCommission.commission || 0;
+      const ruleBreakdown = deliveryCommission.breakdown;
 
-      // NEW LOGIC: Base Payout is the ENTIRE delivery fee paid by the user (which already includes distance commission)
-      // Or the total commission according to rules (whichever is higher)
-      const commissionFromRule = deliveryCommission.commission || 0;
-      const basePayout = Math.max(userPayment.deliveryFee, commissionFromRule);
+      // We give the higher of: What user paid OR What rule says
+      const finalTotalBaseAndDist = Math.max(userPayment.deliveryFee, ruleCommission);
 
-      // Distance commission is now 0 because it's already included in the basePayout
-      const distanceCommission = 0;
+      // Breakdown calculation:
+      // Keep the distance commission from the rule
+      const finalDistanceCommission = ruleBreakdown.distanceCommission || 0;
+      // The rest goes to base payout (this ensures finalBase + finalDist = finalTotal)
+      const finalBasePayout = finalTotalBaseAndDist - finalDistanceCommission;
 
       // Get surge multiplier
       const surgeMultiplier = order.assignmentInfo?.surgeMultiplier || 1;
-      const surgeAmount = 0;
+      const surgeAmount = 0; // Can be added here if surge logic is implemented
 
-      // Total Earning = Base Payout (which includes distance) + Surge + Tip
-      const deliveryPartnerTotal = basePayout + surgeAmount + userPayment.tip;
+      // Total Earning = finalTotalBaseAndDist + Surge + Tip
+      const deliveryPartnerTotal = finalTotalBaseAndDist + surgeAmount + userPayment.tip;
 
       deliveryPartnerEarning = {
-        basePayout: basePayout, // This is now userPayment.deliveryFee
+        basePayout: Math.round(finalBasePayout * 100) / 100,
         distance: distance,
-        commissionPerKm: deliveryCommission.breakdown.commissionPerKm,
-        distanceCommission: distanceCommission,
+        commissionPerKm: ruleBreakdown.commissionPerKm,
+        distanceCommission: Math.round(finalDistanceCommission * 100) / 100,
         surgeMultiplier: surgeMultiplier,
         surgeAmount: surgeAmount,
         tip: userPayment.tip,
