@@ -1,223 +1,36 @@
-{
-  "_id": "699d37a896753650adea1ccb",
-  "orderId": "699d377296753650adea1b69",
-  "orderNumber": "ORD-1771911025908-372",
-  "userId": "699c0587c08573767b6248ae",
-  "restaurantId": "6999a1c0df02e3d77a2775db",
-  "restaurantName": "Isha_Restaurant",
-  "deliveryPartnerId": null,
-  "userPayment": {
-    "subtotal": 50,
-    "discount": 0,
-    "deliveryFee": 42,
-    "platformFee": 5,
-    "gst": 0,
-    "packagingFee": 0,
-    "tip": 0,
-    "donation": 0,
-    "total": 97
-  },
-  "restaurantEarning": {
-    "foodPrice": 50,
-    "commission": 5,
-    "commissionPercentage": 10,
-    "netEarning": 45,
-    "status": "pending"
-  },
-  "deliveryPartnerEarning": {
-    "basePayout": 0,
-    "distance": 0,
-    "commissionPerKm": 0,
-    "distanceCommission": 0,
-    "surgeMultiplier": 1,
-    "surgeAmount": 0,
-    "tip": 0,
-    "totalEarning": 0,
-    "status": "pending"
-  },
-  "adminEarning": {
-    "commission": 5,
-    "platformFee": 5,
-    "deliveryFee": 42,
-    "gst": 0,
-    "donation": 0,
-    "deliveryMargin": 42,
-    "totalEarning": 52,
-    "status": "pending"
-  },
-  "escrowStatus": "released",
-  "escrowAmount": 97,
-  "settlementStatus": "pending",
-  "restaurantSettled": false,
-  "deliveryPartnerSettled": false,
-  "adminSettled": false,
-  "cancellationDetails": {
-    "cancelled": false,
-    "refundAmount": 0,
-    "restaurantCompensation": 0
-  },
-  "calculationSnapshot": {
-    "feeSettings": {
-      "platformFee": 5,
-      "gstRate": 5,
-      "deliveryFee": 28
-    },
-    "restaurantCommission": {
-      "type": "percentage",
-      "value": 10,
-      "rule": null
-    },
-    "deliveryCommission": null,
-    "calculatedAt": "2026-02-24T05:31:20.546Z"
-  },
-  "createdAt": "2026-02-24T05:31:20.555Z",
-  "updatedAt": "2026-02-24T05:34:07.512Z",
-  "__v": 0,
-  "escrowHeldAt": "2026-02-24T05:31:20.830Z",
-  "escrowReleasedAt": "2026-02-24T05:34:07.507Z"
-}
-
---- DELIVERY WALLET ---
-{
-  "_id": "699c0615c08573767b624a11",
-  "deliveryId": "699c05a0c08573767b62495d",
-  "totalBalance": 173.06,
-  "cashInHand": 487,
-  "totalWithdrawn": 0,
-  "totalEarned": 173.06,
-  "joiningBonusClaimed": false,
-  "joiningBonusAmount": 0,
-  "isActive": true,
-  "transactions": [
-    {
-      "amount": 21,
-      "type": "payment",
-      "status": "Completed",
-      "description": "Delivery earnings for Order #ORD-1771837683838-780 (Distance: Fixed (COORDS_ERROR))",
-      "orderId": "699c18f49ec5f229681539ca",
-      "paymentCollected": false,
-      "metadata": {
-        "baseEarning": 42819.48,
-        "distance": 8563.496648174405,
-        "orderNumber": "ORD-1771837683838-780"
-      },
-      "_id": "699c1d5344b946cded7cac1e",
-      "createdAt": "2026-02-23T09:26:43.908Z",
-      "updatedAt": "2026-02-23T10:00:54.967Z"
-    },
-    {
-      "amount": 21,
-      "type": "payment",
-      "status": "Completed",
-      "description": "Delivery earnings for Order #ORD-1771839820929-586 (Distance: Fixed (COORDS_ERROR))",
-      "orderId": "699c214da9f25605770759b3",
-      "paymentCollected": false,
-      "metadata": {
-        "baseEarning": 42819.54,
-        "distance": 8563.507061235994,
-        "orderNumber": "ORD-1771839820929-586"
-      },
-      "_id": "699c21b0a9f2560577075d85",
-      "createdAt": "2026-02-23T09:45:20.138Z",
-      "updatedAt": "2026-02-23T10:00:54.967Z"
-    },
-    {
-      "amount": 10,
-      "type": "tip",
-      "status": "Completed",
-      "description": "Customer tip for Order #ORD-1771839820929-586",
-      "orderId": "699c214da9f25605770759b3",
-      "paymentCollected": false,
-      "metadata": {
-        "tipAmount": 10,
-        "orderNumber": "ORD-1771839820929-586"
-      },
-      "_id": "699c21b0a9f2560577075d86",
-      "createdAt": "2026-02-23T09:45:20.140Z",
-      "updatedAt": "2026-02-23T09:45:20.140Z"
-    },
-    {
-      "amount": 21,
-      "type": "payment",
-      "status": "Completed",
-      "description": "Delivery earnings for Order #ORD-1771842321903-28 (Distance: 0.00 km)",
-      "orderId": "699c2b12f13e61d78a7adc82",
-      "paymentCollected": false,
-      "metadata": {
-        "baseEarning": 21,
-        "distance": 0,
-        "orderNumber": "ORD-1771842321903-28"
-      },
-      "_id": "699c2b81f13e61d78a7ae125",
-      "createdAt": "2026-02-23T10:27:13.796Z",
-      "updatedAt": "2026-02-23T10:27:13.796Z"
-    },
-    {
-      "amount": 10,
-      "type": "tip",
-      "status": "Completed",
-      "description": "Customer tip for Order #ORD-1771842321903-28",
-      "orderId": "699c2b12f13e61d78a7adc82",
-      "paymentCollected": false,
-      "metadata": {
-        "tipAmount": 10,
-        "orderNumber": "ORD-1771842321903-28"
-      },
-      "_id": "699c2b81f13e61d78a7ae126",
-      "createdAt": "2026-02-23T10:27:13.799Z",
-      "updatedAt": "2026-02-23T10:27:13.799Z"
-    },
-    {
-      "amount": 23,
-      "type": "payment",
-      "status": "Completed",
-      "description": "Delivery earnings for Order #ORD-1771843950494-330 (Distance: 4.20 km)",
-      "orderId": "699c316ece293a51c6dce9c0",
-      "paymentCollected": false,
-      "metadata": {
-        "baseEarning": 23,
-        "distance": 4.1991000000000005,
-        "orderNumber": "ORD-1771843950494-330"
-      },
-      "_id": "699c31cfce293a51c6dcec63",
-      "createdAt": "2026-02-23T10:54:07.271Z",
-      "updatedAt": "2026-02-23T10:54:07.271Z"
-    },
-    {
-      "amount": 10,
-      "type": "tip",
-      "status": "Completed",
-      "description": "Customer tip for Order #ORD-1771843950494-330",
-      "orderId": "699c316ece293a51c6dce9c0",
-      "paymentCollected": false,
-      "metadata": {
-        "tipAmount": 10,
-        "orderNumber": "ORD-1771843950494-330"
-      },
-      "_id": "699c31cfce293a51c6dcec64",
-      "createdAt": "2026-02-23T10:54:07.277Z",
-      "updatedAt": "2026-02-23T10:54:07.277Z"
-    },
-    {
-      "amount": 57.06,
-      "type": "payment",
-      "status": "Completed",
-      "description": "Delivery earnings for Order #ORD-1771911025908-372 (Distance: 11.41 km)",
-      "orderId": "699d377296753650adea1b69",
-      "paymentCollected": false,
-      "metadata": {
-        "baseEarning": 57.06,
-        "distance": 11.411,
-        "orderNumber": "ORD-1771911025908-372"
-      },
-      "_id": "699d385096753650adea1fe3",
-      "createdAt": "2026-02-24T05:34:08.008Z",
-      "updatedAt": "2026-02-24T05:34:08.008Z"
+(node:19388) [MONGOOSE] Warning: Duplicate schema index on {"restaurant":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19388) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+Connected to MongoDB
+Running calculateOrderSettlement for order: new ObjectId('699d734f5e5194bb20679b04')
+❌ Error in calculateOrderSettlement for order 699d734f5e5194bb20679b04: Error: OrderSettlement validation failed: adminEarning.deliveryMargin: Path `adminEarning.deliveryMargin` (-0.31) is less than minimum allowed value (0).
+    at ValidationError.inspect (C:\Users\manmo\Downloads\grap poch\backend\node_modules\mongoose\lib\error\validation.js:52:26)
+    at formatValue (node:internal/util/inspect:828:19)
+    at inspect (node:internal/util/inspect:371:10)
+    at formatWithOptionsInternal (node:internal/util/inspect:2367:40)
+    at formatWithOptions (node:internal/util/inspect:2229:10)
+    at console.value (node:internal/console/constructor:350:14)
+    at console.warn (node:internal/console/constructor:383:61)
+    at calculateOrderSettlement (file:///C:/Users/manmo/Downloads/grap%20poch/backend/modules/order/services/orderSettlementService.js:239:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async run (file:///C:/Users/manmo/Downloads/grap%20poch/backend/scripts/test_settlement_calc.js:22:28) {
+  errors: {
+    'adminEarning.deliveryMargin': ValidatorError: Path `adminEarning.deliveryMargin` (-0.31) is less than minimum allowed value (0).
+        at validate (C:\Users\manmo\Downloads\grap poch\backend\node_modules\mongoose\lib\schemaType.js:1443:13)
+        at SchemaType.doValidate (C:\Users\manmo\Downloads\grap poch\backend\node_modules\mongoose\lib\schemaType.js:1427:7)
+        at C:\Users\manmo\Downloads\grap poch\backend\node_modules\mongoose\lib\document.js:3124:18
+        at process.processTicksAndRejections (node:internal/process/task_queues:77:11) {
+      properties: [Object],
+      kind: 'min',
+      path: 'adminEarning.deliveryMargin',
+      value: -0.31,
+      reason: undefined,
+      [Symbol(mongoose#validatorError)]: true
     }
-  ],
-  "withdrawalRequests": [],
-  "createdAt": "2026-02-23T07:47:33.542Z",
-  "updatedAt": "2026-02-24T05:34:08.016Z",
-  "__v": 5,
-  "lastTransactionAt": "2026-02-24T05:34:08.012Z"
+  },
+  _message: 'OrderSettlement validation failed'
 }
+Error: OrderSettlement validation failed: adminEarning.deliveryMargin: Path `adminEarning.deliveryMargin` (-0.31) is less than minimum allowed value (0).
+    at calculateOrderSettlement (file:///C:/Users/manmo/Downloads/grap%20poch/backend/modules/order/services/orderSettlementService.js:240:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async run (file:///C:/Users/manmo/Downloads/grap%20poch/backend/scripts/test_settlement_calc.js:22:28)

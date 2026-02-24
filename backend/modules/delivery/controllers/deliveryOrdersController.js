@@ -709,15 +709,16 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       console.error('❌ Earnings error stack:', earningsError.stack);
       // Fallback to default
       const tip = Number(order.pricing?.tip) || 0;
+      const defaultBasePay = 22; // As per system commission rules standard
       estimatedEarnings = {
-        basePayout: 10,
+        basePayout: defaultBasePay,
         distance: Math.round(deliveryDistance * 100) / 100,
         commissionPerKm: 5,
         distanceCommission: deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0,
         tip: tip,
-        totalEarning: 10 + (deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0) + tip,
+        totalEarning: defaultBasePay + (deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0) + tip,
         breakdown: {
-          basePayout: 10,
+          basePayout: defaultBasePay,
           distance: deliveryDistance,
           commissionPerKm: 5,
           distanceCommission: deliveryDistance > 4 ? deliveryDistance * 5 : 0,
@@ -1184,6 +1185,20 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
     console.log(`✅ Order ID confirmed for order ${order.orderId}`);
     console.log(`📍 Route to delivery calculated: ${routeData.distance.toFixed(2)} km, ${routeData.duration.toFixed(1)} mins`);
 
+    // Calculate updated estimated earnings based on road distance
+    let estimatedEarnings = null;
+    try {
+      const commissionResult = await DeliveryBoyCommission.calculateCommission(routeData.distance);
+      const tip = Number(updatedOrder.pricing?.tip) || 0;
+      estimatedEarnings = {
+        ...commissionResult.breakdown,
+        tip: tip,
+        totalEarning: commissionResult.commission + tip
+      };
+    } catch (e) {
+      console.warn('⚠️ Could not calculate updated earnings for confirmOrderId:', e.message);
+    }
+
     // Send response first, then handle socket notification asynchronously
     const responseData = {
       order: updatedOrder,
@@ -1192,7 +1207,8 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
         distance: routeData.distance,
         duration: routeData.duration,
         method: routeData.method
-      }
+      },
+      estimatedEarnings: estimatedEarnings
     };
 
     const response = successResponse(res, 200, 'Order ID confirmed', responseData);
@@ -1660,15 +1676,10 @@ export const completeDelivery = asyncHandler(async (req, res) => {
     let commissionBreakdown = null;
 
     try {
-      // Try to find if settlement was already calculated
-      const OrderSettlement = (await import('../../order/models/OrderSettlement.js')).default;
-      let settlement = await OrderSettlement.findOne({ orderId: orderMongoId });
-
-      if (!settlement) {
-        console.log(`ℹ️ Settlement not found for order ${orderIdForLog}, calculating now...`);
-        const { calculateOrderSettlement } = await import('../../order/services/orderSettlementService.js');
-        settlement = await calculateOrderSettlement(orderMongoId);
-      }
+      // Re-calculate settlement to ensure delivery partner info and latest distance are factored in
+      console.log(`ℹ️ Calculating/Updating settlement for order ${orderIdForLog}...`);
+      const { calculateOrderSettlement } = await import('../../order/services/orderSettlementService.js');
+      settlement = await calculateOrderSettlement(orderMongoId);
 
       if (settlement && settlement.deliveryPartnerEarning) {
         totalEarning = settlement.deliveryPartnerEarning.totalEarning || 0;
@@ -1710,8 +1721,10 @@ export const completeDelivery = asyncHandler(async (req, res) => {
         };
         console.warn(`⚠️ Using fallback breakdown: ₹${totalEarning.toFixed(2)}`);
       } catch (fallbackError) {
-        totalEarning = (order.pricing?.deliveryFee || 0);
-        console.warn(`⚠️ Using absolute fallback (Fee): ₹${totalEarning.toFixed(2)}`);
+        const userFee = (order.pricing?.deliveryFee || 0);
+        const defaultBasePay = 22;
+        totalEarning = Math.max(userFee, defaultBasePay);
+        console.warn(`⚠️ Using absolute fallback (Max of Fee/Base): ₹${totalEarning.toFixed(2)}`);
       }
     }
 

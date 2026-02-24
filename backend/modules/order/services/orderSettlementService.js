@@ -116,8 +116,12 @@ export const calculateOrderSettlement = async (orderId) => {
       status: 'pending'
     };
 
-    if (order.deliveryPartnerId && order.assignmentInfo?.distance !== undefined && order.assignmentInfo?.distance !== null) {
-      const distance = order.assignmentInfo.distance;
+    // Priority for distance: 
+    // 1. Measured road distance from delivery (routeToDelivery)
+    // 2. Assignment distance (set at acceptance)
+    const distance = order.deliveryState?.routeToDelivery?.distance || order.assignmentInfo?.distance;
+
+    if (order.deliveryPartnerId && distance !== undefined && distance !== null) {
       const deliveryCommission = await DeliveryBoyCommission.calculateCommission(distance);
       const ruleCommission = deliveryCommission.commission || 0;
       const ruleBreakdown = deliveryCommission.breakdown;

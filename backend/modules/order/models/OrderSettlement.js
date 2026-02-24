@@ -88,8 +88,8 @@ const orderSettlementSchema = new mongoose.Schema({
     deliveryFee: { type: Number, required: true, min: 0 },
     gst: { type: Number, required: true, min: 0 },
     donation: { type: Number, default: 0, min: 0 },
-    deliveryMargin: { type: Number, default: 0, min: 0 }, // deliveryFee - deliveryPartnerEarning
-    totalEarning: { type: Number, required: true, min: 0 },
+    deliveryMargin: { type: Number, default: 0 }, // deliveryFee - deliveryPartnerEarning
+    totalEarning: { type: Number, required: true },
     status: {
       type: String,
       enum: ['pending', 'credited', 'cancelled'],

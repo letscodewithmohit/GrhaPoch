@@ -3631,7 +3631,10 @@ export default function DeliveryHome() {
                     (order.address?.street ? `${order.address.street}, ${order.address.city || ''}, ${order.address.state || ''}`.trim() : '') ||
                     selectedRestaurant.customerAddress,
                   customerLat,
-                  customerLng
+                  customerLng,
+                  // Update with more accurate road-based earnings if backend provided them
+                  estimatedEarnings: orderData.estimatedEarnings || selectedRestaurant.estimatedEarnings,
+                  amount: orderData.estimatedEarnings?.totalEarning || selectedRestaurant.amount
                 }
                 setSelectedRestaurant(updatedRestaurant)
 
