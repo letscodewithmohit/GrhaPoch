@@ -10300,11 +10300,18 @@ export default function DeliveryHome() {
                   <span className="text-gray-600 text-sm">Trip distance</span>
                 </div>
                 <span className="text-gray-900 font-semibold">
-                  {tripDistance !== null
-                    ? (tripDistance >= 1000
-                      ? `${(tripDistance / 1000).toFixed(1)} kms`
-                      : `${tripDistance.toFixed(0)} m`)
-                    : (selectedRestaurant?.tripDistance || 'Calculating...')}
+                  {(() => {
+                    const payoutDistanceKm = Number(selectedRestaurant?.estimatedEarnings?.distance)
+                    if (Number.isFinite(payoutDistanceKm) && payoutDistanceKm > 0) {
+                      return `${payoutDistanceKm.toFixed(1)} kms`
+                    }
+                    if (tripDistance !== null) {
+                      return tripDistance >= 1000
+                        ? `${(tripDistance / 1000).toFixed(1)} kms`
+                        : `${tripDistance.toFixed(0)} m`
+                    }
+                    return selectedRestaurant?.tripDistance || 'Calculating...'
+                  })()}
                 </span>
               </div>
               <div className="flex items-center justify-between">

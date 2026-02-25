@@ -115,9 +115,17 @@ export const calculateOrderSettlement = async (orderId) => {
       status: 'pending'
     };
 
-    // Distance priority:
-    // 1. Road route distance (routeToDelivery) when valid (final trip distance)
-    // 2. Assignment distance (order-time / fallback distance)
+    // Distance priority for payout:
+    // 1. Canonical assignment distance captured at order-time pricing
+    // 2. Road route distance (routeToDelivery) fallback when canonical distance is missing
+    const assignmentDistance =
+      (typeof order.assignmentInfo?.distance === 'number' &&
+        Number.isFinite(order.assignmentInfo.distance) &&
+        order.assignmentInfo.distance >= 0 &&
+        order.assignmentInfo.distance <= 50)
+        ? order.assignmentInfo.distance
+        : null;
+
     const routeDistance =
       (typeof order.deliveryState?.routeToDelivery?.distance === 'number' &&
         Number.isFinite(order.deliveryState.routeToDelivery.distance) &&
@@ -126,14 +134,7 @@ export const calculateOrderSettlement = async (orderId) => {
         ? order.deliveryState.routeToDelivery.distance
         : null;
 
-    const assignmentDistance =
-      (typeof order.assignmentInfo?.distance === 'number' &&
-        Number.isFinite(order.assignmentInfo.distance) &&
-        order.assignmentInfo.distance >= 0)
-        ? order.assignmentInfo.distance
-        : null;
-
-    const distance = routeDistance ?? assignmentDistance;
+    const distance = assignmentDistance ?? routeDistance;
 
     if (order.deliveryPartnerId && distance !== undefined && distance !== null) {
       const deliveryCommission = await DeliveryBoyCommission.calculateCommission(distance);

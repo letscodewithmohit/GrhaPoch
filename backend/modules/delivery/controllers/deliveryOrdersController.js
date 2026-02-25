@@ -1154,6 +1154,16 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
         ? routeData.distance
         : (typeof order.assignmentInfo?.distance === 'number' ? order.assignmentInfo.distance : 0);
 
+    // Keep canonical order-time distance stable for payout calculations.
+    // If already present, do not overwrite it with recalculated route distance.
+    const canonicalAssignmentDistance =
+      (typeof order.assignmentInfo?.distance === 'number' &&
+        Number.isFinite(order.assignmentInfo.distance) &&
+        order.assignmentInfo.distance >= 0 &&
+        order.assignmentInfo.distance <= 50)
+        ? order.assignmentInfo.distance
+        : null;
+
     const updateData = {
       'deliveryState.status': 'order_confirmed',
       'deliveryState.currentPhase': 'en_route_to_delivery',
@@ -1165,7 +1175,7 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
         calculatedAt: new Date(),
         method: routeData.method
       },
-      'assignmentInfo.distance': validatedRoadDistance,
+      'assignmentInfo.distance': canonicalAssignmentDistance ?? validatedRoadDistance,
       status: 'out_for_delivery',
       'tracking.outForDelivery': {
         status: true,
@@ -1540,10 +1550,10 @@ export const completeDelivery = asyncHandler(async (req, res) => {
         } else {
           // Calculate earnings even if order is already delivered (for consistency)
           let deliveryDistance = 0;
-          if (order.deliveryState?.routeToDelivery?.distance) {
-            deliveryDistance = order.deliveryState.routeToDelivery.distance;
-          } else if (order.assignmentInfo?.distance) {
+          if (order.assignmentInfo?.distance) {
             deliveryDistance = order.assignmentInfo.distance;
+          } else if (order.deliveryState?.routeToDelivery?.distance) {
+            deliveryDistance = order.deliveryState.routeToDelivery.distance;
           }
 
           if (deliveryDistance > 0) {
@@ -1659,16 +1669,19 @@ export const completeDelivery = asyncHandler(async (req, res) => {
     let deliveryDistance = 0;
     let settlement = null;
 
-    // Priority 1: Use measured road route distance (final trip distance) when valid.
-    if (order.deliveryState?.routeToDelivery?.distance &&
+    // Priority 1: Use canonical order-time assignment distance for payout consistency.
+    if (order.assignmentInfo?.distance &&
+      Number.isFinite(order.assignmentInfo.distance) &&
+      order.assignmentInfo.distance >= 0 &&
+      order.assignmentInfo.distance <= 50) {
+      deliveryDistance = order.assignmentInfo.distance;
+    }
+    // Priority 2: Use measured road route distance when canonical distance is missing.
+    else if (order.deliveryState?.routeToDelivery?.distance &&
       Number.isFinite(order.deliveryState.routeToDelivery.distance) &&
       order.deliveryState.routeToDelivery.distance > 0 &&
       order.deliveryState.routeToDelivery.distance <= 50) {
       deliveryDistance = order.deliveryState.routeToDelivery.distance;
-    }
-    // Priority 2: Fallback to saved assignment distance
-    else if (order.assignmentInfo?.distance) {
-      deliveryDistance = order.assignmentInfo.distance;
     }
     // Priority 3: Calculate distance from restaurant to customer if coordinates available
     else if (order.restaurantId?.location?.coordinates && order.address?.location?.coordinates) {
