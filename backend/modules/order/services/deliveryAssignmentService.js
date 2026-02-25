@@ -460,9 +460,19 @@ export async function assignOrderToDeliveryBoy(order, restaurantLat, restaurantL
     // Update order with delivery partner assignment
     // Note: Don't set outForDelivery yet - that should happen when delivery boy picks up the order
     order.deliveryPartnerId = nearestDeliveryBoy.deliveryPartnerId;
+
+    // IMPORTANT: assignmentInfo.distance represents restaurant -> customer distance
+    // and is used for delivery fee/earnings. Do not overwrite it with rider -> restaurant distance.
+    const existingAssignmentInfo = order.assignmentInfo || {};
+    const canonicalOrderDistance =
+      (typeof existingAssignmentInfo.distance === 'number' && Number.isFinite(existingAssignmentInfo.distance))
+        ? existingAssignmentInfo.distance
+        : null;
+
     order.assignmentInfo = {
+      ...existingAssignmentInfo,
       deliveryPartnerId: nearestDeliveryBoy.deliveryPartnerId,
-      distance: nearestDeliveryBoy.distance,
+      distance: canonicalOrderDistance ?? nearestDeliveryBoy.distance,
       assignedAt: new Date(),
       assignedBy: 'nearest_available'
     };

@@ -623,8 +623,11 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       return errorResponse(res, 500, 'Invalid route data. Please try again.');
     }
 
-    // Calculate delivery distance (restaurant to customer) to save in assignment info
-    const deliveryDistanceForSave = calculateDistance(order.restaurantId, order.address) || 0;
+    // Preserve order-time pricing distance when available; fallback to on-the-fly calculation.
+    const deliveryDistanceForSave =
+      (typeof order.assignmentInfo?.distance === 'number' && !Number.isNaN(order.assignmentInfo.distance))
+        ? order.assignmentInfo.distance
+        : (calculateDistance(order.restaurantId, order.address) || 0);
 
     let updatedOrder;
     try {
@@ -665,8 +668,11 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     console.log(`✅ Order ${order.orderId} accepted by delivery partner ${delivery._id}`);
     console.log(`📍 Route calculated: ${routeData.distance.toFixed(2)} km, ${routeData.duration.toFixed(1)} mins`);
 
-    // Calculate delivery distance (restaurant to customer) for earnings calculation
-    const deliveryDistance = calculateDistance(updatedOrder.restaurantId, updatedOrder.address) || 0;
+    // Use canonical order distance for earnings preview when available.
+    const deliveryDistance =
+      (typeof updatedOrder.assignmentInfo?.distance === 'number' && !Number.isNaN(updatedOrder.assignmentInfo.distance))
+        ? updatedOrder.assignmentInfo.distance
+        : (calculateDistance(updatedOrder.restaurantId, updatedOrder.address) || 0);
 
     // Calculate estimated earnings based on delivery distance
     let estimatedEarnings = null;
@@ -686,19 +692,26 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       const rule = commissionResult.rule || { minDistance: 4 };
 
       const tip = Number(order.pricing?.tip) || 0;
+      const userDeliveryFee = Number(order.pricing?.deliveryFee) || 0;
+      const ruleTotal = Number(commissionResult.commission) || 0;
+      const payoutBaseAndDistance = Math.max(ruleTotal, userDeliveryFee);
+      const topUpAmount = Math.max(0, payoutBaseAndDistance - ruleTotal);
+      const adjustedDistanceCommission = (breakdown.distanceCommission || 0) + topUpAmount;
+
       estimatedEarnings = {
         basePayout: Math.round((breakdown.basePayout || 10) * 100) / 100,
         distance: Math.round(deliveryDistance * 100) / 100,
         commissionPerKm: Math.round((breakdown.commissionPerKm || 5) * 100) / 100,
-        distanceCommission: Math.round((breakdown.distanceCommission || 0) * 100) / 100,
+        distanceCommission: Math.round(adjustedDistanceCommission * 100) / 100,
         tip: tip,
-        totalEarning: Math.round((commissionResult.commission + tip) * 100) / 100,
+        totalEarning: Math.round((payoutBaseAndDistance + tip) * 100) / 100,
         breakdown: {
           basePayout: breakdown.basePayout || 10,
           distance: deliveryDistance,
           commissionPerKm: breakdown.commissionPerKm || 5,
-          distanceCommission: breakdown.distanceCommission || 0,
+          distanceCommission: adjustedDistanceCommission,
           minDistance: rule.minDistance || 4,
+          feeTopUp: Math.round(topUpAmount * 100) / 100,
           tip: tip
         }
       };
@@ -714,14 +727,14 @@ export const acceptOrder = asyncHandler(async (req, res) => {
         basePayout: defaultBasePay,
         distance: Math.round(deliveryDistance * 100) / 100,
         commissionPerKm: 5,
-        distanceCommission: deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0,
+        distanceCommission: deliveryDistance > 4 ? Math.round((deliveryDistance - 4) * 5 * 100) / 100 : 0,
         tip: tip,
-        totalEarning: defaultBasePay + (deliveryDistance > 4 ? Math.round(deliveryDistance * 5 * 100) / 100 : 0) + tip,
+        totalEarning: defaultBasePay + (deliveryDistance > 4 ? Math.round((deliveryDistance - 4) * 5 * 100) / 100 : 0) + tip,
         breakdown: {
           basePayout: defaultBasePay,
           distance: deliveryDistance,
           commissionPerKm: 5,
-          distanceCommission: deliveryDistance > 4 ? deliveryDistance * 5 : 0,
+          distanceCommission: deliveryDistance > 4 ? (deliveryDistance - 4) * 5 : 0,
           minDistance: 4,
           tip: tip
         }
@@ -1133,6 +1146,14 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
     if (!orderMongoId) {
       return errorResponse(res, 500, 'Order ID not found in order object');
     }
+    const validatedRoadDistance =
+      (typeof routeData.distance === 'number' &&
+        Number.isFinite(routeData.distance) &&
+        routeData.distance > 0 &&
+        routeData.distance <= 50)
+        ? routeData.distance
+        : (typeof order.assignmentInfo?.distance === 'number' ? order.assignmentInfo.distance : 0);
+
     const updateData = {
       'deliveryState.status': 'order_confirmed',
       'deliveryState.currentPhase': 'en_route_to_delivery',
@@ -1144,6 +1165,7 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
         calculatedAt: new Date(),
         method: routeData.method
       },
+      'assignmentInfo.distance': validatedRoadDistance,
       status: 'out_for_delivery',
       'tracking.outForDelivery': {
         status: true,
@@ -1185,10 +1207,14 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
     console.log(`✅ Order ID confirmed for order ${order.orderId}`);
     console.log(`📍 Route to delivery calculated: ${routeData.distance.toFixed(2)} km, ${routeData.duration.toFixed(1)} mins`);
 
-    // Calculate updated estimated earnings based on road distance
+    // Calculate updated estimated earnings using canonical order distance when available.
     let estimatedEarnings = null;
     try {
-      const commissionResult = await DeliveryBoyCommission.calculateCommission(routeData.distance);
+      const earningDistance =
+        (typeof updatedOrder.assignmentInfo?.distance === 'number' && !Number.isNaN(updatedOrder.assignmentInfo.distance))
+          ? updatedOrder.assignmentInfo.distance
+          : routeData.distance;
+      const commissionResult = await DeliveryBoyCommission.calculateCommission(earningDistance);
       const tip = Number(updatedOrder.pricing?.tip) || 0;
       estimatedEarnings = {
         ...commissionResult.breakdown,
@@ -1631,12 +1657,16 @@ export const completeDelivery = asyncHandler(async (req, res) => {
     // Calculate delivery earnings based on admin's commission rules
     // Get delivery distance (in km) from order
     let deliveryDistance = 0;
+    let settlement = null;
 
-    // Priority 1: Get distance from routeToDelivery (most accurate)
-    if (order.deliveryState?.routeToDelivery?.distance) {
+    // Priority 1: Use measured road route distance (final trip distance) when valid.
+    if (order.deliveryState?.routeToDelivery?.distance &&
+      Number.isFinite(order.deliveryState.routeToDelivery.distance) &&
+      order.deliveryState.routeToDelivery.distance > 0 &&
+      order.deliveryState.routeToDelivery.distance <= 50) {
       deliveryDistance = order.deliveryState.routeToDelivery.distance;
     }
-    // Priority 2: Get distance from assignmentInfo
+    // Priority 2: Fallback to saved assignment distance
     else if (order.assignmentInfo?.distance) {
       deliveryDistance = order.assignmentInfo.distance;
     }
@@ -1683,6 +1713,9 @@ export const completeDelivery = asyncHandler(async (req, res) => {
 
       if (settlement && settlement.deliveryPartnerEarning) {
         totalEarning = settlement.deliveryPartnerEarning.totalEarning || 0;
+        if (typeof settlement.deliveryPartnerEarning.distance === 'number') {
+          deliveryDistance = settlement.deliveryPartnerEarning.distance;
+        }
 
         // Construct breakdown for UI from settlement data
         // Note: settlement.deliveryPartnerEarning.totalEarning already includes tips
@@ -1713,10 +1746,13 @@ export const completeDelivery = asyncHandler(async (req, res) => {
 
         // Use higher of user fee or rule pay
         totalEarning = Math.max(userFee, rulePay);
+        const topUpAmount = Math.max(0, totalEarning - rulePay);
+        const adjustedDistanceCommission = (commissionResult.breakdown.distanceCommission || 0) + topUpAmount;
 
         commissionBreakdown = {
           ...commissionResult.breakdown,
-          basePayout: Math.max(commissionResult.breakdown.basePayout, userFee - (commissionResult.breakdown.distanceCommission || 0)),
+          basePayout: commissionResult.breakdown.basePayout,
+          distanceCommission: adjustedDistanceCommission,
           total: totalEarning
         };
         console.warn(`⚠️ Using fallback breakdown: ₹${totalEarning.toFixed(2)}`);

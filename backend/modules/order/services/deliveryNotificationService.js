@@ -158,15 +158,13 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
       deliveryDistance = calculateDistance(restaurantLat, restaurantLng, customerLat, customerLng);
     }
 
-    // Calculate estimated earnings; use order's delivery fee as fallback when 0 or distance missing
+    // Use canonical order-time distance for earnings whenever available.
+    const canonicalDeliveryDistance = getCanonicalDeliveryDistance(order, deliveryDistance || 0);
+
+    // Calculate estimated earnings; ensure preview is never below user-charged delivery fee.
     const deliveryFeeFromOrder = order.pricing?.deliveryFee ?? 0;
-    let estimatedEarnings = await calculateEstimatedEarnings(deliveryDistance || 0);
-    const earnedValue = typeof estimatedEarnings === 'object' ? (estimatedEarnings.totalEarning ?? 0) : (Number(estimatedEarnings) || 0);
-    if (earnedValue <= 0 && deliveryFeeFromOrder > 0) {
-      estimatedEarnings = typeof estimatedEarnings === 'object'
-        ? { ...estimatedEarnings, totalEarning: deliveryFeeFromOrder }
-        : deliveryFeeFromOrder;
-    }
+    let estimatedEarnings = await calculateEstimatedEarnings(canonicalDeliveryDistance || 0);
+    estimatedEarnings = applyDeliveryFeeFloor(estimatedEarnings, deliveryFeeFromOrder);
 
     // Prepare order notification data
     const orderNotification = {
@@ -198,8 +196,8 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
       estimatedDeliveryTime: order.estimatedDeliveryTime || 30,
       note: order.note || '',
       pickupDistance: pickupDistance ? `${pickupDistance.toFixed(2)} km` : 'Distance not available',
-      deliveryDistance: deliveryDistance ? `${deliveryDistance.toFixed(2)} km` : 'Calculating...',
-      deliveryDistanceRaw: deliveryDistance || 0, // Raw distance number for calculations
+      deliveryDistance: canonicalDeliveryDistance ? `${canonicalDeliveryDistance.toFixed(2)} km` : 'Calculating...',
+      deliveryDistanceRaw: canonicalDeliveryDistance || 0, // Canonical distance for calculations
       estimatedEarnings
     };
 
@@ -426,19 +424,22 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       console.warn('⚠️ Missing coordinates for distance calculation');
     }
 
+    // Prefer canonical order-time delivery distance for earnings and display.
+    const canonicalDeliveryDistance = getCanonicalDeliveryDistance(orderWithUser, deliveryDistance);
+
     // Calculate estimated earnings based on delivery distance
     let estimatedEarnings = null;
     const deliveryFeeFromOrder = orderWithUser.pricing?.deliveryFee ?? 0;
 
     try {
-      estimatedEarnings = await calculateEstimatedEarnings(deliveryDistance);
+      estimatedEarnings = await calculateEstimatedEarnings(canonicalDeliveryDistance);
       const earnedValue = typeof estimatedEarnings === 'object' ? (estimatedEarnings.totalEarning ?? 0) : (Number(estimatedEarnings) || 0);
 
       console.log(`💰 Earnings calculation result:`, {
         estimatedEarnings,
         earnedValue,
         deliveryFeeFromOrder,
-        deliveryDistance
+        deliveryDistance: canonicalDeliveryDistance
       });
 
       // Use deliveryFee as fallback if earnings is 0 or invalid
@@ -449,14 +450,14 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
           : deliveryFeeFromOrder;
       }
 
-      console.log(`✅ Final estimated earnings for order ${orderWithUser.orderId}: ₹${typeof estimatedEarnings === 'object' ? estimatedEarnings.totalEarning : estimatedEarnings} (distance: ${deliveryDistance.toFixed(2)} km)`);
+      console.log(`✅ Final estimated earnings for order ${orderWithUser.orderId}: ₹${typeof estimatedEarnings === 'object' ? estimatedEarnings.totalEarning : estimatedEarnings} (distance: ${canonicalDeliveryDistance.toFixed(2)} km)`);
     } catch (earningsError) {
       console.error('❌ Error calculating estimated earnings in notification:', earningsError);
       console.error('❌ Error stack:', earningsError.stack);
       // Fallback to deliveryFee or default
       estimatedEarnings = deliveryFeeFromOrder > 22 ? deliveryFeeFromOrder : {
         basePayout: 22,
-        distance: deliveryDistance,
+        distance: canonicalDeliveryDistance,
         commissionPerKm: 5,
         distanceCommission: 0,
         totalEarning: 22,
@@ -464,6 +465,8 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       };
       console.log(`⚠️ Using fallback earnings: ₹${typeof estimatedEarnings === 'object' ? estimatedEarnings.totalEarning : estimatedEarnings}`);
     }
+
+    estimatedEarnings = applyDeliveryFeeFloor(estimatedEarnings, deliveryFeeFromOrder);
 
     // Prepare notification payload
     const orderNotification = {
@@ -490,7 +493,7 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       totalAmount: orderWithUser.pricing?.total || 0,
       deliveryFee: deliveryFeeFromOrder,
       estimatedEarnings: estimatedEarnings, // Include calculated earnings
-      deliveryDistance: deliveryDistance > 0 ? `${deliveryDistance.toFixed(2)} km` : 'Calculating...',
+      deliveryDistance: canonicalDeliveryDistance > 0 ? `${canonicalDeliveryDistance.toFixed(2)} km` : 'Calculating...',
       paymentMethod: orderWithUser.payment?.method || 'cash',
       message: `New order available: ${orderWithUser.orderId || orderWithUser._id}`,
       timestamp: new Date().toISOString(),
@@ -659,6 +662,45 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
   return R * c; // Distance in kilometers
 }
 
+function toValidNumber(value, fallback = 0) {
+  return (typeof value === 'number' && Number.isFinite(value)) ? value : fallback;
+}
+
+function getCanonicalDeliveryDistance(order, fallbackDistance = 0) {
+  const assignmentDistance = order?.assignmentInfo?.distance;
+  if (typeof assignmentDistance === 'number' && Number.isFinite(assignmentDistance) && assignmentDistance > 0) {
+    return assignmentDistance;
+  }
+  return toValidNumber(fallbackDistance, 0);
+}
+
+function applyDeliveryFeeFloor(estimatedEarnings, deliveryFeeFromOrder = 0) {
+  const floorAmount = toValidNumber(deliveryFeeFromOrder, 0);
+  if (floorAmount <= 0) return estimatedEarnings;
+
+  if (typeof estimatedEarnings === 'number') {
+    return Math.max(estimatedEarnings, floorAmount);
+  }
+
+  if (!estimatedEarnings || typeof estimatedEarnings !== 'object') {
+    return floorAmount;
+  }
+
+  const currentTotal = toValidNumber(estimatedEarnings.totalEarning, 0);
+  if (currentTotal >= floorAmount) {
+    return estimatedEarnings;
+  }
+
+  const topUp = floorAmount - currentTotal;
+  const currentDistanceCommission = toValidNumber(estimatedEarnings.distanceCommission, 0);
+
+  return {
+    ...estimatedEarnings,
+    distanceCommission: Math.round((currentDistanceCommission + topUp) * 100) / 100,
+    totalEarning: Math.round(floorAmount * 100) / 100
+  };
+}
+
 /**
  * Calculate estimated earnings for delivery boy based on admin commission rules
  * Uses DeliveryBoyCommission model to calculate: Base Payout + (Distance × Per Km) if distance > minDistance
@@ -721,8 +763,8 @@ async function calculateEstimatedEarnings(deliveryDistance) {
       basePayout: 22,
       distance: deliveryDistance || 0,
       commissionPerKm: 5,
-      distanceCommission: deliveryDistance && deliveryDistance > 4 ? deliveryDistance * 5 : 0,
-      totalEarning: 22 + (deliveryDistance && deliveryDistance > 4 ? deliveryDistance * 5 : 0),
+      distanceCommission: deliveryDistance && deliveryDistance > 4 ? (deliveryDistance - 4) * 5 : 0,
+      totalEarning: 22 + (deliveryDistance && deliveryDistance > 4 ? (deliveryDistance - 4) * 5 : 0),
       breakdown: 'Default calculation'
     };
   }
