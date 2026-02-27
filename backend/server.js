@@ -32,6 +32,7 @@ if (process.env.DEBUG_SOCKET_LOGS !== 'true') {
 // Import configurations
 import { connectDB } from './config/database.js';
 import { connectRedis } from './config/redis.js';
+import { initializeFirebaseRealtime, getFirebaseRealtimeStatus } from './config/firebaseRealtime.js';
 
 // Import middleware
 import { errorHandler } from './shared/middleware/errorHandler.js';
@@ -108,6 +109,14 @@ if (missingEnvVars.length > 0) {
   process.exit(1);
 }
 
+// Initialize Firebase Realtime DB early so downstream services can reuse it.
+initializeFirebaseRealtime();
+const firebaseStatus = getFirebaseRealtimeStatus();
+if (firebaseStatus.initialized) {
+  console.log('[FirebaseRealtime] startup initialization completed before routes and Socket.IO setup');
+} else {
+  console.warn(`[FirebaseRealtime] unavailable at startup: ${firebaseStatus.lastError || 'not configured'}`);
+}
 // Initialize Express app
 const app = express();
 const httpServer = createServer(app);
@@ -716,4 +725,5 @@ process.on('unhandledRejection', (err) => {
 });
 
 export default app;
+
 

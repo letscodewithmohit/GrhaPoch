@@ -5,6 +5,10 @@ import Zone from '../../admin/models/Zone.js';
 import { validate } from '../../../shared/middleware/validate.js';
 import Joi from 'joi';
 import winston from 'winston';
+import {
+  updateDeliveryPresenceRealtime,
+  updateActiveOrderRiderLocationRealtime
+} from '../services/firebaseRealtimeService.js';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -94,6 +98,33 @@ export const updateLocation = asyncHandler(async (req, res) => {
     }
 
     const currentLocation = updatedDelivery.availability?.currentLocation;
+    const currentLat = currentLocation?.coordinates?.[1];
+    const currentLng = currentLocation?.coordinates?.[0];
+
+    // Best-effort Firebase sync for live presence + active order live location.
+    try {
+      await updateDeliveryPresenceRealtime({
+        deliveryId: updatedDelivery._id?.toString() || delivery._id?.toString(),
+        isOnline: updatedDelivery.availability?.isOnline || false,
+        latitude: currentLat,
+        longitude: currentLng,
+        name: updatedDelivery.name,
+        phone: updatedDelivery.phone,
+        zoneId: updatedDelivery.zoneId?.toString?.() || updatedDelivery.zoneId,
+        isActive: updatedDelivery.isActive !== false,
+        transportType: updatedDelivery.vehicle?.type || 'bike'
+      });
+
+      if (typeof currentLat === 'number' && typeof currentLng === 'number') {
+        await updateActiveOrderRiderLocationRealtime({
+          deliveryId: updatedDelivery._id?.toString() || delivery._id?.toString(),
+          latitude: currentLat,
+          longitude: currentLng
+        });
+      }
+    } catch (firebaseSyncError) {
+      logger.warn(`Firebase realtime sync skipped: ${firebaseSyncError.message}`);
+    }
 
     return successResponse(res, 200, 'Status updated successfully', {
       location: currentLocation ? {

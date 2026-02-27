@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { API_BASE_URL } from '@/lib/api/config';
 import bikeLogo from '@/assets/bikelogo.png';
 import { RouteBasedAnimationController } from '@/module/user/utils/routeBasedAnimation';
-import { extractPolylineFromDirections, findNearestPointOnPolyline } from '@/module/delivery/utils/liveTrackingPolyline';
+import { decodePolyline, extractPolylineFromDirections, findNearestPointOnPolyline } from '@/module/delivery/utils/liveTrackingPolyline';
 import './DeliveryTrackingMap.css';
 
 // Helper function to calculate Haversine distance
@@ -49,6 +49,8 @@ const DeliveryTrackingMap = ({
   const mapInitializedRef = useRef(false);
   const directionsCacheRef = useRef(new Map()); // Cache for Directions API calls
   const lastRouteRequestRef = useRef({ start: null, end: null, timestamp: 0 });
+  const realtimeTrackingRef = useRef(null);
+  const realtimePolylineRef = useRef('');
 
   const backendUrl = API_BASE_URL.replace('/api', '');
   const [GOOGLE_MAPS_API_KEY, setGOOGLE_MAPS_API_KEY] = useState("");
@@ -62,9 +64,92 @@ const DeliveryTrackingMap = ({
     })
   }, [])
 
+  const applyRealtimePolyline = useCallback((encodedPolyline) => {
+    if (!isMapLoaded || !mapInstance.current || !window.google?.maps) return;
+    if (typeof encodedPolyline !== 'string' || !encodedPolyline.trim()) return;
+
+    const decodedPoints = decodePolyline(encodedPolyline.trim());
+    if (!Array.isArray(decodedPoints) || decodedPoints.length < 2) return;
+
+    routePolylinePointsRef.current = decodedPoints;
+
+    if (routePolylineRef.current) {
+      routePolylineRef.current.setMap(null);
+    }
+
+    routePolylineRef.current = new window.google.maps.Polyline({
+      path: decodedPoints,
+      geodesic: true,
+      strokeColor: '#10b981',
+      strokeOpacity: 0.8,
+      strokeWeight: 4,
+      icons: [{
+        icon: {
+          path: 'M 0,-1 0,1',
+          strokeOpacity: 1,
+          strokeWeight: 2,
+          strokeColor: '#10b981',
+          scale: 4
+        },
+        offset: '0%',
+        repeat: '15px'
+      }],
+      map: mapInstance.current,
+      zIndex: 1
+    });
+
+    if (animationControllerRef.current) {
+      animationControllerRef.current.updatePolyline(decodedPoints);
+    } else if (bikeMarkerRef.current) {
+      animationControllerRef.current = new RouteBasedAnimationController(
+        bikeMarkerRef.current,
+        decodedPoints
+      );
+    }
+  }, [isMapLoaded]);
+
+  useEffect(() => {
+    const tracking = order?.realtimeTracking || null;
+    realtimeTrackingRef.current = tracking;
+
+    if (!tracking) {
+      realtimePolylineRef.current = '';
+      return;
+    }
+
+    const realtimeLat = Number(tracking.boy_lat);
+    const realtimeLng = Number(tracking.boy_lng);
+    if (Number.isFinite(realtimeLat) && Number.isFinite(realtimeLng)) {
+      const location = {
+        lat: realtimeLat,
+        lng: realtimeLng,
+        heading: Number.isFinite(Number(tracking.heading)) ? Number(tracking.heading) : 0
+      };
+      setCurrentLocation(location);
+      setDeliveryBoyLocation(location);
+    }
+
+    if (typeof tracking.polyline === 'string' && tracking.polyline.trim()) {
+      const encodedPolyline = tracking.polyline.trim();
+      realtimePolylineRef.current = encodedPolyline;
+      applyRealtimePolyline(encodedPolyline);
+    } else {
+      realtimePolylineRef.current = '';
+    }
+  }, [
+    order?.realtimeTracking?.boy_lat,
+    order?.realtimeTracking?.boy_lng,
+    order?.realtimeTracking?.heading,
+    order?.realtimeTracking?.polyline,
+    order?.realtimeTracking?.last_updated,
+    applyRealtimePolyline
+  ]);
+
   // Draw route using Google Maps Directions API with live updates
   // OPTIMIZED: Added caching to reduce API calls
   const drawRoute = useCallback((start, end) => {
+    // Prefer Firebase-provided polyline to avoid repeated Directions API calls.
+    if (realtimePolylineRef.current) return;
     if (!mapInstance.current || !directionsServiceRef.current || !directionsRendererRef.current) return;
 
     // Validate coordinates before making API call

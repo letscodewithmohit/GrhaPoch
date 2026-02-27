@@ -12,6 +12,12 @@ import AdminCommission from '../../admin/models/AdminCommission.js';
 import { calculateRoute } from '../../order/services/routeCalculationService.js';
 import { calculateOrderSettlement } from '../../order/services/orderSettlementService.js';
 import { calculateDistance, normalizeCoordinates } from '../../order/services/orderCalculationService.js';
+import {
+  upsertActiveOrderRealtime,
+  updateActiveOrderRiderLocationRealtime,
+  completeActiveOrderRealtime,
+  updateDeliveryPresenceRealtime
+} from '../services/firebaseRealtimeService.js';
 import mongoose from 'mongoose';
 import winston from 'winston';
 
@@ -24,6 +30,39 @@ const logger = winston.createLogger({
     })
   ]
 });
+
+const toFiniteNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const extractLatLngFromCoordinates = (coordinates) => {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) {
+    return null;
+  }
+
+  const lng = toFiniteNumber(coordinates[0]);
+  const lat = toFiniteNumber(coordinates[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return { lat, lng };
+};
+
+const normalizeRoutePointsForRealtime = (coordinates = []) => {
+  if (!Array.isArray(coordinates)) return [];
+
+  return coordinates
+    .map((point) => {
+      if (!Array.isArray(point) || point.length < 2) return null;
+      const lat = toFiniteNumber(point[0]);
+      const lng = toFiniteNumber(point[1]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat, lng };
+    })
+    .filter(Boolean);
+};
 
 /**
  * Get Delivery Partner Orders
@@ -694,24 +733,25 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       const tip = Number(order.pricing?.tip) || 0;
       const userDeliveryFee = Number(order.pricing?.deliveryFee) || 0;
       const ruleTotal = Number(commissionResult.commission) || 0;
-      const payoutBaseAndDistance = Math.max(ruleTotal, userDeliveryFee);
-      const topUpAmount = Math.max(0, payoutBaseAndDistance - ruleTotal);
-      const adjustedDistanceCommission = (breakdown.distanceCommission || 0) + topUpAmount;
+      // Keep earnings preview aligned with order-time charged delivery fee.
+      const payoutBaseAndDistance = userDeliveryFee > 0 ? userDeliveryFee : ruleTotal;
+      const basePayout = Math.min(Number(breakdown.basePayout || 10), payoutBaseAndDistance);
+      const adjustedDistanceCommission = Math.max(0, payoutBaseAndDistance - basePayout);
 
       estimatedEarnings = {
-        basePayout: Math.round((breakdown.basePayout || 10) * 100) / 100,
+        basePayout: Math.round(basePayout * 100) / 100,
         distance: Math.round(deliveryDistance * 100) / 100,
         commissionPerKm: Math.round((breakdown.commissionPerKm || 5) * 100) / 100,
         distanceCommission: Math.round(adjustedDistanceCommission * 100) / 100,
         tip: tip,
         totalEarning: Math.round((payoutBaseAndDistance + tip) * 100) / 100,
         breakdown: {
-          basePayout: breakdown.basePayout || 10,
+          basePayout: basePayout,
           distance: deliveryDistance,
           commissionPerKm: breakdown.commissionPerKm || 5,
           distanceCommission: adjustedDistanceCommission,
           minDistance: rule.minDistance || 4,
-          feeTopUp: Math.round(topUpAmount * 100) / 100,
+          deliveryFeeAtOrderTime: Math.round(userDeliveryFee * 100) / 100,
           tip: tip
         }
       };
@@ -722,20 +762,26 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       console.error('❌ Earnings error stack:', earningsError.stack);
       // Fallback to default
       const tip = Number(order.pricing?.tip) || 0;
+      const userDeliveryFee = Number(order.pricing?.deliveryFee) || 0;
       const defaultBasePay = 22; // As per system commission rules standard
+      const payoutBaseAndDistance = userDeliveryFee > 0
+        ? userDeliveryFee
+        : (defaultBasePay + (deliveryDistance > 4 ? Math.round((deliveryDistance - 4) * 5 * 100) / 100 : 0));
+      const basePayout = Math.min(defaultBasePay, payoutBaseAndDistance);
       estimatedEarnings = {
-        basePayout: defaultBasePay,
+        basePayout: basePayout,
         distance: Math.round(deliveryDistance * 100) / 100,
         commissionPerKm: 5,
-        distanceCommission: deliveryDistance > 4 ? Math.round((deliveryDistance - 4) * 5 * 100) / 100 : 0,
+        distanceCommission: Math.max(0, payoutBaseAndDistance - basePayout),
         tip: tip,
-        totalEarning: defaultBasePay + (deliveryDistance > 4 ? Math.round((deliveryDistance - 4) * 5 * 100) / 100 : 0) + tip,
+        totalEarning: payoutBaseAndDistance + tip,
         breakdown: {
-          basePayout: defaultBasePay,
+          basePayout: basePayout,
           distance: deliveryDistance,
           commissionPerKm: 5,
-          distanceCommission: deliveryDistance > 4 ? (deliveryDistance - 4) * 5 : 0,
+          distanceCommission: Math.max(0, payoutBaseAndDistance - basePayout),
           minDistance: 4,
+          deliveryFeeAtOrderTime: Math.round(userDeliveryFee * 100) / 100,
           tip: tip
         }
       };
@@ -750,6 +796,66 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       } catch (e) { /* ignore */ }
     }
     const orderWithPayment = { ...updatedOrder, paymentMethod };
+
+    // Best-effort Firebase realtime sync for active order and rider state.
+    try {
+      const deliveryId = delivery._id?.toString?.() || delivery._id;
+      const restaurantCoords = extractLatLngFromCoordinates(updatedOrder?.restaurantId?.location?.coordinates);
+      const customerCoords = extractLatLngFromCoordinates(updatedOrder?.address?.location?.coordinates);
+      const routePoints = normalizeRoutePointsForRealtime(routeData?.coordinates);
+      const customerAddress = updatedOrder?.address?.formattedAddress ||
+        [updatedOrder?.address?.street, updatedOrder?.address?.city, updatedOrder?.address?.state]
+          .filter(Boolean)
+          .join(', ');
+
+      await updateDeliveryPresenceRealtime({
+        deliveryId,
+        isOnline: true,
+        latitude: toFiniteNumber(deliveryLat),
+        longitude: toFiniteNumber(deliveryLng),
+        name: delivery?.name,
+        phone: delivery?.phone,
+        zoneId: delivery?.zoneId?.toString?.() || delivery?.zoneId,
+        isActive: delivery?.isActive !== false,
+        transportType: delivery?.vehicle?.type || 'bike'
+      });
+
+      await upsertActiveOrderRealtime({
+        orderId: updatedOrder.orderId || updatedOrder._id?.toString?.(),
+        orderMongoId: updatedOrder._id?.toString?.() || updatedOrder._id,
+        deliveryId,
+        status: 'accepted',
+        phase: 'en_route_to_pickup',
+        routePoints,
+        totalDistanceKm: toFiniteNumber(routeData?.distance),
+        durationMin: toFiniteNumber(routeData?.duration),
+        restaurant: restaurantCoords
+          ? {
+            ...restaurantCoords,
+            name: updatedOrder?.restaurantId?.name,
+            address: updatedOrder?.restaurantId?.address
+          }
+          : null,
+        customer: customerCoords
+          ? {
+            ...customerCoords,
+            address: customerAddress
+          }
+          : null,
+        deliveryFee: toFiniteNumber(updatedOrder?.pricing?.deliveryFee),
+        riderLat: toFiniteNumber(deliveryLat),
+        riderLng: toFiniteNumber(deliveryLng),
+        createdAtMs: updatedOrder?.createdAt ? new Date(updatedOrder.createdAt).getTime() : null
+      });
+
+      await updateActiveOrderRiderLocationRealtime({
+        deliveryId,
+        latitude: toFiniteNumber(deliveryLat),
+        longitude: toFiniteNumber(deliveryLng)
+      });
+    } catch (firebaseSyncError) {
+      logger.warn(`Firebase sync skipped for accepted order ${updatedOrder?.orderId || updatedOrder?._id}: ${firebaseSyncError.message}`);
+    }
 
     // Recalculate settlement to update earnings based on assigned partner and distance
     calculateOrderSettlement(updatedOrder._id).catch(err => {
@@ -1226,13 +1332,84 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
           : routeData.distance;
       const commissionResult = await DeliveryBoyCommission.calculateCommission(earningDistance);
       const tip = Number(updatedOrder.pricing?.tip) || 0;
+      const userDeliveryFee = Number(updatedOrder.pricing?.deliveryFee) || 0;
+      const payoutBaseAndDistance = userDeliveryFee > 0
+        ? userDeliveryFee
+        : (Number(commissionResult.commission) || 0);
+      const basePayout = Math.min(
+        Number(commissionResult.breakdown?.basePayout || 0),
+        payoutBaseAndDistance
+      );
       estimatedEarnings = {
         ...commissionResult.breakdown,
+        basePayout: Math.round(basePayout * 100) / 100,
+        distanceCommission: Math.round(Math.max(0, payoutBaseAndDistance - basePayout) * 100) / 100,
         tip: tip,
-        totalEarning: commissionResult.commission + tip
+        totalEarning: Math.round((payoutBaseAndDistance + tip) * 100) / 100,
+        deliveryFeeAtOrderTime: Math.round(userDeliveryFee * 100) / 100
       };
     } catch (e) {
       console.warn('⚠️ Could not calculate updated earnings for confirmOrderId:', e.message);
+    }
+
+    // Best-effort Firebase realtime sync when rider starts trip to customer.
+    try {
+      const deliveryId = delivery._id?.toString?.() || delivery._id;
+      const restaurantCoords = extractLatLngFromCoordinates(updatedOrder?.restaurantId?.location?.coordinates);
+      const customerCoords = extractLatLngFromCoordinates(updatedOrder?.address?.location?.coordinates);
+      const routePoints = normalizeRoutePointsForRealtime(routeData?.coordinates);
+      const customerAddress = updatedOrder?.address?.formattedAddress ||
+        [updatedOrder?.address?.street, updatedOrder?.address?.city, updatedOrder?.address?.state]
+          .filter(Boolean)
+          .join(', ');
+
+      await updateDeliveryPresenceRealtime({
+        deliveryId,
+        isOnline: true,
+        latitude: toFiniteNumber(deliveryLat),
+        longitude: toFiniteNumber(deliveryLng),
+        name: delivery?.name,
+        phone: delivery?.phone,
+        zoneId: delivery?.zoneId?.toString?.() || delivery?.zoneId,
+        isActive: delivery?.isActive !== false,
+        transportType: delivery?.vehicle?.type || 'bike'
+      });
+
+      await upsertActiveOrderRealtime({
+        orderId: updatedOrder.orderId || updatedOrder._id?.toString?.(),
+        orderMongoId: updatedOrder._id?.toString?.() || updatedOrder._id,
+        deliveryId,
+        status: 'out_for_delivery',
+        phase: 'en_route_to_delivery',
+        routePoints,
+        totalDistanceKm: toFiniteNumber(routeData?.distance),
+        durationMin: toFiniteNumber(routeData?.duration),
+        restaurant: restaurantCoords
+          ? {
+            ...restaurantCoords,
+            name: updatedOrder?.restaurantId?.name,
+            address: updatedOrder?.restaurantId?.address
+          }
+          : null,
+        customer: customerCoords
+          ? {
+            ...customerCoords,
+            address: customerAddress
+          }
+          : null,
+        deliveryFee: toFiniteNumber(updatedOrder?.pricing?.deliveryFee),
+        riderLat: toFiniteNumber(deliveryLat),
+        riderLng: toFiniteNumber(deliveryLng),
+        createdAtMs: updatedOrder?.createdAt ? new Date(updatedOrder.createdAt).getTime() : null
+      });
+
+      await updateActiveOrderRiderLocationRealtime({
+        deliveryId,
+        latitude: toFiniteNumber(deliveryLat),
+        longitude: toFiniteNumber(deliveryLng)
+      });
+    } catch (firebaseSyncError) {
+      logger.warn(`Firebase sync skipped for confirmOrderId ${updatedOrder?.orderId || updatedOrder?._id}: ${firebaseSyncError.message}`);
     }
 
     // Send response first, then handle socket notification asynchronously
@@ -1440,6 +1617,25 @@ export const confirmReachedDrop = asyncHandler(async (req, res) => {
     const orderIdForLog = finalOrder.orderId || finalOrder._id?.toString() || orderId;
     console.log(`✅ Delivery partner ${delivery._id} reached drop location for order ${orderIdForLog}`);
 
+    try {
+      const deliveryIdStr = delivery._id?.toString?.() || delivery._id;
+      const routePoints = normalizeRoutePointsForRealtime(finalOrder?.deliveryState?.routeToDelivery?.coordinates);
+
+      await upsertActiveOrderRealtime({
+        orderId: finalOrder.orderId || finalOrder._id?.toString?.(),
+        orderMongoId: finalOrder._id?.toString?.() || finalOrder._id,
+        deliveryId: deliveryIdStr,
+        status: 'out_for_delivery',
+        phase: 'at_delivery',
+        routePoints,
+        totalDistanceKm: toFiniteNumber(finalOrder?.deliveryState?.routeToDelivery?.distance),
+        durationMin: toFiniteNumber(finalOrder?.deliveryState?.routeToDelivery?.duration),
+        deliveryFee: toFiniteNumber(finalOrder?.pricing?.deliveryFee)
+      });
+    } catch (firebaseSyncError) {
+      logger.warn(`Firebase sync skipped for reached-drop ${orderIdForLog}: ${firebaseSyncError.message}`);
+    }
+
     return successResponse(res, 200, 'Reached drop confirmed', {
       order: finalOrder,
       message: 'Reached drop location confirmed'
@@ -1641,6 +1837,16 @@ export const completeDelivery = asyncHandler(async (req, res) => {
     const orderIdForLog = updatedOrder.orderId || order.orderId || orderMongoId?.toString() || orderId;
     console.log(`✅ Order ${orderIdForLog} marked as delivered by delivery partner ${delivery._id}`);
 
+    try {
+      await completeActiveOrderRealtime({
+        orderId: updatedOrder.orderId || orderIdForLog,
+        deliveryId: delivery._id?.toString?.() || delivery._id,
+        finalStatus: 'delivered'
+      });
+    } catch (firebaseSyncError) {
+      logger.warn(`Firebase sync skipped while completing order ${orderIdForLog}: ${firebaseSyncError.message}`);
+    }
+
     // Mark COD payment as collected (admin Payment Status → Collected)
     if (order.payment?.method === 'cash' || order.payment?.method === 'cod') {
       try {
@@ -1754,26 +1960,27 @@ export const completeDelivery = asyncHandler(async (req, res) => {
       // Fallback: Use rule calculation if settlement fails
       try {
         const commissionResult = await DeliveryBoyCommission.calculateCommission(deliveryDistance);
-        const rulePay = commissionResult.commission;
-        const userFee = order.pricing?.deliveryFee || 0;
-
-        // Use higher of user fee or rule pay
-        totalEarning = Math.max(userFee, rulePay);
-        const topUpAmount = Math.max(0, totalEarning - rulePay);
-        const adjustedDistanceCommission = (commissionResult.breakdown.distanceCommission || 0) + topUpAmount;
+        const rulePay = Number(commissionResult.commission) || 0;
+        const userFee = Number(order.pricing?.deliveryFee) || 0;
+        totalEarning = userFee > 0 ? userFee : rulePay;
+        const basePayout = Math.min(
+          Number(commissionResult.breakdown.basePayout || 0),
+          totalEarning
+        );
+        const adjustedDistanceCommission = Math.max(0, totalEarning - basePayout);
 
         commissionBreakdown = {
           ...commissionResult.breakdown,
-          basePayout: commissionResult.breakdown.basePayout,
+          basePayout: basePayout,
           distanceCommission: adjustedDistanceCommission,
           total: totalEarning
         };
         console.warn(`⚠️ Using fallback breakdown: ₹${totalEarning.toFixed(2)}`);
       } catch (fallbackError) {
-        const userFee = (order.pricing?.deliveryFee || 0);
+        const userFee = Number(order.pricing?.deliveryFee) || 0;
         const defaultBasePay = 22;
-        totalEarning = Math.max(userFee, defaultBasePay);
-        console.warn(`⚠️ Using absolute fallback (Max of Fee/Base): ₹${totalEarning.toFixed(2)}`);
+        totalEarning = userFee > 0 ? userFee : defaultBasePay;
+        console.warn(`⚠️ Using absolute fallback payout: ₹${totalEarning.toFixed(2)}`);
       }
     }
 

@@ -4,6 +4,7 @@ import User from '../../auth/models/User.js';
 import { uploadToCloudinary } from '../../../shared/utils/cloudinaryService.js';
 import axios from 'axios';
 import winston from 'winston';
+import { updateUserLocationRealtime } from '../../delivery/services/firebaseRealtimeService.js';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -252,6 +253,26 @@ export const updateUserLocation = asyncHandler(async (req, res) => {
 
     // Save to database
     await user.save();
+
+    // Best-effort Firebase realtime sync for users collection.
+    try {
+      await updateUserLocationRealtime({
+        userId: user._id?.toString?.() || user._id,
+        latitude: latNum,
+        longitude: lngNum,
+        accuracy: locationUpdate.accuracy,
+        address: locationUpdate.address,
+        area: locationUpdate.area,
+        city: locationUpdate.city,
+        state: locationUpdate.state,
+        formattedAddress: locationUpdate.formattedAddress,
+        postalCode: locationUpdate.postalCode,
+        street: locationUpdate.street,
+        streetNumber: locationUpdate.streetNumber
+      });
+    } catch (firebaseSyncError) {
+      logger.warn(`User Firebase location sync skipped: ${firebaseSyncError.message}`);
+    }
 
     logger.info(`User live location updated: ${user._id}`, {
       latitude: latNum,

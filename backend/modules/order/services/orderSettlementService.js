@@ -141,15 +141,14 @@ export const calculateOrderSettlement = async (orderId) => {
       const ruleCommission = deliveryCommission.commission || 0;
       const ruleBreakdown = deliveryCommission.breakdown;
 
-      // We give the higher of: What user paid OR What rule says.
-      // Keep base payout from the rule fixed and add any difference to distance component.
-      const finalTotalBaseAndDist = Math.max(userPayment.deliveryFee, ruleCommission);
-      const ruleBasePayout = ruleBreakdown.basePayout || 0;
-      const ruleDistanceCommission = ruleBreakdown.distanceCommission || 0;
-      const topUpAmount = Math.max(0, finalTotalBaseAndDist - ruleCommission);
-
-      const finalBasePayout = ruleBasePayout;
-      const finalDistanceCommission = ruleDistanceCommission + topUpAmount;
+      // Single source of truth:
+      // If customer delivery fee is captured at order-time, keep rider base+distance payout locked to it.
+      // Fallback to rule calculation only for legacy orders with missing deliveryFee.
+      const orderTimeDeliveryFee = Number(userPayment.deliveryFee) || 0;
+      const finalTotalBaseAndDist = orderTimeDeliveryFee > 0 ? orderTimeDeliveryFee : ruleCommission;
+      const ruleBasePayout = Number(ruleBreakdown.basePayout) || 0;
+      const finalBasePayout = Math.min(ruleBasePayout, finalTotalBaseAndDist);
+      const finalDistanceCommission = Math.max(0, finalTotalBaseAndDist - finalBasePayout);
 
       // Get surge multiplier
       const surgeMultiplier = order.assignmentInfo?.surgeMultiplier || 1;

@@ -161,10 +161,10 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
     // Use canonical order-time distance for earnings whenever available.
     const canonicalDeliveryDistance = getCanonicalDeliveryDistance(order, deliveryDistance || 0);
 
-    // Calculate estimated earnings; ensure preview is never below user-charged delivery fee.
+    // Calculate estimated earnings and align base+distance with order-time delivery fee.
     const deliveryFeeFromOrder = order.pricing?.deliveryFee ?? 0;
     let estimatedEarnings = await calculateEstimatedEarnings(canonicalDeliveryDistance || 0);
-    estimatedEarnings = applyDeliveryFeeFloor(estimatedEarnings, deliveryFeeFromOrder);
+    estimatedEarnings = alignEstimatedEarningsToOrderFee(estimatedEarnings, deliveryFeeFromOrder);
 
     // Prepare order notification data
     const orderNotification = {
@@ -466,7 +466,7 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       console.log(`⚠️ Using fallback earnings: ₹${typeof estimatedEarnings === 'object' ? estimatedEarnings.totalEarning : estimatedEarnings}`);
     }
 
-    estimatedEarnings = applyDeliveryFeeFloor(estimatedEarnings, deliveryFeeFromOrder);
+    estimatedEarnings = alignEstimatedEarningsToOrderFee(estimatedEarnings, deliveryFeeFromOrder);
 
     // Prepare notification payload
     const orderNotification = {
@@ -674,30 +674,29 @@ function getCanonicalDeliveryDistance(order, fallbackDistance = 0) {
   return toValidNumber(fallbackDistance, 0);
 }
 
-function applyDeliveryFeeFloor(estimatedEarnings, deliveryFeeFromOrder = 0) {
-  const floorAmount = toValidNumber(deliveryFeeFromOrder, 0);
-  if (floorAmount <= 0) return estimatedEarnings;
+function alignEstimatedEarningsToOrderFee(estimatedEarnings, deliveryFeeFromOrder = 0) {
+  const orderTimeDeliveryFee = toValidNumber(deliveryFeeFromOrder, 0);
+  if (orderTimeDeliveryFee <= 0) return estimatedEarnings;
 
   if (typeof estimatedEarnings === 'number') {
-    return Math.max(estimatedEarnings, floorAmount);
+    return Math.round(orderTimeDeliveryFee * 100) / 100;
   }
 
   if (!estimatedEarnings || typeof estimatedEarnings !== 'object') {
-    return floorAmount;
+    return Math.round(orderTimeDeliveryFee * 100) / 100;
   }
 
-  const currentTotal = toValidNumber(estimatedEarnings.totalEarning, 0);
-  if (currentTotal >= floorAmount) {
-    return estimatedEarnings;
-  }
-
-  const topUp = floorAmount - currentTotal;
-  const currentDistanceCommission = toValidNumber(estimatedEarnings.distanceCommission, 0);
+  const currentTip = toValidNumber(estimatedEarnings.tip, 0);
+  const originalBase = toValidNumber(estimatedEarnings.basePayout, 0);
+  const adjustedBase = Math.min(originalBase, orderTimeDeliveryFee);
+  const adjustedDistanceCommission = Math.max(0, orderTimeDeliveryFee - adjustedBase);
 
   return {
     ...estimatedEarnings,
-    distanceCommission: Math.round((currentDistanceCommission + topUp) * 100) / 100,
-    totalEarning: Math.round(floorAmount * 100) / 100
+    basePayout: Math.round(adjustedBase * 100) / 100,
+    distanceCommission: Math.round(adjustedDistanceCommission * 100) / 100,
+    totalEarning: Math.round((orderTimeDeliveryFee + currentTip) * 100) / 100,
+    deliveryFeeAtOrderTime: Math.round(orderTimeDeliveryFee * 100) / 100
   };
 }
 
