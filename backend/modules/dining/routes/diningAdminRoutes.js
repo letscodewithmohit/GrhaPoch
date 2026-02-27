@@ -13,7 +13,8 @@ import {
     createDiningStory,
     deleteDiningStory,
     updateDiningStory,
-    getActiveRestaurants
+    getActiveRestaurants,
+    updateDiningSettings
 } from '../controllers/diningAdminController.js';
 
 const router = express.Router();
@@ -31,6 +32,9 @@ router.delete('/offer-banners/:id', authenticateAdmin, deleteDiningOfferBanner);
 
 // Restaurants helper for dropdown
 router.get('/restaurants-list', authenticateAdmin, getActiveRestaurants);
+
+// Dining Settings for a Restaurant
+router.put('/restaurant/:restaurantId/settings', authenticateAdmin, updateDiningSettings);
 
 // Stories
 router.get('/stories', authenticateAdmin, getAdminDiningStories);

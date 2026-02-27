@@ -2,7 +2,7 @@
 echo ========================================
 echo Starting Backend Server
 echo ========================================
-cd /d "C:\Users\manmo\Downloads\grap poch\backend"
+cd /d "%~dp0backend"
 start "Backend Server" cmd /k "npm run dev"
 timeout /t 3 /nobreak >nul
 
@@ -10,7 +10,7 @@ echo.
 echo ========================================
 echo Starting Frontend Server
 echo ========================================
-cd /d "C:\Users\manmo\Downloads\grap poch\frontend"
+cd /d "%~dp0frontend"
 start "Frontend Server" cmd /k "npm run dev"
 
 echo.

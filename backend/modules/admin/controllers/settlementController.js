@@ -38,7 +38,7 @@ export const getOrderSettlementDetails = asyncHandler(async (req, res) => {
 export const getRestaurantSettlements = asyncHandler(async (req, res) => {
   try {
     const { restaurantId, startDate, endDate } = req.query;
-    
+
     const settlements = await getPendingRestaurantSettlements(
       restaurantId || null,
       startDate || null,
@@ -75,7 +75,7 @@ export const getRestaurantSettlements = asyncHandler(async (req, res) => {
 export const getDeliverySettlements = asyncHandler(async (req, res) => {
   try {
     const { deliveryId, startDate, endDate } = req.query;
-    
+
     const settlements = await getPendingDeliverySettlements(
       deliveryId || null,
       startDate || null,
@@ -257,7 +257,7 @@ export const getAdminWalletSummary = asyncHandler(async (req, res) => {
 export const getSettlementStatistics = asyncHandler(async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     const query = {
       settlementStatus: 'completed'
     };

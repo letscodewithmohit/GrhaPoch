@@ -161,6 +161,19 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       default: "Flat ₹50 OFF above ₹199",
     },
+    // Dining fields
+    diningEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    diningGuests: {
+      type: Number,
+      default: 15,
+    },
+    diningCategory: {
+      type: String,
+      default: '',
+    },
     // Onboarding fields (merged from RestaurantOnboarding)
     onboarding: {
       step1: {

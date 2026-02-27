@@ -120,6 +120,7 @@ import AddonActivation from "../pages/system/AddonActivation";
 import SystemAddons from "../pages/system/SystemAddons";
 import LandingPageManagement from "../pages/system/LandingPageManagement";
 import DiningManagement from "../pages/system/DiningManagement";
+import DiningList from "../pages/system/DiningList";
 
 export default function AdminRouter() {
   return (
@@ -313,6 +314,7 @@ export default function AdminRouter() {
         <Route path="hero-banner-management" element={<LandingPageManagement />} />
         {/* DINING MANAGEMENT */}
         <Route path="dining-management" element={<DiningManagement />} />
+        <Route path="dining-list" element={<DiningList />} />
       </Route>
 
       {/* Redirect /admin to /admin/ */}

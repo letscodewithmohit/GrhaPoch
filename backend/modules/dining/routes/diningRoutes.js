@@ -7,10 +7,15 @@ import {
     getBankOffers,
     getMustTries,
     getOfferBanners,
-    getStories
+    getStories,
+    getAvailableTables,
+    createBooking
 } from '../controllers/diningController.js';
 
 const router = express.Router();
+
+router.get('/restaurants/:id/tables', getAvailableTables);
+router.post('/restaurants/:id/bookings', createBooking);
 
 router.get('/restaurants', getRestaurants);
 router.get('/restaurants/:slug', getRestaurantBySlug);

@@ -8,93 +8,7 @@ import { useLocationSelector } from "../components/UserLayout"
 import { useLocation as useLocationHook } from "../hooks/useLocation"
 import { useProfile } from "../context/ProfileContext"
 import { FaLocationDot } from "react-icons/fa6"
-
-const popularRestaurants = [
-  {
-    id: 1,
-    name: "IRIS",
-    rating: 4.3,
-    location: "Press Complex, Indore",
-    distance: "2.9 km",
-    cuisine: "Continental",
-    price: "₹1500 for two",
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop",
-    offer: "Flat 30% OFF + 3 more",
-    deliveryTime: "30-35 mins",
-    featuredDish: "Pasta",
-    featuredPrice: 450,
-  },
-  {
-    id: 2,
-    name: "Skyline Rooftop",
-    rating: 4.5,
-    location: "MG Road, Indore",
-    distance: "3.2 km",
-    cuisine: "Multi-cuisine",
-    price: "₹2000 for two",
-    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop",
-    offer: "Flat 25% OFF + 2 more",
-    deliveryTime: "35-40 mins",
-    featuredDish: "Grilled Chicken",
-    featuredPrice: 550,
-  },
-  {
-    id: 3,
-    name: "The Grand Bistro",
-    rating: 4.7,
-    location: "Vijay Nagar, Indore",
-    distance: "1.8 km",
-    cuisine: "Continental",
-    price: "₹1800 for two",
-    image: "https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&h=600&fit=crop",
-    offer: "Flat 35% OFF + 4 more",
-    deliveryTime: "25-30 mins",
-    featuredDish: "Risotto",
-    featuredPrice: 650,
-  },
-  {
-    id: 4,
-    name: "Coastal Kitchen",
-    rating: 4.4,
-    location: "Palasia, Indore",
-    distance: "2.1 km",
-    cuisine: "Seafood",
-    price: "₹1600 for two",
-    image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=600&fit=crop",
-    offer: "Flat 20% OFF + 2 more",
-    deliveryTime: "28-33 mins",
-    featuredDish: "Fish Curry",
-    featuredPrice: 480,
-  },
-  {
-    id: 5,
-    name: "Garden Terrace",
-    rating: 4.6,
-    location: "Scheme 54, Indore",
-    distance: "4.5 km",
-    cuisine: "North Indian",
-    price: "₹1200 for two",
-    image: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800&h=600&fit=crop",
-    offer: "Flat 30% OFF + 3 more",
-    deliveryTime: "40-45 mins",
-    featuredDish: "Butter Chicken",
-    featuredPrice: 380,
-  },
-  {
-    id: 6,
-    name: "Midnight Lounge",
-    rating: 4.2,
-    location: "Bhawarkua, Indore",
-    distance: "3.8 km",
-    cuisine: "Continental",
-    price: "₹2200 for two",
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop",
-    offer: "Flat 25% OFF + 2 more",
-    deliveryTime: "35-40 mins",
-    featuredDish: "Steak",
-    featuredPrice: 750,
-  },
-]
+import { diningAPI } from "@/lib/api"
 
 export default function DiningCategory() {
   const navigate = useNavigate()
@@ -112,6 +26,41 @@ export default function DiningCategory() {
   const cityName = location?.city || "Select"
   const stateName = location?.state || "Location"
 
+  const [restaurantList, setRestaurantList] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Wait for location to finish loading from context on page reload
+    if (loading && !location) return
+
+    const abortController = new AbortController()
+
+    const fetchRestaurants = async () => {
+      setIsLoading(true)
+      try {
+        const response = await diningAPI.getRestaurants(
+          location?.city ? { city: location.city } : {},
+          { signal: abortController.signal }
+        )
+        if (response.data.success) {
+          setRestaurantList(response.data.data || [])
+        }
+      } catch (error) {
+        // Ignore cancellation errors
+        if (diningAPI.isCancel && diningAPI.isCancel(error)) return;
+        if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED' || error.message === 'canceled') return;
+
+        console.error("Failed to fetch dining restaurants", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchRestaurants()
+
+    return () => abortController.abort()
+  }, [location?.city, category, loading])
+
   // Category headings mapping
   const categoryHeadings = {
     'pure-veg': 'ALL PURE VEG PLACES AROUND YOU',
@@ -124,8 +73,8 @@ export default function DiningCategory() {
   }
 
   // Get heading based on category or default
-  const categoryHeading = category 
-    ? (categoryHeadings[category] || `ALL ${category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} PLACES AROUND YOU`) 
+  const categoryHeading = category
+    ? (categoryHeadings[category] || `ALL ${category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} PLACES AROUND YOU`)
     : 'ALL RESTAURANTS AROUND YOU'
 
   const toggleFilter = (filterId) => {
@@ -141,7 +90,26 @@ export default function DiningCategory() {
   }
 
   const filteredRestaurants = useMemo(() => {
-    let filtered = [...popularRestaurants]
+    let filtered = [...restaurantList]
+
+    // Apply URL category filtering
+    if (category) {
+      filtered = filtered.filter(r => {
+        if (!r.cuisine) return false;
+        const c1 = r.cuisine.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const c2 = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+        if (c1 === c2) return true;
+
+        // Prevent partial matching false positives: 'veg' categories should NOT match 'non-veg' restaurants
+        if (!c2.includes('non-veg') && c1.includes('non-veg')) return false;
+
+        // Prevent partial matching false positives: 'non-veg' categories should NOT match 'veg' restaurants
+        if (c2.includes('non-veg') && !c1.includes('non-veg')) return false;
+
+        return c1 === c2 || c1.includes(c2) || c2.includes(c1);
+      });
+    }
 
     if (activeFilters.has('delivery-under-30')) {
       filtered = filtered.filter(r => {
@@ -190,7 +158,7 @@ export default function DiningCategory() {
     }
 
     return filtered
-  }, [activeFilters, selectedCuisine, sortBy])
+  }, [activeFilters, selectedCuisine, sortBy, category, restaurantList])
 
   const handleLocationClick = useCallback(() => {
     openLocationSelector()
@@ -235,177 +203,198 @@ export default function DiningCategory() {
           {/* Category Heading */}
           <div className="mb-2">
 
-          <div className="mb-2">
-            <div className="flex items-center justify-center mb-2">
-              <h3 className="px-3 text-sm font-semibold text-gray-500 uppercase tracking-wide text-center">
-                {categoryHeading}
-              </h3>
+            <div className="mb-2">
+              <div className="flex items-center justify-center mb-2">
+                <h3 className="px-3 text-sm font-semibold text-gray-500 uppercase tracking-wide text-center">
+                  {categoryHeading}
+                </h3>
+              </div>
             </div>
-          </div>
 
-          {/* Filters */}
-          <section className="py-1 mb-4">
-            <div 
-              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide pb-1"
-              style={{
-                scrollbarWidth: "none",
-                msOverflowStyle: "none",
-              }}
-            >
-              {/* Filter Button - Opens Modal */}
-              <Button
-                variant="outline"
-                onClick={() => setIsFilterOpen(true)}
-                className="h-7 sm:h-8 px-2 sm:px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 font-medium transition-all bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
+            {/* Filters */}
+            <section className="py-1 mb-4">
+              <div
+                className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide pb-1"
+                style={{
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                }}
               >
-                <SlidersHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-xs sm:text-sm font-bold text-black">Filters</span>
-              </Button>
+                {/* Filter Button - Opens Modal */}
+                <Button
+                  variant="outline"
+                  onClick={() => setIsFilterOpen(true)}
+                  className="h-7 sm:h-8 px-2 sm:px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 font-medium transition-all bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
+                >
+                  <SlidersHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm font-bold text-black">Filters</span>
+                </Button>
 
-              {/* Filter Buttons */}
-              {[
-                { id: 'delivery-under-30', label: 'Under 30 mins' },
-                { id: 'delivery-under-45', label: 'Under 45 mins' },
-                { id: 'distance-under-1km', label: 'Under 1km', icon: MapPin },
-                { id: 'distance-under-2km', label: 'Under 2km', icon: MapPin },
-                { id: 'rating-35-plus', label: '3.5+ Rating' },
-                { id: 'rating-4-plus', label: '4.0+ Rating' },
-                { id: 'rating-45-plus', label: '4.5+ Rating' },
-              ].map((filter) => {
-                const Icon = filter.icon
-                const isActive = activeFilters.has(filter.id)
-                return (
-                  <Button
-                    key={filter.id}
-                    variant="outline"
-                    onClick={() => toggleFilter(filter.id)}
-                    className={`h-7 sm:h-8 px-2 sm:px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-all font-medium ${
-                      isActive
+                {/* Filter Buttons */}
+                {[
+                  { id: 'delivery-under-30', label: 'Under 30 mins' },
+                  { id: 'delivery-under-45', label: 'Under 45 mins' },
+                  { id: 'distance-under-1km', label: 'Under 1km', icon: MapPin },
+                  { id: 'distance-under-2km', label: 'Under 2km', icon: MapPin },
+                  { id: 'rating-35-plus', label: '3.5+ Rating' },
+                  { id: 'rating-4-plus', label: '4.0+ Rating' },
+                  { id: 'rating-45-plus', label: '4.5+ Rating' },
+                ].map((filter) => {
+                  const Icon = filter.icon
+                  const isActive = activeFilters.has(filter.id)
+                  return (
+                    <Button
+                      key={filter.id}
+                      variant="outline"
+                      onClick={() => toggleFilter(filter.id)}
+                      className={`h-7 sm:h-8 px-2 sm:px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-all font-medium ${isActive
                         ? 'bg-green-500 text-white border border-green-500 hover:bg-green-500/90'
                         : 'bg-white border border-gray-200 hover:bg-gray-50 text-gray-600'
-                    }`}
-                  >
-                    {Icon && <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isActive ? 'fill-white' : ''}`} />}
-                    <span className="text-xs sm:text-sm font-bold text-black">{filter.label}</span>
-                  </Button>
-                )
-              })}
-            </div>
-          </section>
+                        }`}
+                    >
+                      {Icon && <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isActive ? 'fill-white' : ''}`} />}
+                      <span className="text-xs sm:text-sm font-bold text-black">{filter.label}</span>
+                    </Button>
+                  )
+                })}
+              </div>
+            </section>
 
-          <div className="flex items-center justify-center mb-2">
+            <div className="flex items-center justify-center mb-2">
               <h3 className="px-3 text-sm font-semibold text-gray-400 uppercase tracking-wide text-center">
                 FEATURED
               </h3>
             </div>
-          {/* Restaurant Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-            {filteredRestaurants.map((restaurant, index) => {
-              const restaurantSlug = restaurant.name.toLowerCase().replace(/\s+/g, "-")
-              const favorite = isFavorite(restaurantSlug)
+            {/* Restaurant Cards */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-80 bg-gray-100 animate-pulse rounded-2xl" />
+                ))}
+              </div>
+            ) : filteredRestaurants.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+                {filteredRestaurants.map((restaurant, index) => {
+                  const restaurantSlug = restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+                  const favorite = isFavorite(restaurantSlug)
 
-              const handleToggleFavorite = (e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (favorite) {
-                  removeFavorite(restaurantSlug)
-                } else {
-                  addFavorite({
-                    slug: restaurantSlug,
-                    name: restaurant.name,
-                    cuisine: restaurant.cuisine,
-                    rating: restaurant.rating,
-                    deliveryTime: restaurant.deliveryTime,
-                    distance: restaurant.distance,
-                    image: restaurant.image
-                  })
-                }
-              }
+                  const handleToggleFavorite = (e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (favorite) {
+                      removeFavorite(restaurantSlug)
+                    } else {
+                      addFavorite({
+                        slug: restaurantSlug,
+                        name: restaurant.name,
+                        cuisine: restaurant.cuisine,
+                        rating: restaurant.rating,
+                        deliveryTime: restaurant.deliveryTime,
+                        distance: restaurant.distance,
+                        image: restaurant.image
+                      })
+                    }
+                  }
 
-              return (
-                <Link key={restaurant.id} to={`/user/restaurants/${restaurantSlug}`}>
-                  <Card className="overflow-hidden cursor-pointer border-0 group bg-white shadow-md hover:shadow-xl transition-all duration-300 py-0 gap-0 rounded-2xl">
-                    {/* Image Section */}
-                    <div className="relative h-48 sm:h-56 md:h-60 w-full overflow-hidden rounded-t-2xl">
-                      <img
-                        src={restaurant.image}
-                        alt={restaurant.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          e.target.src = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop"
-                        }}
-                      />
-                      
-                      {/* Featured Dish Badge - Top Left */}
-                      <div className="absolute top-3 left-3">
-                        <div className="bg-gray-800/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
-                          {restaurant.featuredDish} · ₹{restaurant.featuredPrice}
-                        </div>
-                      </div>
-                      
-                      {/* Bookmark Icon - Top Right */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-3 right-3 h-9 w-9 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-colors"
-                        onClick={handleToggleFavorite}
-                      >
-                        <Bookmark className={`h-5 w-5 ${favorite ? "fill-gray-800 text-gray-800" : "text-gray-600"}`} strokeWidth={2} />
-                      </Button>
+                  return (
+                    <Link key={restaurant.id} to={`/user/dining/${category || 'all'}/${restaurantSlug}`}>
+                      <Card className="overflow-hidden cursor-pointer border-0 group bg-white shadow-md hover:shadow-xl transition-all duration-300 py-0 gap-0 rounded-2xl">
+                        {/* Image Section */}
+                        <div className="relative h-48 sm:h-56 md:h-60 w-full overflow-hidden rounded-t-2xl">
+                          <img
+                            src={restaurant.image}
+                            alt={restaurant.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              e.target.src = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop"
+                            }}
+                          />
 
-                      {/* Blue Section - Bottom 40% */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-transparent" style={{ height: '40%' }}>
-                        <div className="h-full flex flex-col justify-end">
-                          <div className="pl-4 sm:pl-5 pb-4 sm:pb-5">
-                            <p className="text-white text-xs sm:text-sm font-medium uppercase tracking-wide mb-1">
-                              PRE-BOOK TABLE
-                            </p>
-                            <div className="h-px bg-white/30 mb-2 w-24"></div>
-                            <p className="text-white text-base sm:text-lg font-bold">
-                              {restaurant.offer}
-                            </p>
+                          {/* Featured Dish Badge - Top Left */}
+                          <div className="absolute top-3 left-3">
+                            <div className="bg-gray-800/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
+                              {restaurant.featuredDish} · ₹{restaurant.featuredPrice}
+                            </div>
+                          </div>
+
+                          {/* Bookmark Icon - Top Right */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-3 right-3 h-9 w-9 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-colors"
+                            onClick={handleToggleFavorite}
+                          >
+                            <Bookmark className={`h-5 w-5 ${favorite ? "fill-gray-800 text-gray-800" : "text-gray-600"}`} strokeWidth={2} />
+                          </Button>
+
+                          {/* Blue Section - Bottom 40% */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-transparent" style={{ height: '40%' }}>
+                            <div className="h-full flex flex-col justify-end">
+                              <div className="pl-4 sm:pl-5 pb-4 sm:pb-5">
+                                <p className="text-white text-xs sm:text-sm font-medium uppercase tracking-wide mb-1">
+                                  PRE-BOOK TABLE
+                                </p>
+                                <div className="h-px bg-white/30 mb-2 w-24"></div>
+                                <p className="text-white text-base sm:text-lg font-bold">
+                                  {restaurant.offer}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                    
-                    {/* Content Section */}
-                    <CardContent className="p-3 sm:p-4 pt-3 sm:pt-4">
-                      {/* Restaurant Name & Rating */}
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg sm:text-xl font-bold text-gray-900 line-clamp-1">
-                            {restaurant.name}
-                          </h3>
-                        </div>
-                        <div className="flex-shrink-0 bg-green-600 text-white px-2 py-1 rounded-lg flex items-center gap-1">
-                          <span className="text-sm font-bold">{restaurant.rating}</span>
-                          <Star className="h-3 w-3 fill-white text-white" />
-                        </div>
-                      </div>
-                      
-                      {/* Delivery Time & Distance */}
-                      <div className="flex items-center gap-1 text-sm text-gray-500 mb-2">
-                        <Clock className="h-4 w-4" strokeWidth={1.5} />
-                        <span className="font-medium">{restaurant.deliveryTime}</span>
-                        <span className="mx-1">|</span>
-                        <span className="font-medium">{restaurant.distance}</span>
-                      </div>
-                      
-                      {/* Offer Badge */}
-                      {restaurant.offer && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <BadgePercent className="h-4 w-4 text-blue-600" strokeWidth={2} />
-                          <span className="text-gray-700 font-medium">{restaurant.offer}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })}
+
+                        {/* Content Section */}
+                        <CardContent className="p-3 sm:p-4 pt-3 sm:pt-4">
+                          {/* Restaurant Name & Rating */}
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg sm:text-xl font-bold text-gray-900 line-clamp-1">
+                                {restaurant.name}
+                              </h3>
+                            </div>
+                            <div className="flex-shrink-0 bg-green-600 text-white px-2 py-1 rounded-lg flex items-center gap-1">
+                              <span className="text-sm font-bold">{restaurant.rating}</span>
+                              <Star className="h-3 w-3 fill-white text-white" />
+                            </div>
+                          </div>
+
+                          {/* Delivery Time & Distance */}
+                          <div className="flex items-center gap-1 text-sm text-gray-500 mb-2">
+                            <Clock className="h-4 w-4" strokeWidth={1.5} />
+                            <span className="font-medium">{restaurant.deliveryTime}</span>
+                            <span className="mx-1">|</span>
+                            <span className="font-medium">{restaurant.distance}</span>
+                          </div>
+
+                          {/* Offer Badge */}
+                          {restaurant.offer && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <BadgePercent className="h-4 w-4 text-blue-600" strokeWidth={2} />
+                              <span className="text-gray-700 font-medium">{restaurant.offer}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <UtensilsCrossed className="h-16 w-16 text-gray-200 mb-4" />
+                <h3 className="text-lg font-bold text-gray-900 mb-1">No restaurants found</h3>
+                <p className="text-gray-500 max-w-xs mx-auto text-sm">
+                  We couldn't find any restaurants matching this category in your area.
+                </p>
+                <Button
+                  onClick={() => navigate('/user/dining')}
+                  className="mt-6 bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  Explore other categories
+                </Button>
+              </div>
+            )}
           </div>
-        </div>
         </div>
       </div>
 
@@ -413,17 +402,17 @@ export default function DiningCategory() {
       {isFilterOpen && (
         <div className="fixed inset-0 z-[100]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50" 
+          <div
+            className="absolute inset-0 bg-black/50"
             onClick={() => setIsFilterOpen(false)}
           />
-          
+
           {/* Modal Content */}
           <div className="absolute bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white rounded-t-3xl md:rounded-3xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col animate-[slideUp_0.3s_ease-out]">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b">
               <h2 className="text-lg font-bold text-gray-900">Filters and sorting</h2>
-              <button 
+              <button
                 onClick={() => {
                   setActiveFilters(new Set())
                   setSortBy(null)
@@ -434,7 +423,7 @@ export default function DiningCategory() {
                 Clear all
               </button>
             </div>
-            
+
             {/* Body */}
             <div className="flex flex-1 overflow-hidden">
               {/* Left Sidebar - Tabs */}
@@ -453,9 +442,8 @@ export default function DiningCategory() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveFilterTab(tab.id)}
-                      className={`flex flex-col items-center gap-1 py-4 px-2 text-center relative transition-colors ${
-                        isActive ? 'bg-white text-green-600' : 'text-gray-500 hover:bg-gray-100'
-                      }`}
+                      className={`flex flex-col items-center gap-1 py-4 px-2 text-center relative transition-colors ${isActive ? 'bg-white text-green-600' : 'text-gray-500 hover:bg-gray-100'
+                        }`}
                     >
                       {isActive && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-600 rounded-r" />
@@ -466,7 +454,7 @@ export default function DiningCategory() {
                   )
                 })}
               </div>
-              
+
               {/* Right Content Area - Scrollable */}
               <div ref={rightContentRef} className="flex-1 overflow-y-auto p-4">
                 {/* Sort By Tab */}
@@ -482,11 +470,10 @@ export default function DiningCategory() {
                         <button
                           key={option.id || 'relevance'}
                           onClick={() => setSortBy(option.id)}
-                          className={`px-4 py-3 rounded-xl border text-left transition-colors ${
-                            sortBy === option.id
-                              ? 'border-green-500 bg-green-50'
-                              : 'border-gray-200 hover:border-green-500'
-                          }`}
+                          className={`px-4 py-3 rounded-xl border text-left transition-colors ${sortBy === option.id
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 hover:border-green-500'
+                            }`}
                         >
                           <span className={`text-sm font-medium ${sortBy === option.id ? 'text-green-600' : 'text-gray-700'}`}>
                             {option.label}
@@ -496,30 +483,28 @@ export default function DiningCategory() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Time Tab */}
                 {activeFilterTab === 'time' && (
                   <div className="space-y-4 mb-8">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Delivery Time</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <button 
+                      <button
                         onClick={() => toggleFilter('delivery-under-30')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                          activeFilters.has('delivery-under-30') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('delivery-under-30')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <Timer className={`h-6 w-6 ${activeFilters.has('delivery-under-30') ? 'text-green-600' : 'text-gray-600'}`} strokeWidth={1.5} />
                         <span className={`text-sm font-medium ${activeFilters.has('delivery-under-30') ? 'text-green-600' : 'text-gray-700'}`}>Under 30 mins</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => toggleFilter('delivery-under-45')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                          activeFilters.has('delivery-under-45') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('delivery-under-45')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <Timer className={`h-6 w-6 ${activeFilters.has('delivery-under-45') ? 'text-green-600' : 'text-gray-600'}`} strokeWidth={1.5} />
                         <span className={`text-sm font-medium ${activeFilters.has('delivery-under-45') ? 'text-green-600' : 'text-gray-700'}`}>Under 45 mins</span>
@@ -527,41 +512,38 @@ export default function DiningCategory() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Rating Tab */}
                 {activeFilterTab === 'rating' && (
                   <div className="space-y-4 mb-8">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Restaurant Rating</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <button 
+                      <button
                         onClick={() => toggleFilter('rating-35-plus')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                          activeFilters.has('rating-35-plus') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-35-plus')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <Star className={`h-6 w-6 ${activeFilters.has('rating-35-plus') ? 'text-green-600 fill-green-600' : 'text-gray-400'}`} />
                         <span className={`text-sm font-medium ${activeFilters.has('rating-35-plus') ? 'text-green-600' : 'text-gray-700'}`}>Rated 3.5+</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => toggleFilter('rating-4-plus')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                          activeFilters.has('rating-4-plus') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-4-plus')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <Star className={`h-6 w-6 ${activeFilters.has('rating-4-plus') ? 'text-green-600 fill-green-600' : 'text-gray-400'}`} />
                         <span className={`text-sm font-medium ${activeFilters.has('rating-4-plus') ? 'text-green-600' : 'text-gray-700'}`}>Rated 4.0+</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => toggleFilter('rating-45-plus')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                          activeFilters.has('rating-45-plus') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-45-plus')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <Star className={`h-6 w-6 ${activeFilters.has('rating-45-plus') ? 'text-green-600 fill-green-600' : 'text-gray-400'}`} />
                         <span className={`text-sm font-medium ${activeFilters.has('rating-45-plus') ? 'text-green-600' : 'text-gray-700'}`}>Rated 4.5+</span>
@@ -575,24 +557,22 @@ export default function DiningCategory() {
                   <div className="space-y-4 mb-8">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Distance</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <button 
+                      <button
                         onClick={() => toggleFilter('distance-under-1km')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                          activeFilters.has('distance-under-1km') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('distance-under-1km')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <MapPin className={`h-6 w-6 ${activeFilters.has('distance-under-1km') ? 'text-green-600' : 'text-gray-600'}`} strokeWidth={1.5} />
                         <span className={`text-sm font-medium ${activeFilters.has('distance-under-1km') ? 'text-green-600' : 'text-gray-700'}`}>Under 1 km</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => toggleFilter('distance-under-2km')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                          activeFilters.has('distance-under-2km') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('distance-under-2km')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <MapPin className={`h-6 w-6 ${activeFilters.has('distance-under-2km') ? 'text-green-600' : 'text-gray-600'}`} strokeWidth={1.5} />
                         <span className={`text-sm font-medium ${activeFilters.has('distance-under-2km') ? 'text-green-600' : 'text-gray-700'}`}>Under 2 km</span>
@@ -600,29 +580,27 @@ export default function DiningCategory() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Price Tab */}
                 {activeFilterTab === 'price' && (
                   <div className="space-y-4 mb-8">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Dish Price</h3>
                     <div className="flex flex-col gap-3">
-                      <button 
+                      <button
                         onClick={() => toggleFilter('price-under-200')}
-                        className={`px-4 py-3 rounded-xl border text-left transition-colors ${
-                          activeFilters.has('price-under-200') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`px-4 py-3 rounded-xl border text-left transition-colors ${activeFilters.has('price-under-200')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <span className={`text-sm font-medium ${activeFilters.has('price-under-200') ? 'text-green-600' : 'text-gray-700'}`}>Under ₹200</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => toggleFilter('price-under-500')}
-                        className={`px-4 py-3 rounded-xl border text-left transition-colors ${
-                          activeFilters.has('price-under-500') 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-green-500'
-                        }`}
+                        className={`px-4 py-3 rounded-xl border text-left transition-colors ${activeFilters.has('price-under-500')
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-500'
+                          }`}
                       >
                         <span className={`text-sm font-medium ${activeFilters.has('price-under-500') ? 'text-green-600' : 'text-gray-700'}`}>Under ₹500</span>
                       </button>
@@ -639,11 +617,10 @@ export default function DiningCategory() {
                         <button
                           key={cuisine}
                           onClick={() => setSelectedCuisine(selectedCuisine === cuisine ? null : cuisine)}
-                          className={`px-4 py-3 rounded-xl border text-center transition-colors ${
-                            selectedCuisine === cuisine
-                              ? 'border-green-500 bg-green-50'
-                              : 'border-gray-200 hover:border-green-500'
-                          }`}
+                          className={`px-4 py-3 rounded-xl border text-center transition-colors ${selectedCuisine === cuisine
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 hover:border-green-500'
+                            }`}
                         >
                           <span className={`text-sm font-medium ${selectedCuisine === cuisine ? 'text-green-600' : 'text-gray-700'}`}>
                             {cuisine}
@@ -655,22 +632,21 @@ export default function DiningCategory() {
                 )}
               </div>
             </div>
-            
+
             {/* Footer */}
             <div className="flex items-center gap-4 px-4 py-4 border-t bg-white">
-              <button 
+              <button
                 onClick={() => setIsFilterOpen(false)}
                 className="flex-1 py-3 text-center font-semibold text-gray-700"
               >
                 Close
               </button>
-              <button 
+              <button
                 onClick={() => setIsFilterOpen(false)}
-                className={`flex-1 py-3 font-semibold rounded-xl transition-colors ${
-                  activeFilters.size > 0 || sortBy || selectedCuisine
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-200 text-gray-500'
-                }`}
+                className={`flex-1 py-3 font-semibold rounded-xl transition-colors ${activeFilters.size > 0 || sortBy || selectedCuisine
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-200 text-gray-500'
+                  }`}
               >
                 {activeFilters.size > 0 || sortBy || selectedCuisine
                   ? `Show ${filteredRestaurants.length} results`

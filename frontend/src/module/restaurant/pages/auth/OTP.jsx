@@ -243,26 +243,8 @@ export default function RestaurantOTP() {
 
         setTimeout(async () => {
           console.log({ authData })
-          // After signup, send to onboarding
-          if (authData?.isSignUp) {
-            navigate("/restaurant/onboarding", { replace: true })
-          } else {
-            // After login, check if onboarding is incomplete
-            try {
-              const incompleteStep = await checkOnboardingStatus()
-              if (incompleteStep) {
-                // Navigate to onboarding with the incomplete step
-                navigate(`/restaurant/onboarding?step=${incompleteStep}`, { replace: true })
-              } else {
-                // Onboarding is complete, go to restaurant home
-                navigate("/restaurant", { replace: true })
-              }
-            } catch (err) {
-              console.error("Failed to check onboarding status:", err)
-              // Fallback to restaurant home
-              navigate("/restaurant", { replace: true })
-            }
-          }
+          // Onboarding redirect disabled as requested
+          navigate("/restaurant", { replace: true })
         }, 500)
       }
     } catch (err) {
@@ -414,8 +396,8 @@ export default function RestaurantOTP() {
                 }}
                 placeholder="Enter your full name"
                 className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${nameError
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-blue-500"
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
                   }`}
                 disabled={isLoading}
               />
@@ -464,8 +446,8 @@ export default function RestaurantOTP() {
             onClick={() => handleVerify()}
             disabled={isLoading || !isOtpComplete}
             className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${!isLoading && isOtpComplete
-                ? "bg-blue-600 hover:bg-blue-700 text-white"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              ? "bg-blue-600 hover:bg-blue-700 text-white"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
           >
             {isLoading ? "Verifying..." : "Continue"}

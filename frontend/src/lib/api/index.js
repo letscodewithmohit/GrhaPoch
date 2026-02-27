@@ -1602,8 +1602,8 @@ export const orderAPI = {
 // Export dining API helper functions
 export const diningAPI = {
   // Get dining restaurants (with optional filters)
-  getRestaurants: (params = {}) => {
-    return apiClient.get(API_ENDPOINTS.DINING.RESTAURANTS, { params });
+  getRestaurants: (params = {}, config = {}) => {
+    return apiClient.get(API_ENDPOINTS.DINING.RESTAURANTS, { ...config, params });
   },
 
   // Get restaurant by slug

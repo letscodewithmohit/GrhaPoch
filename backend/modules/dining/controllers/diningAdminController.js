@@ -182,6 +182,27 @@ export const getActiveRestaurants = async (req, res) => {
     }
 }
 
+export const updateDiningSettings = async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+        const { diningEnabled, guests, cuisine } = req.body;
+
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) return errorResponse(res, 404, 'Restaurant not found');
+
+        if (diningEnabled !== undefined) restaurant.diningEnabled = diningEnabled;
+        if (guests !== undefined) restaurant.diningGuests = guests;
+        if (cuisine !== undefined) restaurant.diningCategory = cuisine;
+
+        await restaurant.save();
+
+        return successResponse(res, 200, 'Dining settings updated successfully', { restaurant });
+    } catch (error) {
+        console.error('Error updating dining settings:', error);
+        return errorResponse(res, 500, 'Failed to update dining settings');
+    }
+};
+
 // ==================== DINING STORIES ====================
 
 export const getAdminDiningStories = async (req, res) => {

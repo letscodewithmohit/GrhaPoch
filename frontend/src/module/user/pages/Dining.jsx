@@ -284,63 +284,46 @@ export default function Dining() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-6 sm:pt-8 md:pt-10 lg:pt-12 pb-6 md:pb-8 lg:pb-10">
         {/* Categories Section */}
         <div className="mb-6">
-          <div className="mb-6">
-            <div className="flex items-center mb-2">
-              <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-              <h3 className="px-3 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                WHAT ARE YOU LOOKING FOR?
-              </h3>
-              <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              What are you looking for?
+            </h3>
           </div>
 
-          {/* Light blue-grey background container */}
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl">
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
+          <div className="w-full">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {categories.map((category, index) => (
                 <Link
                   key={category._id || category.id}
                   to={`/user/dining/${category.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   <motion.div
-                    className="bg-[#f3f4f9] dark:bg-[#2a2a2a] rounded-xl overflow-hidden shadow-sm border-2 border-white dark:border-gray-800 flex flex-col h-[140px] sm:h-[160px] md:h-[180px]"
+                    className="relative rounded-xl overflow-hidden shadow-sm h-28 sm:h-32"
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.4, delay: index * 0.1 }}
-                    whileHover={{ y: -8, scale: 1.05, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.1)" }}
+                    whileHover={{ scale: 1.05 }}
                   >
-                    {/* Text Label on Top */}
-                    <div className="flex items-center justify-start px-3 py-2 sm:py-3 flex-shrink-0">
-                      <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white text-left uppercase tracking-wide">
+                    {/* Background Image */}
+                    <div className="absolute inset-0">
+                      <OptimizedImage
+                        src={category.imageUrl}
+                        alt={category.name}
+                        className="w-full h-full"
+                        objectFit="cover"
+                        sizes="(max-width: 640px) 50vw, 33vw"
+                        placeholder="blur"
+                        priority={index < 3}
+                      />
+                    </div>
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    {/* Text Label at Bottom Left */}
+                    <div className="absolute bottom-2 left-3 sm:bottom-3 sm:left-4 z-10 flex items-center pr-2">
+                      <p className="text-sm sm:text-base font-bold text-white tracking-wide break-words text-left leading-tight">
                         {category.name}
                       </p>
-                    </div>
-
-                    {/* Image at Bottom */}
-                    <div className="relative flex-1 mt-auto overflow-hidden">
-                      <motion.div
-                        className="absolute inset-0"
-                        whileHover={{ scale: 1.15 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                      >
-                        <OptimizedImage
-                          src={category.imageUrl}
-                          alt={category.name}
-                          className="w-full h-full"
-                          objectFit="cover"
-                          sizes="(max-width: 640px) 33vw, (max-width: 1024px) 16vw, 12vw"
-                          placeholder="blur"
-                          priority={index < 3}
-                        />
-                      </motion.div>
-                      {/* Gradient Overlay on Hover */}
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"
-                        initial={{ opacity: 0 }}
-                        whileHover={{ opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                      />
                     </div>
                   </motion.div>
                 </Link>
@@ -351,14 +334,10 @@ export default function Dining() {
 
         {/* In the Limelight Section */}
         <div className="mb-6 mt-8 sm:mt-12">
-          <div className="mb-6">
-            <div className="flex items-center mb-2">
-              <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-              <h3 className="px-3 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                IN THE LIMELIGHT
-              </h3>
-              <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              In the Limelight
+            </h3>
           </div>
 
           {/* Landscape Carousel */}
@@ -384,30 +363,26 @@ export default function Dining() {
                     priority={index === 0}
                   />
 
+                  {/* Overlay Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 z-0" />
+
                   {/* Discount Tag - Top Left */}
                   <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10">
-                    <div className="bg-white/95 backdrop-blur-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg shadow-lg">
-                      <span className="text-[10px] sm:text-xs font-bold text-green-500">
+                    <div className="bg-[#f97316] px-3 py-1 rounded-full shadow-lg">
+                      <span className="text-[10px] sm:text-xs font-bold text-white">
                         {restaurant.percentageOff}
                       </span>
                     </div>
                   </div>
 
                   {/* Restaurant Info - Bottom Left */}
-                  <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 flex flex-col gap-0">
-                    {/* Restaurant Name - Black text on white bg */}
-                    <div className="bg-white dark:bg-[#1a1a1a] rounded-t-lg px-2 py-1.5 sm:px-3 sm:py-2 shadow-lg">
-                      <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
-                        {restaurant.restaurant?.name}
-                      </h4>
-                    </div>
-
-                    {/* Subheading - White text on black bg */}
-                    <div className="bg-black/90 backdrop-blur-sm rounded-b-lg px-2 py-1.5 sm:px-3 sm:py-2 shadow-lg">
-                      <p className="text-[10px] sm:text-xs font-semibold text-white">
-                        {restaurant.tagline}
-                      </p>
-                    </div>
+                  <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 flex flex-col gap-1">
+                    <h4 className="text-xl sm:text-2xl font-bold text-white drop-shadow-md">
+                      {restaurant.restaurant?.name}
+                    </h4>
+                    <p className="text-xs sm:text-sm font-semibold text-white/90 drop-shadow-sm">
+                      {restaurant.tagline}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -434,14 +409,10 @@ export default function Dining() {
 
         {/* Must Tries in Indore Section */}
         <div className="mb-6 mt-8 sm:mt-12">
-          <div className="mb-6">
-            <div className="flex items-center mb-2">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <h3 className="px-3 text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                MUST TRIES
-              </h3>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Must Tries
+            </h3>
           </div>
 
           {/* Horizontal Scroll Container */}
@@ -514,14 +485,10 @@ export default function Dining() {
 
         {/* Popular Restaurants Around You Section */}
         <div className="mb-6 mt-8 sm:mt-12">
-          <div className="mb-6">
-            <div className="flex items-center mb-2">
-              <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-              <h3 className="px-3 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                POPULAR RESTAURANTS AROUND YOU
-              </h3>
-              <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Popular Restaurants Around You
+            </h3>
           </div>
 
           {/* Filters */}

@@ -292,11 +292,23 @@ export const sidebarMenuData = [
         path: "/admin/hero-banner-management",
         icon: "Image",
       },
+    ],
+  },
+  {
+    type: "section",
+    label: "DINING MANAGEMENT",
+    items: [
       {
         type: "link",
-        label: "Dining Management",
+        label: "Dining Banners",
         path: "/admin/dining-management",
         icon: "UtensilsCrossed",
+      },
+      {
+        type: "link",
+        label: "Dining List",
+        path: "/admin/dining-list",
+        icon: "FileText",
       },
     ],
   },
