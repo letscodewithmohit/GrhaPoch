@@ -1,7 +1,6 @@
-import { useState } from "react"
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { ChevronRight, Menu, Crown } from "lucide-react"
+import { ChevronRight, Menu, Crown, Megaphone } from "lucide-react"
 import BottomNavOrders from "../components/BottomNavOrders"
 import offersAndDiscountsIcon from "@/assets/hub/icons/offersanddiscounts.png"
 
@@ -46,6 +45,24 @@ export default function HubGrowth() {
                 <p className="text-sm text-gray-600">Start your own offers and grow your business</p>
               </div>
               <ChevronRight className="w-5 h-5 text-blue-600 shrink-0" />
+            </motion.div>
+
+            {/* Add Advertisement card */}
+            <motion.div
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate("/restaurant/advertisements")}
+              className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 flex items-center gap-4 border border-orange-200 cursor-pointer"
+            >
+              <div className="shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                  <Megaphone className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-gray-900 mb-1">Add Advertisement</h3>
+                <p className="text-sm text-gray-600">Create a paid banner ad to boost visibility</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-orange-600 shrink-0" />
             </motion.div>
 
             {/* Subscription Plans card */}

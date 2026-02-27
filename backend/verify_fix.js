@@ -62,3 +62,6 @@ async function testQuery() {
     await mongoose.disconnect();
 }
 testQuery();
+
+
+// jesa ki mere app mai do modal hai commision based or subscription based toh yeh do resturant mai none kyon dikha raha hai bussiness model mai or mere comssion or subscription model mai koi dikkat hai kya frontend mai backend mai or database or updation mai ??? resturant registration ke time pr busines model selct hota hai or in dono mai bhi pagonation lgana hai ky ?

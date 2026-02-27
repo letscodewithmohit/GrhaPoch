@@ -158,8 +158,8 @@ export default function Cart() {
   const [donationAmount, setDonationAmount] = useState(0)
   const [showCustomTip, setShowCustomTip] = useState(false)
   const [showCustomDonation, setShowCustomDonation] = useState(false)
-  const [tipOptions, setTipOptions] = useState([10, 20, 30, 50])
-  const [donationOptions, setDonationOptions] = useState([2, 5, 10])
+  const [tipOptions, setTipOptions] = useState([10, 20, 30])
+  const [donationOptions, setDonationOptions] = useState([20, 50, 100])
 
   // Restaurant and pricing state
   const [restaurantData, setRestaurantData] = useState(null)
@@ -677,20 +677,37 @@ export default function Cart() {
     fetchFeeSettings()
   }, [])
 
-  // Fetch tip and donation presets from business settings (public)
+  // Fetch tip/donation presets and keep them in sync without manual page reload.
   useEffect(() => {
     const fetchTipAndDonationSettings = async () => {
       try {
         const response = await publicAPI.getBusinessSettings()
         const settings = response?.data?.data || {}
-        setTipOptions(normalizePresetAmounts(settings.deliveryTipAmounts, [10, 20, 30, 50]))
-        setDonationOptions(normalizePresetAmounts(settings.donationAmounts, [2, 5, 10]))
+        setTipOptions(normalizePresetAmounts(settings.deliveryTipAmounts, [10, 20, 30]))
+        setDonationOptions(normalizePresetAmounts(settings.donationAmounts, [20, 50, 100]))
       } catch (error) {
         console.error('Error fetching tip/donation settings:', error)
       }
     }
 
     fetchTipAndDonationSettings()
+    const intervalId = setInterval(fetchTipAndDonationSettings, 30000)
+
+    const handleFocus = () => fetchTipAndDonationSettings()
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTipAndDonationSettings()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const safeTipAmount = sanitizeAdditionalAmount(tipAmount)
@@ -1768,55 +1785,56 @@ export default function Cart() {
 
               {/* Tip Section */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-lg md:rounded-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center shrink-0">
                     <Sparkles className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Tip your delivery partner</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">100% of the tip goes to your delivery partner</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">100% of the tip goes to your delivery partner</p>
+                    <div className="flex flex-wrap gap-2 md:gap-3">
+                      {tipOptions.map((amount) => (
+                        <button
+                          key={amount}
+                          onClick={() => {
+                            setTipAmount(tipAmount === amount ? 0 : amount)
+                            setShowCustomTip(false)
+                          }}
+                          className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${tipAmount === amount
+                            ? "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400"
+                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                            }`}
+                        >
+                          {"\u20B9"}{amount}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setShowCustomTip(!showCustomTip)}
+                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${showCustomTip
+                          ? "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                          }`}
+                      >
+                        Custom
+                      </button>
+                    </div>
+                    {showCustomTip && (
+                      <div className="mt-3 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{"\u20B9"}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="5000"
+                          placeholder="Enter tip amount"
+                          className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                          value={tipAmount || ""}
+                          onChange={(e) => setTipAmount(sanitizeAdditionalAmount(e.target.value))}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 md:gap-3">
-                  {[10, 20, 30, 50].map((amount) => (
-                    <button
-                      key={amount}
-                      onClick={() => {
-                        setTipAmount(tipAmount === amount ? 0 : amount)
-                        setShowCustomTip(false)
-                      }}
-                      className={`px-4 md:px-5 py-2 rounded-lg border-2 font-medium transition-all ${tipAmount === amount
-                        ? "border-red-600 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-                        : "border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-200 dark:hover:border-gray-600"
-                        }`}
-                    >
-                      ₹{amount}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setShowCustomTip(!showCustomTip)}
-                    className={`px-4 md:px-5 py-2 rounded-lg border-2 font-medium transition-all ${showCustomTip
-                      ? "border-red-600 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-                      : "border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400"
-                      }`}
-                  >
-                    Custom
-                  </button>
-                </div>
-                {showCustomTip && (
-                  <div className="mt-3 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                    <input
-                      type="number"
-                      placeholder="Enter amount"
-                      className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                      value={tipAmount || ""}
-                      onChange={(e) => setTipAmount(Number(e.target.value))}
-                    />
-                  </div>
-                )}
               </div>
-
               {/* Donation Section */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-lg md:rounded-xl">
                 <div className="flex items-start gap-4">
@@ -1826,11 +1844,14 @@ export default function Cart() {
                   <div className="flex-1">
                     <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Usai Foundation Donation</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Help us feed the needy. 100% of your donation goes to charity.</p>
-                    <div className="flex gap-2 md:gap-3">
-                      {[2, 5, 10].map((amount) => (
+                    <div className="flex flex-wrap gap-2 md:gap-3">
+                      {donationOptions.map((amount) => (
                         <button
                           key={amount}
-                          onClick={() => setDonationAmount(donationAmount === amount ? 0 : amount)}
+                          onClick={() => {
+                            setDonationAmount(donationAmount === amount ? 0 : amount)
+                            setShowCustomDonation(false)
+                          }}
                           className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${donationAmount === amount
                             ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
                             : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
@@ -1839,7 +1860,30 @@ export default function Cart() {
                           ₹{amount}
                         </button>
                       ))}
+                      <button
+                        onClick={() => setShowCustomDonation(!showCustomDonation)}
+                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${showCustomDonation
+                          ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                          : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                          }`}
+                      >
+                        Custom
+                      </button>
                     </div>
+                    {showCustomDonation && (
+                      <div className="mt-3 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{"\u20B9"}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="5000"
+                          placeholder="Enter donation amount"
+                          className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={donationAmount || ""}
+                          onChange={(e) => setDonationAmount(sanitizeAdditionalAmount(e.target.value))}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2540,3 +2584,4 @@ export default function Cart() {
     </div >
   )
 }
+

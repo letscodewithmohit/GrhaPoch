@@ -1,383 +1,291 @@
-import { useState, useEffect, useRef } from "react"
-import { motion } from "framer-motion"
+import { useEffect, useMemo, useState } from "react"
+import { motion as Motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import Lenis from "lenis"
-import { 
-  ArrowLeft,
-  ChevronDown,
-  Calendar,
-  Upload,
-  Megaphone
-} from "lucide-react"
+import { ArrowLeft, Upload, CalendarDays, IndianRupee } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import BottomNavbar from "../components/BottomNavbar"
+import { campaignAPI, restaurantAPI } from "@/lib/api"
+
+const toInputDate = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const parseInputDate = (value) => {
+  if (!value) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number)
+    return new Date(year, month - 1, day)
+  }
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const getDaysInclusive = (startDate, endDate) => {
+  if (!startDate || !endDate) return 0
+  const start = parseInputDate(startDate)
+  const end = parseInputDate(endDate)
+  if (!start || !end) return 0
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  if (end < start) return 0
+  return Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1
+}
+
+const normalizeSubmitError = (message) => {
+  const text = String(message || "").toLowerCase()
+  if (text.includes("overlap")) {
+    return "Dates overlap. Choose different dates."
+  }
+  return message || "Failed to submit advertisement"
+}
 
 export default function NewAdvertisementPage() {
   const navigate = useNavigate()
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
-  const [showValidityPicker, setShowValidityPicker] = useState(false)
-  const [formData, setFormData] = useState({
-    category: "Video Promotion",
-    validity: "",
-    title: "",
-    description: "",
-    fileDescription: "",
-    videoDescription: ""
+  const today = useMemo(() => new Date(), [])
+  const minStartDate = useMemo(() => {
+    const value = new Date(today)
+    value.setHours(0, 0, 0, 0)
+    value.setDate(value.getDate() + 1)
+    return value
+  }, [today])
+  const [pricePerDay, setPricePerDay] = useState(150)
+  const [bannerFile, setBannerFile] = useState(null)
+  const [bannerPreview, setBannerPreview] = useState("")
+  const [startDate, setStartDate] = useState(() => toInputDate(minStartDate))
+  const [endDate, setEndDate] = useState(() => {
+    const nextWeek = new Date(minStartDate)
+    nextWeek.setDate(nextWeek.getDate() + 6)
+    return toInputDate(nextWeek)
   })
-  const [uploadedFile, setUploadedFile] = useState(null)
-  const [uploadedVideo, setUploadedVideo] = useState(null)
-  const categoryRef = useRef(null)
-  const validityRef = useRef(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [dynamicTitle, setDynamicTitle] = useState("")
 
-  // Lenis smooth scrolling
   useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+    const loadInitialData = async () => {
+      setLoading(true)
+      setErrorMessage("")
+      try {
+        const [pricingResult, restaurantResult] = await Promise.allSettled([
+          campaignAPI.getAdvertisementPricing(),
+          restaurantAPI.getCurrentRestaurant()
+        ])
 
-    function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+        if (pricingResult.status === "fulfilled") {
+          const apiPrice = Number(pricingResult.value?.data?.data?.pricePerDay || 150)
+          if (Number.isFinite(apiPrice) && apiPrice > 0) {
+            setPricePerDay(apiPrice)
+          }
+        }
+
+        if (restaurantResult.status === "fulfilled") {
+          const restaurantData =
+            restaurantResult.value?.data?.data?.restaurant || restaurantResult.value?.data?.restaurant
+          const restaurantName = String(restaurantData?.name || "").trim()
+          setDynamicTitle(restaurantName || "Restaurant Advertisement")
+        } else {
+          setDynamicTitle("Restaurant Advertisement")
+        }
+
+        if (pricingResult.status === "rejected") {
+          setErrorMessage("Failed to load pricing. Default price is applied.")
+        }
+      } catch (error) {
+        setDynamicTitle("Restaurant Advertisement")
+        setErrorMessage(error?.response?.data?.message || "Failed to load advertisement data")
+      } finally {
+        setLoading(false)
+      }
     }
-
-    requestAnimationFrame(raf)
-
-    return () => {
-      lenis.destroy()
-    }
+    loadInitialData()
   }, [])
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (categoryRef.current && !categoryRef.current.contains(event.target)) {
-        setShowCategoryDropdown(false)
-      }
-      if (validityRef.current && !validityRef.current.contains(event.target)) {
-        setShowValidityPicker(false)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside)
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
+      if (bannerPreview) {
+        URL.revokeObjectURL(bannerPreview)
+      }
     }
-  }, [])
+  }, [bannerPreview])
 
-  const categories = [
-    "Video Promotion",
-    "Restaurant Promotion",
-    "Image Promotion",
-    "Banner Promotion"
-  ]
+  const totalDays = useMemo(() => getDaysInclusive(startDate, endDate), [startDate, endDate])
+  const totalPrice = useMemo(() => Number((totalDays * pricePerDay).toFixed(2)), [totalDays, pricePerDay])
 
-  const handleFileUpload = (e, type) => {
-    const file = e.target.files[0]
-    if (type === "file") {
-      setUploadedFile(file)
-    } else if (type === "video") {
-      setUploadedVideo(file)
+  const handleBannerChange = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("Please upload an image file.")
+      return
     }
+
+    const objectUrl = URL.createObjectURL(file)
+    if (bannerPreview) {
+      URL.revokeObjectURL(bannerPreview)
+    }
+
+    setErrorMessage("")
+    setBannerFile(file)
+    setBannerPreview(objectUrl)
   }
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
+  const handleSubmit = async () => {
+    setErrorMessage("")
 
-  const getCharacterCount = (text, maxLength = 100) => {
-    return `${text.length}/${maxLength}`
+    if (!bannerFile) {
+      setErrorMessage("Banner upload is required.")
+      return
+    }
+
+    if (!dynamicTitle.trim()) {
+      setErrorMessage("Title is required.")
+      return
+    }
+
+    if (!startDate || !endDate) {
+      setErrorMessage("Start date and end date are required.")
+      return
+    }
+
+    const parsedStartDate = parseInputDate(startDate)
+    const minAllowedStartDate = new Date(minStartDate)
+    minAllowedStartDate.setHours(0, 0, 0, 0)
+    if (!parsedStartDate || parsedStartDate < minAllowedStartDate) {
+      setErrorMessage("Start date must be at least tomorrow.")
+      return
+    }
+
+    if (totalDays <= 0) {
+      setErrorMessage("End date must be after or equal to start date.")
+      return
+    }
+
+    if (totalDays > 365) {
+      setErrorMessage("Date range must be within 365 days.")
+      return
+    }
+
+    const payload = new FormData()
+    payload.append("banner", bannerFile)
+    payload.append("startDate", startDate)
+    payload.append("endDate", endDate)
+    payload.append("title", dynamicTitle)
+
+    setIsSubmitting(true)
+    try {
+      const response = await campaignAPI.createRestaurantBannerAdvertisement(payload)
+      const createdAd = response?.data?.data?.advertisement
+      navigate(createdAd?.id ? `/restaurant/advertisements/${createdAd.id}` : "/restaurant/advertisements")
+    } catch (error) {
+      const message = error?.response?.data?.message
+      setErrorMessage(normalizeSubmitError(message))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24 md:pb-6">
-      {/* Header */}
+    <div className="min-h-screen bg-slate-50 pb-6">
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
-        <button 
-          onClick={() => navigate(-1)}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-        >
+        <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">New Advertisement</h1>
+        <h1 className="text-lg font-bold text-gray-900 flex-1">Add Advertisement</h1>
       </div>
 
-      {/* Main Content */}
       <div className="px-4 py-4 space-y-4">
-        {/* Category Info Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card className="bg-white shadow-sm border border-gray-100">
+        <Motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="bg-white border border-gray-100">
             <CardContent className="p-4 space-y-4">
-              <h2 className="text-base font-bold text-gray-900">Category Info</h2>
+              <h2 className="text-base font-bold text-gray-900">Advertisement Setup</h2>
 
-              {/* Category Dropdown */}
-              <div className="relative" ref={categoryRef}>
-                <button
-                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <span className="text-sm font-medium text-gray-900">{formData.category}</span>
-                  <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {showCategoryDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
-                  >
-                    {categories.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => {
-                          handleInputChange("category", category)
-                          setShowCategoryDropdown(false)
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Validity Field */}
-              <div className="relative" ref={validityRef}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Validity <span className="text-red-500">*</span>
-                </label>
-                <button
-                  onClick={() => setShowValidityPicker(!showValidityPicker)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <span className={`text-sm ${formData.validity ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {formData.validity || "Select date"}
-                  </span>
-                  <Calendar className="w-5 h-5 text-[#ff8100]" />
-                </button>
-                {showValidityPicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4"
-                  >
+              {loading ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
                     <input
-                      type="date"
-                      value={formData.validity}
-                      onChange={(e) => {
-                        handleInputChange("validity", e.target.value)
-                        setShowValidityPicker(false)
-                      }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]"
+                      type="text"
+                      value={dynamicTitle}
+                      onChange={(e) => setDynamicTitle(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Title Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title (English) <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                  placeholder="Enter title"
-                  className="w-full"
-                />
-              </div>
-
-              {/* Description Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (English) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleInputChange("description", e.target.value)}
-                    placeholder="Enter description"
-                    maxLength={100}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100] resize-none"
-                  />
-                  <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-                    {getCharacterCount(formData.description)}
+                    <p className="text-xs text-gray-500 mt-1">Auto-filled from your restaurant name, you can edit it.</p>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
 
-        {/* Upload Files Section - First */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <Card className="bg-white shadow-sm border border-gray-100">
-            <CardContent className="p-4 space-y-4">
-              <h2 className="text-base font-bold text-gray-900">
-                Upload Files <span className="text-red-500">*</span>
-              </h2>
-
-              {/* File Upload Area */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                <input
-                  type="file"
-                  id="file-upload"
-                  onChange={(e) => handleFileUpload(e, "file")}
-                  className="hidden"
-                  accept="image/*"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="block cursor-pointer"
-                >
-                  {uploadedFile ? (
-                    <div className="text-center">
-                      <p className="text-sm text-gray-700">{uploadedFile.name}</p>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">Click to upload file</p>
-                    </div>
-                  )}
-                </label>
-
-                {/* File Description */}
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description (English) <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      value={formData.fileDescription}
-                      onChange={(e) => handleInputChange("fileDescription", e.target.value)}
-                      placeholder="Enter description"
-                      maxLength={100}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100] resize-none"
-                    />
-                    <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-                      {getCharacterCount(formData.fileDescription)}
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Banner Image (Any size - testing mode)</label>
+                    <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 block cursor-pointer hover:border-blue-500">
+                      <input type="file" accept="image/*" onChange={handleBannerChange} className="hidden" />
+                      {bannerPreview ? (
+                        <img src={bannerPreview} alt="Banner preview" className="w-full h-44 object-cover rounded-md" />
+                      ) : (
+                        <div className="text-center py-6">
+                          <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Click to upload banner</p>
+                        </div>
+                      )}
+                    </label>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
 
-        {/* Upload Files Section - Video */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Card className="bg-white shadow-sm border border-gray-100">
-            <CardContent className="p-4 space-y-4">
-              <h2 className="text-base font-bold text-gray-900">
-                Upload Files <span className="text-red-500">*</span>
-              </h2>
-
-              {/* Video Upload Area */}
-              <div className="relative">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
-                  <input
-                    type="file"
-                    id="video-upload"
-                    onChange={(e) => handleFileUpload(e, "video")}
-                    className="hidden"
-                    accept="video/mp4,video/webm,video/x-matroska"
-                  />
-                  <label
-                    htmlFor="video-upload"
-                    className="block cursor-pointer text-center"
-                  >
-                    {uploadedVideo ? (
-                      <div>
-                        <p className="text-sm text-gray-700 mb-2">{uploadedVideo.name}</p>
-                        <p className="text-xs text-gray-500">{(uploadedVideo.size / (1024 * 1024)).toFixed(2)} MB</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                      <div className="relative">
+                        <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="date"
+                          min={toInputDate(minStartDate)}
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
-                    ) : (
-                      <>
-                        <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-sm font-medium text-gray-700 mb-1">Click to Upload Ads Video</p>
-                        <p className="text-xs text-gray-500 mb-1">Maximum 5 MB</p>
-                        <p className="text-xs text-gray-500">Supports: MP4, WEBM, MKV</p>
-                      </>
-                    )}
-                  </label>
-                </div>
+                    </div>
 
-                {/* Preview Button */}
-                <div className="absolute top-4 right-4 flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Megaphone className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                      <div className="relative">
+                        <CalendarDays className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="date"
+                          min={startDate || toInputDate(minStartDate)}
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <button className="px-3 py-1 bg-[#ff8100] hover:bg-[#e67300] text-white text-xs font-medium rounded-lg transition-colors">
-                    Preview
-                  </button>
-                </div>
-              </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <p className="text-xs text-gray-600">Price Per Day (Admin Set)</p>
+                    <p className="text-sm font-semibold text-gray-900">INR {pricePerDay.toFixed(2)}</p>
+                    <p className="text-xs text-gray-600 mt-1">Selected Days: {totalDays}</p>
+                    <div className="mt-2 flex items-center gap-2 text-blue-600">
+                      <IndianRupee className="w-4 h-4" />
+                      <p className="font-bold">Total: INR {totalPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700">
+                    {isSubmitting ? "Submitting..." : "Submit Advertisement"}
+                  </Button>
+                </>
+              )}
+
+              {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
             </CardContent>
           </Card>
-        </motion.div>
+        </Motion.div>
       </div>
 
-      {/* Bottom Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 z-50 md:relative md:border-t-0 md:px-4 md:py-4 md:mt-6">
-        <div className="flex gap-3">
-          <Button
-            onClick={() => {
-              setFormData({
-                category: "Video Promotion",
-                validity: "",
-                title: "",
-                description: "",
-                fileDescription: "",
-                videoDescription: ""
-              })
-              setUploadedFile(null)
-              setUploadedVideo(null)
-            }}
-            variant="outline"
-            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg border-0"
-          >
-            Reset
-          </Button>
-          <Button
-            onClick={() => {
-              console.log("Create ad:", formData)
-              // Navigate to advertisements list after creation
-              navigate("/restaurant/advertisements")
-            }}
-            className="flex-1 bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg"
-          >
-            Create Ads
-          </Button>
-        </div>
-      </div>
-
-      {/* Bottom Navigation Bar */}
-      <BottomNavbar />
     </div>
   )
 }
-

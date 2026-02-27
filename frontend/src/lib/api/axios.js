@@ -100,30 +100,41 @@ apiClient.interceptors.request.use(
     // Determine if this is an authenticated route
     const path = window.location.pathname;
     const requestUrl = config.url || '';
+    const normalizedRequestUrl = (() => {
+      if (!requestUrl) return '';
+      if (requestUrl.startsWith('http://') || requestUrl.startsWith('https://')) {
+        try {
+          return new URL(requestUrl).pathname || '';
+        } catch {
+          return requestUrl;
+        }
+      }
+      return requestUrl;
+    })();
 
     // Check if this is a public restaurant route (should not require authentication)
-    const isPublicRestaurantRoute = requestUrl.includes('/restaurant/list') ||
-      requestUrl.includes('/restaurant/under-250') ||
-      (requestUrl.includes('/restaurant/') &&
-        !requestUrl.includes('/restaurant/orders') &&
-        !requestUrl.includes('/restaurant/auth') &&
-        !requestUrl.includes('/restaurant/menu') &&
-        !requestUrl.includes('/restaurant/profile') &&
-        !requestUrl.includes('/restaurant/staff') &&
-        !requestUrl.includes('/restaurant/offers') &&
-        !requestUrl.includes('/restaurant/inventory') &&
-        !requestUrl.includes('/restaurant/categories') &&
-        !requestUrl.includes('/restaurant/onboarding') &&
-        !requestUrl.includes('/restaurant/delivery-status') &&
-        !requestUrl.includes('/restaurant/finance') &&
-        !requestUrl.includes('/restaurant/wallet') &&
-        !requestUrl.includes('/restaurant/analytics') &&
-        !requestUrl.includes('/restaurant/complaints') &&
-        (requestUrl.match(/\/restaurant\/[^/]+$/) ||
-          requestUrl.match(/\/restaurant\/[^/]+\/menu/) ||
-          requestUrl.match(/\/restaurant\/[^/]+\/addons/) ||
-          requestUrl.match(/\/restaurant\/[^/]+\/inventory/) ||
-          requestUrl.match(/\/restaurant\/[^/]+\/offers/)));
+    const isPublicRestaurantRoute = normalizedRequestUrl.includes('/restaurant/list') ||
+      normalizedRequestUrl.includes('/restaurant/under-250') ||
+      (normalizedRequestUrl.startsWith('/restaurant/') &&
+        !normalizedRequestUrl.includes('/restaurant/orders') &&
+        !normalizedRequestUrl.includes('/restaurant/auth') &&
+        !normalizedRequestUrl.includes('/restaurant/menu') &&
+        !normalizedRequestUrl.includes('/restaurant/profile') &&
+        !normalizedRequestUrl.includes('/restaurant/staff') &&
+        !normalizedRequestUrl.includes('/restaurant/offers') &&
+        !normalizedRequestUrl.includes('/restaurant/inventory') &&
+        !normalizedRequestUrl.includes('/restaurant/categories') &&
+        !normalizedRequestUrl.includes('/restaurant/onboarding') &&
+        !normalizedRequestUrl.includes('/restaurant/delivery-status') &&
+        !normalizedRequestUrl.includes('/restaurant/finance') &&
+        !normalizedRequestUrl.includes('/restaurant/wallet') &&
+        !normalizedRequestUrl.includes('/restaurant/analytics') &&
+        !normalizedRequestUrl.includes('/restaurant/complaints') &&
+        (normalizedRequestUrl.match(/\/restaurant\/[^/]+$/) ||
+          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/menu/) ||
+          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/addons/) ||
+          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/inventory/) ||
+          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/offers/)));
 
     const isAuthenticatedRoute = (path.startsWith('/admin') ||
       (path.startsWith('/restaurant') && !path.startsWith('/restaurants') && !isPublicRestaurantRoute) ||
