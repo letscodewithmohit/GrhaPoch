@@ -3,6 +3,7 @@ import Offer from '../../restaurant/models/Offer.js';
 import FeeSettings from '../../admin/models/FeeSettings.js';
 import DeliveryBoyCommission from '../../admin/models/DeliveryBoyCommission.js';
 import mongoose from 'mongoose';
+import { calculateRoute } from './routeCalculationService.js';
 
 /**
  * Get active fee settings from database
@@ -114,9 +115,39 @@ export const calculateDistance = (point1, point2) => {
 };
 
 /**
+ * Calculate delivery distance using road-route distance (OSRM) with Haversine fallback.
+ * This keeps user cart distance and settlement distance aligned.
+ */
+export const calculateDeliveryDistance = async (restaurant, deliveryAddress = null) => {
+  const restaurantCoord = normalizeCoordinates(restaurant);
+  const customerCoord = normalizeCoordinates(deliveryAddress);
+
+  if (!restaurantCoord || !customerCoord) return null;
+
+  const [restaurantLng, restaurantLat] = restaurantCoord;
+  const [customerLng, customerLat] = customerCoord;
+
+  // Guard invalid map points
+  if ((restaurantLng === 0 && restaurantLat === 0) || (customerLng === 0 && customerLat === 0)) {
+    return 0;
+  }
+
+  try {
+    const route = await calculateRoute(restaurantLat, restaurantLng, customerLat, customerLng);
+    if (route && typeof route.distance === 'number' && !Number.isNaN(route.distance)) {
+      return route.distance;
+    }
+  } catch (error) {
+    console.warn(`Road distance calculation failed, falling back to Haversine: ${error.message}`);
+  }
+
+  return calculateDistance(restaurant, deliveryAddress);
+};
+
+/**
  * Calculate delivery fee based on order value, distance, and restaurant settings
  */
-export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddress = null) => {
+export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddress = null, distanceInKm = null) => {
   // Get fee settings from database
   const feeSettings = await getFeeSettings();
 
@@ -124,7 +155,7 @@ export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddre
 
 
   // 2. Dynamic distance-based calculation
-  const distance = calculateDistance(restaurant, deliveryAddress);
+  const distance = distanceInKm ?? calculateDistance(restaurant, deliveryAddress);
 
   if (distance !== null) {
     try {
@@ -362,18 +393,19 @@ export const calculateOrderPricing = async ({
       }
     }
 
+    // Calculate distance once and reuse it for all pricing components
+    const distanceInKm = await calculateDeliveryDistance(restaurant, deliveryAddress);
+
     // Calculate delivery fee
     const deliveryFee = await calculateDeliveryFee(
       subtotal,
       restaurant,
-      deliveryAddress
+      deliveryAddress,
+      distanceInKm
     );
 
     // Apply free delivery from coupon
     const finalDeliveryFee = appliedCoupon?.freeDelivery ? 0 : deliveryFee;
-
-    // Calculate distance for platform fee
-    const distanceInKm = calculateDistance(restaurant, deliveryAddress);
 
     // Calculate platform fee based on distance
     const platformFee = await calculatePlatformFee(distanceInKm);

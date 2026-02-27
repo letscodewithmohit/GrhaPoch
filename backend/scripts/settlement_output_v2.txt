@@ -1,0 +1,87 @@
+(node:19400) [MONGOOSE] Warning: Duplicate schema index on {"restaurant":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19400) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+Connected to MongoDB
+Running calculateOrderSettlement for order: new ObjectId('699d734f5e5194bb20679b04')
+RESULTING SETTLEMENT:
+{
+  "userPayment": {
+    "subtotal": 100,
+    "discount": 0,
+    "deliveryFee": 23,
+    "platformFee": 5,
+    "gst": 0,
+    "packagingFee": 0,
+    "tip": 10,
+    "donation": 0,
+    "total": 138
+  },
+  "restaurantEarning": {
+    "foodPrice": 100,
+    "commission": 10,
+    "commissionPercentage": 10,
+    "netEarning": 90,
+    "status": "pending"
+  },
+  "deliveryPartnerEarning": {
+    "basePayout": 20,
+    "distance": 4.662669824513362,
+    "commissionPerKm": 5,
+    "distanceCommission": 3.31,
+    "surgeMultiplier": 1,
+    "surgeAmount": 0,
+    "tip": 10,
+    "totalEarning": 33.31,
+    "status": "pending"
+  },
+  "adminEarning": {
+    "commission": 10,
+    "platformFee": 5,
+    "deliveryFee": 23,
+    "gst": 0,
+    "donation": 0,
+    "deliveryMargin": -0.31,
+    "totalEarning": 14.69,
+    "status": "pending"
+  },
+  "cancellationDetails": {
+    "cancelled": false,
+    "refundAmount": 0,
+    "restaurantCompensation": 0
+  },
+  "_id": "699d73505e5194bb20679b12",
+  "orderId": "699d734f5e5194bb20679b04",
+  "orderNumber": "ORD-1771926351724-847",
+  "userId": "699c0587c08573767b6248ae",
+  "restaurantId": "69983c612eac5cdb81c159b6",
+  "restaurantName": "mohit restaurant 96",
+  "deliveryPartnerId": "699c05a0c08573767b62495d",
+  "escrowStatus": "pending",
+  "escrowAmount": 138,
+  "settlementStatus": "pending",
+  "restaurantSettled": false,
+  "deliveryPartnerSettled": false,
+  "adminSettled": false,
+  "calculationSnapshot": {
+    "feeSettings": {
+      "platformFee": 5,
+      "gstRate": 5,
+      "deliveryFee": 28
+    },
+    "restaurantCommission": {
+      "type": "percentage",
+      "value": 10,
+      "rule": null
+    },
+    "deliveryCommission": {
+      "distance": 4.662669824513362,
+      "basePayout": 20,
+      "commissionPerKm": 5
+    },
+    "calculatedAt": "2026-02-24T11:45:28.733Z"
+  },
+  "createdAt": "2026-02-24T09:45:52.205Z",
+  "updatedAt": "2026-02-24T11:45:28.750Z",
+  "__v": 0,
+  "escrowReleasedAt": "2026-02-24T09:47:35.753Z"
+}

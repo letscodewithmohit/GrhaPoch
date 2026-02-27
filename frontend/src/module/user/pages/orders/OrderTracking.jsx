@@ -305,7 +305,8 @@ export default function OrderTracking() {
               } : order.restaurantLocation,
               deliveryPartnerId: apiOrder.deliveryPartnerId?._id || apiOrder.deliveryPartnerId || apiOrder.assignmentInfo?.deliveryPartnerId || null,
               assignmentInfo: apiOrder.assignmentInfo || null,
-              deliveryState: apiOrder.deliveryState || null
+              deliveryState: apiOrder.deliveryState || null,
+              realtimeTracking: apiOrder.realtimeTracking || null
             };
 
             setOrder(transformedOrder);
@@ -441,7 +442,8 @@ export default function OrderTracking() {
             deliveryPartnerId: apiOrder.deliveryPartnerId?._id || apiOrder.deliveryPartnerId || apiOrder.assignmentInfo?.deliveryPartnerId || null,
             assignmentInfo: apiOrder.assignmentInfo || null,
             tracking: apiOrder.tracking || {},
-            deliveryState: apiOrder.deliveryState || null
+            deliveryState: apiOrder.deliveryState || null,
+            realtimeTracking: apiOrder.realtimeTracking || null
           }
 
           setOrder(transformedOrder)
@@ -745,7 +747,8 @@ export default function OrderTracking() {
             name: apiOrder.deliveryPartnerId.name || 'Delivery Partner',
             avatar: null
           } : null,
-          tracking: apiOrder.tracking || {}
+          tracking: apiOrder.tracking || {},
+          realtimeTracking: apiOrder.realtimeTracking || null
         }
         setOrder(transformedOrder)
 

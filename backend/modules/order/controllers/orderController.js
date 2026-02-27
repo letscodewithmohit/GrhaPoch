@@ -16,6 +16,7 @@ import etaWebSocketService from '../services/etaWebSocketService.js';
 import OrderEvent from '../models/OrderEvent.js';
 import UserWallet from '../../user/models/UserWallet.js';
 import RestaurantCommission from '../../admin/models/RestaurantCommission.js';
+import { getFirebaseRealtimeDb } from '../../../config/firebaseRealtime.js';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -26,6 +27,37 @@ const logger = winston.createLogger({
     })
   ]
 });
+
+const ACTIVE_ORDERS_RT_ROOT = 'active_orders';
+const sanitizeFirebaseKey = (value) => String(value || '').replace(/[.#$/\[\]]/g, '_');
+
+const getOrderRealtimeTracking = async (order) => {
+  const db = getFirebaseRealtimeDb();
+  if (!db || !order) return null;
+
+  const candidateKeys = [
+    order?.orderId,
+    order?._id?.toString?.() || order?._id
+  ]
+    .filter(Boolean)
+    .map(sanitizeFirebaseKey);
+
+  for (const key of candidateKeys) {
+    try {
+      const snapshot = await db.ref(`${ACTIVE_ORDERS_RT_ROOT}/${key}`).get();
+      if (snapshot.exists()) {
+        return {
+          order_key: key,
+          ...snapshot.val()
+        };
+      }
+    } catch (error) {
+      logger.warn(`Realtime tracking fetch failed for key ${key}: ${error.message}`);
+    }
+  }
+
+  return null;
+};
 
 /**
  * Create a new order and initiate Razorpay payment
@@ -292,6 +324,7 @@ export const createOrder = async (req, res) => {
     if (!pricing.couponCode && pricing.appliedCoupon?.code) {
       pricing.couponCode = pricing.appliedCoupon.code;
     }
+    let canonicalDistanceKm = null;
 
     // ── SERVER-SIDE PRICING VALIDATION ───────────────────────────────────────
     // Recalculate pricing independently and compare with frontend-sent total.
@@ -334,6 +367,31 @@ export const createOrder = async (req, res) => {
         serverTotal,
         diff
       });
+
+      // Always persist canonical server pricing so cart, DB and settlement remain consistent.
+      Object.assign(pricing, {
+        subtotal: serverPricing.subtotal,
+        discount: serverPricing.discount,
+        deliveryFee: serverPricing.deliveryFee,
+        platformFee: serverPricing.platformFee,
+        fixedFee: serverPricing.fixedFee,
+        tax: serverPricing.tax,
+        tip: serverPricing.tip,
+        donation: serverPricing.donation,
+        total: serverPricing.total,
+        savings: serverPricing.savings,
+        distance: serverPricing.distance,
+        distanceStr: serverPricing.distanceStr,
+        breakdown: serverPricing.breakdown,
+        appliedCoupon: serverPricing.appliedCoupon
+      });
+
+      if (!pricing.couponCode && serverPricing.appliedCoupon?.code) {
+        pricing.couponCode = serverPricing.appliedCoupon.code;
+      }
+      if (typeof serverPricing.distance === 'number' && !Number.isNaN(serverPricing.distance)) {
+        canonicalDistanceKm = serverPricing.distance;
+      }
     } catch (pricingValidationError) {
       // Log but don't block — pricing service failure shouldn't block orders
       logger.error('❌ Server-side pricing validation failed (non-blocking):', pricingValidationError.message);
@@ -468,6 +526,9 @@ export const createOrder = async (req, res) => {
         couponCode: pricing.couponCode || null,
         commission: commissionSnapshot // Add snapshot here
       },
+      assignmentInfo: (typeof canonicalDistanceKm === 'number' && !Number.isNaN(canonicalDistanceKm))
+        ? { distance: canonicalDistanceKm }
+        : undefined,
       deliveryFleet: deliveryFleet || 'standard',
       note: note || '',
       sendCutlery: sendCutlery !== false,
@@ -1215,10 +1276,15 @@ export const getOrderDetails = async (req, res) => {
       orderId: order._id
     }).lean();
 
+    const realtimeTracking = await getOrderRealtimeTracking(order);
+
     res.json({
       success: true,
       data: {
-        order,
+        order: {
+          ...order,
+          realtimeTracking
+        },
         payment
       }
     });

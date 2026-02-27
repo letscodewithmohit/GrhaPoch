@@ -5,7 +5,6 @@ import DeliveryBoyCommission from '../../admin/models/DeliveryBoyCommission.js';
 import FeeSettings from '../../admin/models/FeeSettings.js';
 import Restaurant from '../../restaurant/models/Restaurant.js';
 import mongoose from 'mongoose';
-import { calculateDistance } from './orderCalculationService.js';
 
 /**
  * Calculate comprehensive order settlement breakdown
@@ -116,20 +115,40 @@ export const calculateOrderSettlement = async (orderId) => {
       status: 'pending'
     };
 
-    if (order.deliveryPartnerId && order.assignmentInfo?.distance !== undefined && order.assignmentInfo?.distance !== null) {
-      const distance = order.assignmentInfo.distance;
+    // Distance priority for payout:
+    // 1. Canonical assignment distance captured at order-time pricing
+    // 2. Road route distance (routeToDelivery) fallback when canonical distance is missing
+    const assignmentDistance =
+      (typeof order.assignmentInfo?.distance === 'number' &&
+        Number.isFinite(order.assignmentInfo.distance) &&
+        order.assignmentInfo.distance >= 0 &&
+        order.assignmentInfo.distance <= 50)
+        ? order.assignmentInfo.distance
+        : null;
+
+    const routeDistance =
+      (typeof order.deliveryState?.routeToDelivery?.distance === 'number' &&
+        Number.isFinite(order.deliveryState.routeToDelivery.distance) &&
+        order.deliveryState.routeToDelivery.distance > 0 &&
+        order.deliveryState.routeToDelivery.distance <= 50)
+        ? order.deliveryState.routeToDelivery.distance
+        : null;
+
+    const distance = assignmentDistance ?? routeDistance;
+
+    if (order.deliveryPartnerId && distance !== undefined && distance !== null) {
       const deliveryCommission = await DeliveryBoyCommission.calculateCommission(distance);
       const ruleCommission = deliveryCommission.commission || 0;
       const ruleBreakdown = deliveryCommission.breakdown;
 
-      // We give the higher of: What user paid OR What rule says
-      const finalTotalBaseAndDist = Math.max(userPayment.deliveryFee, ruleCommission);
-
-      // Breakdown calculation:
-      // Keep the distance commission from the rule
-      const finalDistanceCommission = ruleBreakdown.distanceCommission || 0;
-      // The rest goes to base payout (this ensures finalBase + finalDist = finalTotal)
-      const finalBasePayout = finalTotalBaseAndDist - finalDistanceCommission;
+      // Single source of truth:
+      // If customer delivery fee is captured at order-time, keep rider base+distance payout locked to it.
+      // Fallback to rule calculation only for legacy orders with missing deliveryFee.
+      const orderTimeDeliveryFee = Number(userPayment.deliveryFee) || 0;
+      const finalTotalBaseAndDist = orderTimeDeliveryFee > 0 ? orderTimeDeliveryFee : ruleCommission;
+      const ruleBasePayout = Number(ruleBreakdown.basePayout) || 0;
+      const finalBasePayout = Math.min(ruleBasePayout, finalTotalBaseAndDist);
+      const finalDistanceCommission = Math.max(0, finalTotalBaseAndDist - finalBasePayout);
 
       // Get surge multiplier
       const surgeMultiplier = order.assignmentInfo?.surgeMultiplier || 1;

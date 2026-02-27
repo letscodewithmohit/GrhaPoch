@@ -12,7 +12,7 @@ import { useOrders } from "../../context/OrdersContext"
 import { useLocation as useUserLocation } from "../../hooks/useLocation"
 import { useZone } from "../../hooks/useZone"
 import { useLocationSelector } from "../../components/UserLayout"
-import { orderAPI, restaurantAPI, adminAPI, userAPI, API_ENDPOINTS } from "@/lib/api"
+import { orderAPI, restaurantAPI, adminAPI, publicAPI, userAPI, API_ENDPOINTS } from "@/lib/api"
 import { API_BASE_URL } from "@/lib/api/config"
 import { initRazorpayPayment } from "@/lib/utils/razorpay"
 import { toast } from "sonner"
@@ -80,6 +80,25 @@ const getLocationDisplayName = (address) => {
   return address.area || address.city || address.label || "Location"
 }
 
+const normalizePresetAmounts = (values, fallback = []) => {
+  if (!Array.isArray(values)) return fallback
+
+  const normalized = [...new Set(
+    values
+      .map((value) => Math.round(Number(value)))
+      .filter((value) => Number.isFinite(value) && value > 0)
+  )].sort((a, b) => a - b)
+
+  return normalized.length > 0 ? normalized : fallback
+}
+
+const sanitizeAdditionalAmount = (value, maxAmount = 5000) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) return 0
+  const rounded = Math.round(numeric * 100) / 100
+  return Math.min(rounded, maxAmount)
+}
+
 export default function Cart() {
   const navigate = useNavigate()
 
@@ -138,6 +157,9 @@ export default function Cart() {
   const [tipAmount, setTipAmount] = useState(0)
   const [donationAmount, setDonationAmount] = useState(0)
   const [showCustomTip, setShowCustomTip] = useState(false)
+  const [showCustomDonation, setShowCustomDonation] = useState(false)
+  const [tipOptions, setTipOptions] = useState([10, 20, 30, 50])
+  const [donationOptions, setDonationOptions] = useState([2, 5, 10])
 
   // Restaurant and pricing state
   const [restaurantData, setRestaurantData] = useState(null)
@@ -585,8 +607,8 @@ export default function Cart() {
           deliveryAddress: defaultAddress,
           couponCode: appliedCoupon?.code || couponCode || null,
           deliveryFleet: deliveryFleet || 'standard',
-          tip: tipAmount,
-          donation: donationAmount
+          tip: safeTipAmount,
+          donation: safeDonationAmount
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -655,13 +677,32 @@ export default function Cart() {
     fetchFeeSettings()
   }, [])
 
+  // Fetch tip and donation presets from business settings (public)
+  useEffect(() => {
+    const fetchTipAndDonationSettings = async () => {
+      try {
+        const response = await publicAPI.getBusinessSettings()
+        const settings = response?.data?.data || {}
+        setTipOptions(normalizePresetAmounts(settings.deliveryTipAmounts, [10, 20, 30, 50]))
+        setDonationOptions(normalizePresetAmounts(settings.donationAmounts, [2, 5, 10]))
+      } catch (error) {
+        console.error('Error fetching tip/donation settings:', error)
+      }
+    }
+
+    fetchTipAndDonationSettings()
+  }, [])
+
+  const safeTipAmount = sanitizeAdditionalAmount(tipAmount)
+  const safeDonationAmount = sanitizeAdditionalAmount(donationAmount)
+
   // Use backend pricing if available, otherwise fallback to database settings
   const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
   const deliveryFee = pricing?.deliveryFee ?? (subtotal >= feeSettings.freeDeliveryThreshold || appliedCoupon?.freeDelivery ? 0 : feeSettings.deliveryFee)
   const platformFee = pricing?.platformFee || feeSettings.platformFee
   const gstCharges = 0 // GST for now Zero
   const discount = pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
-  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + Number(tipAmount) + Number(donationAmount)
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + safeTipAmount + safeDonationAmount
   const total = pricing?.total || (totalBeforeDiscount - discount)
   const savings = pricing?.savings || (discount + (subtotal > 500 ? 32 : 0))
 
@@ -754,8 +795,8 @@ export default function Cart() {
             deliveryAddress: defaultAddress,
             couponCode: coupon.code,
             deliveryFleet: deliveryFleet || 'standard',
-            tip: tipAmount,
-            donation: donationAmount
+            tip: safeTipAmount,
+            donation: safeDonationAmount
           })
 
           if (response?.data?.success && response?.data?.data?.pricing) {
@@ -792,8 +833,8 @@ export default function Cart() {
           deliveryAddress: defaultAddress,
           couponCode: null,
           deliveryFleet: deliveryFleet || 'standard',
-          tip: tipAmount,
-          donation: donationAmount
+          tip: safeTipAmount,
+          donation: safeDonationAmount
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -831,8 +872,8 @@ export default function Cart() {
       // Use the LATEST tip and donation from state to prevent stale data issues
       const orderPricing = pricing ? {
         ...pricing,
-        tip: Number(tipAmount) || 0,
-        donation: Number(donationAmount) || 0,
+        tip: safeTipAmount,
+        donation: safeDonationAmount,
         // If we override tip/donation, we must ensure total reflects it if the pricing object was stale.
         // However, calculating total here is complex due to discounts etc.
         // Trusted approach: If pricing exists, trust its subtotal/fees, but override tip/donation.
@@ -849,8 +890,8 @@ export default function Cart() {
         platformFee,
         discount,
         total,
-        tip: Number(tipAmount) || 0,
-        donation: Number(donationAmount) || 0,
+        tip: safeTipAmount,
+        donation: safeDonationAmount,
         couponCode: appliedCoupon?.code || null
       };
 
@@ -863,11 +904,11 @@ export default function Cart() {
         // But we don't know if 'pricing' is old or new here easily without comparing.
         // If pricing.tip != tipAmount, then pricing is stale (or tip changed).
         // So we should update total.
-        if (Number(pricing.tip || 0) !== Number(tipAmount) || Number(pricing.donation || 0) !== Number(donationAmount)) {
+        if (Number(pricing.tip || 0) !== safeTipAmount || Number(pricing.donation || 0) !== safeDonationAmount) {
           const oldTip = Number(pricing.tip || 0);
           const oldDonation = Number(pricing.donation || 0);
-          const newTip = Number(tipAmount) || 0;
-          const newDonation = Number(donationAmount) || 0;
+          const newTip = safeTipAmount;
+          const newDonation = safeDonationAmount;
           orderPricing.total = (orderPricing.total || 0) - oldTip - oldDonation + newTip + newDonation;
         }
       }
