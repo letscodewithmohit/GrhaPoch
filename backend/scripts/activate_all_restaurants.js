@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import Restaurant from '../modules/restaurant/models/Restaurant.js';
+import Restaurant from '../models/Restaurant.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

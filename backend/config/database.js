@@ -17,7 +17,7 @@ export const connectDB = async () => {
       // Mongoose 8.x options
     });
 
-    logger.info(`MongoDB Connected: ${conn.connection.host}`);
+    logger.info(`✅ MongoDB Connected: ${conn.connection.host}`);
     
     // Handle connection events
     mongoose.connection.on('error', (err) => {

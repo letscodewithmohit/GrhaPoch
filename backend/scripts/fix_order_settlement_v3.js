@@ -2,9 +2,9 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Order from '../modules/order/models/Order.js';
-import OrderSettlement from '../modules/order/models/OrderSettlement.js';
-import { calculateOrderSettlement } from '../modules/order/services/orderSettlementService.js';
+import Order from '../models/Order.js';
+import OrderSettlement from '../models/OrderSettlement.js';
+import { calculateOrderSettlement } from '../services/orderSettlementService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

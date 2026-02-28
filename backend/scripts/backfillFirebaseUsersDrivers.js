@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { connectDB } from '../config/database.js';
-import User from '../modules/auth/models/User.js';
-import Delivery from '../modules/delivery/models/Delivery.js';
+import User from '../models/User.js';
+import Delivery from '../models/Delivery.js';
 import {
   initializeFirebaseRealtime,
   isFirebaseRealtimeAvailable
@@ -10,7 +10,7 @@ import {
 import {
   updateUserLocationRealtime,
   updateDeliveryPresenceRealtime
-} from '../modules/delivery/services/firebaseRealtimeService.js';
+} from '../services/firebaseRealtimeService.js';
 
 dotenv.config();
 

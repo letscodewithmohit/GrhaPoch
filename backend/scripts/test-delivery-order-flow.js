@@ -20,8 +20,8 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import axios from 'axios';
-import Order from '../modules/order/models/Order.js';
-import Delivery from '../modules/delivery/models/Delivery.js';
+import Order from '../models/Order.js';
+import Delivery from '../models/Delivery.js';
 
 dotenv.config();
 

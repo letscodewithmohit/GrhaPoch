@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 
 // Models
-import Restaurant from '../modules/restaurant/models/Restaurant.js';
-import { normalizePhoneNumber } from '../shared/utils/phoneUtils.js';
+import Restaurant from '../models/Restaurant.js';
+import { normalizePhoneNumber } from '../utils/phoneUtils.js';
 
 // Setup environment
 const __filename = fileURLToPath(import.meta.url);

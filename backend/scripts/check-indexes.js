@@ -14,9 +14,9 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '../.env') });
 
 // Import models to trigger schema registration
-import '../modules/auth/models/User.js';
-import '../modules/restaurant/models/Restaurant.js';
-import '../modules/restaurant/models/RestaurantCategory.js';
+import '../models/User.js';
+import '../models/Restaurant.js';
+import '../models/RestaurantCategory.js';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 

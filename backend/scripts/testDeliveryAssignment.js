@@ -8,11 +8,11 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { connectDB } from '../config/database.js';
-import Order from '../modules/order/models/Order.js';
-import Restaurant from '../modules/restaurant/models/Restaurant.js';
-import Delivery from '../modules/delivery/models/Delivery.js';
-import { assignOrderToDeliveryBoy } from '../modules/order/services/deliveryAssignmentService.js';
-import { notifyDeliveryBoyNewOrder } from '../modules/order/services/deliveryNotificationService.js';
+import Order from '../models/Order.js';
+import Restaurant from '../models/Restaurant.js';
+import Delivery from '../models/Delivery.js';
+import { assignOrderToDeliveryBoy } from '../services/deliveryAssignmentService.js';
+import { notifyDeliveryBoyNewOrder } from '../services/deliveryNotificationService.js';
 
 dotenv.config();
 

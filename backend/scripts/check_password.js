@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Restaurant from '../modules/restaurant/models/Restaurant.js';
+import Restaurant from '../models/Restaurant.js';
 import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);

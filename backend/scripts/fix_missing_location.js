@@ -10,10 +10,10 @@ const __dirname = path.dirname(__filename);
 // Load env vars
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-import Restaurant from '../modules/restaurant/models/Restaurant.js';
-import Zone from '../modules/admin/models/Zone.js';
+import Restaurant from '../models/Restaurant.js';
+import Zone from '../models/Zone.js';
 // Import BusinessSettings to ensure model is registered for Restaurant pre-save hook
-import BusinessSettings from '../modules/admin/models/BusinessSettings.js';
+import BusinessSettings from '../models/BusinessSettings.js';
 
 const fixMissingLocations = async () => {
     try {

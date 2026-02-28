@@ -78,7 +78,6 @@ export const initializeFirebaseRealtime = () => {
 
     realtimeDb = getDatabaseWithUrl(databaseURL, realtimeApp);
     realtimeReady = true;
-    console.log(`[FirebaseRealtime] initialized (${databaseURL})`);
     return realtimeDb;
   } catch (error) {
     lastInitError = error;

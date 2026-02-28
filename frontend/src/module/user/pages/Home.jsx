@@ -686,22 +686,6 @@ export default function Home() {
     try {
       setLoadingRestaurants(true)
 
-      // First, test backend connection
-      try {
-        // Use API_BASE_URL from config (supports both dev and production)
-        const backendUrl = API_BASE_URL.replace('/api', '')
-        const healthCheck = await fetch(`${backendUrl}/health`)
-        if (!healthCheck.ok) {
-          throw new Error(`Backend health check failed: ${healthCheck.status}`)
-        }
-        console.log('✅ Backend connection successful')
-      } catch (healthError) {
-        // Backend connection error - handled silently, toast notifications shown via axios interceptor
-        setRestaurantsData([])
-        setLoadingRestaurants(false)
-        return
-      }
-
       // Build query parameters from filters
       const params = {}
 

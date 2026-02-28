@@ -1,3 +1,4 @@
+import './config/suppressMongooseWarnings.js';
 import express from 'express';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
@@ -12,6 +13,14 @@ import mongoose from 'mongoose';
 
 // Load environment variables
 dotenv.config();
+
+// Suppress Mongoose duplicate index warnings
+const _warn = console.warn;
+console.warn = (...args) => {
+  const msg = String(args[0] || '');
+  if (msg.includes('Duplicate schema index') || msg.includes('[MONGOOSE]')) return;
+  _warn.apply(console, args);
+};
 
 // Silence noisy debug logs unless explicitly enabled
 if (process.env.DEBUG_SOCKET_LOGS !== 'true') {
@@ -32,44 +41,45 @@ if (process.env.DEBUG_SOCKET_LOGS !== 'true') {
 // Import configurations
 import { connectDB } from './config/database.js';
 import { connectRedis } from './config/redis.js';
-import { initializeFirebaseRealtime, getFirebaseRealtimeStatus } from './config/firebaseRealtime.js';
+import { initializeFirebaseRealtime } from './config/firebaseRealtime.js';
+import { printStartupStatus } from './config/startupStatus.js';
 
 // Import middleware
-import { errorHandler } from './shared/middleware/errorHandler.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 // Import routes
-import authRoutes from './modules/auth/index.js';
-import userRoutes from './modules/user/index.js';
-import restaurantRoutes from './modules/restaurant/index.js';
-import deliveryRoutes from './modules/delivery/index.js';
-import orderRoutes from './modules/order/index.js';
-import paymentRoutes from './modules/payment/index.js';
-import menuRoutes from './modules/menu/index.js';
-import campaignRoutes from './modules/campaign/index.js';
-import advertisementPublicRoutes from './modules/campaign/publicRoutes.js';
-import userAdvertisementRoutes from './modules/userAdvertisements/index.js';
-import notificationRoutes from './modules/notification/index.js';
-import analyticsRoutes from './modules/analytics/index.js';
-import adminRoutes from './modules/admin/index.js';
-import categoryPublicRoutes from './modules/admin/routes/categoryPublicRoutes.js';
-import feeSettingsPublicRoutes from './modules/admin/routes/feeSettingsPublicRoutes.js';
-import envPublicRoutes from './modules/admin/routes/envPublicRoutes.js';
-import aboutPublicRoutes from './modules/admin/routes/aboutPublicRoutes.js';
-import businessSettingsPublicRoutes from './modules/admin/routes/businessSettingsPublicRoutes.js';
-import termsPublicRoutes from './modules/admin/routes/termsPublicRoutes.js';
-import privacyPublicRoutes from './modules/admin/routes/privacyPublicRoutes.js';
-import refundPublicRoutes from './modules/admin/routes/refundPublicRoutes.js';
-import shippingPublicRoutes from './modules/admin/routes/shippingPublicRoutes.js';
-import cancellationPublicRoutes from './modules/admin/routes/cancellationPublicRoutes.js';
-import feedbackPublicRoutes from './modules/admin/routes/feedbackPublicRoutes.js';
-import feedbackExperiencePublicRoutes from './modules/admin/routes/feedbackExperiencePublicRoutes.js';
-import safetyEmergencyPublicRoutes from './modules/admin/routes/safetyEmergencyPublicRoutes.js';
-import zonePublicRoutes from './modules/admin/routes/zonePublicRoutes.js';
-import subscriptionRoutes from './modules/subscription/index.js';
-import uploadModuleRoutes from './modules/upload/index.js';
-import locationRoutes from './modules/location/index.js';
-import heroBannerRoutes from './modules/heroBanner/index.js';
-import diningRoutes from './modules/dining/index.js';
+import authRoutes from './routes/auth.index.js';
+import userRoutes from './routes/user.index.js';
+import restaurantRoutes from './routes/restaurant.index.js';
+import deliveryRoutes from './routes/delivery.index.js';
+import orderRoutes from './routes/order.index.js';
+import paymentRoutes from './routes/payment.index.js';
+import menuRoutes from './routes/menu.index.js';
+import campaignRoutes from './routes/campaign.index.js';
+import advertisementPublicRoutes from './routes/campaign.public.routes.js';
+import userAdvertisementRoutes from './routes/userAdvertisement.routes.js';
+import notificationRoutes from './routes/notification.index.js';
+import analyticsRoutes from './routes/analytics.index.js';
+import adminRoutes from './routes/admin.index.js';
+import categoryPublicRoutes from './routes/categoryPublicRoutes.js';
+import feeSettingsPublicRoutes from './routes/feeSettingsPublicRoutes.js';
+import envPublicRoutes from './routes/envPublicRoutes.js';
+import aboutPublicRoutes from './routes/aboutPublicRoutes.js';
+import businessSettingsPublicRoutes from './routes/businessSettingsPublicRoutes.js';
+import termsPublicRoutes from './routes/termsPublicRoutes.js';
+import privacyPublicRoutes from './routes/privacyPublicRoutes.js';
+import refundPublicRoutes from './routes/refundPublicRoutes.js';
+import shippingPublicRoutes from './routes/shippingPublicRoutes.js';
+import cancellationPublicRoutes from './routes/cancellationPublicRoutes.js';
+import feedbackPublicRoutes from './routes/feedbackPublicRoutes.js';
+import feedbackExperiencePublicRoutes from './routes/feedbackExperiencePublicRoutes.js';
+import safetyEmergencyPublicRoutes from './routes/safetyEmergencyPublicRoutes.js';
+import zonePublicRoutes from './routes/zonePublicRoutes.js';
+import subscriptionRoutes from './routes/subscription.index.js';
+import uploadModuleRoutes from './routes/upload.index.js';
+import locationRoutes from './routes/location.routes.js';
+import heroBannerRoutes from './routes/heroBanner.index.js';
+import diningRoutes from './routes/diningRoutes.js';
 
 
 // Validate required environment variables
@@ -112,12 +122,6 @@ if (missingEnvVars.length > 0) {
 
 // Initialize Firebase Realtime DB early so downstream services can reuse it.
 initializeFirebaseRealtime();
-const firebaseStatus = getFirebaseRealtimeStatus();
-if (firebaseStatus.initialized) {
-  console.log('[FirebaseRealtime] startup initialization completed before routes and Socket.IO setup');
-} else {
-  console.warn(`[FirebaseRealtime] unavailable at startup: ${firebaseStatus.lastError || 'not configured'}`);
-}
 // Initialize Express app
 const app = express();
 const httpServer = createServer(app);
@@ -384,9 +388,6 @@ if (process.env.NODE_ENV === 'production') {
   });
 
   app.use('/api/', limiter);
-  console.log('Rate limiting enabled (production mode)');
-} else {
-  console.log('Rate limiting disabled (development mode)');
 }
 
 // Health check route
@@ -520,7 +521,7 @@ io.on('connection', (socket) => {
       // Send current location immediately when customer joins
       try {
         // Dynamic import to avoid circular dependencies
-        const { default: Order } = await import('./modules/order/models/Order.js');
+        const { default: Order } = await import('./models/Order.js');
 
         const order = await Order.findById(orderId)
           .populate({
@@ -558,7 +559,7 @@ io.on('connection', (socket) => {
 
     try {
       // Dynamic import to avoid circular dependencies
-      const { default: Order } = await import('./modules/order/models/Order.js');
+      const { default: Order } = await import('./models/Order.js');
 
       const order = await Order.findById(orderId)
         .populate({
@@ -603,10 +604,12 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5000;
 
 httpServer.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  console.log(`✅ Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+
+  // Print startup status after services initialize
+  printStartupStatus(PORT).catch(() => {});
 
   // Initialize scheduled tasks after DB connection is established
-  // Wait a bit for DB to connect, then start cron jobs
   setTimeout(() => {
     initializeScheduledTasks();
   }, 5000);
@@ -615,7 +618,7 @@ httpServer.listen(PORT, () => {
 // Initialize scheduled tasks
 function initializeScheduledTasks() {
   // Import menu schedule service
-  import('./modules/restaurant/services/menuScheduleService.js').then(({ processScheduledAvailability }) => {
+  import('./services/menuScheduleService.js').then(({ processScheduledAvailability }) => {
     // Run every minute to check for due schedules
     cron.schedule('* * * * *', async () => {
       try {
@@ -628,13 +631,12 @@ function initializeScheduledTasks() {
       }
     });
 
-    console.log('✅ Menu item availability scheduler initialized (runs every minute)');
   }).catch((error) => {
     console.error('❌ Failed to initialize menu schedule service:', error);
   });
 
   // Import auto-ready service
-  import('./modules/order/services/autoReadyService.js').then(({ processAutoReadyOrders }) => {
+  import('./services/autoReadyService.js').then(({ processAutoReadyOrders }) => {
     // Run every 30 seconds to check for orders that should be marked as ready
     cron.schedule('*/30 * * * * *', async () => {
       try {
@@ -647,13 +649,12 @@ function initializeScheduledTasks() {
       }
     });
 
-    console.log('✅ Auto-ready order scheduler initialized (runs every 30 seconds)');
   }).catch((error) => {
     console.error('❌ Failed to initialize auto-ready service:', error);
   });
 
   // Import auto-reject service
-  import('./modules/order/services/autoRejectService.js').then(({ processAutoRejectOrders }) => {
+  import('./services/autoRejectService.js').then(({ processAutoRejectOrders }) => {
     // Run every 30 seconds to check for orders that should be auto-rejected
     cron.schedule('*/30 * * * * *', async () => {
       try {
@@ -666,13 +667,12 @@ function initializeScheduledTasks() {
       }
     });
 
-    console.log('✅ Auto-reject order scheduler initialized (runs every 30 seconds)');
   }).catch((error) => {
     console.error('❌ Failed to initialize auto-reject service:', error);
   });
 
   // Import subscription expiry + warning service
-  import('./modules/restaurant/services/subscriptionExpiryService.js').then(({ processSubscriptionExpiries, processSubscriptionWarnings }) => {
+  import('./services/subscriptionExpiryService.js').then(({ processSubscriptionExpiries, processSubscriptionWarnings }) => {
 
     // ── Hourly: expire overdue subscriptions ──────────────────────────────
     cron.schedule('0 * * * *', async () => {
@@ -710,13 +710,11 @@ function initializeScheduledTasks() {
       }
     }, 10000);
 
-    console.log('✅ Subscription expiry scheduler initialized (runs every hour)');
-    console.log('✅ Subscription warning scheduler initialized (runs daily at 9:00 AM)');
   }).catch((error) => {
     console.error('❌ Failed to initialize subscription expiry service:', error);
   });
   // Import advertisement expiry service
-  import('./modules/campaign/services/advertisementExpiryService.js').then(({ processAdvertisementExpiries }) => {
+  import('./services/advertisementExpiryService.js').then(({ processAdvertisementExpiries }) => {
     // Daily at 12:05 AM - expire finished advertisements
     cron.schedule('5 0 * * *', async () => {
       try {
@@ -741,13 +739,12 @@ function initializeScheduledTasks() {
       }
     }, 12000);
 
-    console.log('Advertisement expiry scheduler initialized (runs daily at 12:05 AM)');
   }).catch((error) => {
     console.error('Failed to initialize advertisement expiry service:', error);
   });
 
   // Import user advertisement expiry service
-  import('./modules/userAdvertisements/services/userAdvertisementExpiryService.js').then(({ processUserAdvertisementExpiries }) => {
+  import('./services/userAdvertisementExpiryService.js').then(({ processUserAdvertisementExpiries }) => {
     // Daily at 12:10 AM - expire finished user advertisements
     cron.schedule('10 0 * * *', async () => {
       try {
@@ -772,7 +769,6 @@ function initializeScheduledTasks() {
       }
     }, 13000);
 
-    console.log('User advertisement expiry scheduler initialized (runs daily at 12:10 AM)');
   }).catch((error) => {
     console.error('Failed to initialize user advertisement expiry service:', error);
   });

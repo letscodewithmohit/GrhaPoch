@@ -13,7 +13,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 // Mock the encryption utils so we can read the raw values if needed
 // or just use the model which should decrypt them.
 
-import EnvironmentVariable from '../modules/admin/models/EnvironmentVariable.js';
+import EnvironmentVariable from '../models/EnvironmentVariable.js';
 
 async function checkEnvVars() {
     try {

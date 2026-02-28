@@ -1,8 +1,0 @@
-﻿Deliveries deleted: 1
-OTPs deleted: 1
-Restaurant Subscriptions (payment records) deleted: 0
-
-All Users remaining:
-  WARNING: No users found! Admin account may be missing.
-
-Done!

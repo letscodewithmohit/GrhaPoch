@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { getCloudinaryCredentials } from '../shared/utils/envService.js';
+import { getCloudinaryCredentials } from '../utils/envService.js';
 
 // Normalize env values (trim quotes if present)
 function cleanEnv(value) {

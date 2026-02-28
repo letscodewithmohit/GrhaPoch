@@ -5,11 +5,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Models
-import DiningRestaurant from '../modules/dining/models/DiningRestaurant.js';
-import DiningCategory from '../modules/dining/models/DiningCategory.js';
-import DiningLimelight from '../modules/dining/models/DiningLimelight.js';
-import DiningBankOffer from '../modules/dining/models/DiningBankOffer.js';
-import DiningMustTry from '../modules/dining/models/DiningMustTry.js';
+import DiningRestaurant from '../models/DiningRestaurant.js';
+import DiningCategory from '../models/DiningCategory.js';
+import DiningLimelight from '../models/DiningLimelight.js';
+import DiningBankOffer from '../models/DiningBankOffer.js';
+import DiningMustTry from '../models/DiningMustTry.js';
 
 // Setup environment
 const __filename = fileURLToPath(import.meta.url);

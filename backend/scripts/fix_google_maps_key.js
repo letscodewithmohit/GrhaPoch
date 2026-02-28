@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-import EnvironmentVariable from '../modules/admin/models/EnvironmentVariable.js';
+import EnvironmentVariable from '../models/EnvironmentVariable.js';
 
 async function updateEnvVars() {
     try {

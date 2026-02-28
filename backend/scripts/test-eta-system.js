@@ -15,14 +15,14 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { connectDB } from '../config/database.js';
-import Order from '../modules/order/models/Order.js';
-import Restaurant from '../modules/restaurant/models/Restaurant.js';
-import Delivery from '../modules/delivery/models/Delivery.js';
-import User from '../modules/auth/models/User.js';
-import etaCalculationService from '../modules/order/services/etaCalculationService.js';
-import etaEventService from '../modules/order/services/etaEventService.js';
-import OrderEvent from '../modules/order/models/OrderEvent.js';
-import ETALog from '../modules/order/models/ETALog.js';
+import Order from '../models/Order.js';
+import Restaurant from '../models/Restaurant.js';
+import Delivery from '../models/Delivery.js';
+import User from '../models/User.js';
+import etaCalculationService from '../services/etaCalculationService.js';
+import etaEventService from '../services/etaEventService.js';
+import OrderEvent from '../models/OrderEvent.js';
+import ETALog from '../models/ETALog.js';
 
 dotenv.config();
 

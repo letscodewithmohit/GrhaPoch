@@ -18,10 +18,7 @@ let connectionErrorLogged = false;
 export const connectRedis = async () => {
   // Only attempt connection if Redis is explicitly enabled
   if (process.env.REDIS_ENABLED !== 'true' && process.env.REDIS_ENABLED !== '1') {
-    if (!connectionAttempted) {
-      logger.info('Redis is disabled. Set REDIS_ENABLED=true in .env to enable.');
-      connectionAttempted = true;
-    }
+    connectionAttempted = true;
     return null;
   }
 

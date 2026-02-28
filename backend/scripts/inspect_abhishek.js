@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import User from '../modules/auth/models/User.js';
-import Restaurant from '../modules/restaurant/models/Restaurant.js';
+import User from '../models/User.js';
+import Restaurant from '../models/Restaurant.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

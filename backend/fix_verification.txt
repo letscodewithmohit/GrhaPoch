@@ -1,2 +1,0 @@
-Buggy Orders count: 2
-Fixed Orders count: 0

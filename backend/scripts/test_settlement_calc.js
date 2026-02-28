@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { calculateOrderSettlement } from '../modules/order/services/orderSettlementService.js';
-import Order from '../modules/order/models/Order.js';
+import { calculateOrderSettlement } from '../services/orderSettlementService.js';
+import Order from '../models/Order.js';
 
 dotenv.config();
 

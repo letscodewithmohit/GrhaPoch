@@ -1,3 +1,0 @@
-Name: mohit restaurant 96 | _id: 69983c612eac5cdb81c159b6 | RID: REST-1771584609780-3266
-Name: Isha_Restaurant | _id: 6999a1c0df02e3d77a2775db | RID: REST-1771676096262-6136
-Name: Abhi_restaurant | _id: 699aa94cecc2b6b4419c55f9 | RID: REST-1771743564911-9537

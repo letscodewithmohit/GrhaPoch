@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import Restaurant from "../modules/restaurant/models/Restaurant.js";
+import Restaurant from "../models/Restaurant.js";
 
 dotenv.config();
 

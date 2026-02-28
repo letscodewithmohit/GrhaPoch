@@ -1,6 +1,6 @@
 
 import mongoose from 'mongoose';
-import SubscriptionPlan from '../modules/admin/models/SubscriptionPlan.js';
+import SubscriptionPlan from '../models/SubscriptionPlan.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';

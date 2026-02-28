@@ -32,6 +32,43 @@ if (import.meta.env.DEV) {
 }
 
 /**
+ * GET request deduplication + response caching
+ * - In-flight: same API called in parallel -> share one network request
+ * - Cache: same API called within TTL -> return cached response, no network call
+ */
+const inFlightMap = new Map()
+const responseCache = new Map()
+const CACHE_TTL_MS = 30000 // 30 seconds - avoid duplicate calls from StrictMode, multiple components
+
+function getDedupKey(config) {
+  if ((config.method || 'get').toLowerCase() !== 'get') return null
+  const url = config.url || ''
+  const params = config.params
+  const paramsStr = params && typeof params === 'object'
+    ? '?' + new URLSearchParams(params).toString()
+    : (typeof params === 'string' ? '?' + params : '')
+  // Include auth header in key so user-specific data (me, addresses) stays per-user
+  const auth = config.headers?.Authorization || config.headers?.authorization || ''
+  return url + paramsStr + '|' + (auth ? auth.slice(0, 20) : 'anon')
+}
+
+function getCachedResponse(key) {
+  const entry = responseCache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    responseCache.delete(key)
+    return null
+  }
+  return entry.response
+}
+
+function setCachedResponse(key, response) {
+  if (response && response.status >= 200 && response.status < 300) {
+    responseCache.set(key, { response, timestamp: Date.now() })
+  }
+}
+
+/**
  * Create axios instance with default configuration
  */
 const apiClient = axios.create({
@@ -42,6 +79,36 @@ const apiClient = axios.create({
   },
   withCredentials: true, // Include cookies for refresh token
 });
+
+// Apply GET request deduplication + response caching
+// axios.defaults.adapter is the xhr adapter in browser
+const defaultAdapter = axios.defaults?.adapter
+if (typeof defaultAdapter === 'function') {
+  apiClient.defaults.adapter = async (config) => {
+    const key = getDedupKey(config)
+    if (!key) return defaultAdapter(config)
+
+    // 1. Check cache - return cached response if valid
+    const cached = getCachedResponse(key)
+    if (cached) return Promise.resolve(cached)
+
+    // 2. Check in-flight - share same request if already in progress
+    const inFlight = inFlightMap.get(key)
+    if (inFlight) return inFlight
+
+    // 3. Make request, cache response, track in-flight
+    const promise = defaultAdapter(config)
+      .then((response) => {
+        setCachedResponse(key, response)
+        return response
+      })
+      .finally(() => {
+        inFlightMap.delete(key)
+      })
+    inFlightMap.set(key, promise)
+    return promise
+  }
+}
 
 /**
  * Get the appropriate module token based on the current route

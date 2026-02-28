@@ -7,7 +7,7 @@
  */
 
 import mongoose from 'mongoose';
-import DeliveryWallet from '../modules/delivery/models/DeliveryWallet.js';
+import DeliveryWallet from '../models/DeliveryWallet.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';

@@ -20,6 +20,8 @@ export const UserLocationProvider = ({ children }) => {
     const watchIdRef = useRef(null)
     const updateTimerRef = useRef(null)
     const prevLocationCoordsRef = useRef({ latitude: null, longitude: null })
+    const geocodeCacheRef = useRef(new Map())
+    const geocodeDebounceRef = useRef(null)
 
     /* ===================== DB UPDATE ===================== */
     const updateLocationInDB = useCallback(async (locationData) => {
@@ -57,6 +59,10 @@ export const UserLocationProvider = ({ children }) => {
     }, [])
 
     /* ===================== REVERSE GEOCODING UTILS ===================== */
+    // Cache key: rounded to 4 decimals (~11m) to avoid duplicate API calls for nearby coords
+    const getCacheKey = (lat, lng) => `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`
+    const CACHE_MAX_SIZE = 50
+
     const reverseGeocodeDirect = async (latitude, longitude) => {
         try {
             const res = await fetch(
@@ -81,6 +87,9 @@ export const UserLocationProvider = ({ children }) => {
     }
 
     const reverseGeocodeWithGoogle = useCallback(async (latitude, longitude) => {
+        const cacheKey = getCacheKey(latitude, longitude)
+        const cached = geocodeCacheRef.current.get(cacheKey)
+        if (cached) return { ...cached, latitude, longitude }
         try {
             const { getGoogleMapsApiKey } = await import('@/lib/utils/googleMapsApiKey.js')
             const apiKey = await getGoogleMapsApiKey()
@@ -102,7 +111,7 @@ export const UserLocationProvider = ({ children }) => {
                 const state = getComp("administrative_area_level_1")
                 const area = getComp("sublocality_level_1") || getComp("neighborhood") || getComp("sublocality")
 
-                return {
+                const addr = {
                     city: city || "Unknown City",
                     state: state || "",
                     area: area || "",
@@ -111,10 +120,22 @@ export const UserLocationProvider = ({ children }) => {
                     latitude,
                     longitude
                 }
+                if (geocodeCacheRef.current.size < CACHE_MAX_SIZE) {
+                    geocodeCacheRef.current.set(cacheKey, addr)
+                }
+                return addr
             }
-            return reverseGeocodeDirect(latitude, longitude)
+            const fallback = await reverseGeocodeDirect(latitude, longitude)
+            if (geocodeCacheRef.current.size < CACHE_MAX_SIZE) {
+                geocodeCacheRef.current.set(cacheKey, fallback)
+            }
+            return { ...fallback, latitude, longitude }
         } catch (err) {
-            return reverseGeocodeDirect(latitude, longitude)
+            const fallback = await reverseGeocodeDirect(latitude, longitude)
+            if (geocodeCacheRef.current.size < CACHE_MAX_SIZE) {
+                geocodeCacheRef.current.set(cacheKey, fallback)
+            }
+            return { ...fallback, latitude, longitude }
         }
     }, [])
 
@@ -175,33 +196,37 @@ export const UserLocationProvider = ({ children }) => {
         if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
 
         watchIdRef.current = navigator.geolocation.watchPosition(
-            async (pos) => {
+            (pos) => {
                 const { latitude, longitude, accuracy } = pos.coords
 
-                // Threshold check to avoid jitter (5m)
+                // Threshold check to avoid jitter (~20m) - reduces redundant API calls
                 if (prevLocationCoordsRef.current.latitude) {
                     const latDiff = latitude - prevLocationCoordsRef.current.latitude
                     const lngDiff = longitude - prevLocationCoordsRef.current.longitude
                     const dist = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111320
-                    if (dist < 5) return
+                    if (dist < 20) return
                 }
 
-                try {
-                    const addr = await reverseGeocodeWithGoogle(latitude, longitude)
+                // Debounce: avoid multiple reverse-geocode API calls when GPS updates rapidly
+                clearTimeout(geocodeDebounceRef.current)
+                geocodeDebounceRef.current = setTimeout(async () => {
+                    try {
+                        const addr = await reverseGeocodeWithGoogle(latitude, longitude)
 
-                    // Update ref AFTER successful processing
-                    prevLocationCoordsRef.current = { latitude, longitude }
+                        // Update ref AFTER successful processing
+                        prevLocationCoordsRef.current = { latitude, longitude }
 
-                    updateLocationState({
-                        ...addr,
-                        latitude,
-                        longitude,
-                        accuracy: accuracy || null,
-                        label: "Current Location"
-                    }, true)
-                } catch (err) {
-                    console.warn("Watcher geocode error:", err)
-                }
+                        updateLocationState({
+                            ...addr,
+                            latitude,
+                            longitude,
+                            accuracy: accuracy || null,
+                            label: "Current Location"
+                        }, true)
+                    } catch (err) {
+                        console.warn("Watcher geocode error:", err)
+                    }
+                }, 2000)
             },
             (err) => {
                 console.warn("Location watch error:", err.message)
@@ -295,6 +320,7 @@ export const UserLocationProvider = ({ children }) => {
         return () => {
             if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
             clearTimeout(updateTimerRef.current)
+            clearTimeout(geocodeDebounceRef.current)
         }
     }, [requestLocation, startWatching])
 
