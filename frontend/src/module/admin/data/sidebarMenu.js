@@ -127,7 +127,7 @@ export const sidebarMenuData = [
       },
       {
         type: "expandable",
-        label: "Advertisements",
+        label: "Restaurant Advertisements",
         icon: "Megaphone",
         subItems: [
           { label: "Pending Requests", path: "/admin/advertisement/requests?tab=pending" },
@@ -135,6 +135,18 @@ export const sidebarMenuData = [
           { label: "Rejected Ads", path: "/admin/advertisement/requests?tab=rejected" },
           { label: "History", path: "/admin/advertisement/requests?tab=history" },
           { label: "Ads List", path: "/admin/advertisement" },
+        ],
+      },
+      {
+        type: "expandable",
+        label: "User Advertisements",
+        icon: "Megaphone",
+        subItems: [
+          { label: "Pending Requests", path: "/admin/user-advertisements?tab=pending" },
+          { label: "Active Ads", path: "/admin/user-advertisements?tab=active" },
+          { label: "Rejected Ads", path: "/admin/user-advertisements?tab=rejected" },
+          { label: "History", path: "/admin/user-advertisements?tab=history" },
+          { label: "Ads List", path: "/admin/user-advertisements?tab=list" },
         ],
       },
     ],

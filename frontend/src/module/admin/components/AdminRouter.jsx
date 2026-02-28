@@ -39,6 +39,7 @@ import Banners from "../pages/Banners";
 import PromotionalBanner from "../pages/PromotionalBanner";
 import AdRequests from "../pages/advertisement/AdRequests";
 import AdsList from "../pages/advertisement/AdsList";
+import UserAdvertisements from "../pages/advertisement/UserAdvertisements";
 import PushNotification from "../pages/PushNotification";
 // Help & Support
 import Chattings from "../pages/Chattings";
@@ -208,6 +209,7 @@ export default function AdminRouter() {
         <Route path="advertisement/new" element={<Navigate to="/admin/advertisement/requests?tab=pending" replace />} />
         <Route path="advertisement/requests" element={<AdRequests />} />
         <Route path="advertisement" element={<AdsList />} />
+        <Route path="user-advertisements" element={<UserAdvertisements />} />
         <Route path="push-notification" element={<PushNotification />} />
 
         {/* HELP & SUPPORT */}
