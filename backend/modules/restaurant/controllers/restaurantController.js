@@ -990,16 +990,27 @@ export const updateDiningSettings = asyncHandler(async (req, res) => {
     return errorResponse(res, 404, 'Restaurant not found');
   }
 
+  const isManagingDiningData = diningSlots !== undefined || diningGuests !== undefined;
+  if (isManagingDiningData && !restaurant.diningEnabled) {
+    return errorResponse(res, 403, 'Dining features are available only after successful activation');
+  }
+
   if (diningSlots) restaurant.diningSlots = diningSlots;
   if (diningGuests !== undefined) restaurant.diningGuests = diningGuests;
 
   if (diningEnabled !== undefined) {
+    const isTryingToEnable = Boolean(diningEnabled);
     const isCommissionBased = String(restaurant.businessModel || '').toLowerCase().includes('commission');
+    const isPaymentCompleted = restaurant.diningStatus === 'Payment Successful';
     const isTryingToEnableWithoutPayment =
-      Boolean(diningEnabled) && isCommissionBased && !restaurant.diningActivationPaid;
+      isTryingToEnable && isCommissionBased && !restaurant.diningActivationPaid;
 
     if (isTryingToEnableWithoutPayment) {
       return errorResponse(res, 403, 'Complete dining activation payment before enabling dining');
+    }
+
+    if (isTryingToEnable && !isPaymentCompleted) {
+      return errorResponse(res, 403, 'Dining can be enabled only after approval and payment completion');
     }
 
     restaurant.diningEnabled = diningEnabled;

@@ -20,12 +20,20 @@ export default function ManageTablesPage() {
 
     const fetchTables = async () => {
         try {
+            const activationRes = await restaurantAPI.getDiningActivationStatus()
+            if (!activationRes.data?.data?.diningEnabled) {
+                toast.error("Complete dining activation to access this section")
+                navigate("/restaurant/dining-management")
+                return
+            }
+
             const res = await restaurantAPI.getDiningTables()
             if (res.data?.success) {
                 setTables(res.data.data.tables || [])
             }
         } catch (error) {
             console.error("Failed to fetch tables:", error)
+            toast.error("Failed to load tables")
         } finally {
             setLoading(false)
         }

@@ -50,6 +50,11 @@ export default function DiningManagement() {
     const [activationFeeLoading, setActivationFeeLoading] = useState(true)
     const [activationFeeSaving, setActivationFeeSaving] = useState(false)
 
+    // Dining Requests
+    const [diningRequests, setDiningRequests] = useState([])
+    const [diningRequestsLoading, setDiningRequestsLoading] = useState(true)
+    const [processingRequestId, setProcessingRequestId] = useState(null)
+
     // Common
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(null)
@@ -73,6 +78,7 @@ export default function DiningManagement() {
         fetchRestaurantsList()
         fetchAllBookings()
         fetchActivationFeeSettings()
+        fetchDiningRequests()
     }, [])
 
     // ==================== CATEGORIES ====================
@@ -318,10 +324,68 @@ export default function DiningManagement() {
         }
     }
 
+    const fetchDiningRequests = async () => {
+        try {
+            setDiningRequestsLoading(true)
+            const response = await api.get('/admin/dining/requests', getAuthConfig())
+            if (response.data?.success) {
+                setDiningRequests(response.data?.data?.requests || [])
+            }
+        } catch (err) {
+            console.error("Failed to fetch dining requests:", err)
+            setError("Failed to load dining requests")
+        } finally {
+            setDiningRequestsLoading(false)
+        }
+    }
+
+    const handleApproveDiningRequest = async (restaurantId) => {
+        try {
+            setProcessingRequestId(restaurantId)
+            const response = await api.patch(`/admin/dining/requests/${restaurantId}/approve`, {}, getAuthConfig())
+            if (response.data?.success) {
+                setSuccess("Dining request approved successfully")
+                fetchDiningRequests()
+            }
+        } catch (err) {
+            console.error("Failed to approve dining request:", err)
+            setError(err.response?.data?.message || "Failed to approve dining request")
+        } finally {
+            setProcessingRequestId(null)
+        }
+    }
+
+    const handleRejectDiningRequest = async (restaurantId) => {
+        try {
+            setProcessingRequestId(restaurantId)
+            const response = await api.patch(`/admin/dining/requests/${restaurantId}/reject`, {}, getAuthConfig())
+            if (response.data?.success) {
+                setSuccess("Dining request rejected successfully")
+                fetchDiningRequests()
+            }
+        } catch (err) {
+            console.error("Failed to reject dining request:", err)
+            setError(err.response?.data?.message || "Failed to reject dining request")
+        } finally {
+            setProcessingRequestId(null)
+        }
+    }
+
+    const getStatusPillClasses = (statusLabel) => {
+        if (statusLabel === 'Pending Approval') return 'bg-amber-100 text-amber-700'
+        if (statusLabel === 'Approved') return 'bg-blue-100 text-blue-700'
+        if (statusLabel === 'Rejected') return 'bg-red-100 text-red-700'
+        if (statusLabel === 'Payment Pending') return 'bg-purple-100 text-purple-700'
+        if (statusLabel === 'Payment Successful') return 'bg-green-100 text-green-700'
+        if (statusLabel === 'Dining Enabled') return 'bg-emerald-100 text-emerald-700'
+        return 'bg-slate-100 text-slate-700'
+    }
+
     const tabs = [
         { id: 'categories', label: 'Dining Categories', icon: Layout },
         { id: 'banners', label: 'Dining Banners', icon: ImageIcon },
         { id: 'stories', label: 'Dining Stories', icon: FileText },
+        { id: 'requests', label: 'Dining Requests', icon: UtensilsCrossed },
         { id: 'activation-fee', label: 'Activation Fee', icon: Tag },
     ]
 
@@ -336,7 +400,7 @@ export default function DiningManagement() {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-slate-900">Dining Management</h1>
-                            <p className="text-sm text-slate-600 mt-1">Manage dining categories, banners, stories, and activation fee</p>
+                            <p className="text-sm text-slate-600 mt-1">Manage dining categories, requests, stories, and activation fee</p>
                         </div>
                     </div>
                 </div>
@@ -530,6 +594,84 @@ export default function DiningManagement() {
                                 )}
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'requests' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h2 className="text-lg font-bold text-slate-900 mb-2">Dining Requests</h2>
+                        <p className="text-sm text-slate-600 mb-6">
+                            Approve or reject dining enable requests from restaurants.
+                        </p>
+
+                        {diningRequestsLoading ? (
+                            <div className="flex justify-center p-8">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                            </div>
+                        ) : diningRequests.length === 0 ? (
+                            <div className="text-center py-8 text-slate-500 text-sm border border-dashed border-slate-200 rounded-lg">
+                                No dining requests found.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[760px]">
+                                    <thead>
+                                        <tr className="border-b border-slate-200">
+                                            <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Restaurant</th>
+                                            <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Business Model</th>
+                                            <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Request Date</th>
+                                            <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                                            <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {diningRequests.map((request) => {
+                                            const canTakeAction = request.statusLabel === 'Pending Approval' || request.statusLabel === 'Rejected'
+                                            const isProcessing = processingRequestId === request.restaurantId
+
+                                            return (
+                                                <tr key={request.restaurantId} className="border-b border-slate-100">
+                                                    <td className="py-3 px-2">
+                                                        <p className="text-sm font-semibold text-slate-900">{request.restaurantName || '-'}</p>
+                                                        <p className="text-xs text-slate-500">{request.ownerEmail || '-'}</p>
+                                                    </td>
+                                                    <td className="py-3 px-2 text-sm text-slate-700">{request.businessModel || '-'}</td>
+                                                    <td className="py-3 px-2 text-sm text-slate-700">
+                                                        {request.requestDate ? new Date(request.requestDate).toLocaleString() : '-'}
+                                                    </td>
+                                                    <td className="py-3 px-2">
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusPillClasses(request.statusLabel)}`}>
+                                                            {request.statusLabel}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-2">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                className="bg-emerald-600 hover:bg-emerald-700"
+                                                                disabled={!canTakeAction || isProcessing}
+                                                                onClick={() => handleApproveDiningRequest(request.restaurantId)}
+                                                            >
+                                                                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Approve"}
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                                disabled={!canTakeAction || isProcessing}
+                                                                onClick={() => handleRejectDiningRequest(request.restaurantId)}
+                                                            >
+                                                                Reject
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
 
