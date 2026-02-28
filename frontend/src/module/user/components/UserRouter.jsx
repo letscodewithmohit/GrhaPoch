@@ -48,6 +48,7 @@ import GiftCardCheckout from "../pages/GiftCardCheckout"
 
 // Profile
 import Profile from "../pages/profile/Profile"
+import DiningBookings from "../pages/profile/DiningBookings"
 import EditProfile from "../pages/profile/EditProfile"
 import Payments from "../pages/profile/Payments"
 import AddPayment from "../pages/profile/AddPayment"
@@ -209,6 +210,14 @@ export default function UserRouter() {
           element={
             <ProtectedRoute requiredRole="user" loginPath="/user/auth/sign-in">
               <EditProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/dining-bookings"
+          element={
+            <ProtectedRoute requiredRole="user" loginPath="/user/auth/sign-in">
+              <DiningBookings />
             </ProtectedRoute>
           }
         />

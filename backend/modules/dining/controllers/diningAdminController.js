@@ -1,7 +1,9 @@
 import DiningCategory from '../models/DiningCategory.js';
 import DiningOfferBanner from '../models/DiningOfferBanner.js';
 import DiningStory from '../models/DiningStory.js';
+import DiningBooking from '../models/DiningBooking.js';
 import Restaurant from '../../restaurant/models/Restaurant.js';
+import BusinessSettings from '../../admin/models/BusinessSettings.js';
 import { successResponse, errorResponse } from '../../../shared/utils/response.js';
 import { uploadToCloudinary } from '../../../shared/utils/cloudinaryService.js';
 import { cloudinary } from '../../../config/cloudinary.js';
@@ -293,5 +295,64 @@ export const updateDiningStory = async (req, res) => {
     } catch (error) {
         console.error('Error updating story:', error);
         return errorResponse(res, 500, 'Failed to update story');
+    }
+};
+
+// ==================== DINING ACTIVATION FEE SETTINGS ====================
+
+export const getDiningActivationFeeSettings = async (req, res) => {
+    try {
+        const settings = await BusinessSettings.getSettings();
+        const activationFeeAmount = Number(settings?.diningActivationFee) || 0;
+
+        return successResponse(res, 200, 'Dining activation fee retrieved successfully', {
+            activationFeeAmount
+        });
+    } catch (error) {
+        console.error('Error fetching dining activation fee:', error);
+        return errorResponse(res, 500, 'Failed to fetch dining activation fee');
+    }
+};
+
+export const updateDiningActivationFeeSettings = async (req, res) => {
+    try {
+        const { activationFeeAmount } = req.body;
+
+        const parsedAmount = Number(activationFeeAmount);
+        if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+            return errorResponse(res, 400, 'Activation fee amount must be a number greater than or equal to 0');
+        }
+
+        const settings = await BusinessSettings.getSettings();
+        settings.diningActivationFee = parsedAmount;
+
+        if (req.admin?._id) {
+            settings.updatedBy = req.admin._id;
+        }
+
+        await settings.save();
+
+        return successResponse(res, 200, 'Dining activation fee updated successfully', {
+            activationFeeAmount: Number(settings.diningActivationFee) || 0
+        });
+    } catch (error) {
+        console.error('Error updating dining activation fee:', error);
+        return errorResponse(res, 500, 'Failed to update dining activation fee');
+    }
+};
+
+// ==================== DINING BOOKINGS ====================
+
+export const getAllDiningBookings = async (req, res) => {
+    try {
+        console.log('🎯 getAllDiningBookings route hit');
+        const bookings = await DiningBooking.find()
+            .populate('restaurantId', 'name')
+            .sort({ createdAt: -1 })
+            .lean();
+        return successResponse(res, 200, 'All dining bookings retrieved successfully', bookings);
+    } catch (error) {
+        console.error('Error fetching all dining bookings:', error);
+        return errorResponse(res, 500, 'Failed to fetch dining bookings');
     }
 };

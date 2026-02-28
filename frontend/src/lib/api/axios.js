@@ -115,10 +115,12 @@ apiClient.interceptors.request.use(
         !requestUrl.includes('/restaurant/categories') &&
         !requestUrl.includes('/restaurant/onboarding') &&
         !requestUrl.includes('/restaurant/delivery-status') &&
+        !requestUrl.includes('/restaurant/dining-settings') &&
         !requestUrl.includes('/restaurant/finance') &&
         !requestUrl.includes('/restaurant/wallet') &&
         !requestUrl.includes('/restaurant/analytics') &&
         !requestUrl.includes('/restaurant/complaints') &&
+        !requestUrl.includes('/restaurant/dining-tables') &&
         (requestUrl.match(/\/restaurant\/[^/]+$/) ||
           requestUrl.match(/\/restaurant\/[^/]+\/menu/) ||
           requestUrl.match(/\/restaurant\/[^/]+\/addons/) ||

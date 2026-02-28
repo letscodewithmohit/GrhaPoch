@@ -4,7 +4,7 @@ import { authenticate } from './middleware/restaurantAuth.js';
 import { uploadMiddleware } from '../../shared/utils/cloudinaryService.js';
 import restaurantAuthRoutes from './routes/restaurantAuthRoutes.js';
 import { getOnboarding, upsertOnboarding, createRestaurantFromOnboardingManual } from './controllers/restaurantOnboardingController.js';
-import { getRestaurants, getRestaurantById, getRestaurantByOwner, updateRestaurantProfile, uploadProfileImage, uploadMenuImage, deleteRestaurantAccount, updateDeliveryStatus, getRestaurantsWithDishesUnder250 } from './controllers/restaurantController.js';
+import { getRestaurants, getRestaurantById, getRestaurantByOwner, updateRestaurantProfile, uploadProfileImage, uploadMenuImage, deleteRestaurantAccount, updateDeliveryStatus, getRestaurantsWithDishesUnder250, updateDiningSettings } from './controllers/restaurantController.js';
 import { getRestaurantFinance } from './controllers/restaurantFinanceController.js';
 import { getWallet, getWalletTransactions, getWalletStats } from './controllers/restaurantWalletController.js';
 import { createWithdrawalRequest, getRestaurantWithdrawalRequests } from './controllers/withdrawalController.js';
@@ -20,6 +20,14 @@ import outletTimingsRoutes from './routes/outletTimingsRoutes.js';
 import complaintRoutes from './routes/complaintRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import { getOutletTimingsByRestaurantId } from './controllers/outletTimingsController.js';
+import { getTables, addTable, deleteTable } from './controllers/diningTableController.js';
+import {
+    getDiningActivationStatus,
+    requestDiningEnable,
+    enableDiningWithoutPayment,
+    createDiningActivationOrder,
+    verifyDiningActivationPayment
+} from './controllers/diningActivationController.js';
 
 const router = express.Router();
 
@@ -114,11 +122,25 @@ router.get('/:restaurantId/outlet-timings', getOutletTimingsByRestaurantId);
 router.get('/:id/menu', getMenuByRestaurantId);
 router.get('/:id/addons', getAddonsByRestaurantId);
 router.get('/:id/inventory', getInventoryByRestaurantId);
-router.get('/:id', getRestaurantById);
-
 // Restaurant routes (authenticated - for restaurant module)
 router.get('/owner/me', authenticate, getRestaurantByOwner);
 
+// Profile routes (authenticated - for restaurant module)
+router.get('/profile', authenticate, getRestaurantByOwner);
+
+// Dining Table routes (authenticated - for restaurant module)
+router.get('/dining-tables', authenticate, getTables);
+router.post('/dining-tables', authenticate, addTable);
+router.delete('/dining-tables/:id', authenticate, deleteTable);
+router.put('/dining-settings', authenticate, updateDiningSettings);
+router.get('/dining-activation/status', authenticate, getDiningActivationStatus);
+router.post('/dining-activation/request', authenticate, requestDiningEnable);
+router.post('/dining-activation/enable-free', authenticate, enableDiningWithoutPayment);
+router.post('/dining-activation/create-order', authenticate, createDiningActivationOrder);
+router.post('/dining-activation/verify-payment', authenticate, verifyDiningActivationPayment);
+
+router.get('/:id', getRestaurantById);
+// Restaurant routes (authenticated - for restaurant module)
 // Profile routes (authenticated - for restaurant module)
 router.put('/profile', authenticate, updateRestaurantProfile);
 router.delete('/profile', authenticate, deleteRestaurantAccount);

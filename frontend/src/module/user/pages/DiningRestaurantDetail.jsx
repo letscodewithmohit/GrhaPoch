@@ -4,10 +4,12 @@ import { ArrowLeft, Bookmark, Share2, Phone, Navigation, Clock, Star, X, Check, 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import AnimatedPage from "../components/AnimatedPage"
-import { diningAPI, restaurantAPI } from "@/lib/api"
+import { diningAPI, restaurantAPI, userAPI } from "@/lib/api"
 import OptimizedImage from "@/components/OptimizedImage"
 import { toast } from "sonner"
 import axios from "axios"
+import { getRazorpayKeyId } from "@/lib/utils/razorpayKey"
+import { mergeDiningBookings, normalizeDiningBooking, readDiningBookings, writeDiningBookings } from "../utils/diningBookings"
 
 export default function DiningRestaurantDetail() {
     const { category, slug } = useParams()
@@ -28,23 +30,111 @@ export default function DiningRestaurantDetail() {
     const [bookingLoading, setBookingLoading] = useState(false)
     const [showMyBookings, setShowMyBookings] = useState(false)
     const [myBookings, setMyBookings] = useState([])
+    const [platformFee, setPlatformFee] = useState(0)
 
+    const syncMyBookings = async () => {
+        const cachedBookings = readDiningBookings()
+        if (cachedBookings.length > 0) {
+            setMyBookings(cachedBookings)
+        }
 
-    const dates = [
-        { id: "Today", label: "TODAY", date: "26 Feb" },
-        { id: "Tomorrow", label: "TOMORROW", date: "27 Feb" },
-        { id: "28 Feb", label: "SAT", date: "28 Feb" },
-        { id: "1 Mar", label: "SUN", date: "1 Mar" },
-        { id: "2 Mar", label: "MON", date: "2 Mar" }
-    ]
+        try {
+            const response = await diningAPI.getMyBookings()
+            if (response.data?.success) {
+                const apiBookings = Array.isArray(response.data.data) ? response.data.data : []
+                const normalizedApiBookings = apiBookings.map((booking) => normalizeDiningBooking(booking))
+                const mergedBookings = mergeDiningBookings(cachedBookings, normalizedApiBookings)
+                setMyBookings(mergedBookings)
+                writeDiningBookings(mergedBookings)
+            }
+        } catch (error) {
+            console.log("Dining bookings sync failed, using cached bookings")
+        }
+    }
 
-    const lunchSlots = ["12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "3:45 PM", "4:00 PM", "4:15 PM", "4:30 PM"]
-    const dinnerSlots = ["6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM"]
-
-    // Simulate some full/disabled slots
-    const disabledSlots = ["7:00 PM", "8:30 PM", "1:30 PM", "2:00 PM"]
+    const fetchPlatformFee = async () => {
+        const restaurantId = restaurant?.id || restaurant?._id;
+        if (!restaurantId) return;
+        try {
+            const res = await diningAPI.getPlatformFee(restaurantId);
+            if (res.data?.success) {
+                setPlatformFee(res.data.data.platformFee);
+            }
+        } catch (error) {
+            console.error("Failed to fetch platform fee", error);
+        }
+    };
 
     useEffect(() => {
+        if (restaurant?._id) {
+            fetchPlatformFee();
+        }
+    }, [restaurant]);
+
+    const [dates, setDates] = useState([])
+
+    useEffect(() => {
+        const generateDates = () => {
+            const days = []
+            const today = new Date()
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today)
+                date.setDate(today.getDate() + i)
+
+                const label = i === 0 ? "TODAY" : i === 1 ? "TOMORROW" : date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+                // Format: "Feb 27" to match backend expectations and existing UI style
+                const month = date.toLocaleDateString('en-US', { month: 'short' })
+                const day = date.getDate()
+                const dateStr = `${month} ${day}`
+                const id = i === 0 ? "Today" : i === 1 ? "Tomorrow" : dateStr
+
+                days.push({ id, label, date: dateStr })
+            }
+            setDates(days)
+        }
+        generateDates()
+    }, [])
+
+    const lunchSlots = Array.isArray(restaurant?.diningSlots?.lunch) ? restaurant.diningSlots.lunch : []
+    const dinnerSlots = Array.isArray(restaurant?.diningSlots?.dinner) ? restaurant.diningSlots.dinner : []
+    const activeSlots = selectedTimePeriod === "Lunch" ? lunchSlots : dinnerSlots
+
+    const maxGuests = Math.max(1, Math.min(Number(restaurant?.diningGuests) || 6, 20))
+    const guestOptions = Array.from({ length: maxGuests }, (_, idx) => idx + 1)
+
+    useEffect(() => {
+        if (guestCount > maxGuests) {
+            setGuestCount(maxGuests)
+        }
+        if (guestCount < 1) {
+            setGuestCount(1)
+        }
+    }, [guestCount, maxGuests])
+
+    useEffect(() => {
+        if (!activeSlots.some((slot) => slot?.time === selectedTimeSlot)) {
+            setSelectedTimeSlot(null)
+        }
+    }, [selectedTimePeriod, restaurant?.diningSlots, selectedTimeSlot])
+
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                const res = await userAPI.getProfile();
+                if (res.data?.success) {
+                    const userData = res.data.data.user || res.data.data;
+                    setCustomerDetails(prev => ({
+                        ...prev,
+                        name: userData.name || "",
+                        phone: userData.phone || ""
+                    }));
+                }
+            } catch (err) {
+                console.log("User profile fetch failed for dining booking");
+            }
+        };
+        fetchUserProfile();
+
         const fetchRestaurant = async () => {
             setLoading(true)
             try {
@@ -81,14 +171,26 @@ export default function DiningRestaurantDetail() {
         fetchRestaurant()
     }, [slug])
 
+    useEffect(() => {
+        syncMyBookings()
+
+        const onBookingsUpdated = () => {
+            syncMyBookings()
+        }
+
+        window.addEventListener("diningBookingsUpdated", onBookingsUpdated)
+        return () => {
+            window.removeEventListener("diningBookingsUpdated", onBookingsUpdated)
+        }
+    }, [])
+
     const fetchAvailableTables = async () => {
-        if (!restaurant?._id) return;
+        const restaurantId = restaurant?.id || restaurant?._id;
+        if (!restaurantId) return;
         setBookingLoading(true);
         try {
             const parsedDate = dates.find(d => d.id === selectedDate)?.date || selectedDate;
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/dining/restaurants/${restaurant._id}/tables`, {
-                params: { date: parsedDate, time: selectedTimeSlot, guests: guestCount }
-            });
+            const res = await diningAPI.getAvailableTables(restaurantId, { date: parsedDate, time: selectedTimeSlot, guests: guestCount });
             if (res.data?.success) {
                 setTables(res.data.data);
             }
@@ -109,21 +211,33 @@ export default function DiningRestaurantDetail() {
             toast.error("Please enter your name and phone number");
             return;
         }
+        const restaurantId = restaurant?.id || restaurant?._id;
         setBookingLoading(true);
         try {
             const parsedDate = dates.find(d => d.id === selectedDate)?.date || selectedDate;
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/dining/restaurants/${restaurant._id}/bookings`, {
+            const bookingDetails = {
                 tableId: selectedTable.id,
                 tableNumber: selectedTable.tableNumber,
                 guests: guestCount,
                 date: parsedDate,
                 time: selectedTimeSlot,
                 customerDetails: customerDetails
-            });
+            };
+
+            const res = await diningAPI.createBooking(restaurantId, bookingDetails);
             if (res.data?.success) {
-                // Add to local mock state to show in View Bookings later
-                setMyBookings(prev => [res.data.data, ...prev]);
+                const createdBooking = normalizeDiningBooking({
+                    ...res.data.data,
+                    restaurantName: restaurant?.name,
+                    restaurantSlug: restaurant?.slug,
+                    restaurantImage: restaurant?.profileImage?.url || restaurant?.image || null
+                })
+                const mergedBookings = mergeDiningBookings(myBookings, [createdBooking])
+                setMyBookings(mergedBookings)
+                writeDiningBookings(mergedBookings)
+                window.dispatchEvent(new Event("diningBookingsUpdated"))
                 setBookingStep(6);
+                toast.success("Your table booking request has been sent to the restaurant");
             }
         } catch (error) {
             console.error(error);
@@ -134,7 +248,16 @@ export default function DiningRestaurantDetail() {
     }
 
     const openBookingModal = () => {
+        const hasLunchSlots = lunchSlots.length > 0
+        const hasDinnerSlots = dinnerSlots.length > 0
+        const defaultPeriod = hasLunchSlots ? "Lunch" : hasDinnerSlots ? "Dinner" : "Lunch"
+
         setBookingStep(1)
+        setGuestCount((prev) => Math.max(1, Math.min(prev, maxGuests)))
+        setSelectedTimePeriod(defaultPeriod)
+        setSelectedTimeSlot(null)
+        setSelectedTable(null)
+        setTables([])
         setIsBookingOpen(true)
     }
 
@@ -193,11 +316,11 @@ export default function DiningRestaurantDetail() {
                             <p className="text-gray-500 font-medium">No bookings found</p>
                         </div>
                     ) : myBookings.map((b, idx) => (
-                        <div key={idx} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative">
+                        <div key={b._id || b.id || idx} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative">
                             <span className="absolute top-4 right-4 bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">
-                                {b.status || 'Confirmed'}
+                                {b.bookingStatus || 'Pending'}
                             </span>
-                            <h3 className="font-bold text-lg text-gray-900 mb-4">{restaurant.name}</h3>
+                            <h3 className="font-bold text-lg text-gray-900 mb-4">{b.restaurantName || restaurant.name}</h3>
                             <div className="grid grid-cols-2 gap-y-3 text-sm">
                                 <div><span className="text-gray-500 block text-xs">Date</span><span className="font-medium">{b.date}</span></div>
                                 <div><span className="text-gray-500 block text-xs">Time</span><span className="font-medium">{b.time}</span></div>
@@ -411,8 +534,8 @@ export default function DiningRestaurantDetail() {
                                 <div>
                                     <p className="text-[15px] font-bold text-[#1c1c1c] mb-4">Select number of guests</p>
 
-                                    <div className="flex justify-between items-center gap-2 flex-wrap">
-                                        {[1, 2, 3, 4, 5, 6].map((num) => (
+                                    <div className="flex justify-start items-center gap-2 flex-wrap">
+                                        {guestOptions.map((num) => (
                                             <button
                                                 key={num}
                                                 onClick={() => setGuestCount(num)}
@@ -494,31 +617,38 @@ export default function DiningRestaurantDetail() {
 
                                     {/* Time Slots Grid */}
                                     <div className="max-h-[220px] overflow-y-auto hide-scrollbar -mx-5 px-5" style={{ scrollbarWidth: 'none' }}>
-                                        <div className="grid grid-cols-3 gap-3 pb-4">
-                                            {(selectedTimePeriod === "Lunch" ? lunchSlots : dinnerSlots).map((slot) => {
-                                                const isDisabled = disabledSlots.includes(slot);
-                                                return (
-                                                    <button
-                                                        key={slot}
-                                                        disabled={isDisabled}
-                                                        onClick={() => setSelectedTimeSlot(slot)}
-                                                        className={`py-3 rounded-[14px] border border-gray-100 flex flex-col items-center justify-center transition-all ${isDisabled
-                                                            ? "bg-gray-50/80 text-gray-300 cursor-not-allowed border-gray-50"
-                                                            : selectedTimeSlot === slot
-                                                                ? "bg-[#ef4f5f] text-white border-[#ef4f5f] shadow-md shadow-red-200"
-                                                                : "bg-white hover:border-gray-300 text-[#1c1c1c]"
-                                                            }`}
-                                                    >
-                                                        <span className="text-sm font-bold">{slot}</span>
-                                                        {!isDisabled && (
-                                                            <span className={`text-[9px] font-bold mt-0.5 ${selectedTimeSlot === slot ? "text-white/90" : "text-blue-500"}`}>
-                                                                {bookingStep === 3 && slot.includes("30") ? "20% OFF" : "10% OFF"}
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
+                                        {activeSlots.length === 0 ? (
+                                            <div className="py-8 text-center text-sm text-gray-500 font-medium">
+                                                No {selectedTimePeriod.toLowerCase()} slots available for this restaurant.
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-3 gap-3 pb-4">
+                                                {activeSlots.map((slot, idx) => {
+                                                    const isDisabled = slot?.isAvailable === false
+                                                    const slotTime = slot?.time
+                                                    return (
+                                                        <button
+                                                            key={`${slotTime}-${idx}`}
+                                                            disabled={isDisabled || !slotTime}
+                                                            onClick={() => setSelectedTimeSlot(slotTime)}
+                                                            className={`py-3 rounded-[14px] border border-gray-100 flex flex-col items-center justify-center transition-all ${(isDisabled || !slotTime)
+                                                                ? "bg-gray-50/80 text-gray-300 cursor-not-allowed border-gray-50"
+                                                                : selectedTimeSlot === slotTime
+                                                                    ? "bg-[#ef4f5f] text-white border-[#ef4f5f] shadow-md shadow-red-200"
+                                                                    : "bg-white hover:border-gray-300 text-[#1c1c1c]"
+                                                                }`}
+                                                        >
+                                                            <span className="text-sm font-bold">{slotTime}</span>
+                                                            {!isDisabled && slot?.discount && (
+                                                                <span className={`text-[9px] font-bold mt-0.5 ${selectedTimeSlot === slotTime ? "text-white/90" : "text-blue-500"}`}>
+                                                                    {slot.discount}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -542,18 +672,18 @@ export default function DiningRestaurantDetail() {
                                                 disabled={!table.isAvailable}
                                                 onClick={() => setSelectedTable(table)}
                                                 className={`p-4 rounded-2xl border-2 text-left transition-all ${!table.isAvailable
-                                                    ? 'bg-gray-100 border-gray-100 opacity-60'
+                                                    ? 'bg-gray-100 border-gray-200 opacity-60 grayscale cursor-not-allowed'
                                                     : selectedTable?.id === table.id
                                                         ? 'bg-[#fff2f2] border-[#ef4f5f]'
                                                         : 'bg-white border-gray-100 hover:border-[#ef4f5f]'}`}
                                             >
                                                 <div className="flex flex-col items-center text-center">
                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${selectedTable?.id === table.id ? 'bg-[#ef4f5f] text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                                        <Star className="w-5 h-5 fill-current" />
+                                                        <Star className={`w-5 h-5 ${!table.isAvailable ? 'text-gray-400' : 'fill-current'}`} />
                                                     </div>
-                                                    <p className={`font-bold text-base ${!table.isAvailable ? 'text-gray-500' : 'text-gray-900'}`}>{table.tableNumber}</p>
+                                                    <p className={`font-bold text-base ${!table.isAvailable ? 'text-gray-400' : 'text-gray-900'}`}>{table.tableNumber}</p>
                                                     <p className="text-xs text-gray-500 mt-1">Seats {table.capacity} Guests</p>
-                                                    {!table.isAvailable && <span className="text-[10px] font-bold text-gray-500 uppercase mt-2">Unavailable</span>}
+                                                    {!table.isAvailable && <span className="text-[10px] font-bold text-gray-500 uppercase mt-2">Booked</span>}
                                                 </div>
                                             </button>
                                         ))}
@@ -615,8 +745,8 @@ export default function DiningRestaurantDetail() {
                                 <div className="w-20 h-20 bg-[#e5f8ed] text-[#24963f] rounded-full flex items-center justify-center mb-5">
                                     <Check className="w-10 h-10" strokeWidth={3} />
                                 </div>
-                                <h2 className="text-2xl font-extrabold text-[#1c1c1c] mb-2">Booking Confirmed</h2>
-                                <p className="text-gray-500 text-[15px] mb-8">Your table has been successfully reserved.</p>
+                                <h2 className="text-2xl font-extrabold text-[#1c1c1c] mb-2">Request Sent</h2>
+                                <p className="text-gray-500 text-[15px] mb-8">Your table booking request has been sent to the restaurant</p>
 
                                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 w-full text-left space-y-3 mb-6">
                                     <p className="font-bold text-gray-900 mb-1">{restaurant.name}</p>
@@ -677,7 +807,7 @@ export default function DiningRestaurantDetail() {
                                         disabled={bookingLoading}
                                         className="flex-[2] bg-[#ef4f5f] hover:bg-[#e03f4f] text-white font-bold h-12 rounded-2xl text-[15px] shadow-[0_4px_14px_rgba(239,79,95,0.3)]"
                                     >
-                                        {bookingLoading ? "Confirming..." : "Confirm Booking"}
+                                        {bookingLoading ? "Processing..." : "Book a Table"}
                                     </Button>
                                 </div>
                             ) : (

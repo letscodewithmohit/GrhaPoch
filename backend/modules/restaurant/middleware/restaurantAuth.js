@@ -76,6 +76,16 @@ export const authenticate = async (req, res, next) => {
       reqPath === '/subscription' ||
       reqPath.startsWith('/subscription/');
 
+    // Check for dining table routes
+    const isDiningTableRoute = requestPath.includes('/dining-tables') ||
+      reqPath === '/dining-tables' ||
+      reqPath.startsWith('/dining-tables/');
+
+    // Check for dining settings routes
+    const isDiningSettingsRoute = requestPath.includes('/dining-settings') ||
+      reqPath === '/dining-settings' ||
+      reqPath.startsWith('/dining-settings/');
+
     // Debug logging for inactive restaurants
     if (!restaurant.isActive) {
       console.log('🔍 Inactive restaurant route check:', {
@@ -90,12 +100,14 @@ export const authenticate = async (req, res, next) => {
         isMenuRoute,
         isInventoryRoute,
         isSubscriptionRoute,
-        willAllow: isOnboardingRoute || isProfileRoute || isMenuRoute || isInventoryRoute || isSubscriptionRoute
+        isDiningTableRoute,
+        isDiningSettingsRoute,
+        willAllow: isOnboardingRoute || isProfileRoute || isMenuRoute || isInventoryRoute || isSubscriptionRoute || isDiningTableRoute || isDiningSettingsRoute
       });
     }
 
     // Allow essential routes even if inactive
-    if (!restaurant.isActive && !isOnboardingRoute && !isProfileRoute && !isMenuRoute && !isInventoryRoute && !isSubscriptionRoute) {
+    if (!restaurant.isActive && !isOnboardingRoute && !isProfileRoute && !isMenuRoute && !isInventoryRoute && !isSubscriptionRoute && !isDiningTableRoute && !isDiningSettingsRoute) {
       console.error('❌ Restaurant account is inactive - access denied:', {
         restaurantId: restaurant._id,
         restaurantName: restaurant.name,
@@ -108,7 +120,9 @@ export const authenticate = async (req, res, next) => {
           isProfileRoute,
           isMenuRoute,
           isInventoryRoute,
-          isSubscriptionRoute
+          isSubscriptionRoute,
+          isDiningTableRoute,
+          isDiningSettingsRoute
         }
       });
       return errorResponse(res, 401, 'Restaurant account is inactive. Please wait for admin approval.');

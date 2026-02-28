@@ -310,6 +310,12 @@ export const sidebarMenuData = [
         path: "/admin/dining-list",
         icon: "FileText",
       },
+      {
+        type: "link",
+        label: "Dining Bookings",
+        path: "/admin/dining-bookings",
+        icon: "Calendar",
+      },
     ],
   },
   {

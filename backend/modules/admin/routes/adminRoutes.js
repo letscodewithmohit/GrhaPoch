@@ -228,6 +228,7 @@ import {
   toggleSubscriptionPlanStatus,
   getActiveSubscriptionPlans
 } from '../controllers/subscriptionPlanController.js';
+import diningAdminRoutes from '../../dining/routes/diningAdminRoutes.js';
 import zoneRoutes from './zoneRoutes.js';
 import { authenticateAdmin } from '../middleware/adminAuth.js';
 import { getAllDonations } from '../../user/controllers/donationController.js';
@@ -414,6 +415,9 @@ router.post('/food-approvals/:id/reject', rejectFoodItem);
 
 // Offers Management
 router.get('/offers', getAllOffers);
+
+// Dining Management
+router.use('/dining', diningAdminRoutes);
 
 // Zone Management
 router.use('/zones', zoneRoutes);

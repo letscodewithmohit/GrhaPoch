@@ -41,6 +41,15 @@ export default function DiningManagement() {
     const [editingStoryId, setEditingStoryId] = useState(null)
     const storyFileInputRef = useRef(null)
 
+    // Bookings
+    const [bookings, setBookings] = useState([])
+    const [bookingsLoading, setBookingsLoading] = useState(true)
+
+    // Activation Fee
+    const [activationFeeAmount, setActivationFeeAmount] = useState("0")
+    const [activationFeeLoading, setActivationFeeLoading] = useState(true)
+    const [activationFeeSaving, setActivationFeeSaving] = useState(false)
+
     // Common
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(null)
@@ -62,6 +71,8 @@ export default function DiningManagement() {
         fetchBanners()
         fetchStories()
         fetchRestaurantsList()
+        fetchAllBookings()
+        fetchActivationFeeSettings()
     }, [])
 
     // ==================== CATEGORIES ====================
@@ -252,10 +263,66 @@ export default function DiningManagement() {
         finally { setStoriesDeleting(null) }
     }
 
+    const fetchAllBookings = async () => {
+        try {
+            setBookingsLoading(true);
+            const response = await api.get('/admin/dining/bookings/all', getAuthConfig());
+            if (response.data.success) {
+                setBookings(response.data.data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch all bookings:", err);
+            setError("Failed to load bookings");
+        } finally {
+            setBookingsLoading(false);
+        }
+    }
+
+    const fetchActivationFeeSettings = async () => {
+        try {
+            setActivationFeeLoading(true)
+            const response = await api.get('/admin/dining/settings/activation-fee', getAuthConfig())
+            if (response.data?.success) {
+                const amount = Number(response.data?.data?.activationFeeAmount) || 0
+                setActivationFeeAmount(String(amount))
+            }
+        } catch (err) {
+            console.error("Failed to fetch dining activation fee:", err)
+            setError("Failed to load dining activation fee settings")
+        } finally {
+            setActivationFeeLoading(false)
+        }
+    }
+
+    const handleSaveActivationFee = async () => {
+        const parsedAmount = Number(activationFeeAmount)
+        if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+            setError("Activation fee must be a number greater than or equal to 0")
+            return
+        }
+
+        try {
+            setActivationFeeSaving(true)
+            const response = await api.put('/admin/dining/settings/activation-fee', {
+                activationFeeAmount: parsedAmount
+            }, getAuthConfig())
+
+            if (response.data?.success) {
+                setSuccess("Dining activation fee updated successfully")
+            }
+        } catch (err) {
+            console.error("Failed to save dining activation fee:", err)
+            setError(err.response?.data?.message || "Failed to update dining activation fee")
+        } finally {
+            setActivationFeeSaving(false)
+        }
+    }
+
     const tabs = [
         { id: 'categories', label: 'Dining Categories', icon: Layout },
         { id: 'banners', label: 'Dining Banners', icon: ImageIcon },
         { id: 'stories', label: 'Dining Stories', icon: FileText },
+        { id: 'activation-fee', label: 'Activation Fee', icon: Tag },
     ]
 
     return (
@@ -269,7 +336,7 @@ export default function DiningManagement() {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-slate-900">Dining Management</h1>
-                            <p className="text-sm text-slate-600 mt-1">Manage dining categories, banners, and stories</p>
+                            <p className="text-sm text-slate-600 mt-1">Manage dining categories, banners, stories, and activation fee</p>
                         </div>
                     </div>
                 </div>
@@ -465,7 +532,47 @@ export default function DiningManagement() {
                         </div>
                     </div>
                 )}
+
+                {activeTab === 'activation-fee' && (
+                    <div className="max-w-2xl">
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-lg font-bold text-slate-900 mb-2">Dining Activation Fee Settings</h2>
+                            <p className="text-sm text-slate-600 mb-6">
+                                This fee will be charged from commission based restaurants when they enable dining.
+                            </p>
+
+                            {activationFeeLoading ? (
+                                <div className="flex items-center gap-2 text-slate-600">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Loading current fee...
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label>Activation Fee Amount</Label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={activationFeeAmount}
+                                            onChange={(e) => setActivationFeeAmount(e.target.value)}
+                                            placeholder="Enter amount in INR"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <Button
+                                        onClick={handleSaveActivationFee}
+                                        disabled={activationFeeSaving}
+                                        className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                        {activationFeeSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
             </div>
-        </div>
+        </div >
     )
 }

@@ -121,6 +121,7 @@ import SystemAddons from "../pages/system/SystemAddons";
 import LandingPageManagement from "../pages/system/LandingPageManagement";
 import DiningManagement from "../pages/system/DiningManagement";
 import DiningList from "../pages/system/DiningList";
+import DiningBookings from "../pages/system/DiningBookings";
 
 export default function AdminRouter() {
   return (
@@ -315,6 +316,7 @@ export default function AdminRouter() {
         {/* DINING MANAGEMENT */}
         <Route path="dining-management" element={<DiningManagement />} />
         <Route path="dining-list" element={<DiningList />} />
+        <Route path="dining-bookings" element={<DiningBookings />} />
       </Route>
 
       {/* Redirect /admin to /admin/ */}

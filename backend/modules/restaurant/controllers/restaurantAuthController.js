@@ -931,6 +931,10 @@ export const getCurrentRestaurant = asyncHandler(async (req, res) => {
       approvedAt: restaurant.approvedAt || null,
       rejectedAt: restaurant.rejectedAt || null,
       businessModel: restaurant.businessModel,
+      diningEnabled: restaurant.diningEnabled,
+      diningActivationPaid: restaurant.diningActivationPaid,
+      diningActivationAmount: restaurant.diningActivationAmount,
+      diningActivationDate: restaurant.diningActivationDate,
       commissionRate: commissionRate,
       subscription: restaurant.subscription,
       subscriptionStatus: {
