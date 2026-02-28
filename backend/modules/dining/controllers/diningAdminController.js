@@ -8,6 +8,29 @@ import { successResponse, errorResponse } from '../../../shared/utils/response.j
 import { uploadToCloudinary } from '../../../shared/utils/cloudinaryService.js';
 import { cloudinary } from '../../../config/cloudinary.js';
 
+const DINING_STATUSES = {
+    REQUESTED: 'Requested',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected',
+    PAYMENT_PENDING: 'Payment Pending',
+    PAYMENT_SUCCESSFUL: 'Payment Successful'
+};
+
+const getEffectiveDiningStatus = (restaurant) => {
+    if (!restaurant) return null;
+    if (restaurant.diningStatus) return restaurant.diningStatus;
+    if (restaurant.diningRequested) return DINING_STATUSES.REQUESTED;
+    if (restaurant.diningEnabled) return DINING_STATUSES.PAYMENT_SUCCESSFUL;
+    return null;
+};
+
+const getAdminDiningStatusLabel = (restaurant) => {
+    const status = getEffectiveDiningStatus(restaurant);
+    if (restaurant?.diningEnabled) return 'Dining Enabled';
+    if (status === DINING_STATUSES.REQUESTED) return 'Pending Approval';
+    return status || 'Not Requested';
+};
+
 // ==================== DINING CATEGORIES ====================
 
 export const getAdminDiningCategories = async (req, res) => {
@@ -192,7 +215,15 @@ export const updateDiningSettings = async (req, res) => {
         const restaurant = await Restaurant.findById(restaurantId);
         if (!restaurant) return errorResponse(res, 404, 'Restaurant not found');
 
-        if (diningEnabled !== undefined) restaurant.diningEnabled = diningEnabled;
+        if (diningEnabled !== undefined) {
+            const nextValue = Boolean(diningEnabled);
+
+            if (nextValue === true) {
+                return errorResponse(res, 400, 'Direct dining enable is disabled. Use request approval flow.');
+            }
+
+            restaurant.diningEnabled = false;
+        }
         if (guests !== undefined) restaurant.diningGuests = guests;
         if (cuisine !== undefined) restaurant.diningCategory = cuisine;
 
@@ -202,6 +233,116 @@ export const updateDiningSettings = async (req, res) => {
     } catch (error) {
         console.error('Error updating dining settings:', error);
         return errorResponse(res, 500, 'Failed to update dining settings');
+    }
+};
+
+// ==================== DINING REQUEST APPROVAL FLOW ====================
+
+export const getDiningRequests = async (req, res) => {
+    try {
+        const restaurants = await Restaurant.find({
+            $or: [
+                { diningRequested: true },
+                { diningStatus: { $in: Object.values(DINING_STATUSES) } },
+                { diningEnabled: true }
+            ]
+        })
+            .select('name ownerName ownerEmail businessModel diningRequested diningStatus diningRequestDate diningEnabled diningActivationPaid diningActivationAmount diningActivationDate createdAt')
+            .sort({ diningRequestDate: -1, updatedAt: -1 })
+            .lean();
+
+        const requests = restaurants.map((restaurant) => ({
+            restaurantId: restaurant._id,
+            restaurantName: restaurant.name || '',
+            ownerName: restaurant.ownerName || '',
+            ownerEmail: restaurant.ownerEmail || '',
+            businessModel: restaurant.businessModel || 'None',
+            requestDate: restaurant.diningRequestDate || restaurant.createdAt,
+            diningRequested: Boolean(restaurant.diningRequested),
+            diningEnabled: Boolean(restaurant.diningEnabled),
+            diningActivationPaid: Boolean(restaurant.diningActivationPaid),
+            diningActivationAmount: Number(restaurant.diningActivationAmount) || 0,
+            diningActivationDate: restaurant.diningActivationDate || null,
+            diningStatus: getEffectiveDiningStatus(restaurant),
+            statusLabel: getAdminDiningStatusLabel(restaurant)
+        }));
+
+        return successResponse(res, 200, 'Dining requests retrieved successfully', { requests });
+    } catch (error) {
+        console.error('Error fetching dining requests:', error);
+        return errorResponse(res, 500, 'Failed to fetch dining requests');
+    }
+};
+
+export const approveDiningRequest = async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) return errorResponse(res, 404, 'Restaurant not found');
+
+        if (restaurant.diningEnabled) {
+            return successResponse(res, 200, 'Dining is already enabled for this restaurant', {
+                restaurantId: restaurant._id,
+                diningStatus: getEffectiveDiningStatus(restaurant),
+                statusLabel: getAdminDiningStatusLabel(restaurant)
+            });
+        }
+
+        const currentStatus = getEffectiveDiningStatus(restaurant);
+        if (!restaurant.diningRequested && !currentStatus) {
+            return errorResponse(res, 400, 'This restaurant has not requested dining enable yet');
+        }
+
+        restaurant.diningRequested = true;
+        if (!restaurant.diningRequestDate) {
+            restaurant.diningRequestDate = new Date();
+        }
+        restaurant.diningStatus = DINING_STATUSES.APPROVED;
+        await restaurant.save();
+
+        return successResponse(res, 200, 'Dining request approved successfully', {
+            restaurantId: restaurant._id,
+            diningStatus: restaurant.diningStatus,
+            statusLabel: getAdminDiningStatusLabel(restaurant)
+        });
+    } catch (error) {
+        console.error('Error approving dining request:', error);
+        return errorResponse(res, 500, 'Failed to approve dining request');
+    }
+};
+
+export const rejectDiningRequest = async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) return errorResponse(res, 404, 'Restaurant not found');
+
+        if (restaurant.diningEnabled) {
+            return errorResponse(res, 400, 'Dining is already enabled for this restaurant');
+        }
+
+        const currentStatus = getEffectiveDiningStatus(restaurant);
+        if (!restaurant.diningRequested && !currentStatus) {
+            return errorResponse(res, 400, 'This restaurant has not requested dining enable yet');
+        }
+
+        restaurant.diningRequested = true;
+        if (!restaurant.diningRequestDate) {
+            restaurant.diningRequestDate = new Date();
+        }
+        restaurant.diningStatus = DINING_STATUSES.REJECTED;
+        await restaurant.save();
+
+        return successResponse(res, 200, 'Dining request rejected successfully', {
+            restaurantId: restaurant._id,
+            diningStatus: restaurant.diningStatus,
+            statusLabel: getAdminDiningStatusLabel(restaurant)
+        });
+    } catch (error) {
+        console.error('Error rejecting dining request:', error);
+        return errorResponse(res, 500, 'Failed to reject dining request');
     }
 };
 

@@ -18,6 +18,13 @@ export default function TableBookingsPage() {
 
     const fetchInitialData = async () => {
         try {
+            const activationRes = await restaurantAPI.getDiningActivationStatus()
+            if (!activationRes.data?.data?.diningEnabled) {
+                toast.error("Complete dining activation to access this section")
+                navigate("/restaurant/dining-management")
+                return
+            }
+
             const profileRes = await restaurantAPI.getProfile()
             if (profileRes.data?.success) {
                 const restaurant = profileRes.data.data.restaurant
@@ -29,6 +36,7 @@ export default function TableBookingsPage() {
             }
         } catch (error) {
             console.error("Failed to fetch bookings:", error)
+            toast.error("Failed to load booking requests")
         } finally {
             setLoading(false)
         }

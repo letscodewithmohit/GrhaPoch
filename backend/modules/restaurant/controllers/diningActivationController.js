@@ -5,34 +5,19 @@ import { asyncHandler } from '../../../shared/middleware/asyncHandler.js';
 import { createOrder, verifyPayment, fetchPayment } from '../../payment/services/razorpayService.js';
 import { getRazorpayCredentials } from '../../../shared/utils/envService.js';
 
+export const DINING_STATUSES = {
+    REQUESTED: 'Requested',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected',
+    PAYMENT_PENDING: 'Payment Pending',
+    PAYMENT_SUCCESSFUL: 'Payment Successful'
+};
+
 const isSubscriptionBasedModel = (businessModel = '') =>
     String(businessModel).toLowerCase().includes('subscription');
 
 const isCommissionBasedModel = (businessModel = '') =>
     String(businessModel).toLowerCase().includes('commission');
-
-const buildDiningActivationStatus = (restaurant, activationFeeAmount = 0) => {
-    const businessModel = restaurant?.businessModel || 'None';
-    const diningEnabled = Boolean(restaurant?.diningEnabled);
-    const isCommissionBased = isCommissionBasedModel(businessModel);
-    const isSubscriptionBased = isSubscriptionBasedModel(businessModel);
-
-    return {
-        diningEnabled,
-        diningActivationPaid: Boolean(restaurant?.diningActivationPaid),
-        diningActivationAmount: Number(restaurant?.diningActivationAmount) || 0,
-        diningActivationDate: restaurant?.diningActivationDate || null,
-        businessModel,
-        activationFeeAmount: Number(activationFeeAmount) || 0,
-        requiresPayment: !diningEnabled && isCommissionBased,
-        canEnableWithoutPayment: !diningEnabled && isSubscriptionBased,
-        restaurant: {
-            name: restaurant?.name || '',
-            email: restaurant?.ownerEmail || '',
-            phone: restaurant?.ownerPhone || ''
-        }
-    };
-};
 
 const getRestaurantAndActivationFee = async (restaurantId) => {
     const [restaurant, settings] = await Promise.all([
@@ -43,6 +28,54 @@ const getRestaurantAndActivationFee = async (restaurantId) => {
     return {
         restaurant,
         activationFeeAmount: Number(settings?.diningActivationFee) || 0
+    };
+};
+
+const getEffectiveDiningStatus = (restaurant) => {
+    if (!restaurant) return null;
+    if (restaurant.diningStatus) return restaurant.diningStatus;
+    if (restaurant.diningRequested) return DINING_STATUSES.REQUESTED;
+    if (restaurant.diningEnabled) return DINING_STATUSES.PAYMENT_SUCCESSFUL;
+    return null;
+};
+
+const getRestaurantStatusLabel = (restaurant) => {
+    const status = getEffectiveDiningStatus(restaurant);
+
+    if (restaurant?.diningEnabled) return 'Dining Enabled';
+    if (status === DINING_STATUSES.REQUESTED) return 'Pending Approval';
+    if (status) return status;
+    return 'Not Requested';
+};
+
+const buildDiningActivationStatus = (restaurant, activationFeeAmount = 0) => {
+    const businessModel = restaurant?.businessModel || 'None';
+    const diningEnabled = Boolean(restaurant?.diningEnabled);
+    const isCommissionBased = isCommissionBasedModel(businessModel);
+    const isSubscriptionBased = isSubscriptionBasedModel(businessModel);
+    const diningStatus = getEffectiveDiningStatus(restaurant);
+    const isApproved = diningStatus === DINING_STATUSES.APPROVED;
+    const isEligibleForPayment =
+        diningStatus === DINING_STATUSES.APPROVED || diningStatus === DINING_STATUSES.PAYMENT_PENDING;
+
+    return {
+        diningEnabled,
+        diningRequested: Boolean(restaurant?.diningRequested),
+        diningStatus,
+        diningStatusLabel: getRestaurantStatusLabel(restaurant),
+        diningRequestDate: restaurant?.diningRequestDate || null,
+        diningActivationPaid: Boolean(restaurant?.diningActivationPaid),
+        diningActivationAmount: Number(restaurant?.diningActivationAmount) || 0,
+        diningActivationDate: restaurant?.diningActivationDate || null,
+        businessModel,
+        activationFeeAmount: Number(activationFeeAmount) || 0,
+        requiresPayment: isEligibleForPayment && !diningEnabled && isCommissionBased,
+        canEnableWithoutPayment: isApproved && !diningEnabled && isSubscriptionBased,
+        restaurant: {
+            name: restaurant?.name || '',
+            email: restaurant?.ownerEmail || '',
+            phone: restaurant?.ownerPhone || ''
+        }
     };
 };
 
@@ -75,23 +108,28 @@ export const requestDiningEnable = asyncHandler(async (req, res) => {
         });
     }
 
-    if (isSubscriptionBasedModel(restaurant.businessModel)) {
-        return successResponse(res, 200, 'Dining can be enabled without any charges', {
+    const currentStatus = getEffectiveDiningStatus(restaurant);
+    if (
+        currentStatus === DINING_STATUSES.REQUESTED ||
+        currentStatus === DINING_STATUSES.APPROVED ||
+        currentStatus === DINING_STATUSES.PAYMENT_PENDING
+    ) {
+        return successResponse(res, 200, 'Dining request is already in progress', {
             ...buildDiningActivationStatus(restaurant, activationFeeAmount)
         });
     }
 
-    if (isCommissionBasedModel(restaurant.businessModel)) {
-        if (activationFeeAmount <= 0) {
-            return errorResponse(res, 400, 'Dining activation fee is not configured by admin yet');
-        }
+    restaurant.diningRequested = true;
+    restaurant.diningRequestDate = new Date();
+    restaurant.diningStatus = DINING_STATUSES.REQUESTED;
+    restaurant.diningEnabled = false;
+    restaurant.diningActivationPaid = false;
 
-        return successResponse(res, 200, 'Dining activation fee is required before enabling', {
-            ...buildDiningActivationStatus(restaurant, activationFeeAmount)
-        });
-    }
+    await restaurant.save();
 
-    return errorResponse(res, 400, 'Business model is not configured for this restaurant');
+    return successResponse(res, 200, 'Dining enable request submitted successfully', {
+        ...buildDiningActivationStatus(restaurant, activationFeeAmount)
+    });
 });
 
 export const enableDiningWithoutPayment = asyncHandler(async (req, res) => {
@@ -113,10 +151,15 @@ export const enableDiningWithoutPayment = asyncHandler(async (req, res) => {
         return errorResponse(res, 400, 'Only subscription based restaurants can enable dining without payment');
     }
 
+    if (getEffectiveDiningStatus(restaurant) !== DINING_STATUSES.APPROVED) {
+        return errorResponse(res, 400, 'Dining request is not approved by admin yet');
+    }
+
     restaurant.diningEnabled = true;
     restaurant.diningActivationPaid = false;
     restaurant.diningActivationAmount = 0;
     restaurant.diningActivationDate = new Date();
+    restaurant.diningStatus = DINING_STATUSES.PAYMENT_SUCCESSFUL;
     await restaurant.save();
 
     return successResponse(res, 200, 'Dining enabled successfully without charges', {
@@ -141,6 +184,11 @@ export const createDiningActivationOrder = asyncHandler(async (req, res) => {
         return errorResponse(res, 400, 'Dining activation payment is only applicable for commission based restaurants');
     }
 
+    const currentStatus = getEffectiveDiningStatus(restaurant);
+    if (currentStatus !== DINING_STATUSES.APPROVED && currentStatus !== DINING_STATUSES.PAYMENT_PENDING) {
+        return errorResponse(res, 400, 'Dining request is not approved by admin yet');
+    }
+
     if (activationFeeAmount <= 0) {
         return errorResponse(res, 400, 'Dining activation fee is not configured by admin yet');
     }
@@ -157,6 +205,9 @@ export const createDiningActivationOrder = asyncHandler(async (req, res) => {
             restaurantName: restaurant.name || ''
         }
     });
+
+    restaurant.diningStatus = DINING_STATUSES.PAYMENT_PENDING;
+    await restaurant.save();
 
     const credentials = await getRazorpayCredentials();
 
@@ -193,6 +244,11 @@ export const verifyDiningActivationPayment = asyncHandler(async (req, res) => {
         return errorResponse(res, 400, 'Dining activation payment is only applicable for commission based restaurants');
     }
 
+    const currentStatus = getEffectiveDiningStatus(restaurant);
+    if (currentStatus !== DINING_STATUSES.APPROVED && currentStatus !== DINING_STATUSES.PAYMENT_PENDING) {
+        return errorResponse(res, 400, 'Dining request is not approved by admin yet');
+    }
+
     const isValidPayment = await verifyPayment(
         razorpay_order_id,
         razorpay_payment_id,
@@ -210,7 +266,6 @@ export const verifyDiningActivationPayment = asyncHandler(async (req, res) => {
             paidAmount = Number((Number(paymentDetails.amount) / 100).toFixed(2));
         }
     } catch (error) {
-        // Fallback to configured amount when payment fetch fails (for mock/dev payments)
         paidAmount = Number(activationFeeAmount) || 0;
     }
 
@@ -218,6 +273,7 @@ export const verifyDiningActivationPayment = asyncHandler(async (req, res) => {
     restaurant.diningActivationPaid = true;
     restaurant.diningActivationAmount = paidAmount;
     restaurant.diningActivationDate = new Date();
+    restaurant.diningStatus = DINING_STATUSES.PAYMENT_SUCCESSFUL;
     await restaurant.save();
 
     return successResponse(res, 200, 'Dining activated successfully after payment', {

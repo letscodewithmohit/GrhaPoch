@@ -31,6 +31,13 @@ export default function DiningSlotsDiscountsPage() {
 
     const fetchSlots = async () => {
         try {
+            const activationRes = await restaurantAPI.getDiningActivationStatus()
+            if (!activationRes.data?.data?.diningEnabled) {
+                toast.error("Complete dining activation to access this section")
+                navigate("/restaurant/dining-management")
+                return
+            }
+
             const profileRes = await restaurantAPI.getProfile(getRestaurantAuthConfig())
             if (profileRes.data?.success) {
                 const restaurant = profileRes.data.data.restaurant
@@ -39,6 +46,7 @@ export default function DiningSlotsDiscountsPage() {
             }
         } catch (error) {
             console.error("Failed to fetch dining slots:", error)
+            toast.error("Failed to load dining slots")
         } finally {
             setLoading(false)
         }

@@ -17,7 +17,10 @@ import {
     updateDiningSettings,
     getAllDiningBookings,
     getDiningActivationFeeSettings,
-    updateDiningActivationFeeSettings
+    updateDiningActivationFeeSettings,
+    getDiningRequests,
+    approveDiningRequest,
+    rejectDiningRequest
 } from '../controllers/diningAdminController.js';
 
 const router = express.Router();
@@ -51,5 +54,10 @@ router.get('/bookings/all', authenticateAdmin, getAllDiningBookings);
 // Activation Fee Settings
 router.get('/settings/activation-fee', authenticateAdmin, getDiningActivationFeeSettings);
 router.put('/settings/activation-fee', authenticateAdmin, updateDiningActivationFeeSettings);
+
+// Dining Requests (Request -> Approval -> Payment -> Enable)
+router.get('/requests', authenticateAdmin, getDiningRequests);
+router.patch('/requests/:restaurantId/approve', authenticateAdmin, approveDiningRequest);
+router.patch('/requests/:restaurantId/reject', authenticateAdmin, rejectDiningRequest);
 
 export default router;

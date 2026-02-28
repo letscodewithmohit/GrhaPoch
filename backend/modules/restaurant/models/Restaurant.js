@@ -166,6 +166,19 @@ const restaurantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    diningRequested: {
+      type: Boolean,
+      default: false,
+    },
+    diningRequestDate: {
+      type: Date,
+      default: null,
+    },
+    diningStatus: {
+      type: String,
+      enum: ['Requested', 'Approved', 'Rejected', 'Payment Pending', 'Payment Successful'],
+      default: null,
+    },
     diningActivationPaid: {
       type: Boolean,
       default: false,

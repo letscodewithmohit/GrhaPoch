@@ -2,9 +2,19 @@ import { successResponse, errorResponse } from '../../../shared/utils/response.j
 import asyncHandler from '../../../shared/middleware/asyncHandler.js';
 import DiningTable from '../../dining/models/DiningTable.js';
 
+const ensureDiningEnabled = (restaurant, res) => {
+    if (!restaurant?.diningEnabled) {
+        errorResponse(res, 403, 'Dining is not enabled for this restaurant yet');
+        return false;
+    }
+    return true;
+};
+
 // Get all tables for the authenticated restaurant
 export const getTables = asyncHandler(async (req, res) => {
     try {
+        if (!ensureDiningEnabled(req.restaurant, res)) return;
+
         const restaurantId = req.restaurant._id;
         const tables = await DiningTable.find({ restaurantId }).sort({ createdAt: -1 });
 
@@ -20,6 +30,8 @@ export const getTables = asyncHandler(async (req, res) => {
 // Add a new table
 export const addTable = asyncHandler(async (req, res) => {
     try {
+        if (!ensureDiningEnabled(req.restaurant, res)) return;
+
         const restaurantId = req.restaurant._id;
         const { tableNumber, capacity } = req.body;
 
@@ -54,6 +66,8 @@ export const addTable = asyncHandler(async (req, res) => {
 // Delete a table
 export const deleteTable = asyncHandler(async (req, res) => {
     try {
+        if (!ensureDiningEnabled(req.restaurant, res)) return;
+
         const restaurantId = req.restaurant._id;
         const { id } = req.params;
 
