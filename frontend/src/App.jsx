@@ -39,7 +39,6 @@ import RestaurantWelcome from "@/module/restaurant/pages/auth/Welcome"
 import AdvertisementsPage from "@/module/restaurant/pages/AdvertisementsPage"
 import AdDetailsPage from "@/module/restaurant/pages/AdDetailsPage"
 import NewAdvertisementPage from "@/module/restaurant/pages/NewAdvertisementPage"
-import EditAdvertisementPage from "@/module/restaurant/pages/EditAdvertisementPage"
 import CouponListPage from "@/module/restaurant/pages/CouponListPage"
 import AddCouponPage from "@/module/restaurant/pages/AddCouponPage"
 import EditCouponPage from "@/module/restaurant/pages/EditCouponPage"
@@ -289,7 +288,7 @@ export default function App() {
         path="/restaurant/advertisements/:id/edit"
         element={
           <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
-            <EditAdvertisementPage />
+            <Navigate to="/restaurant/advertisements" replace />
           </ProtectedRoute>
         }
       />

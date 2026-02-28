@@ -11,9 +11,18 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 export default function RestaurantCommission() {
-  const [searchQuery, setSearchQuery] = useState("")
+  const PAGE_SIZE = 10
+  const [tableSearchQuery, setTableSearchQuery] = useState("")
+  const [restaurantSearchQuery, setRestaurantSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
   const [commissions, setCommissions] = useState([])
   const [approvedRestaurants, setApprovedRestaurants] = useState([])
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: PAGE_SIZE,
+    pages: 1,
+  })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -40,62 +49,71 @@ export default function RestaurantCommission() {
     status: true,
     actions: true,
   })
+  const getDisplayBusinessModel = (businessModel) =>
+    businessModel === "Subscription Base" ? "Subscription Base" : "Commission Base"
 
   const filteredCommissions = useMemo(() => {
-    // First filters: Exclude subscription-based restaurants
-    let filtered = commissions.filter(commission =>
-      commission.restaurant?.businessModel !== 'Subscription Base'
-    );
-
-    if (!searchQuery.trim()) {
-      return filtered
-    }
-
-    const query = searchQuery.toLowerCase().trim()
-    return filtered.filter(commission =>
-      commission.restaurantName?.toLowerCase().includes(query) ||
-      commission.restaurantId?.toLowerCase().includes(query) ||
-      commission.restaurant?.name?.toLowerCase().includes(query)
-    )
-  }, [commissions, searchQuery])
+    return commissions.filter((commission) => commission.restaurant?.businessModel !== 'Subscription Base')
+  }, [commissions])
 
   const filteredRestaurants = useMemo(() => {
-    if (!searchQuery.trim()) {
+    if (!restaurantSearchQuery.trim()) {
       return approvedRestaurants
     }
 
-    const query = searchQuery.toLowerCase().trim()
+    const query = restaurantSearchQuery.toLowerCase().trim()
     return approvedRestaurants.filter(restaurant =>
       restaurant.name?.toLowerCase().includes(query) ||
       restaurant.restaurantId?.toLowerCase().includes(query) ||
       restaurant.ownerName?.toLowerCase().includes(query)
     )
-  }, [approvedRestaurants, searchQuery])
+  }, [approvedRestaurants, restaurantSearchQuery])
 
-  // Fetch data on component mount
   useEffect(() => {
-    fetchCommissions()
+    fetchCommissions(currentPage, tableSearchQuery)
+  }, [currentPage, tableSearchQuery])
+
+  useEffect(() => {
     fetchApprovedRestaurants()
   }, [])
 
-  const fetchCommissions = async () => {
+  const fetchCommissions = async (page = 1, search = "") => {
     try {
       setLoading(true)
-      const response = await adminAPI.getRestaurantCommissions({})
+      const response = await adminAPI.getRestaurantCommissions({
+        page,
+        limit: PAGE_SIZE,
+        search: search.trim() || undefined,
+      })
 
       let commissionsData = null
+      let paginationData = null
       if (response?.data?.success && response?.data?.data?.commissions) {
         commissionsData = response.data.data.commissions
+        paginationData = response.data.data.pagination
       } else if (response?.data?.data?.commissions) {
         commissionsData = response.data.data.commissions
+        paginationData = response.data.data.pagination
       } else if (response?.data?.commissions) {
         commissionsData = response.data.commissions
       }
 
       if (commissionsData && Array.isArray(commissionsData)) {
         setCommissions(commissionsData)
+        setPagination({
+          total: paginationData?.total ?? commissionsData.length,
+          page: paginationData?.page ?? page,
+          limit: paginationData?.limit ?? PAGE_SIZE,
+          pages: paginationData?.pages ?? 1,
+        })
       } else {
         setCommissions([])
+        setPagination({
+          total: 0,
+          page: 1,
+          limit: PAGE_SIZE,
+          pages: 1,
+        })
       }
     } catch (error) {
       console.error('Error fetching commissions:', error)
@@ -111,6 +129,12 @@ export default function RestaurantCommission() {
         toast.error(error.response?.data?.message || 'Failed to fetch commissions')
       }
       setCommissions([])
+      setPagination({
+        total: 0,
+        page: 1,
+        limit: PAGE_SIZE,
+        pages: 1,
+      })
     } finally {
       setLoading(false)
     }
@@ -147,7 +171,7 @@ export default function RestaurantCommission() {
   const handleToggleStatus = async (commission) => {
     try {
       await adminAPI.toggleRestaurantCommissionStatus(commission._id)
-      await fetchCommissions()
+      await fetchCommissions(currentPage, tableSearchQuery)
       toast.success('Commission status updated successfully')
     } catch (error) {
       console.error('Error toggling status:', error)
@@ -245,7 +269,7 @@ export default function RestaurantCommission() {
     try {
       setDeleting(true)
       await adminAPI.deleteRestaurantCommission(selectedCommission._id)
-      await fetchCommissions()
+      await fetchCommissions(currentPage, tableSearchQuery)
       toast.success('Commission deleted successfully')
       setIsDeleteOpen(false)
       setSelectedCommission(null)
@@ -303,7 +327,7 @@ export default function RestaurantCommission() {
         toast.success('Commission created successfully')
       }
 
-      await fetchCommissions()
+      await fetchCommissions(currentPage, tableSearchQuery)
       setIsAddEditOpen(false)
       setSelectedCommission(null)
       setSelectedRestaurant(null)
@@ -334,7 +358,7 @@ export default function RestaurantCommission() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-slate-900">Restaurant Commission</h1>
               <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-                {filteredCommissions.length}
+                {pagination.total}
               </span>
             </div>
 
@@ -354,8 +378,11 @@ export default function RestaurantCommission() {
               <input
                 type="text"
                 placeholder="Ex: Search by restaurant name or ID"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={tableSearchQuery}
+                onChange={(e) => {
+                  setTableSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -367,152 +394,180 @@ export default function RestaurantCommission() {
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    {visibleColumns.si && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <span>S.No</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
-                        </div>
-                      </th>
-                    )}
-                    {visibleColumns.restaurant && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Restaurant Name
-                      </th>
-                    )}
-                    {visibleColumns.restaurantId && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Restaurant ID
-                      </th>
-                    )}
-                    {visibleColumns.businessModel && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Business Model
-                      </th>
-                    )}
-                    {visibleColumns.defaultCommission && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Default Commission
-                      </th>
-                    )}
-
-                    {visibleColumns.status && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Status
-                      </th>
-                    )}
-                    {visibleColumns.actions && (
-                      <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredCommissions.length === 0 ? (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
-                      <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="px-6 py-8 text-center text-slate-500">
-                        No commissions found
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredCommissions.map((commission) => (
-                      <tr key={commission._id} className="hover:bg-slate-50 transition-colors">
-                        {visibleColumns.si && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-slate-700">{commission.sl || '-'}</span>
-                          </td>
-                        )}
-                        {visibleColumns.restaurant && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-blue-600">
-                              {commission.restaurantName || commission.restaurant?.name || '-'}
-                            </span>
-                          </td>
-                        )}
-                        {visibleColumns.restaurantId && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-slate-700">{commission.restaurantId || '-'}</span>
-                          </td>
-                        )}
-                        {visibleColumns.businessModel && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={cn(
-                              "px-2.5 py-1 rounded-full text-xs font-medium",
-                              (commission.restaurant?.businessModel === 'Subscription Base')
-                                ? "bg-purple-100 text-purple-700"
-                                : "bg-blue-100 text-blue-700"
-                            )}>
-                              {commission.restaurant?.businessModel || 'Commission Base'}
-                            </span>
-                          </td>
-                        )}
-                        {visibleColumns.defaultCommission && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 min-w-[120px]">
-                              {commission.restaurant?.businessModel === 'Subscription Base' ? (
-                                <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-purple-200">
-                                  0% (Subscription)
-                                </span>
-                              ) : (
-                                commission.defaultCommission?.type === 'percentage' ? (
-                                  <div className="flex items-center gap-1">
-                                    <Percent className="w-3.5 h-3.5 text-blue-500" />
-                                    <span className="text-sm font-semibold text-slate-700">{commission.defaultCommission?.value}%</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1">
-                                    <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span className="text-sm font-semibold text-slate-700">{commission.defaultCommission?.value}</span>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          </td>
-                        )}
+                      {visibleColumns.si && (
+                        <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <span>S.No</span>
+                            <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.restaurant && (
+                        <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          Restaurant Name
+                        </th>
+                      )}
+                      {visibleColumns.restaurantId && (
+                        <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          Restaurant ID
+                        </th>
+                      )}
+                      {visibleColumns.businessModel && (
+                        <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          Business Model
+                        </th>
+                      )}
+                      {visibleColumns.defaultCommission && (
+                        <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          Default Commission
+                        </th>
+                      )}
 
-                        {visibleColumns.status && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => handleToggleStatus(commission)}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${commission.status ? "bg-blue-600" : "bg-slate-300"
-                                }`}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${commission.status ? "translate-x-6" : "translate-x-1"
-                                  }`}
-                              />
-                            </button>
-                          </td>
-                        )}
-                        {visibleColumns.actions && (
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => handleEdit(commission)}
-                                className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(commission)}
-                                className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        )}
+                      {visibleColumns.status && (
+                        <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          Status
+                        </th>
+                      )}
+                      {visibleColumns.actions && (
+                        <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-100">
+                    {filteredCommissions.length === 0 ? (
+                      <tr>
+                        <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="px-6 py-8 text-center text-slate-500">
+                          No commissions found
+                        </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      filteredCommissions.map((commission) => {
+                        const businessModel = getDisplayBusinessModel(commission.restaurant?.businessModel)
+                        return (
+                          <tr key={commission._id} className="hover:bg-slate-50 transition-colors">
+                            {visibleColumns.si && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm font-medium text-slate-700">{commission.sl || '-'}</span>
+                              </td>
+                            )}
+                            {visibleColumns.restaurant && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm font-medium text-blue-600">
+                                  {commission.restaurantName || commission.restaurant?.name || '-'}
+                                </span>
+                              </td>
+                            )}
+                            {visibleColumns.restaurantId && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-slate-700">{commission.restaurantId || '-'}</span>
+                              </td>
+                            )}
+                            {visibleColumns.businessModel && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={cn(
+                                  "px-2.5 py-1 rounded-full text-xs font-medium",
+                                  (businessModel === 'Subscription Base')
+                                    ? "bg-purple-100 text-purple-700"
+                                    : "bg-blue-100 text-blue-700"
+                                )}>
+                                  {businessModel}
+                                </span>
+                              </td>
+                            )}
+                            {visibleColumns.defaultCommission && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5 min-w-[120px]">
+                                  {businessModel === 'Subscription Base' ? (
+                                    <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-purple-200">
+                                      0% (Subscription)
+                                    </span>
+                                  ) : (
+                                    commission.defaultCommission?.type === 'percentage' ? (
+                                      <div className="flex items-center gap-1">
+                                        <Percent className="w-3.5 h-3.5 text-blue-500" />
+                                        <span className="text-sm font-semibold text-slate-700">{commission.defaultCommission?.value}%</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1">
+                                        <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span className="text-sm font-semibold text-slate-700">{commission.defaultCommission?.value}</span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </td>
+                            )}
+
+                            {visibleColumns.status && (
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleToggleStatus(commission)}
+                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${commission.status ? "bg-blue-600" : "bg-slate-300"
+                                    }`}
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${commission.status ? "translate-x-6" : "translate-x-1"
+                                      }`}
+                                  />
+                                </button>
+                              </td>
+                            )}
+                            {visibleColumns.actions && (
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => handleEdit(commission)}
+                                    className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(commission)}
+                                    className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {pagination.pages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-sm text-slate-500">
+                    Page {pagination.page} of {pagination.pages}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={pagination.page <= 1}
+                      className="px-3 py-1.5 text-sm rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, pagination.pages))}
+                      disabled={pagination.page >= pagination.pages}
+                      className="px-3 py-1.5 text-sm rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -528,8 +583,8 @@ export default function RestaurantCommission() {
               <input
                 type="text"
                 placeholder="Search restaurants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={restaurantSearchQuery}
+                onChange={(e) => setRestaurantSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

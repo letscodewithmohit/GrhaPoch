@@ -1,476 +1,397 @@
-import { useState, useMemo } from "react"
-import { Search, Settings, MoreVertical, Building2, Download, ChevronDown, Filter, FileDown, FileSpreadsheet, FileText, Code, Eye, CheckCircle2, XCircle } from "lucide-react"
-import { adRequestsDummy } from "../../data/adRequestsDummy"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import SettingsDialog from "../../components/orders/SettingsDialog"
-import { exportAdvertisementsToCSV, exportAdvertisementsToExcel, exportAdvertisementsToPDF, exportAdvertisementsToJSON } from "../../components/advertisements/advertisementsExportUtils"
+import { useEffect, useMemo, useState } from "react"
+import { Search, CheckCircle2, XCircle, Eye } from "lucide-react"
+import { campaignAPI } from "@/lib/api"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useLocation, useNavigate } from "react-router-dom"
+
+const ITEMS_PER_PAGE = 10
+
+const formatDate = (value) => {
+  if (!value) return "-"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+const mapRow = (ad) => ({
+  id: ad.id,
+  adsId: ad.adId,
+  adsTitle: ad.title,
+  restaurantName: ad.restaurant?.name || "N/A",
+  restaurantEmail: ad.restaurant?.email || "-",
+  adsType: ad.category || "-",
+  paymentStatus: String(ad.paymentStatus || "unpaid").toLowerCase(),
+  endDateRaw: ad.endDate || ad.validityDate || null,
+  duration: `${formatDate(ad.startDate)} - ${formatDate(ad.endDate || ad.validityDate)}`,
+  status: String(ad.effectiveStatus || ad.status || "pending").toLowerCase(),
+  description: ad.description || "",
+})
+
+const parseTabFromSearch = (search) => {
+  const allowed = new Set(["pending", "active", "rejected", "history"])
+  const tab = new URLSearchParams(search).get("tab")
+  return allowed.has(tab) ? tab : "pending"
+}
+
+const statusBadge = (status) => {
+  const value = String(status || "pending").toLowerCase()
+  if (value === "active") return "bg-emerald-100 text-emerald-700"
+  if (value === "completed") return "bg-emerald-100 text-emerald-700"
+  if (value === "scheduled") return "bg-indigo-100 text-indigo-700"
+  if (value === "payment_pending" || value === "approved") return "bg-amber-100 text-amber-700"
+  if (value === "rejected") return "bg-red-100 text-red-700"
+  if (value === "expired") return "bg-slate-200 text-slate-700"
+  return "bg-blue-100 text-blue-700"
+}
+
+const getHistoryResult = (request) => {
+  if (request.status !== "expired") return request.status
+  return request.paymentStatus === "paid" ? "completed" : "expired"
+}
 
 export default function AdRequests() {
-  const [activeTab, setActiveTab] = useState("new")
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState(() => parseTabFromSearch(location.search))
+  const [loading, setLoading] = useState(true)
+  const [priceLoading, setPriceLoading] = useState(true)
+  const [priceSaving, setPriceSaving] = useState(false)
+  const [pricePerDay, setPricePerDay] = useState("150")
   const [searchQuery, setSearchQuery] = useState("")
-  const [requests, setRequests] = useState(adRequestsDummy)
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isViewOpen, setIsViewOpen] = useState(false)
+  const [requests, setRequests] = useState([])
+  const [errorMessage, setErrorMessage] = useState("")
   const [selectedRequest, setSelectedRequest] = useState(null)
-  const [filters, setFilters] = useState({
-    adsType: "",
-    restaurant: "",
-  })
-  const [visibleColumns, setVisibleColumns] = useState({
-    si: true,
-    adsId: true,
-    adsTitle: true,
-    restaurantInfo: true,
-    adsType: true,
-    duration: true,
-    actions: true,
-  })
+  const [isViewOpen, setIsViewOpen] = useState(false)
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
+  const [rejectTargetId, setRejectTargetId] = useState("")
+  const [isRejecting, setIsRejecting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
 
-  const columnsConfig = {
-    si: "Serial Number",
-    adsId: "Ads ID",
-    adsTitle: "Ads Title",
-    restaurantInfo: "Restaurant Info",
-    adsType: "Ads Type",
-    duration: "Duration",
-    actions: "Actions",
+  const loadRequests = async () => {
+    setLoading(true)
+    try {
+      const response = await campaignAPI.getAdminAdvertisements({ status: "all" })
+      const list = response?.data?.data?.advertisements || []
+      setRequests(list.map(mapRow))
+      setErrorMessage("")
+    } catch (error) {
+      setRequests([])
+      setErrorMessage(error?.response?.data?.message || "Failed to load advertisement requests")
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const loadPricing = async () => {
+    setPriceLoading(true)
+    try {
+      const response = await campaignAPI.getAdminAdvertisementPricing()
+      const amount = Number(response?.data?.data?.pricePerDay || 150)
+      setPricePerDay(Number.isFinite(amount) && amount > 0 ? amount.toFixed(2) : "150.00")
+    } catch {
+      // keep old value
+    } finally {
+      setPriceLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadRequests()
+    loadPricing()
+  }, [])
+
+  useEffect(() => {
+    setActiveTab(parseTabFromSearch(location.search))
+  }, [location.search])
 
   const filteredRequests = useMemo(() => {
-    let result = [...requests]
-    
-    // Filter by tab
-    if (activeTab === "new") {
-      result = result.filter(r => r.status === "new" || !r.status)
-    } else if (activeTab === "update") {
-      result = result.filter(r => r.status === "update")
-    } else if (activeTab === "denied") {
-      result = result.filter(r => r.status === "denied")
+    let rows = [...requests]
+
+    if (activeTab === "pending") rows = rows.filter((r) => ["pending", "payment_pending"].includes(r.status))
+    if (activeTab === "active") rows = rows.filter((r) => ["active", "scheduled"].includes(r.status))
+    if (activeTab === "rejected") rows = rows.filter((r) => r.status === "rejected")
+    if (activeTab === "history") {
+      rows = rows
+        .filter((r) => r.status === "expired")
+        .sort((a, b) => new Date(b.endDateRaw || 0).getTime() - new Date(a.endDateRaw || 0).getTime())
     }
-    
-    // Filter by search query
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      result = result.filter(request =>
-        request.adsId?.toLowerCase().includes(query) ||
-        request.restaurantName?.toLowerCase().includes(query) ||
-        request.adsTitle?.toLowerCase().includes(query)
+      rows = rows.filter((r) =>
+        r.adsId?.toLowerCase().includes(query) ||
+        r.adsTitle?.toLowerCase().includes(query) ||
+        r.restaurantName?.toLowerCase().includes(query)
       )
     }
-    
-    // Filter by ads type
-    if (filters.adsType) {
-      result = result.filter(r => r.adsType === filters.adsType)
-    }
-    
-    // Filter by restaurant
-    if (filters.restaurant) {
-      result = result.filter(r => r.restaurantName === filters.restaurant)
-    }
-    
-    return result
-  }, [requests, searchQuery, activeTab, filters])
 
-  const activeFiltersCount = Object.values(filters).filter(v => v).length
+    return rows
+  }, [requests, activeTab, searchQuery])
 
-  const handleExport = (format) => {
-    const filename = `ad_requests_${activeTab}`
-    switch (format) {
-      case "csv":
-        exportAdvertisementsToCSV(filteredRequests, filename)
-        break
-      case "excel":
-        exportAdvertisementsToExcel(filteredRequests, filename)
-        break
-      case "pdf":
-        exportAdvertisementsToPDF(filteredRequests, filename)
-        break
-      case "json":
-        exportAdvertisementsToJSON(filteredRequests, filename)
-        break
-      default:
-        break
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredRequests.length / ITEMS_PER_PAGE)),
+    [filteredRequests.length]
+  )
+
+  const paginatedRequests = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredRequests.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredRequests, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchQuery])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const handleApprove = async (id) => {
+    try {
+      await campaignAPI.approveAdvertisement(id)
+      await loadRequests()
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || "Failed to approve advertisement")
     }
   }
 
-  const handleViewRequest = (request) => {
-    setSelectedRequest(request)
-    setIsViewOpen(true)
+  const handleRejectRequest = async (id) => {
+    setIsRejecting(true)
+    try {
+      await campaignAPI.rejectAdvertisement(id)
+      await loadRequests()
+      setIsRejectDialogOpen(false)
+      setRejectTargetId("")
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || "Failed to reject advertisement")
+    } finally {
+      setIsRejecting(false)
+    }
   }
 
-  const handleApprove = (sl) => {
-    setRequests(requests.map(r => 
-      r.sl === sl ? { ...r, status: "approved" } : r
-    ))
+  const handleUpdatePricing = async () => {
+    const amount = Number(pricePerDay)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setErrorMessage("Price per day must be a positive number")
+      return
+    }
+
+    setPriceSaving(true)
+    try {
+      await campaignAPI.updateAdminAdvertisementPricing(Number(amount.toFixed(2)))
+      await loadPricing()
+      setErrorMessage("")
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || "Failed to update ad price per day")
+    } finally {
+      setPriceSaving(false)
+    }
   }
-
-  const handleDeny = (sl) => {
-    setRequests(requests.map(r => 
-      r.sl === sl ? { ...r, status: "denied" } : r
-    ))
-  }
-
-  const toggleColumn = (key) => {
-    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  const resetColumns = () => {
-    setVisibleColumns({
-      si: true,
-      adsId: true,
-      adsTitle: true,
-      restaurantInfo: true,
-      adsType: true,
-      duration: true,
-      actions: true,
-    })
-  }
-
-  const handleApplyFilters = () => {
-    setIsFilterOpen(false)
-  }
-
-  const handleResetFilters = () => {
-    setFilters({
-      adsType: "",
-      restaurant: "",
-    })
-  }
-
-  const restaurants = [...new Set(requests.map(r => r.restaurantName))].filter(Boolean)
-  const adsTypes = [...new Set(requests.map(r => r.adsType))].filter(Boolean)
-
-  const tabs = [
-    { key: "new", label: "New Request" },
-    { key: "update", label: "Update Request" },
-    { key: "denied", label: "Denied Requests" },
-  ]
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
-      {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">Advertisement Requests</h1>
-            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-              {filteredRequests.length}
-            </span>
-          </div>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h1 className="text-2xl font-bold text-slate-900">Advertisements</h1>
+          <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">{filteredRequests.length}</span>
         </div>
 
-        {/* Tabs */}
         <div className="flex items-center gap-2 border-b border-slate-200 mb-4">
-          {tabs.map((tab) => (
+          {[{ key: "pending", label: "Pending Requests" }, { key: "active", label: "Active Ads" }, { key: "rejected", label: "Rejected Ads" }, { key: "history", label: "History" }].map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-600 hover:text-slate-900"
-              }`}
+              onClick={() => {
+                setActiveTab(tab.key)
+                navigate(`/admin/advertisement/requests?tab=${tab.key}`, { replace: true })
+              }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-slate-600"}`}
             >
               {tab.label}
             </button>
           ))}
         </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-slate-900">Advertisement</h2>
-              <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-                {filteredRequests.length}
-              </span>
-            </div>
+        <div className="relative max-w-sm">
+          <input
+            type="text"
+            placeholder="Search by ad ID, title, restaurant"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none"
+          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        </div>
 
-            <div className="flex items-center gap-3 ml-auto">
-              <div className="relative flex-1 sm:flex-initial min-w-[250px]">
-                <input
-                  type="text"
-                  placeholder="Search by ads ID or restaurant"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-2 transition-all">
-                    <Download className="w-4 h-4" />
-                    <span className="text-black font-bold">Export</span>
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                  <DropdownMenuLabel>Export Format</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleExport("csv")} className="cursor-pointer">
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Export as CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("excel")} className="cursor-pointer">
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export as Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("pdf")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("json")} className="cursor-pointer">
-                    <Code className="w-4 h-4 mr-2" />
-                    Export as JSON
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <button 
-                onClick={() => setIsFilterOpen(true)}
-                className={`px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-2 transition-all relative ${
-                  activeFiltersCount > 0 ? "border-emerald-500 bg-emerald-50" : ""
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                <span className="text-black font-bold">Filters</span>
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
-
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="mt-4 p-3 rounded-lg border border-slate-200 bg-slate-50 max-w-xl">
+          <p className="text-xs font-semibold text-slate-700 mb-2">Banner Price Configuration</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={pricePerDay}
+              onChange={(e) => setPricePerDay(e.target.value)}
+              className="w-40 px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none"
+              disabled={priceLoading || priceSaving}
+            />
+            <span className="text-sm text-slate-600">INR / day</span>
+            <button
+              onClick={handleUpdatePricing}
+              disabled={priceLoading || priceSaving}
+              className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {priceSaving ? "Saving..." : "Update Price"}
+            </button>
           </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                {visibleColumns.si && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">SI</th>}
-                {visibleColumns.adsId && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Ads ID</th>}
-                {visibleColumns.adsTitle && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Ads Title</th>}
-                {visibleColumns.restaurantInfo && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Restaurant Info</th>}
-                {visibleColumns.adsType && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Ads Type</th>}
-                {visibleColumns.duration && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Duration</th>}
-                {visibleColumns.actions && <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-100">
-              {filteredRequests.length === 0 ? (
-                <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="px-6 py-20 text-center">
-                    <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
-                    <p className="text-sm text-slate-500">No requests match your search</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredRequests.map((request) => (
-                  <tr
-                    key={request.sl}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
-                    {visibleColumns.si && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-700">{request.sl}</span>
-                      </td>
-                    )}
-                    {visibleColumns.adsId && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{request.adsId}</span>
-                      </td>
-                    )}
-                    {visibleColumns.adsTitle && (
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-medium text-slate-900">{request.adsTitle}</span>
-                      </td>
-                    )}
-                    {visibleColumns.restaurantInfo && (
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                            <Building2 className="w-5 h-5 text-orange-600" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-slate-900">{request.restaurantName}</span>
-                            <span className="text-xs text-slate-500">{request.restaurantEmail}</span>
-                          </div>
-                        </div>
-                      </td>
-                    )}
-                    {visibleColumns.adsType && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{request.adsType}</span>
-                      </td>
-                    )}
-                    {visibleColumns.duration && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{request.duration}</span>
-                      </td>
-                    )}
-                    {visibleColumns.actions && (
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1.5 rounded text-slate-600 hover:bg-slate-100 transition-colors">
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                            <DropdownMenuItem 
-                              onClick={() => handleViewRequest(request)}
-                              className="cursor-pointer"
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            {activeTab === "new" && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => handleApprove(request.sl)}
-                                  className="cursor-pointer text-emerald-600"
-                                >
-                                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                                  Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  onClick={() => handleDeny(request.sl)}
-                                  className="cursor-pointer text-red-600"
-                                >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Deny
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
 
-      {/* Filter Panel */}
-      <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-        <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              Filter Requests
-            </DialogTitle>
-          </DialogHeader>
-          <div className="px-6 pb-6 space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Ads Type
-              </label>
-              <select
-                value={filters.adsType}
-                onChange={(e) => setFilters(prev => ({ ...prev, adsType: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="">All Types</option>
-                {adsTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Restaurant
-              </label>
-              <select
-                value={filters.restaurant}
-                onChange={(e) => setFilters(prev => ({ ...prev, restaurant: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="">All Restaurants</option>
-                {restaurants.map(restaurant => (
-                  <option key={restaurant} value={restaurant}>{restaurant}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-              <button
-                onClick={handleResetFilters}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
-                Reset
-              </button>
-              <button
-                onClick={handleApplyFilters}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
-              >
-                Apply
-              </button>
-            </div>
+      {errorMessage && <p className="text-sm text-red-600 mb-4">{errorMessage}</p>}
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">SI</th>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Ads ID</th>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Title</th>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Restaurant</th>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Type</th>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Duration</th>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">{activeTab === "history" ? "Result" : "Status"}</th>
+              <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr><td colSpan={8} className="px-6 py-16 text-center text-slate-500">Loading...</td></tr>
+            ) : filteredRequests.length === 0 ? (
+              <tr><td colSpan={8} className="px-6 py-16 text-center text-slate-500">No advertisements found</td></tr>
+            ) : (
+              paginatedRequests.map((request, index) => (
+                <tr key={request.id}>
+                  <td className="px-6 py-4 text-sm text-slate-700">{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-slate-900">{request.adsId}</td>
+                  <td className="px-6 py-4 text-sm text-slate-900">{request.adsTitle}</td>
+                  <td className="px-6 py-4 text-sm text-slate-700">{request.restaurantName}</td>
+                  <td className="px-6 py-4 text-sm text-slate-700">{request.adsType}</td>
+                  <td className="px-6 py-4 text-sm text-slate-700">{request.duration}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge(activeTab === "history" ? getHistoryResult(request) : request.status)}`}>
+                      {activeTab === "history" ? getHistoryResult(request) : request.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => { setSelectedRequest(request); setIsViewOpen(true) }} className="p-2 rounded hover:bg-slate-100"><Eye className="w-4 h-4 text-slate-700" /></button>
+                      {activeTab === "pending" && ["pending", "payment_pending"].includes(request.status) && (
+                        <>
+                          {request.status === "pending" && (
+                            <button onClick={() => handleApprove(request.id)} className="p-2 rounded hover:bg-emerald-50"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setRejectTargetId(request.id)
+                              setIsRejectDialogOpen(true)
+                            }}
+                            className="p-2 rounded hover:bg-red-50"
+                          >
+                            <XCircle className="w-4 h-4 text-red-600" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {!loading && filteredRequests.length > 0 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-slate-600">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm rounded border border-slate-300 bg-white text-slate-700 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm rounded border border-slate-300 bg-white text-slate-700 disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
+        </div>
+      )}
+
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-2xl bg-white p-0">
+          <DialogHeader className="px-6 pt-6 pb-4"><DialogTitle>Advertisement Details</DialogTitle></DialogHeader>
+          {selectedRequest && (
+            <div className="px-6 pb-6 grid grid-cols-2 gap-4 text-sm">
+              <div><p className="font-semibold text-slate-700">Ads ID</p><p>{selectedRequest.adsId}</p></div>
+              <div><p className="font-semibold text-slate-700">Status</p><p>{selectedRequest.status}</p></div>
+              <div><p className="font-semibold text-slate-700">Title</p><p>{selectedRequest.adsTitle}</p></div>
+              <div><p className="font-semibold text-slate-700">Type</p><p>{selectedRequest.adsType}</p></div>
+              <div><p className="font-semibold text-slate-700">Restaurant</p><p>{selectedRequest.restaurantName}</p></div>
+              <div><p className="font-semibold text-slate-700">Email</p><p>{selectedRequest.restaurantEmail}</p></div>
+              <div className="col-span-2"><p className="font-semibold text-slate-700">Description</p><p>{selectedRequest.description || "-"}</p></div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Settings Dialog */}
-      <SettingsDialog
-        isOpen={isSettingsOpen}
-        onOpenChange={setIsSettingsOpen}
-        visibleColumns={visibleColumns}
-        toggleColumn={toggleColumn}
-        resetColumns={resetColumns}
-        columnsConfig={columnsConfig}
-      />
-
-      {/* View Request Dialog */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-2xl bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle>Advertisement Request Details</DialogTitle>
+      <Dialog
+        open={isRejectDialogOpen}
+        onOpenChange={(open) => {
+          if (!isRejecting) {
+            setIsRejectDialogOpen(open)
+            if (!open) setRejectTargetId("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-white p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>Reject Advertisement Request</DialogTitle>
           </DialogHeader>
-          {selectedRequest && (
-            <div className="px-6 pb-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Ads ID</p>
-                  <p className="text-sm text-slate-900">{selectedRequest.adsId}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Ads Title</p>
-                  <p className="text-sm text-slate-900">{selectedRequest.adsTitle}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Restaurant Name</p>
-                  <p className="text-sm text-slate-900">{selectedRequest.restaurantName}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Restaurant Email</p>
-                  <p className="text-sm text-slate-900">{selectedRequest.restaurantEmail}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Ads Type</p>
-                  <p className="text-sm text-slate-900">{selectedRequest.adsType}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Duration</p>
-                  <p className="text-sm text-slate-900">{selectedRequest.duration}</p>
-                </div>
-              </div>
+          <div className="px-6 pb-6">
+            <p className="text-sm text-slate-600">Reject this advertisement request?</p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isRejecting) return
+                  setIsRejectDialogOpen(false)
+                  setRejectTargetId("")
+                }}
+                className="px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                disabled={isRejecting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (rejectTargetId) handleRejectRequest(rejectTargetId)
+                }}
+                className="px-3 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                disabled={isRejecting || !rejectTargetId}
+              >
+                {isRejecting ? "Rejecting..." : "Reject"}
+              </button>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

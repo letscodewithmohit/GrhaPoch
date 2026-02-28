@@ -40,6 +40,9 @@ const verifyOTPSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional()
   }),
+  businessModel: Joi.string()
+    .valid('Commission Base', 'Subscription Base', 'None')
+    .optional(),
   password: Joi.string().min(6).max(100).optional()
 }).or('phone', 'email');
 
@@ -50,7 +53,10 @@ const registerSchema = Joi.object({
   phone: Joi.string().optional(),
   ownerName: Joi.string().optional(),
   ownerEmail: Joi.string().email().optional(),
-  ownerPhone: Joi.string().optional()
+  ownerPhone: Joi.string().optional(),
+  businessModel: Joi.string()
+    .valid('Commission Base', 'Subscription Base', 'None')
+    .optional()
 });
 
 const loginSchema = Joi.object({

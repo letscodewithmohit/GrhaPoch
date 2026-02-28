@@ -303,6 +303,9 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
   }, [searchQuery])
 
   const isActive = (path, allPaths = []) => {
+    const currentPathWithSearch = `${location.pathname}${location.search || ""}`
+    const normalizePath = (value) => String(value || "").split("?")[0]
+
     if (path === "/admin") {
       return location.pathname === path
     }
@@ -311,11 +314,20 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     if (allPaths.length > 0) {
       // Sort paths by length (longest first) to find most specific match
       const sortedPaths = [...allPaths].sort((a, b) => b.length - a.length)
-      const bestMatch = sortedPaths.find(p => location.pathname.startsWith(p))
-      return bestMatch === path
+      const bestExactMatch = sortedPaths.find((p) => currentPathWithSearch.startsWith(p))
+      if (bestExactMatch) {
+        return bestExactMatch === path
+      }
+
+      const bestPathnameMatch = sortedPaths.find((p) => location.pathname.startsWith(normalizePath(p)))
+      return bestPathnameMatch === path
     }
 
-    return location.pathname.startsWith(path)
+    if (path.includes("?")) {
+      return currentPathWithSearch.startsWith(path)
+    }
+
+    return location.pathname.startsWith(normalizePath(path))
   }
 
   useEffect(() => {

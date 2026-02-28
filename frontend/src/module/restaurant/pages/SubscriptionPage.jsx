@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ArrowLeft, Crown, Sparkles, TrendingUp, Loader2, History, Calendar, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,7 @@ const GRADIENTS = {
 
 const DEFAULT_ICON = Crown;
 const DEFAULT_GRADIENT = 'from-slate-700 to-slate-900';
+const HISTORY_ITEMS_PER_PAGE = 5;
 
 export default function SubscriptionPage() {
     const navigate = useNavigate();
@@ -30,6 +31,20 @@ export default function SubscriptionPage() {
     const [subscriptionMeta, setSubscriptionMeta] = useState({ daysRemaining: null, showWarning: false, warningDays: 5 });
     const [subscriptionHistory, setSubscriptionHistory] = useState([]);
     const [businessModel, setBusinessModel] = useState(null);
+    const [historyPage, setHistoryPage] = useState(1);
+
+    const totalHistoryPages = useMemo(
+        () => Math.max(1, Math.ceil(subscriptionHistory.length / HISTORY_ITEMS_PER_PAGE)),
+        [subscriptionHistory.length]
+    );
+
+    const paginatedHistory = useMemo(() => {
+        const start = (historyPage - 1) * HISTORY_ITEMS_PER_PAGE;
+        return subscriptionHistory.slice(start, start + HISTORY_ITEMS_PER_PAGE);
+    }, [subscriptionHistory, historyPage]);
+
+    const historyStartIndex = subscriptionHistory.length === 0 ? 0 : (historyPage - 1) * HISTORY_ITEMS_PER_PAGE + 1;
+    const historyEndIndex = Math.min(historyPage * HISTORY_ITEMS_PER_PAGE, subscriptionHistory.length);
 
 
     const fetchStatus = async () => {
@@ -97,6 +112,16 @@ export default function SubscriptionPage() {
         };
         fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        setHistoryPage(1);
+    }, [subscriptionHistory.length]);
+
+    useEffect(() => {
+        if (historyPage > totalHistoryPages) {
+            setHistoryPage(totalHistoryPages);
+        }
+    }, [historyPage, totalHistoryPages]);
 
     const handleSubscribe = async (plan) => {
         if (submittingPlanId) return;
@@ -431,9 +456,9 @@ export default function SubscriptionPage() {
                             )}
 
                             {/* Past Plans */}
-                            {subscriptionHistory.map((entry, idx) => (
+                            {paginatedHistory.map((entry, idx) => (
                                 <motion.div
-                                    key={idx}
+                                    key={entry.paymentId || `${entry.planName || 'plan'}-${entry.startDate || ''}-${(historyPage - 1) * HISTORY_ITEMS_PER_PAGE + idx}`}
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: idx * 0.07 }}
@@ -468,6 +493,33 @@ export default function SubscriptionPage() {
                                     )}
                                 </motion.div>
                             ))}
+
+                            {subscriptionHistory.length > HISTORY_ITEMS_PER_PAGE && (
+                                <div className="pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <p className="text-xs text-slate-500">
+                                        Page {historyPage} of {totalHistoryPages}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                        Showing {historyStartIndex}-{historyEndIndex} of {subscriptionHistory.length}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
+                                            disabled={historyPage === 1}
+                                            className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Prev
+                                        </button>
+                                        <button
+                                            onClick={() => setHistoryPage((prev) => Math.min(totalHistoryPages, prev + 1))}
+                                            disabled={historyPage === totalHistoryPages}
+                                            className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}

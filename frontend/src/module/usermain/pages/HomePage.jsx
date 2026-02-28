@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Lenis from "lenis"
 import Toast from "../components/Toast"
 import { useLocation } from "@/module/user/hooks/useLocation"
-import { 
+import {
   MapPin, 
   Bell, 
   Search, 
@@ -23,11 +23,13 @@ import {
   ChevronRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { campaignAPI } from "@/lib/api"
 
 export default function HomePage() {
   const navigate = useNavigate()
   const { location, loading: locationLoading } = useLocation()
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [currentAdSlide, setCurrentAdSlide] = useState(0)
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0)
   const [wishlist, setWishlist] = useState(() => {
     // Load wishlist from localStorage
@@ -35,6 +37,7 @@ export default function HomePage() {
     return saved ? JSON.parse(saved) : []
   })
   const [toast, setToast] = useState({ show: false, message: '' })
+  const [activeRestaurantAds, setActiveRestaurantAds] = useState([])
 
   // Function to extract location parts for display
   // Main location: First 2 parts only (e.g., "Mama Loca, G-2")
@@ -309,6 +312,44 @@ export default function HomePage() {
     { id: 4, title: "Tasty Pasta", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=1200&h=600&fit=crop", discount: "10% OFF", rating: "4.7/5" },
     { id: 5, title: "Sushi Delight", image: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=1200&h=600&fit=crop", discount: "12% OFF", rating: "4.6/5" },
   ]
+
+  useEffect(() => {
+    let mounted = true
+    const loadActiveAds = async () => {
+      try {
+        const response = await campaignAPI.getActiveAdvertisementsPublic()
+        const ads = response?.data?.data?.advertisements || []
+        if (mounted) {
+          setActiveRestaurantAds(ads)
+        }
+      } catch {
+        if (mounted) {
+          setActiveRestaurantAds([])
+        }
+      }
+    }
+
+    loadActiveAds()
+    const interval = setInterval(loadActiveAds, 30000)
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeRestaurantAds.length <= 1) return
+    const interval = setInterval(() => {
+      setCurrentAdSlide((prev) => (prev + 1) % activeRestaurantAds.length)
+    }, 4500)
+    return () => clearInterval(interval)
+  }, [activeRestaurantAds.length])
+
+  useEffect(() => {
+    if (currentAdSlide >= activeRestaurantAds.length) {
+      setCurrentAdSlide(0)
+    }
+  }, [activeRestaurantAds.length, currentAdSlide])
 
   // Auto-slide effect
   useEffect(() => {
@@ -607,6 +648,47 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {activeRestaurantAds.length > 0 && (
+        <div className="px-4 mb-6">
+          <h3 className="text-sm font-bold text-gray-900 mb-2">Sponsored Ads</h3>
+          <div className="relative rounded-xl overflow-hidden h-32 md:h-40 bg-white shadow-sm border border-gray-200">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentAdSlide}
+                initial={{ opacity: 0, x: 200 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -200 }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0"
+              >
+                <img
+                  src={activeRestaurantAds[currentAdSlide]?.bannerImage}
+                  alt={activeRestaurantAds[currentAdSlide]?.title || activeRestaurantAds[currentAdSlide]?.restaurant?.name || "Restaurant Advertisement"}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+                <div className="absolute left-3 bottom-3 text-white">
+                  <p className="text-[10px] uppercase tracking-wide opacity-80">Sponsored</p>
+                  <p className="text-sm font-semibold">{activeRestaurantAds[currentAdSlide]?.title || activeRestaurantAds[currentAdSlide]?.restaurant?.name || "Restaurant Ad"}</p>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {activeRestaurantAds.length > 1 && (
+              <div className="absolute bottom-2 right-2 flex items-center gap-1.5 z-10">
+                {activeRestaurantAds.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentAdSlide(index)}
+                    className={`h-1.5 rounded-full transition-all ${index === currentAdSlide ? "bg-[#ff8100] w-5" : "bg-white/60 w-2"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* What's on Your Mind? Section - Moved Up */}
       <div className="px-4 mb-6 -mt-2">

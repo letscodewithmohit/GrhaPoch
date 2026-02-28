@@ -12,7 +12,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import BottomNavbar from "../components/BottomNavbar"
 
 export default function EditAdvertisementPage() {
   const navigate = useNavigate()
@@ -130,7 +129,7 @@ export default function EditAdvertisementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24 md:pb-6">
+    <div className="min-h-screen bg-slate-50 overflow-x-hidden pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
         <button 
@@ -199,7 +198,7 @@ export default function EditAdvertisementPage() {
                   <span className={`text-sm ${formData.validity ? 'text-gray-900' : 'text-gray-400'}`}>
                     {formData.validity || "Select date"}
                   </span>
-                  <Calendar className="w-5 h-5 text-[#ff8100]" />
+                  <Calendar className="w-5 h-5 text-blue-600" />
                 </button>
                 {showValidityPicker && (
                   <motion.div
@@ -214,7 +213,7 @@ export default function EditAdvertisementPage() {
                         handleInputChange("validity", e.target.value)
                         setShowValidityPicker(false)
                       }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </motion.div>
                 )}
@@ -246,7 +245,7 @@ export default function EditAdvertisementPage() {
                     placeholder="Enter description"
                     maxLength={100}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100] resize-none"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                   <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                     {getCharacterCount(formData.description)}
@@ -315,7 +314,7 @@ export default function EditAdvertisementPage() {
                       placeholder="Enter description"
                       maxLength={100}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100] resize-none"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                     <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                       {getCharacterCount(formData.fileDescription)}
@@ -383,7 +382,7 @@ export default function EditAdvertisementPage() {
                   <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                     <Megaphone className="w-5 h-5 text-purple-600" />
                   </div>
-                  <button className="px-3 py-1 bg-[#ff8100] hover:bg-[#e67300] text-white text-xs font-medium rounded-lg transition-colors">
+                  <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">
                     Preview
                   </button>
                 </div>
@@ -422,15 +421,13 @@ export default function EditAdvertisementPage() {
               // Navigate to advertisements list after update
               navigate("/restaurant/advertisements")
             }}
-            className="flex-1 bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg"
           >
             Update Ads
           </Button>
         </div>
       </div>
 
-      {/* Bottom Navigation Bar */}
-      <BottomNavbar />
     </div>
   )
 }

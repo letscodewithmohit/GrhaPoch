@@ -199,7 +199,14 @@ export default function RestaurantOTP() {
         nameToSend = authData.name
       }
 
-      const response = await restaurantAPI.verifyOTP(phone, code, purpose, nameToSend, email, authData?.businessModel)
+      const response = await restaurantAPI.verifyOTP(
+        phone,
+        code,
+        purpose,
+        nameToSend,
+        email,
+        authData?.businessModel || "Commission Base"
+      )
 
       // Extract restaurant and token or special flags (like needsName) from backend response
       const data = response?.data?.data || response?.data
@@ -213,6 +220,7 @@ export default function RestaurantOTP() {
           const updated = {
             ...prev,
             isSignUp: true,
+            businessModel: prev?.businessModel || "Commission Base",
             // Preserve any existing name, but prefer the typed one if present
             name: name?.trim() || prev?.name,
           }

@@ -231,7 +231,7 @@ import {
 import diningAdminRoutes from '../../dining/routes/diningAdminRoutes.js';
 import zoneRoutes from './zoneRoutes.js';
 import { authenticateAdmin } from '../middleware/adminAuth.js';
-import { getAllDonations } from '../../user/controllers/donationController.js';
+import { getAllDonations, getAllTips } from '../../user/controllers/donationController.js';
 import { uploadMiddleware } from '../../../shared/utils/cloudinaryService.js';
 
 const router = express.Router();
@@ -549,6 +549,7 @@ router.put('/business-settings', uploadMiddleware.fields([
   { name: 'favicon', maxCount: 1 }
 ]), updateBusinessSettings);
 router.get('/donations', getAllDonations);
+router.get('/tips', getAllTips);
 
 // Settlement Routes
 router.get('/settlements/order/:orderId', getOrderSettlementDetails);

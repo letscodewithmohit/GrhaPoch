@@ -37,7 +37,6 @@ import Coupons from "../pages/Coupons";
 import Cashback from "../pages/Cashback";
 import Banners from "../pages/Banners";
 import PromotionalBanner from "../pages/PromotionalBanner";
-import NewAdvertisement from "../pages/advertisement/NewAdvertisement";
 import AdRequests from "../pages/advertisement/AdRequests";
 import AdsList from "../pages/advertisement/AdsList";
 import PushNotification from "../pages/PushNotification";
@@ -206,7 +205,7 @@ export default function AdminRouter() {
         <Route path="banners" element={<Banners />} />
         <Route path="promotional-banner" element={<PromotionalBanner />} />
         {/* Advertisement */}
-        <Route path="advertisement/new" element={<NewAdvertisement />} />
+        <Route path="advertisement/new" element={<Navigate to="/admin/advertisement/requests?tab=pending" replace />} />
         <Route path="advertisement/requests" element={<AdRequests />} />
         <Route path="advertisement" element={<AdsList />} />
         <Route path="push-notification" element={<PushNotification />} />

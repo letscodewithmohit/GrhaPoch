@@ -46,6 +46,7 @@ import orderRoutes from './modules/order/index.js';
 import paymentRoutes from './modules/payment/index.js';
 import menuRoutes from './modules/menu/index.js';
 import campaignRoutes from './modules/campaign/index.js';
+import advertisementPublicRoutes from './modules/campaign/publicRoutes.js';
 import notificationRoutes from './modules/notification/index.js';
 import analyticsRoutes from './modules/analytics/index.js';
 import adminRoutes from './modules/admin/index.js';
@@ -405,6 +406,7 @@ app.use('/api/order', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/campaign', campaignRoutes);
+app.use('/api/advertisements', advertisementPublicRoutes);
 app.use('/api/notification', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
@@ -711,6 +713,36 @@ function initializeScheduledTasks() {
   }).catch((error) => {
     console.error('❌ Failed to initialize subscription expiry service:', error);
   });
+  // Import advertisement expiry service
+  import('./modules/campaign/services/advertisementExpiryService.js').then(({ processAdvertisementExpiries }) => {
+    // Daily at 12:05 AM - expire finished advertisements
+    cron.schedule('5 0 * * *', async () => {
+      try {
+        const result = await processAdvertisementExpiries();
+        if (result.expired > 0) {
+          console.log(`[Advertisement Expiry Cron] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[Advertisement Expiry Cron] Error:', error);
+      }
+    });
+
+    // Run once shortly after startup
+    setTimeout(async () => {
+      try {
+        const result = await processAdvertisementExpiries();
+        if (result.expired > 0) {
+          console.log(`[Advertisement Expiry Startup] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[Advertisement Expiry Startup] Error:', error);
+      }
+    }, 12000);
+
+    console.log('Advertisement expiry scheduler initialized (runs daily at 12:05 AM)');
+  }).catch((error) => {
+    console.error('Failed to initialize advertisement expiry service:', error);
+  });
 }
 
 // Handle unhandled promise rejections
@@ -723,5 +755,6 @@ process.on('unhandledRejection', (err) => {
 });
 
 export default app;
+
 
 

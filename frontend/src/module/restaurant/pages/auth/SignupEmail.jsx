@@ -17,6 +17,7 @@ export default function RestaurantSignupEmail() {
     email: "",
     password: "",
     confirmPassword: "",
+    businessModel: "Commission Base",
   })
   const [otp, setOtp] = useState(["", "", "", "", "", ""])
   const [showPassword, setShowPassword] = useState(false)
@@ -134,7 +135,8 @@ export default function RestaurantSignupEmail() {
         otpCode,
         "register",
         formData.name,
-        formData.email
+        formData.email,
+        formData.businessModel
       )
 
       const data = response?.data?.data || response?.data
@@ -369,6 +371,36 @@ export default function RestaurantSignupEmail() {
                         ) : (
                           <Eye className="h-4 w-4" />
                         )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-gray-700">
+                      Business Model
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, businessModel: "Commission Base" })}
+                        className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                          formData.businessModel === "Commission Base"
+                            ? "border-blue-600 bg-blue-50 text-blue-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                      >
+                        Commission Base
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, businessModel: "Subscription Base" })}
+                        className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                          formData.businessModel === "Subscription Base"
+                            ? "border-blue-600 bg-blue-50 text-blue-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                      >
+                        Subscription Base
                       </button>
                     </div>
                   </div>

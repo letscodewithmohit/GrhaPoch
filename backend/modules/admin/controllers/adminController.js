@@ -7,6 +7,7 @@ import RestaurantCommission from '../models/RestaurantCommission.js';
 import OrderSettlement from '../../order/models/OrderSettlement.js';
 import SubscriptionPayment from '../models/SubscriptionPayment.js';
 import AdminWallet from '../models/AdminWallet.js';
+import Advertisement from '../../campaign/models/Advertisement.js';
 import { successResponse, errorResponse } from '../../../shared/utils/response.js';
 import { asyncHandler } from '../../../shared/middleware/asyncHandler.js';
 import { normalizePhoneNumber } from '../../../shared/utils/phoneUtils.js';
@@ -108,6 +109,43 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     const last30DaysSubscriptionRevenue = subscriptionStats[0]?.last30Days[0]?.amount || 0;
 
     console.log(`📊 Dashboard Stats - Subscription Revenue: ₹${totalSubscriptionRevenue}`);
+
+    // Get advertisement revenue stats (paid restaurant banner advertisements)
+    const advertisementRevenueStats = await Advertisement.aggregate([
+      {
+        $match: {
+          adType: 'restaurant_banner',
+          paymentStatus: 'paid',
+          isDeleted: false,
+          price: { $gt: 0 }
+        }
+      },
+      {
+        $addFields: {
+          paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$price' },
+          last30Days: {
+            $sum: {
+              $cond: [
+                { $gte: ['$paidAt', last30Days] },
+                '$price',
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    const advertisementRevenueData = advertisementRevenueStats[0] || {
+      total: 0,
+      last30Days: 0
+    };
 
     // Get all settlements for delivered orders only (to match with revenue calculation)
     // First get delivered order IDs
@@ -424,9 +462,14 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         last30Days: last30DaysSubscriptionRevenue,
         currency: 'INR'
       },
+      advertisementRevenue: {
+        total: advertisementRevenueData.total,
+        last30Days: advertisementRevenueData.last30Days,
+        currency: 'INR'
+      },
       totalAdminEarnings: {
-        total: totalCommission + totalPlatformFee + totalDeliveryFee + totalGST + totalSubscriptionRevenue,
-        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryFee + last30DaysGST + last30DaysSubscriptionRevenue,
+        total: totalCommission + totalPlatformFee + totalDeliveryFee + totalGST + totalSubscriptionRevenue + advertisementRevenueData.total,
+        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryFee + last30DaysGST + last30DaysSubscriptionRevenue + advertisementRevenueData.last30Days,
         currency: 'INR'
       },
       orders: {

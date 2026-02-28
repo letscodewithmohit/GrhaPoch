@@ -68,13 +68,6 @@ export const sidebarMenuData = [
         path: "/admin/restaurants/commission",
         icon: "IndianRupee",
       },
-    ],
-  },
-
-  {
-    type: "section",
-    label: "SUBSCRIPTION MANAGEMENT",
-    items: [
       {
         type: "link",
         label: "Subscription Management",
@@ -131,6 +124,18 @@ export const sidebarMenuData = [
         label: "Push Notification",
         path: "/admin/push-notification",
         icon: "Bell",
+      },
+      {
+        type: "expandable",
+        label: "Advertisements",
+        icon: "Megaphone",
+        subItems: [
+          { label: "Pending Requests", path: "/admin/advertisement/requests?tab=pending" },
+          { label: "Active Ads", path: "/admin/advertisement/requests?tab=active" },
+          { label: "Rejected Ads", path: "/admin/advertisement/requests?tab=rejected" },
+          { label: "History", path: "/admin/advertisement/requests?tab=history" },
+          { label: "Ads List", path: "/admin/advertisement" },
+        ],
       },
     ],
   },
@@ -330,7 +335,7 @@ export const sidebarMenuData = [
       },
       {
         type: "link",
-        label: "Donation Management",
+        label: "Tip & Donation Management",
         path: "/admin/donation-management",
         icon: "Heart",
       },

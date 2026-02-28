@@ -118,7 +118,9 @@ export const upsertOnboarding = async (req, res) => {
     // Update restaurant schema when completing onboarding (step 5)
     if (finalCompletedSteps >= 5 && (step5 || businessModel)) {
       console.log('🔄 Step5/Final completed, updating restaurant schema with businessModel...');
-      const modelToSave = step5?.businessModel || businessModel || onboarding.businessModel || 'None';
+      const modelToSave = (step5?.businessModel === 'Subscription Base' || businessModel === 'Subscription Base' || onboarding.businessModel === 'Subscription Base')
+        ? 'Subscription Base'
+        : 'Commission Base';
 
       console.log('📦 Business Model data received:', {
         businessModel: modelToSave,

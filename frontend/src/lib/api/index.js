@@ -991,8 +991,8 @@ export const adminAPI = {
   },
 
   // Restaurant Subscription Management
-  getSubscriptionRequests: () => {
-    return apiClient.get(API_ENDPOINTS.ADMIN.RESTAURANTS_SUBSCRIPTIONS);
+  getSubscriptionRequests: (params = {}) => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.RESTAURANTS_SUBSCRIPTIONS, { params });
   },
   updateSubscriptionStatus: (restaurantId, data) => {
     return apiClient.put(
@@ -1547,6 +1547,103 @@ export const adminAPI = {
   // Donation Management
   getDonations: (params = {}) => {
     return apiClient.get('/admin/donations', { params });
+  },
+  getTips: (params = {}) => {
+    return apiClient.get('/admin/tips', { params });
+  },
+};
+
+// Campaign / Advertisement APIs
+export const campaignAPI = {
+  // Restaurant side
+  getRestaurantAdvertisements: (params = {}) => {
+    return apiClient.get('/campaign/restaurant/advertisements', { params });
+  },
+
+  getAdvertisementPricing: () => {
+    return apiClient.get('/campaign/restaurant/advertisements/pricing');
+  },
+
+  getRestaurantCurrentBannerAdvertisement: () => {
+    return apiClient.get('/campaign/restaurant/advertisements/current-banner');
+  },
+
+  getRestaurantAdvertisementById: (id) => {
+    return apiClient.get(`/campaign/restaurant/advertisements/${id}`);
+  },
+
+  createRestaurantAdvertisement: (data) => {
+    return apiClient.post('/campaign/restaurant/advertisements', data);
+  },
+
+  createRestaurantBannerAdvertisement: (data) => {
+    return apiClient.post('/campaign/restaurant/advertisements/banner', data);
+  },
+
+  updateRestaurantAdvertisement: (id, data) => {
+    return apiClient.put(`/campaign/restaurant/advertisements/${id}`, data);
+  },
+
+  updateRestaurantAdvertisementStatus: (id, action, pauseNote = '') => {
+    return apiClient.patch(`/campaign/restaurant/advertisements/${id}/status`, { action, pauseNote });
+  },
+
+  duplicateRestaurantAdvertisement: (id) => {
+    return apiClient.post(`/campaign/restaurant/advertisements/${id}/duplicate`);
+  },
+
+  deleteRestaurantAdvertisement: (id) => {
+    return apiClient.delete(`/campaign/restaurant/advertisements/${id}`);
+  },
+
+  createAdvertisementPaymentOrder: (id) => {
+    return apiClient.post(`/campaign/restaurant/advertisements/${id}/payment-order`);
+  },
+
+  verifyAdvertisementPayment: (id, data) => {
+    return apiClient.post(`/campaign/restaurant/advertisements/${id}/verify-payment`, data);
+  },
+
+  // Admin side
+  getAdminAdvertisements: (params = {}) => {
+    return apiClient.get('/campaign/admin/advertisements', { params });
+  },
+
+  getAdminAdvertisementPricing: () => {
+    return apiClient.get('/campaign/admin/advertisements/pricing');
+  },
+
+  updateAdminAdvertisementPricing: (pricePerDay) => {
+    return apiClient.patch('/campaign/admin/advertisements/pricing', { pricePerDay });
+  },
+
+  getAdminAdvertisementById: (id) => {
+    return apiClient.get(`/campaign/admin/advertisements/${id}`);
+  },
+
+  approveAdvertisement: (id, data = {}) => {
+    return apiClient.patch(`/campaign/admin/advertisements/${id}/approve`, data);
+  },
+
+  rejectAdvertisement: (id, data = {}) => {
+    return apiClient.patch(`/campaign/admin/advertisements/${id}/reject`, data);
+  },
+
+  setAdvertisementPriority: (id, priority) => {
+    return apiClient.patch(`/campaign/admin/advertisements/${id}/priority`, { priority });
+  },
+
+  setAdvertisementStatusByAdmin: (id, status, adminNote = '') => {
+    return apiClient.patch(`/campaign/admin/advertisements/${id}/status`, { status, adminNote });
+  },
+
+  deleteAdvertisementByAdmin: (id) => {
+    return apiClient.delete(`/campaign/admin/advertisements/${id}`);
+  },
+
+  // Public side
+  getActiveAdvertisementsPublic: () => {
+    return apiClient.get('/advertisements/active');
   },
 };
 
