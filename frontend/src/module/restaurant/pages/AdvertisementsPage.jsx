@@ -41,7 +41,7 @@ const statusBadgeClass = (status) => {
   if (value === "paused") return "bg-slate-200 text-slate-700"
   if (value === "rejected") return "bg-red-100 text-red-700"
   if (value === "expired") return "bg-slate-300 text-slate-700"
-  return "bg-blue-100 text-blue-700"
+  return "bg-slate-200 text-slate-700"
 }
 
 export default function AdvertisementsPage() {
@@ -233,7 +233,7 @@ export default function AdvertisementsPage() {
               {activeFilter === filter.id && (
                 <Motion.div
                   layoutId="activeFilter"
-                  className="absolute inset-0 bg-blue-600 rounded-full z-0"
+                  className="absolute inset-0 bg-black rounded-full z-0"
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />
               )}
@@ -387,7 +387,7 @@ export default function AdvertisementsPage() {
                             e.stopPropagation()
                             navigate(`/restaurant/advertisements/${ad.id}`)
                           }}
-                          className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                          className="p-2 bg-black hover:bg-gray-800 rounded-lg transition-colors"
                         >
                           <ChevronRight className="w-5 h-5 text-white" />
                         </button>
@@ -431,7 +431,7 @@ export default function AdvertisementsPage() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => navigate("/restaurant/advertisements/new")}
-        className="fixed bottom-6 right-4 md:right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
+        className="fixed bottom-6 right-4 md:right-6 w-14 h-14 bg-black hover:bg-gray-800 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
       >
         <Plus className="w-6 h-6" />
       </Motion.button>

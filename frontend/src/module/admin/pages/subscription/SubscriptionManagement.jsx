@@ -14,11 +14,19 @@ import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export default function SubscriptionManagement() {
+    const SUBSCRIBERS_PAGE_SIZE = 10
     const [activeTab, setActiveTab] = useState("plans") // 'plans', 'requests', or 'settings'
     const [plans, setPlans] = useState([])
     const [restaurants, setRestaurants] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
+    const [subscribersPage, setSubscribersPage] = useState(1)
+    const [subscribersPagination, setSubscribersPagination] = useState({
+        total: 0,
+        page: 1,
+        limit: SUBSCRIBERS_PAGE_SIZE,
+        pages: 1
+    })
 
     // Plan Modal State
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
@@ -55,7 +63,7 @@ export default function SubscriptionManagement() {
     // Fetch Initial Data
     useEffect(() => {
         fetchData()
-    }, [activeTab])
+    }, [activeTab, subscribersPage, searchQuery])
 
     const fetchData = async () => {
         setLoading(true)
@@ -67,10 +75,22 @@ export default function SubscriptionManagement() {
             }
 
             if (activeTab === "requests") {
-                const res = await adminAPI.getSubscriptionRequests()
-                if (res.data?.data?.restaurants) {
-                    setRestaurants(res.data.data.restaurants)
-                }
+                const res = await adminAPI.getSubscriptionRequests({
+                    page: subscribersPage,
+                    limit: SUBSCRIBERS_PAGE_SIZE,
+                    search: searchQuery.trim() || undefined
+                })
+
+                const restaurantsData = res?.data?.data?.restaurants || []
+                const paginationData = res?.data?.data?.pagination || {}
+
+                setRestaurants(restaurantsData)
+                setSubscribersPagination({
+                    total: paginationData.total ?? restaurantsData.length,
+                    page: paginationData.page ?? subscribersPage,
+                    limit: paginationData.limit ?? SUBSCRIBERS_PAGE_SIZE,
+                    pages: paginationData.pages ?? 1
+                })
             }
 
             if (activeTab === "settings") {
@@ -220,18 +240,7 @@ export default function SubscriptionManagement() {
     }
 
     // Restaurant List Functions
-    const filteredRestaurants = restaurants.filter(restaurant => {
-        // Filter out empty or inactive subscriptions
-        if (!restaurant.subscription?.planId || restaurant.subscription?.status === 'inactive') {
-            return false
-        }
-
-        if (searchQuery) {
-            return restaurant.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                restaurant.email?.toLowerCase().includes(searchQuery.toLowerCase())
-        }
-        return true
-    })
+    const filteredRestaurants = restaurants
 
     const handleCancelSubscription = async (restaurant) => {
         if (!window.confirm(`Are you sure you want to cancel the subscription for ${restaurant.name}?`)) return
@@ -239,13 +248,7 @@ export default function SubscriptionManagement() {
         try {
             await adminAPI.updateSubscriptionStatus(restaurant._id || restaurant.id, { status: 'inactive' })
             toast.success("Subscription cancelled successfully")
-            // Refresh list
-            if (activeTab === "requests") {
-                const res = await adminAPI.getSubscriptionRequests()
-                if (res.data?.data?.restaurants) {
-                    setRestaurants(res.data.data.restaurants)
-                }
-            }
+            fetchData()
         } catch (error) {
             console.error("Error cancelling subscription:", error)
             toast.error("Failed to cancel subscription")
@@ -278,12 +281,23 @@ export default function SubscriptionManagement() {
         }
     }
 
-    const handleExport = (type) => {
-        const dataToExport = filteredRestaurants.length > 0 ? filteredRestaurants : restaurants
-        if (type === 'excel') {
-            exportSubscriptionsToExcel(dataToExport, plans, "subscription_list")
-        } else if (type === 'pdf') {
-            exportSubscriptionsToPDF(dataToExport, plans, "subscription_list")
+    const handleExport = async (type) => {
+        try {
+            const res = await adminAPI.getSubscriptionRequests({
+                page: 1,
+                limit: 10000,
+                search: searchQuery.trim() || undefined
+            })
+            const exportRows = res?.data?.data?.restaurants || filteredRestaurants || []
+
+            if (type === 'excel') {
+                exportSubscriptionsToExcel(exportRows, plans, "subscription_list")
+            } else if (type === 'pdf') {
+                exportSubscriptionsToPDF(exportRows, plans, "subscription_list")
+            }
+        } catch (error) {
+            console.error("Error exporting subscriptions:", error)
+            toast.error("Failed to export subscriptions")
         }
     }
 
@@ -487,7 +501,10 @@ export default function SubscriptionManagement() {
                                     type="text"
                                     placeholder="Search by restaurant or email..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value)
+                                        setSubscribersPage(1)
+                                    }}
                                     className="pl-10 w-full bg-slate-50 border-slate-200 focus:bg-white transition-colors"
                                 />
                             </div>
@@ -514,7 +531,7 @@ export default function SubscriptionManagement() {
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
-                                <span className="text-sm text-slate-500 font-medium">Showing {filteredRestaurants.length} results</span>
+                                <span className="text-sm text-slate-500 font-medium">Showing {filteredRestaurants.length} of {subscribersPagination.total} results</span>
                             </div>
                         </div>
 
@@ -617,6 +634,31 @@ export default function SubscriptionManagement() {
                                 </tbody>
                             </table>
                         </div>
+                        {subscribersPagination.pages > 1 && (
+                            <div className="flex items-center justify-between px-1">
+                                <span className="text-sm text-slate-500">
+                                    Page {subscribersPagination.page} of {subscribersPagination.pages}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={subscribersPagination.page <= 1}
+                                        onClick={() => setSubscribersPage((prev) => Math.max(prev - 1, 1))}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={subscribersPagination.page >= subscribersPagination.pages}
+                                        onClick={() => setSubscribersPage((prev) => Math.min(prev + 1, subscribersPagination.pages))}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="max-w-2xl">

@@ -367,14 +367,41 @@ export const getSubscriptionStatus = async (req, res) => {
 // Admin: Get all restaurants with subscriptions
 export const getAllSubscriptions = async (req, res) => {
     try {
-        // Fetch all restaurants with subscription model or pending requests
-        const restaurants = await Restaurant.find({
-            $or: [
-                { businessModel: 'Subscription Base' },
-                { 'subscription.status': 'pending_approval' }
+        const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
+        const skip = (page - 1) * limit;
+        const search = req.query.search?.toString().trim();
+
+        const query = {
+            $and: [
+                {
+                    $or: [
+                        { businessModel: 'Subscription Base' },
+                        { 'subscription.status': 'pending_approval' }
+                    ]
+                },
+                { 'subscription.planId': { $exists: true, $ne: null } },
+                { 'subscription.status': { $ne: 'inactive' } }
             ]
-        })
+        };
+
+        if (search) {
+            query.$and.push({
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { phone: { $regex: search, $options: 'i' } }
+                ]
+            });
+        }
+
+        const total = await Restaurant.countDocuments(query);
+
+        const restaurants = await Restaurant.find(query)
             .select('name email phone subscription subscriptionHistory isActive createdAt businessModel')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
             .lean();
 
         // Get all unique plan IDs
@@ -419,7 +446,13 @@ export const getAllSubscriptions = async (req, res) => {
         });
 
         return successResponse(res, 200, 'Subscriptions retrieved successfully', {
-            restaurants: restaurantsWithPlans
+            restaurants: restaurantsWithPlans,
+            pagination: {
+                total,
+                page,
+                limit,
+                pages: Math.ceil(total / limit)
+            }
         });
     } catch (error) {
         console.error('Get all subscriptions error:', error);

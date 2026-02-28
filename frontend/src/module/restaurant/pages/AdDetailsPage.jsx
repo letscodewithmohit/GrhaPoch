@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion as Motion } from "framer-motion"
 import { useNavigate, useParams } from "react-router-dom"
 import Lenis from "lenis"
-import { ArrowLeft, Calendar, Megaphone, DollarSign, Edit } from "lucide-react"
+import { ArrowLeft, Calendar, Megaphone, DollarSign } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { campaignAPI } from "@/lib/api"
@@ -79,7 +79,7 @@ export default function AdDetailsPage() {
         name: "GrhaPoch Partner",
         description: `Advertisement ${adData.adId || ""}`,
         order_id: payment.orderId,
-        theme: { color: "#2563eb" },
+        theme: { color: "#111827" },
         modal: { ondismiss: () => setPaymentLoading(false) },
         handler: async (response) => {
           try {
@@ -122,17 +122,17 @@ export default function AdDetailsPage() {
             <Motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
               <Card className="bg-white border border-gray-100"><CardContent className="p-4 flex items-center justify-between">
                 <h2 className="text-base font-bold text-gray-900">Ads ID #{adData.adId}</h2>
-                <span className="bg-blue-100 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{labelStatus(adData.effectiveStatus || adData.status)}</span>
+                <span className="bg-slate-200 text-slate-700 text-xs font-medium px-3 py-1 rounded-full">{labelStatus(adData.effectiveStatus || adData.status)}</span>
               </CardContent></Card>
             </Motion.div>
 
             <Card className="bg-white border border-gray-100"><CardContent className="p-4 space-y-3">
-              <div className="flex items-start gap-3"><Calendar className="w-5 h-5 text-blue-600 mt-0.5" /><div><p className="text-xs text-gray-500">Ads Created</p><p className="text-sm font-medium text-gray-900">{formatDate(adData.createdAt, true)}</p></div></div>
-              <div className="flex items-start gap-3"><Calendar className="w-5 h-5 text-blue-600 mt-0.5" /><div><p className="text-xs text-gray-500">Duration</p><p className="text-sm font-medium text-gray-900">{formatDate(adData.startDate)} - {formatDate(adData.endDate || adData.validityDate)}</p></div></div>
-              <div className="flex items-start gap-3"><Megaphone className="w-5 h-5 text-blue-600 mt-0.5" /><div><p className="text-xs text-gray-500">Ads Details</p><p className="text-sm font-bold text-gray-900">{adData.category}</p></div></div>
-              <div className="flex items-start gap-3"><DollarSign className="w-5 h-5 text-blue-600 mt-0.5" /><div><p className="text-xs text-gray-500">Payment Status</p><p className="text-sm font-medium text-red-600">{labelStatus(adData.paymentStatus)}</p></div></div>
+              <div className="flex items-start gap-3"><Calendar className="w-5 h-5 text-gray-900 mt-0.5" /><div><p className="text-xs text-gray-500">Ads Created</p><p className="text-sm font-medium text-gray-900">{formatDate(adData.createdAt, true)}</p></div></div>
+              <div className="flex items-start gap-3"><Calendar className="w-5 h-5 text-gray-900 mt-0.5" /><div><p className="text-xs text-gray-500">Duration</p><p className="text-sm font-medium text-gray-900">{formatDate(adData.startDate)} - {formatDate(adData.endDate || adData.validityDate)}</p></div></div>
+              <div className="flex items-start gap-3"><Megaphone className="w-5 h-5 text-gray-900 mt-0.5" /><div><p className="text-xs text-gray-500">Ads Details</p><p className="text-sm font-bold text-gray-900">{adData.category}</p></div></div>
+              <div className="flex items-start gap-3"><DollarSign className="w-5 h-5 text-gray-900 mt-0.5" /><div><p className="text-xs text-gray-500">Payment Status</p><p className="text-sm font-medium text-red-600">{labelStatus(adData.paymentStatus)}</p></div></div>
               {canPay && (
-                <Button onClick={handlePayNow} disabled={paymentLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">
+                <Button onClick={handlePayNow} disabled={paymentLoading} className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 rounded-lg">
                   {paymentLoading ? "Processing..." : "Pay Now To Activate"}
                 </Button>
               )}
@@ -157,16 +157,9 @@ export default function AdDetailsPage() {
 
       {!loading && adData && !canPay && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 z-40 md:relative md:bottom-auto md:border-t-0 md:px-4 md:py-4 md:mt-6">
-          {adData.adType === "legacy" ? (
-            <Button onClick={() => navigate(`/restaurant/advertisements/${adData.id}/edit`)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
-              <Edit className="w-5 h-5" />
-              <span>Edit Ads</span>
-            </Button>
-          ) : (
-            <Button onClick={() => navigate("/restaurant/advertisements")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
-              <span>Back To Ad List</span>
-            </Button>
-          )}
+          <Button onClick={() => navigate("/restaurant/advertisements")} className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
+            <span>Back To Ad List</span>
+          </Button>
         </div>
       )}
     </div>

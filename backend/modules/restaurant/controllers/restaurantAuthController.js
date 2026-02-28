@@ -42,6 +42,11 @@ const buildPhoneQuery = (normalizedPhone) => {
   }
 };
 
+const normalizeBusinessModel = (businessModel) => {
+  if (businessModel === 'Subscription Base') return 'Subscription Base';
+  return 'Commission Base';
+};
+
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
@@ -139,7 +144,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       const restaurantData = {
         name,
         signupMethod: normalizedPhone ? 'phone' : 'email',
-        businessModel: businessModel || 'None'
+        businessModel: normalizeBusinessModel(businessModel)
       };
 
       if (normalizedPhone) {
@@ -214,6 +219,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
             const retryRestaurantData = {
               name: restaurantData.name,
               signupMethod: restaurantData.signupMethod,
+              businessModel: restaurantData.businessModel,
               phone: restaurantData.phone,
               phoneVerified: restaurantData.phoneVerified,
               ownerPhone: restaurantData.ownerPhone,
@@ -365,7 +371,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
         // Auto-register new restaurant after OTP verification
         const restaurantData = {
           name,
-          signupMethod: normalizedPhone ? 'phone' : 'email'
+          signupMethod: normalizedPhone ? 'phone' : 'email',
+          businessModel: normalizeBusinessModel(businessModel)
         };
 
         if (normalizedPhone) {
@@ -437,6 +444,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
                 const retryRestaurantData = {
                   name: restaurantData.name,
                   signupMethod: restaurantData.signupMethod,
+                  businessModel: restaurantData.businessModel,
                   phone: restaurantData.phone,
                   phoneVerified: restaurantData.phoneVerified,
                   ownerPhone: restaurantData.ownerPhone,
@@ -584,7 +592,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
  * POST /api/restaurant/auth/register
  */
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, phone, ownerName, ownerEmail, ownerPhone } = req.body;
+  const { name, email, password, phone, ownerName, ownerEmail, ownerPhone, businessModel } = req.body;
 
   if (!name || !email || !password) {
     return errorResponse(res, 400, 'Restaurant name, email, and password are required');
@@ -621,6 +629,7 @@ export const register = asyncHandler(async (req, res) => {
     ownerName: ownerName || name,
     ownerEmail: (ownerEmail || email).toLowerCase().trim(),
     signupMethod: 'email',
+    businessModel: normalizeBusinessModel(businessModel),
     // Set isActive to false - restaurant needs admin approval before becoming active
     isActive: false
   };
@@ -1059,6 +1068,7 @@ export const firebaseGoogleLogin = asyncHandler(async (req, res) => {
         googleId: firebaseUid,
         googleEmail: email.toLowerCase().trim(),
         signupMethod: 'google',
+        businessModel: 'Commission Base',
         profileImage: picture ? { url: picture } : null,
         ownerName: name.trim(),
         ownerEmail: email.toLowerCase().trim(),

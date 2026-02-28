@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Search, CheckCircle2, XCircle, Eye } from "lucide-react"
 import { campaignAPI } from "@/lib/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 
 const ITEMS_PER_PAGE = 10
 
@@ -20,13 +20,15 @@ const mapRow = (ad) => ({
   restaurantName: ad.restaurant?.name || "N/A",
   restaurantEmail: ad.restaurant?.email || "-",
   adsType: ad.category || "-",
+  paymentStatus: String(ad.paymentStatus || "unpaid").toLowerCase(),
+  endDateRaw: ad.endDate || ad.validityDate || null,
   duration: `${formatDate(ad.startDate)} - ${formatDate(ad.endDate || ad.validityDate)}`,
   status: String(ad.effectiveStatus || ad.status || "pending").toLowerCase(),
   description: ad.description || "",
 })
 
 const parseTabFromSearch = (search) => {
-  const allowed = new Set(["pending", "active", "rejected"])
+  const allowed = new Set(["pending", "active", "rejected", "history"])
   const tab = new URLSearchParams(search).get("tab")
   return allowed.has(tab) ? tab : "pending"
 }
@@ -34,6 +36,7 @@ const parseTabFromSearch = (search) => {
 const statusBadge = (status) => {
   const value = String(status || "pending").toLowerCase()
   if (value === "active") return "bg-emerald-100 text-emerald-700"
+  if (value === "completed") return "bg-emerald-100 text-emerald-700"
   if (value === "scheduled") return "bg-indigo-100 text-indigo-700"
   if (value === "payment_pending" || value === "approved") return "bg-amber-100 text-amber-700"
   if (value === "rejected") return "bg-red-100 text-red-700"
@@ -41,8 +44,14 @@ const statusBadge = (status) => {
   return "bg-blue-100 text-blue-700"
 }
 
+const getHistoryResult = (request) => {
+  if (request.status !== "expired") return request.status
+  return request.paymentStatus === "paid" ? "completed" : "expired"
+}
+
 export default function AdRequests() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState(() => parseTabFromSearch(location.search))
   const [loading, setLoading] = useState(true)
   const [priceLoading, setPriceLoading] = useState(true)
@@ -53,6 +62,9 @@ export default function AdRequests() {
   const [errorMessage, setErrorMessage] = useState("")
   const [selectedRequest, setSelectedRequest] = useState(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
+  const [rejectTargetId, setRejectTargetId] = useState("")
+  const [isRejecting, setIsRejecting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
 
   const loadRequests = async () => {
@@ -98,6 +110,11 @@ export default function AdRequests() {
     if (activeTab === "pending") rows = rows.filter((r) => ["pending", "payment_pending"].includes(r.status))
     if (activeTab === "active") rows = rows.filter((r) => ["active", "scheduled"].includes(r.status))
     if (activeTab === "rejected") rows = rows.filter((r) => r.status === "rejected")
+    if (activeTab === "history") {
+      rows = rows
+        .filter((r) => r.status === "expired")
+        .sort((a, b) => new Date(b.endDateRaw || 0).getTime() - new Date(a.endDateRaw || 0).getTime())
+    }
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
@@ -140,15 +157,17 @@ export default function AdRequests() {
     }
   }
 
-  const handleDeleteRequest = async (id) => {
-    const confirmed = window.confirm("Delete this advertisement request permanently?")
-    if (!confirmed) return
-
+  const handleRejectRequest = async (id) => {
+    setIsRejecting(true)
     try {
-      await campaignAPI.deleteAdvertisementByAdmin(id)
+      await campaignAPI.rejectAdvertisement(id)
       await loadRequests()
+      setIsRejectDialogOpen(false)
+      setRejectTargetId("")
     } catch (error) {
-      setErrorMessage(error?.response?.data?.message || "Failed to delete advertisement")
+      setErrorMessage(error?.response?.data?.message || "Failed to reject advertisement")
+    } finally {
+      setIsRejecting(false)
     }
   }
 
@@ -180,10 +199,13 @@ export default function AdRequests() {
         </div>
 
         <div className="flex items-center gap-2 border-b border-slate-200 mb-4">
-          {[{ key: "pending", label: "Pending Requests" }, { key: "active", label: "Active Ads" }, { key: "rejected", label: "Rejected Ads" }].map((tab) => (
+          {[{ key: "pending", label: "Pending Requests" }, { key: "active", label: "Active Ads" }, { key: "rejected", label: "Rejected Ads" }, { key: "history", label: "History" }].map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => {
+                setActiveTab(tab.key)
+                navigate(`/admin/advertisement/requests?tab=${tab.key}`, { replace: true })
+              }}
               className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-slate-600"}`}
             >
               {tab.label}
@@ -238,7 +260,7 @@ export default function AdRequests() {
               <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Restaurant</th>
               <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Type</th>
               <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Duration</th>
-              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Status</th>
+              <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">{activeTab === "history" ? "Result" : "Status"}</th>
               <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase">Actions</th>
             </tr>
           </thead>
@@ -257,8 +279,8 @@ export default function AdRequests() {
                   <td className="px-6 py-4 text-sm text-slate-700">{request.adsType}</td>
                   <td className="px-6 py-4 text-sm text-slate-700">{request.duration}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge(request.status)}`}>
-                      {request.status}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge(activeTab === "history" ? getHistoryResult(request) : request.status)}`}>
+                      {activeTab === "history" ? getHistoryResult(request) : request.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center">
@@ -269,7 +291,15 @@ export default function AdRequests() {
                           {request.status === "pending" && (
                             <button onClick={() => handleApprove(request.id)} className="p-2 rounded hover:bg-emerald-50"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></button>
                           )}
-                          <button onClick={() => handleDeleteRequest(request.id)} className="p-2 rounded hover:bg-red-50"><XCircle className="w-4 h-4 text-red-600" /></button>
+                          <button
+                            onClick={() => {
+                              setRejectTargetId(request.id)
+                              setIsRejectDialogOpen(true)
+                            }}
+                            className="p-2 rounded hover:bg-red-50"
+                          >
+                            <XCircle className="w-4 h-4 text-red-600" />
+                          </button>
                         </>
                       )}
                     </div>
@@ -319,6 +349,49 @@ export default function AdRequests() {
               <div className="col-span-2"><p className="font-semibold text-slate-700">Description</p><p>{selectedRequest.description || "-"}</p></div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isRejectDialogOpen}
+        onOpenChange={(open) => {
+          if (!isRejecting) {
+            setIsRejectDialogOpen(open)
+            if (!open) setRejectTargetId("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-white p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>Reject Advertisement Request</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-6">
+            <p className="text-sm text-slate-600">Reject this advertisement request?</p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isRejecting) return
+                  setIsRejectDialogOpen(false)
+                  setRejectTargetId("")
+                }}
+                className="px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                disabled={isRejecting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (rejectTargetId) handleRejectRequest(rejectTargetId)
+                }}
+                className="px-3 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                disabled={isRejecting || !rejectTargetId}
+              >
+                {isRejecting ? "Rejecting..." : "Reject"}
+              </button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

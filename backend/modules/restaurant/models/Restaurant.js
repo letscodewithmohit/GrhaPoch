@@ -278,7 +278,7 @@ const restaurantSchema = new mongoose.Schema(
     businessModel: {
       type: String,
       enum: ['Commission Base', 'Subscription Base', 'None'],
-      default: 'None',
+      default: 'Commission Base',
     },
     // Subscription details (current active/latest)
     subscription: {

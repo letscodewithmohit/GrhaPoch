@@ -1,8 +1,9 @@
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { ChevronRight, Menu, Crown, Megaphone } from "lucide-react"
+import { ChevronRight, Menu, Crown } from "lucide-react"
 import BottomNavOrders from "../components/BottomNavOrders"
 import offersAndDiscountsIcon from "@/assets/hub/icons/offersanddiscounts.png"
+import createAdsIcon from "@/assets/hub/icons/createads.png"
 
 export default function HubGrowth() {
   const navigate = useNavigate()
@@ -51,28 +52,28 @@ export default function HubGrowth() {
             <motion.div
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate("/restaurant/advertisements")}
-              className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 flex items-center gap-4 border border-orange-200 cursor-pointer"
+              className="bg-white rounded-lg p-4 flex items-center gap-4 border border-gray-200 cursor-pointer"
             >
               <div className="shrink-0">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
-                  <Megaphone className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center relative overflow-hidden">
+                  <img src={createAdsIcon} alt="Add advertisement" className="w-full h-full object-contain" />
                 </div>
               </div>
               <div className="flex-1">
                 <h3 className="text-base font-bold text-gray-900 mb-1">Add Advertisement</h3>
                 <p className="text-sm text-gray-600">Create a paid banner ad to boost visibility</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-orange-600 shrink-0" />
+              <ChevronRight className="w-5 h-5 text-gray-700 shrink-0" />
             </motion.div>
 
             {/* Subscription Plans card */}
             <motion.div
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate("/restaurant/subscription-plans")}
-              className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 flex items-center gap-4 border border-purple-200 cursor-pointer"
+              className="bg-white rounded-lg p-4 flex items-center gap-4 border border-gray-200 cursor-pointer"
             >
               <div className="shrink-0">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center shadow-sm">
                   <Crown className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -80,7 +81,7 @@ export default function HubGrowth() {
                 <h3 className="text-base font-bold text-gray-900 mb-1">Subscription Plans</h3>
                 <p className="text-sm text-gray-600">Unlock premium features and grow faster</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-purple-600 shrink-0" />
+              <ChevronRight className="w-5 h-5 text-gray-700 shrink-0" />
             </motion.div>
 
           </div>

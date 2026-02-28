@@ -962,8 +962,8 @@ export const adminAPI = {
   },
 
   // Restaurant Subscription Management
-  getSubscriptionRequests: () => {
-    return apiClient.get(API_ENDPOINTS.ADMIN.RESTAURANTS_SUBSCRIPTIONS);
+  getSubscriptionRequests: (params = {}) => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.RESTAURANTS_SUBSCRIPTIONS, { params });
   },
   updateSubscriptionStatus: (restaurantId, data) => {
     return apiClient.put(

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Search, Plus, Trash2 } from "lucide-react"
 import { campaignAPI } from "@/lib/api"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const ITEMS_PER_PAGE = 10
 
@@ -40,6 +41,9 @@ export default function AdsList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [rows, setRows] = useState([])
   const [errorMessage, setErrorMessage] = useState("")
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
 
   const loadAdvertisements = async () => {
@@ -92,13 +96,16 @@ export default function AdsList() {
   }, [currentPage, totalPages])
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Delete this advertisement?")
-    if (!confirmed) return
+    setIsDeleting(true)
     try {
       await campaignAPI.deleteAdvertisementByAdmin(id)
       await loadAdvertisements()
+      setIsDeleteDialogOpen(false)
+      setDeleteTargetId("")
     } catch (error) {
       setErrorMessage(error?.response?.data?.message || "Failed to delete advertisement")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -179,7 +186,13 @@ export default function AdsList() {
                     </select>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-red-50">
+                    <button
+                      onClick={() => {
+                        setDeleteTargetId(row.id)
+                        setIsDeleteDialogOpen(true)
+                      }}
+                      className="p-2 rounded hover:bg-red-50"
+                    >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </button>
                   </td>
@@ -213,6 +226,49 @@ export default function AdsList() {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setIsDeleteDialogOpen(open)
+            if (!open) setDeleteTargetId("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-white p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>Delete Advertisement</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-6">
+            <p className="text-sm text-slate-600">Delete this advertisement?</p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDeleting) return
+                  setIsDeleteDialogOpen(false)
+                  setDeleteTargetId("")
+                }}
+                className="px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (deleteTargetId) handleDelete(deleteTargetId)
+                }}
+                className="px-3 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                disabled={isDeleting || !deleteTargetId}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

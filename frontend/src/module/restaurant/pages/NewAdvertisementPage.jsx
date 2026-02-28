@@ -214,14 +214,14 @@ export default function NewAdvertisementPage() {
                       type="text"
                       value={dynamicTitle}
                       onChange={(e) => setDynamicTitle(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
                     />
                     <p className="text-xs text-gray-500 mt-1">Auto-filled from your restaurant name, you can edit it.</p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Banner Image (Any size - testing mode)</label>
-                    <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 block cursor-pointer hover:border-blue-500">
+                    <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 block cursor-pointer hover:border-gray-900">
                       <input type="file" accept="image/*" onChange={handleBannerChange} className="hidden" />
                       {bannerPreview ? (
                         <img src={bannerPreview} alt="Banner preview" className="w-full h-44 object-cover rounded-md" />
@@ -244,7 +244,7 @@ export default function NewAdvertisementPage() {
                           min={toInputDate(minStartDate)}
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                         />
                       </div>
                     </div>
@@ -258,7 +258,7 @@ export default function NewAdvertisementPage() {
                           min={startDate || toInputDate(minStartDate)}
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                         />
                       </div>
                     </div>
@@ -268,13 +268,13 @@ export default function NewAdvertisementPage() {
                     <p className="text-xs text-gray-600">Price Per Day (Admin Set)</p>
                     <p className="text-sm font-semibold text-gray-900">INR {pricePerDay.toFixed(2)}</p>
                     <p className="text-xs text-gray-600 mt-1">Selected Days: {totalDays}</p>
-                    <div className="mt-2 flex items-center gap-2 text-blue-600">
+                    <div className="mt-2 flex items-center gap-2 text-gray-900">
                       <IndianRupee className="w-4 h-4" />
                       <p className="font-bold">Total: INR {totalPrice.toFixed(2)}</p>
                     </div>
                   </div>
 
-                  <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full bg-black hover:bg-gray-800">
                     {isSubmitting ? "Submitting..." : "Submit Advertisement"}
                   </Button>
                 </>

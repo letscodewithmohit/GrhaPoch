@@ -133,6 +133,7 @@ export const sidebarMenuData = [
           { label: "Pending Requests", path: "/admin/advertisement/requests?tab=pending" },
           { label: "Active Ads", path: "/admin/advertisement/requests?tab=active" },
           { label: "Rejected Ads", path: "/admin/advertisement/requests?tab=rejected" },
+          { label: "History", path: "/admin/advertisement/requests?tab=history" },
           { label: "Ads List", path: "/admin/advertisement" },
         ],
       },

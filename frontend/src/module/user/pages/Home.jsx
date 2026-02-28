@@ -35,7 +35,7 @@ import { useLocation } from "../hooks/useLocation"
 import { useZone } from "../hooks/useZone"
 
 import offerImage from "@/assets/offerimage.png"
-import api, { restaurantAPI } from "@/lib/api"
+import api, { restaurantAPI, campaignAPI } from "@/lib/api"
 import { API_BASE_URL } from "@/lib/api/config"
 import OptimizedImage from "@/components/OptimizedImage"
 // Explore More Icons
@@ -224,6 +224,8 @@ export default function Home() {
   const [popupPosition, setPopupPosition] = useState({ top: 0, right: 0 })
   const vegModeToggleRef = useRef(null)
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
+  const [currentAdSlide, setCurrentAdSlide] = useState(0)
+  const [activeRestaurantAds, setActiveRestaurantAds] = useState([])
   const [heroBannerImages, setHeroBannerImages] = useState([])
   const [heroBannersData, setHeroBannersData] = useState([]) // Store full banner data with linked restaurants
   const [loadingBanners, setLoadingBanners] = useState(true)
@@ -336,6 +338,49 @@ export default function Home() {
 
     fetchHeroBanners()
   }, [])
+
+  // Fetch active restaurant campaign ads
+  useEffect(() => {
+    let mounted = true
+
+    const loadActiveCampaignAds = async () => {
+      try {
+        const response = await campaignAPI.getActiveAdvertisementsPublic()
+        const ads = response?.data?.data?.advertisements || []
+        if (mounted) {
+          setActiveRestaurantAds(ads)
+        }
+      } catch (error) {
+        if (mounted) {
+          setActiveRestaurantAds([])
+        }
+      }
+    }
+
+    loadActiveCampaignAds()
+    const interval = setInterval(loadActiveCampaignAds, 30000)
+
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [])
+
+  // Auto-slide active campaign ads
+  useEffect(() => {
+    if (activeRestaurantAds.length <= 1) return
+    const interval = setInterval(() => {
+      setCurrentAdSlide((prev) => (prev + 1) % activeRestaurantAds.length)
+    }, 4500)
+
+    return () => clearInterval(interval)
+  }, [activeRestaurantAds.length])
+
+  useEffect(() => {
+    if (currentAdSlide >= activeRestaurantAds.length) {
+      setCurrentAdSlide(0)
+    }
+  }, [activeRestaurantAds.length, currentAdSlide])
 
   // Fetch real categories from backend API
   useEffect(() => {
@@ -1059,6 +1104,26 @@ export default function Home() {
     setHeroSearch("")
   }, [closeSearch])
 
+  const getAdRestaurantTarget = useCallback((ad) => {
+    if (!ad) return null
+
+    const restaurant = ad.restaurant || {}
+    return (
+      restaurant.slug ||
+      restaurant.restaurantId ||
+      restaurant.id ||
+      ad.restaurantSlug ||
+      ad.restaurantId ||
+      null
+    )
+  }, [])
+
+  const handleSponsoredAdClick = useCallback((ad) => {
+    const target = getAdRestaurantTarget(ad)
+    if (!target) return
+    navigate(`/restaurants/${target}`)
+  }, [getAdRestaurantTarget, navigate])
+
   // Removed GSAP animations - using CSS and ScrollReveal components instead for better performance
   // Auto-scroll removed - manual scroll only
 
@@ -1091,6 +1156,10 @@ export default function Home() {
       {children}
     </div>
   )
+
+  const currentSponsoredAd = activeRestaurantAds[currentAdSlide] || null
+  const currentSponsoredAdTarget = getAdRestaurantTarget(currentSponsoredAd)
+  const isCurrentSponsoredAdClickable = Boolean(currentSponsoredAdTarget)
 
   return (
     <div className="relative min-h-screen bg-white dark:bg-[#0a0a0a] pb-28 md:pb-24">
@@ -1383,6 +1452,68 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {activeRestaurantAds.length > 0 && (
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 mt-4">
+          <div
+            className={`relative rounded-xl sm:rounded-2xl overflow-hidden h-28 sm:h-36 md:h-44 bg-white shadow-sm border border-gray-200 ${isCurrentSponsoredAdClickable ? "cursor-pointer" : "cursor-default"}`}
+            onClick={() => {
+              if (isCurrentSponsoredAdClickable) {
+                handleSponsoredAdClick(currentSponsoredAd)
+              }
+            }}
+            onKeyDown={(event) => {
+              if (!isCurrentSponsoredAdClickable) return
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault()
+                handleSponsoredAdClick(currentSponsoredAd)
+              }
+            }}
+            role={isCurrentSponsoredAdClickable ? "button" : undefined}
+            tabIndex={isCurrentSponsoredAdClickable ? 0 : undefined}
+            aria-label={isCurrentSponsoredAdClickable ? `Open ${currentSponsoredAd?.restaurant?.name || "restaurant"} details` : undefined}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentAdSlide}
+                initial={{ opacity: 0, x: 120 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -120 }}
+                transition={{ duration: 0.45 }}
+                className="absolute inset-0"
+              >
+                <img
+                  src={currentSponsoredAd?.bannerImage}
+                  alt={currentSponsoredAd?.title || currentSponsoredAd?.restaurant?.name || "Restaurant Advertisement"}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+                <div className="absolute left-3 bottom-3 text-white">
+                  <p className="text-[10px] uppercase tracking-wide opacity-80">Sponsored</p>
+                  <p className="text-sm font-semibold">
+                    {currentSponsoredAd?.title || currentSponsoredAd?.restaurant?.name || "Restaurant Ad"}
+                  </p>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {activeRestaurantAds.length > 1 && (
+              <div className="absolute bottom-2 right-2 flex items-center gap-1.5 z-10">
+                {activeRestaurantAds.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setCurrentAdSlide(index)
+                    }}
+                    className={`h-1.5 rounded-full transition-all ${index === currentAdSlide ? "bg-[#ff8100] w-5" : "bg-white/60 w-2"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Rest of Content - Container Width with Unified Background */}
       <motion.div
