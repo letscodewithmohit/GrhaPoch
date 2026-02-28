@@ -47,6 +47,7 @@ import paymentRoutes from './modules/payment/index.js';
 import menuRoutes from './modules/menu/index.js';
 import campaignRoutes from './modules/campaign/index.js';
 import advertisementPublicRoutes from './modules/campaign/publicRoutes.js';
+import userAdvertisementRoutes from './modules/userAdvertisements/index.js';
 import notificationRoutes from './modules/notification/index.js';
 import analyticsRoutes from './modules/analytics/index.js';
 import adminRoutes from './modules/admin/index.js';
@@ -407,6 +408,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/campaign', campaignRoutes);
 app.use('/api/advertisements', advertisementPublicRoutes);
+app.use('/api/user-advertisements', userAdvertisementRoutes);
 app.use('/api/notification', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
@@ -742,6 +744,37 @@ function initializeScheduledTasks() {
     console.log('Advertisement expiry scheduler initialized (runs daily at 12:05 AM)');
   }).catch((error) => {
     console.error('Failed to initialize advertisement expiry service:', error);
+  });
+
+  // Import user advertisement expiry service
+  import('./modules/userAdvertisements/services/userAdvertisementExpiryService.js').then(({ processUserAdvertisementExpiries }) => {
+    // Daily at 12:10 AM - expire finished user advertisements
+    cron.schedule('10 0 * * *', async () => {
+      try {
+        const result = await processUserAdvertisementExpiries();
+        if (result.expired > 0) {
+          console.log(`[User Advertisement Expiry Cron] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[User Advertisement Expiry Cron] Error:', error);
+      }
+    });
+
+    // Run once shortly after startup
+    setTimeout(async () => {
+      try {
+        const result = await processUserAdvertisementExpiries();
+        if (result.expired > 0) {
+          console.log(`[User Advertisement Expiry Startup] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[User Advertisement Expiry Startup] Error:', error);
+      }
+    }, 13000);
+
+    console.log('User advertisement expiry scheduler initialized (runs daily at 12:10 AM)');
+  }).catch((error) => {
+    console.error('Failed to initialize user advertisement expiry service:', error);
   });
 }
 

@@ -1647,6 +1647,79 @@ export const campaignAPI = {
   },
 };
 
+// User Advertisement APIs
+export const userAdvertisementAPI = {
+  // User side
+  getUserAdvertisementPricing: () => {
+    return apiClient.get('/user-advertisements/me/advertisements/pricing');
+  },
+
+  getMyAdvertisements: (params = {}) => {
+    return apiClient.get('/user-advertisements/me/advertisements', { params });
+  },
+
+  getMyAdvertisementById: (id) => {
+    return apiClient.get(`/user-advertisements/me/advertisements/${id}`);
+  },
+
+  createMyAdvertisement: (data) => {
+    return apiClient.post('/user-advertisements/me/advertisements', data);
+  },
+
+  cancelMyAdvertisement: (id) => {
+    return apiClient.delete(`/user-advertisements/me/advertisements/${id}/cancel`);
+  },
+
+  createMyAdvertisementPaymentOrder: (id) => {
+    return apiClient.post(`/user-advertisements/me/advertisements/${id}/payment-order`);
+  },
+
+  verifyMyAdvertisementPayment: (id, data) => {
+    return apiClient.post(`/user-advertisements/me/advertisements/${id}/verify-payment`, data);
+  },
+
+  getPublicActiveUserAdvertisements: () => {
+    return apiClient.get('/user-advertisements/public/active');
+  },
+
+  // Admin side
+  getAdminUserAdvertisementPricing: () => {
+    return apiClient.get('/user-advertisements/admin/advertisements/pricing');
+  },
+
+  updateAdminUserAdvertisementPricing: (pricePerDay) => {
+    return apiClient.patch('/user-advertisements/admin/advertisements/pricing', { pricePerDay });
+  },
+
+  getAdminUserAdvertisements: (params = {}) => {
+    return apiClient.get('/user-advertisements/admin/advertisements', { params });
+  },
+
+  getAdminUserAdvertisementById: (id) => {
+    return apiClient.get(`/user-advertisements/admin/advertisements/${id}`);
+  },
+
+  approveAdminUserAdvertisement: (id, data = {}) => {
+    return apiClient.patch(`/user-advertisements/admin/advertisements/${id}/approve`, data);
+  },
+
+  rejectAdminUserAdvertisement: (id, data = {}) => {
+    return apiClient.patch(`/user-advertisements/admin/advertisements/${id}/reject`, data);
+  },
+
+  setAdminUserAdvertisementPosition: (id, position) => {
+    return apiClient.patch(`/user-advertisements/admin/advertisements/${id}/position`, { position });
+  },
+
+  setAdminUserAdvertisementStatus: (id, status, adminNote = '') => {
+    return apiClient.patch(`/user-advertisements/admin/advertisements/${id}/status`, { status, adminNote });
+  },
+
+  deleteAdminUserAdvertisement: (id) => {
+    return apiClient.delete(`/user-advertisements/admin/advertisements/${id}`);
+  },
+};
+
 // Upload / media helper functions
 export const uploadAPI = {
   /**
