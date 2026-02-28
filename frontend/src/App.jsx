@@ -99,6 +99,10 @@ import UpdateBankDetails from "@/module/restaurant/pages/UpdateBankDetails"
 import ZoneSetup from "@/module/restaurant/pages/ZoneSetup"
 import SubscriptionPage from "@/module/restaurant/pages/SubscriptionPage"
 import SubscriptionSuccess from "@/module/restaurant/pages/SubscriptionSuccess"
+import DiningManagement from "@/module/restaurant/pages/DiningManagement"
+import DiningSlotsDiscountsPage from "@/module/restaurant/pages/DiningSlotsDiscountsPage"
+import ManageTablesPage from "@/module/restaurant/pages/ManageTablesPage"
+import TableBookingsPage from "@/module/restaurant/pages/TableBookingsPage"
 
 import AdminRouter from "@/module/admin/components/AdminRouter"
 import AdminLogin from "@/module/admin/pages/auth/AdminLogin"
@@ -342,6 +346,38 @@ export default function App() {
         element={
           <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
             <DeliverySettings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/restaurant/dining-management"
+        element={
+          <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
+            <DiningManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/restaurant/dining-management/slots-discounts"
+        element={
+          <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
+            <DiningSlotsDiscountsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/restaurant/dining-management/manage-tables"
+        element={
+          <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
+            <ManageTablesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/restaurant/dining-management/table-bookings"
+        element={
+          <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
+            <TableBookingsPage />
           </ProtectedRoute>
         }
       />

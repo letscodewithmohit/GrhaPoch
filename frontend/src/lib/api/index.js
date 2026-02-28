@@ -324,8 +324,8 @@ export const restaurantAPI = {
   },
 
   // Get restaurant profile
-  getProfile: () => {
-    return apiClient.get(API_ENDPOINTS.RESTAURANT.PROFILE);
+  getProfile: (config = {}) => {
+    return apiClient.get(API_ENDPOINTS.RESTAURANT.PROFILE, config);
   },
 
   // Update restaurant profile
@@ -664,6 +664,35 @@ export const restaurantAPI = {
   deleteNotification: (id) => {
     return apiClient.delete(`/restaurant/notifications/${id}`);
   },
+
+  // Dining Tables
+  getDiningTables: () => {
+    return apiClient.get(API_ENDPOINTS.RESTAURANT.DINING_TABLES);
+  },
+  addDiningTable: (data) => {
+    return apiClient.post(API_ENDPOINTS.RESTAURANT.DINING_TABLES, data);
+  },
+  deleteDiningTable: (id) => {
+    return apiClient.delete(API_ENDPOINTS.RESTAURANT.DINING_TABLE_BY_ID.replace(':id', id));
+  },
+  updateDiningSettings: (data, config = {}) => {
+    return apiClient.put(API_ENDPOINTS.RESTAURANT.DINING_SETTINGS, data, config);
+  },
+  getDiningActivationStatus: () => {
+    return apiClient.get(API_ENDPOINTS.RESTAURANT.DINING_ACTIVATION.STATUS);
+  },
+  requestDiningEnable: () => {
+    return apiClient.post(API_ENDPOINTS.RESTAURANT.DINING_ACTIVATION.REQUEST);
+  },
+  enableDiningWithoutPayment: () => {
+    return apiClient.post(API_ENDPOINTS.RESTAURANT.DINING_ACTIVATION.ENABLE_FREE);
+  },
+  createDiningActivationOrder: () => {
+    return apiClient.post(API_ENDPOINTS.RESTAURANT.DINING_ACTIVATION.CREATE_ORDER);
+  },
+  verifyDiningActivationPayment: (paymentData) => {
+    return apiClient.post(API_ENDPOINTS.RESTAURANT.DINING_ACTIVATION.VERIFY_PAYMENT, paymentData);
+  }
 };
 
 // Export delivery API helper functions
@@ -1736,6 +1765,32 @@ export const diningAPI = {
   // Get dining stories
   getStories: () => {
     return apiClient.get(API_ENDPOINTS.DINING.STORIES);
+  },
+
+  // Dining Booking operations
+  getAvailableTables: (restaurantId, params) => {
+    return apiClient.get(`/dining/restaurants/${restaurantId}/tables`, { params });
+  },
+  getPlatformFee: (restaurantId) => {
+    return apiClient.get(`/dining/restaurants/${restaurantId}/platform-fee`);
+  },
+  initiateBookingPayment: (restaurantId, data) => {
+    return apiClient.post(`/dining/restaurants/${restaurantId}/bookings/initiate-payment`, data);
+  },
+  verifyAndCreateBooking: (restaurantId, data) => {
+    return apiClient.post(`/dining/restaurants/${restaurantId}/bookings/verify-and-create`, data);
+  },
+  createBooking: (restaurantId, data) => {
+    return apiClient.post(`/dining/restaurants/${restaurantId}/bookings`, data);
+  },
+  updateBookingStatus: (bookingId, status) => {
+    return apiClient.patch(`/dining/bookings/${bookingId}/status`, { status });
+  },
+  getMyBookings: () => {
+    return apiClient.get(`/dining/bookings/user`);
+  },
+  getRestaurantBookings: (restaurantId) => {
+    return apiClient.get(`/dining/restaurants/${restaurantId}/bookings`);
   },
 };
 

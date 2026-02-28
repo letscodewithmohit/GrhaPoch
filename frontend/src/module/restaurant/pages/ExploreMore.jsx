@@ -226,8 +226,8 @@ function TimePickerWheel({
                   >
                     <span
                       className={`text-lg transition-all duration-200 ${selectedHour === hour
-                          ? "font-bold text-gray-900 text-xl"
-                          : "font-normal text-gray-400 text-base"
+                        ? "font-bold text-gray-900 text-xl"
+                        : "font-normal text-gray-400 text-base"
                         }`}
                     >
                       {hour}
@@ -263,8 +263,8 @@ function TimePickerWheel({
                   >
                     <span
                       className={`text-lg transition-all duration-200 ${selectedMinute === minute
-                          ? "font-bold text-gray-900 text-xl"
-                          : "font-normal text-gray-400 text-base"
+                        ? "font-bold text-gray-900 text-xl"
+                        : "font-normal text-gray-400 text-base"
                         }`}
                     >
                       {minute.toString().padStart(2, "0")}
@@ -296,8 +296,8 @@ function TimePickerWheel({
                   >
                     <span
                       className={`text-lg transition-all duration-200 ${selectedPeriod === period
-                          ? "font-bold text-gray-900 text-xl"
-                          : "font-normal text-gray-400 text-base"
+                        ? "font-bold text-gray-900 text-xl"
+                        : "font-normal text-gray-400 text-base"
                         }`}
                     >
                       {period.toUpperCase()}
@@ -674,6 +674,7 @@ export default function ExploreMore() {
     { id: 1, label: "Outlet info", icon: Info, route: "/restaurant/outlet-info" },
     { id: 2, label: "Outlet timings", icon: Clock, route: "/restaurant/outlet-timings" },
     { id: 3, label: "Manage staff", icon: Users, route: "/restaurant/contact-details" },
+    { id: 4, label: "Dining Management", icon: Settings, route: "/restaurant/dining-management" },
   ]
 
   const settingsItems = [

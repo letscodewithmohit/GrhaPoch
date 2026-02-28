@@ -166,6 +166,19 @@ const restaurantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    diningActivationPaid: {
+      type: Boolean,
+      default: false,
+    },
+    diningActivationAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    diningActivationDate: {
+      type: Date,
+      default: null,
+    },
     diningGuests: {
       type: Number,
       default: 15,
@@ -173,6 +186,32 @@ const restaurantSchema = new mongoose.Schema(
     diningCategory: {
       type: String,
       default: '',
+    },
+    diningPlatformFee: {
+      amount: {
+        type: Number,
+        default: 0
+      },
+      isActive: {
+        type: Boolean,
+        default: false
+      }
+    },
+    diningSlots: {
+      lunch: [
+        {
+          time: { type: String, required: true },
+          discount: { type: String, default: "" },
+          isAvailable: { type: Boolean, default: true }
+        }
+      ],
+      dinner: [
+        {
+          time: { type: String, required: true },
+          discount: { type: String, default: "" },
+          isAvailable: { type: Boolean, default: true }
+        }
+      ]
     },
     // Onboarding fields (merged from RestaurantOnboarding)
     onboarding: {

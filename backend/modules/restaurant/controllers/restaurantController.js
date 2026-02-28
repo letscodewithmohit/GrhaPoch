@@ -546,6 +546,11 @@ export const updateRestaurantProfile = asyncHandler(async (req, res) => {
       updateData.ownerPhone = ownerPhone;
     }
 
+    // Update dining platform fee if provided
+    if (req.body.diningPlatformFee !== undefined) {
+      updateData.diningPlatformFee = req.body.diningPlatformFee;
+    }
+
     // Update restaurant
     Object.assign(restaurant, updateData);
     await restaurant.save();
@@ -973,4 +978,39 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
     return errorResponse(res, 500, 'Failed to fetch restaurants with dishes under ₹250');
   }
 };
+
+/**
+ * Update restaurant dining settings (slots and discounts)
+ */
+export const updateDiningSettings = asyncHandler(async (req, res) => {
+  const { diningSlots, diningGuests, diningEnabled } = req.body;
+
+  const restaurant = await Restaurant.findById(req.restaurant._id || req.user?._id);
+  if (!restaurant) {
+    return errorResponse(res, 404, 'Restaurant not found');
+  }
+
+  if (diningSlots) restaurant.diningSlots = diningSlots;
+  if (diningGuests !== undefined) restaurant.diningGuests = diningGuests;
+
+  if (diningEnabled !== undefined) {
+    const isCommissionBased = String(restaurant.businessModel || '').toLowerCase().includes('commission');
+    const isTryingToEnableWithoutPayment =
+      Boolean(diningEnabled) && isCommissionBased && !restaurant.diningActivationPaid;
+
+    if (isTryingToEnableWithoutPayment) {
+      return errorResponse(res, 403, 'Complete dining activation payment before enabling dining');
+    }
+
+    restaurant.diningEnabled = diningEnabled;
+  }
+
+  await restaurant.save();
+
+  return successResponse(res, 200, 'Dining settings updated successfully', {
+    diningSlots: restaurant.diningSlots,
+    diningGuests: restaurant.diningGuests,
+    diningEnabled: restaurant.diningEnabled
+  });
+});
 

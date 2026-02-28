@@ -104,6 +104,12 @@ const businessSettingsSchema = new mongoose.Schema(
       default: 5,
       min: 1
     },
+    // Dining activation fee for commission-based restaurants
+    diningActivationFee: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',
@@ -132,6 +138,7 @@ businessSettingsSchema.statics.getSettings = async function () {
         },
         deliveryCashLimit: 5000,
         deliveryWithdrawalLimit: 100,
+        diningActivationFee: 0,
         donationAmounts: [20, 50, 100],
         deliveryTipAmounts: [10, 20, 30, 50]
       });
@@ -152,6 +159,7 @@ businessSettingsSchema.statics.getSettings = async function () {
         },
         deliveryCashLimit: 5000,
         deliveryWithdrawalLimit: 100,
+        diningActivationFee: 0,
         donationAmounts: [20, 50, 100],
         deliveryTipAmounts: [10, 20, 30, 50]
       });

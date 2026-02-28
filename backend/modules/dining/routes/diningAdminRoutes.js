@@ -14,7 +14,10 @@ import {
     deleteDiningStory,
     updateDiningStory,
     getActiveRestaurants,
-    updateDiningSettings
+    updateDiningSettings,
+    getAllDiningBookings,
+    getDiningActivationFeeSettings,
+    updateDiningActivationFeeSettings
 } from '../controllers/diningAdminController.js';
 
 const router = express.Router();
@@ -41,5 +44,12 @@ router.get('/stories', authenticateAdmin, getAdminDiningStories);
 router.post('/stories', authenticateAdmin, uploadMiddleware.single('image'), createDiningStory);
 router.put('/stories/:id', authenticateAdmin, uploadMiddleware.single('image'), updateDiningStory);
 router.delete('/stories/:id', authenticateAdmin, deleteDiningStory);
+
+// Bookings
+router.get('/bookings/all', authenticateAdmin, getAllDiningBookings);
+
+// Activation Fee Settings
+router.get('/settings/activation-fee', authenticateAdmin, getDiningActivationFeeSettings);
+router.put('/settings/activation-fee', authenticateAdmin, updateDiningActivationFeeSettings);
 
 export default router;

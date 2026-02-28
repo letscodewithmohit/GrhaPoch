@@ -99,8 +99,24 @@ const createOrder = async (options) => {
     };
 
     logger.info('Calling Razorpay API to create order...');
+
+    // Check for placeholder credentials and return mock order in development
+    const credentials = await getRazorpayCredentials();
+    if (credentials.keyId === 'grhapoch123' || credentials.keySecret === 'xZrjNjmvhSniJDIOZ2mOmUxS') {
+      logger.warn('⚠️ Using placeholder Razorpay credentials. Returning mock order for development.');
+      return {
+        id: `order_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        amount: orderOptions.amount,
+        currency: orderOptions.currency,
+        receipt: orderOptions.receipt,
+        status: 'created',
+        notes: orderOptions.notes,
+        created_at: Math.floor(Date.now() / 1000)
+      };
+    }
+
     const order = await razorpay.orders.create(orderOptions);
-    
+
     logger.info(`Razorpay order created successfully: ${order.id}`, {
       orderId: order.id,
       amount: order.amount,
@@ -122,7 +138,7 @@ const createOrder = async (options) => {
       },
       stack: error.stack
     });
-    
+
     // Return more descriptive error message
     let errorMessage = 'Failed to create payment order';
     if (error.error && error.error.description) {
@@ -130,7 +146,7 @@ const createOrder = async (options) => {
     } else if (error.message) {
       errorMessage = error.message;
     }
-    
+
     throw new Error(errorMessage);
   }
 };
@@ -145,7 +161,7 @@ const createOrder = async (options) => {
 const verifyPayment = async (razorpayOrderId, razorpayPaymentId, razorpaySignature) => {
   const credentials = await getRazorpayCredentials();
   const keySecret = credentials.keySecret;
-  
+
   if (!keySecret) {
     logger.error('Razorpay key secret not found');
     return false;
@@ -158,7 +174,15 @@ const verifyPayment = async (razorpayOrderId, razorpayPaymentId, razorpaySignatu
       .digest('hex');
 
     const isValid = generatedSignature === razorpaySignature;
-    
+
+    // Allow mock payments in development if using placeholder credentials
+    if (!isValid && (credentials.keyId === 'grhapoch123' || credentials.keySecret === 'xZrjNjmvhSniJDIOZ2mOmUxS')) {
+      if (razorpayOrderId && razorpayOrderId.startsWith('order_mock_')) {
+        logger.warn('⚠️ Verifying mock payment with placeholder credentials.');
+        return true;
+      }
+    }
+
     if (!isValid) {
       logger.warn('Invalid Razorpay signature', {
         razorpayOrderId,

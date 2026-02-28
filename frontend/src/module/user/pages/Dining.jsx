@@ -13,6 +13,7 @@ import { diningAPI } from "@/lib/api"
 import api from "@/lib/api"
 import PageNavbar from "../components/PageNavbar"
 import OptimizedImage from "@/components/OptimizedImage"
+import { getActiveDiningBookings, mergeDiningBookings, normalizeDiningBooking, readDiningBookings, writeDiningBookings } from "../utils/diningBookings"
 
 // Using placeholders for dining card images
 const diningCard1 = "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop"
@@ -77,6 +78,29 @@ export default function Dining() {
   const [bankOfferItems, setBankOfferItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [diningHeroBanner, setDiningHeroBanner] = useState(null)
+  const [diningBookings, setDiningBookings] = useState([])
+  const [bookingTimeTick, setBookingTimeTick] = useState(Date.now())
+
+  const syncDiningBookings = useCallback(async () => {
+    const cachedBookings = readDiningBookings()
+    setDiningBookings(cachedBookings)
+
+    const hasUserToken = !!(localStorage.getItem("user_accessToken") || localStorage.getItem("accessToken"))
+    if (!hasUserToken) return
+
+    try {
+      const response = await diningAPI.getMyBookings()
+      if (response.data?.success) {
+        const apiBookings = Array.isArray(response.data.data) ? response.data.data : []
+        const normalizedApiBookings = apiBookings.map((booking) => normalizeDiningBooking(booking))
+        const mergedBookings = mergeDiningBookings(cachedBookings, normalizedApiBookings)
+        setDiningBookings(mergedBookings)
+        writeDiningBookings(mergedBookings)
+      }
+    } catch {
+      // Keep cached bookings when sync fails.
+    }
+  }, [])
 
   useEffect(() => {
     const fetchDiningHeroBanner = async () => {
@@ -121,6 +145,29 @@ export default function Dining() {
     }
     fetchDiningData()
   }, [location?.city])
+
+  useEffect(() => {
+    syncDiningBookings()
+
+    const onDiningBookingsUpdated = () => {
+      syncDiningBookings()
+    }
+
+    const timer = setInterval(() => {
+      setBookingTimeTick(Date.now())
+    }, 30000)
+
+    window.addEventListener("diningBookingsUpdated", onDiningBookingsUpdated)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener("diningBookingsUpdated", onDiningBookingsUpdated)
+    }
+  }, [syncDiningBookings])
+
+  const activeBooking = useMemo(() => {
+    const activeBookings = getActiveDiningBookings(diningBookings, new Date(bookingTimeTick))
+    return activeBookings.length > 0 ? activeBookings[0] : null
+  }, [diningBookings, bookingTimeTick])
 
   const toggleFilter = (filterId) => {
     setActiveFilters(prev => {
@@ -282,6 +329,35 @@ export default function Dining() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-6 sm:pt-8 md:pt-10 lg:pt-12 pb-6 md:pb-8 lg:pb-10">
+        {activeBooking && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold tracking-wide text-emerald-700 uppercase">Dining Booking Update</p>
+                <p className="text-sm font-bold text-emerald-900 mt-1 truncate">
+                  {activeBooking.restaurantName || "Restaurant"}
+                </p>
+                <p className="text-xs font-medium text-emerald-800 mt-1">
+                  {activeBooking.date} at {activeBooking.time} • {activeBooking.guests} Guests
+                </p>
+                <p className="text-xs font-semibold text-emerald-700 mt-1">
+                  Status: {activeBooking.bookingStatus || "Pending"}
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate("/user/profile/dining-bookings")}
+                className="h-9 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+              >
+                View
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Categories Section */}
         <div className="mb-6">
           <div className="mb-4">

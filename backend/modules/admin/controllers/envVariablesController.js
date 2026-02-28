@@ -47,10 +47,10 @@ export const getPublicEnvVariables = asyncHandler(async (req, res) => {
     const envData = envVars.toEnvObject();
 
     // Return only public variables that frontend needs
-    // NO FALLBACK - Only use database value
+    // Fallback to process.env if database value is empty
     const publicEnvData = {
-      VITE_GOOGLE_MAPS_API_KEY: envData.VITE_GOOGLE_MAPS_API_KEY || '',
-      VITE_RAZORPAY_KEY_ID: envData.RAZORPAY_API_KEY || ''
+      VITE_GOOGLE_MAPS_API_KEY: envData.VITE_GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '',
+      VITE_RAZORPAY_KEY_ID: envData.RAZORPAY_API_KEY || process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY || ''
     };
 
     return successResponse(res, 200, 'Public environment variables retrieved successfully', publicEnvData);

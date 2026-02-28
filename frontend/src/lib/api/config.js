@@ -191,6 +191,16 @@ export const API_ENDPOINTS = {
     UNDER_250: '/restaurant/under-250',
     BY_ID: '/restaurant/:id',
     BY_OWNER: '/restaurant/owner/me',
+    DINING_TABLES: '/restaurant/dining-tables',
+    DINING_TABLE_BY_ID: '/restaurant/dining-tables/:id',
+    DINING_SETTINGS: '/restaurant/dining-settings',
+    DINING_ACTIVATION: {
+      STATUS: '/restaurant/dining-activation/status',
+      REQUEST: '/restaurant/dining-activation/request',
+      ENABLE_FREE: '/restaurant/dining-activation/enable-free',
+      CREATE_ORDER: '/restaurant/dining-activation/create-order',
+      VERIFY_PAYMENT: '/restaurant/dining-activation/verify-payment',
+    },
     SUBSCRIPTION: {
       CREATE_ORDER: '/restaurant/subscription/create-order',
       VERIFY_PAYMENT: '/restaurant/subscription/verify-payment',
