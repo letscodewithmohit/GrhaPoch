@@ -53,6 +53,7 @@ const mapRow = (ad) => {
     title: ad.title,
     userName: ad.user?.name || "N/A",
     userEmail: ad.user?.email || "-",
+    websiteUrl: ad.websiteUrl || "",
     type: "Banner Promotion",
     duration: `${formatDate(startDate)} - ${formatDate(endDate)}`,
     durationDays: Number(ad.durationDays) > 0 ? Number(ad.durationDays) : getRangeDays(startDate, endDate),
@@ -375,6 +376,21 @@ export default function UserAdvertisements() {
               <div><p className="font-semibold text-slate-700">Duration</p><p>{selectedRow.duration}</p></div>
               <div><p className="font-semibold text-slate-700">Selected Days</p><p>{selectedRow.durationDays} day(s)</p></div>
               <div><p className="font-semibold text-slate-700">Created</p><p>{formatDate(selectedRow.createdAt)}</p></div>
+              <div className="col-span-2">
+                <p className="font-semibold text-slate-700">Website URL</p>
+                {selectedRow.websiteUrl ? (
+                  <a
+                    href={selectedRow.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-700 break-all"
+                  >
+                    {selectedRow.websiteUrl}
+                  </a>
+                ) : (
+                  <p>-</p>
+                )}
+              </div>
               {selectedRow.bannerImage && (
                 <div className="col-span-2">
                   <p className="font-semibold text-slate-700 mb-2">Banner</p>

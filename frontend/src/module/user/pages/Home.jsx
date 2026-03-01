@@ -35,7 +35,7 @@ import { useLocation } from "../hooks/useLocation"
 import { useZone } from "../hooks/useZone"
 
 import offerImage from "@/assets/offerimage.png"
-import api, { restaurantAPI, campaignAPI } from "@/lib/api"
+import api, { restaurantAPI, campaignAPI, userAdvertisementAPI } from "@/lib/api"
 import { API_BASE_URL } from "@/lib/api/config"
 import OptimizedImage from "@/components/OptimizedImage"
 // Explore More Icons
@@ -345,10 +345,28 @@ export default function Home() {
 
     const loadActiveCampaignAds = async () => {
       try {
-        const response = await campaignAPI.getActiveAdvertisementsPublic()
-        const ads = response?.data?.data?.advertisements || []
+        const [campaignAdsResult, userAdsResult] = await Promise.allSettled([
+          campaignAPI.getActiveAdvertisementsPublic(),
+          userAdvertisementAPI.getPublicActiveUserAdvertisements(),
+        ])
+
+        const campaignAds =
+          campaignAdsResult.status === "fulfilled"
+            ? (campaignAdsResult.value?.data?.data?.advertisements || [])
+            : []
+
+        const userAds =
+          userAdsResult.status === "fulfilled"
+            ? (userAdsResult.value?.data?.data?.advertisements || [])
+            : []
+
+        const mergedAds = [...campaignAds, ...userAds].filter((ad) => {
+          const banner = String(ad?.bannerImage || "").trim()
+          return banner.length > 0
+        })
+
         if (mounted) {
-          setActiveRestaurantAds(ads)
+          setActiveRestaurantAds(mergedAds)
         }
       } catch (error) {
         if (mounted) {
@@ -1102,11 +1120,32 @@ export default function Home() {
     )
   }, [])
 
+  const getAdWebsiteTarget = useCallback((ad) => {
+    const rawUrl = String(ad?.websiteUrl || "").trim()
+    if (!rawUrl) return null
+
+    const withProtocol = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
+    try {
+      const parsed = new URL(withProtocol)
+      if (!["http:", "https:"].includes(parsed.protocol)) return null
+      if (!parsed.hostname) return null
+      return parsed.toString()
+    } catch {
+      return null
+    }
+  }, [])
+
   const handleSponsoredAdClick = useCallback((ad) => {
+    const externalTarget = getAdWebsiteTarget(ad)
+    if (externalTarget) {
+      window.open(externalTarget, "_blank", "noopener,noreferrer")
+      return
+    }
+
     const target = getAdRestaurantTarget(ad)
     if (!target) return
     navigate(`/restaurants/${target}`)
-  }, [getAdRestaurantTarget, navigate])
+  }, [getAdRestaurantTarget, getAdWebsiteTarget, navigate])
 
   // Removed GSAP animations - using CSS and ScrollReveal components instead for better performance
   // Auto-scroll removed - manual scroll only
@@ -1142,8 +1181,9 @@ export default function Home() {
   )
 
   const currentSponsoredAd = activeRestaurantAds[currentAdSlide] || null
+  const currentSponsoredAdWebsiteTarget = getAdWebsiteTarget(currentSponsoredAd)
   const currentSponsoredAdTarget = getAdRestaurantTarget(currentSponsoredAd)
-  const isCurrentSponsoredAdClickable = Boolean(currentSponsoredAdTarget)
+  const isCurrentSponsoredAdClickable = Boolean(currentSponsoredAdWebsiteTarget || currentSponsoredAdTarget)
 
   return (
     <div className="relative min-h-screen bg-white dark:bg-[#0a0a0a] pb-28 md:pb-24">
@@ -1455,7 +1495,7 @@ export default function Home() {
             }}
             role={isCurrentSponsoredAdClickable ? "button" : undefined}
             tabIndex={isCurrentSponsoredAdClickable ? 0 : undefined}
-            aria-label={isCurrentSponsoredAdClickable ? `Open ${currentSponsoredAd?.restaurant?.name || "restaurant"} details` : undefined}
+            aria-label={isCurrentSponsoredAdClickable ? `Open ${currentSponsoredAd?.title || currentSponsoredAd?.restaurant?.name || "advertisement"} details` : undefined}
           >
             <AnimatePresence mode="wait">
               <motion.div

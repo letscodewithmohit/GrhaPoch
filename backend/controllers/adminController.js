@@ -229,7 +229,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     // Get active partners count
     const activeRestaurants = await Restaurant.countDocuments({ isActive: true });
     // Note: Delivery partners are stored in User model
-    const User = (await import('../../auth/models/User.js')).default;
+    const User = (await import('../models/User.js')).default;
     const activeDeliveryPartners = await User.countDocuments({
       role: 'delivery',
       isActive: true
@@ -280,7 +280,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     // Total foods (Menu items) - Count all individual menu items from active menus
     // Count ALL items (including disabled sections, unavailable items, pending/approved, excluding only rejected)
-    const Menu = (await import('../../restaurant/models/Menu.js')).default;
+    const Menu = (await import('../models/Menu.js')).default;
     // Get all active menus and count items in sections and subsections
     const activeMenus = await Menu.find({ isActive: true }).select('sections').lean();
     let totalFoods = 0;
@@ -851,7 +851,7 @@ export const changeAdminPassword = asyncHandler(async (req, res) => {
 export const getUsers = asyncHandler(async (req, res) => {
   try {
     const { limit = 100, offset = 0, search, status, sortBy, orderDate, joiningDate } = req.query;
-    const User = (await import('../../auth/models/User.js')).default;
+    const User = (await import('../models/User.js')).default;
 
     // Build query
     const query = { role: 'user' }; // Only get users, not restaurants/delivery/admins
@@ -984,7 +984,7 @@ export const getUsers = asyncHandler(async (req, res) => {
 export const getUserById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const User = (await import('../../auth/models/User.js')).default;
+    const User = (await import('../models/User.js')).default;
 
     const user = await User.findById(id)
       .select('-password -__v')
@@ -1065,7 +1065,7 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
-    const User = (await import('../../auth/models/User.js')).default;
+    const User = (await import('../models/User.js')).default;
 
     if (typeof isActive !== 'boolean') {
       return errorResponse(res, 400, 'isActive must be a boolean value');
@@ -2608,8 +2608,8 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
 
     console.log('📋 Query params:', { fromDate, toDate, all, customer, search });
 
-    const UserWallet = (await import('../../user/models/UserWallet.js')).default;
-    const User = (await import('../../auth/models/User.js')).default;
+    const UserWallet = (await import('../models/UserWallet.js')).default;
+    const User = (await import('../models/User.js')).default;
 
     // Build date filter
     let dateFilter = {};
@@ -2811,7 +2811,7 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
 export const getRestaurantMenu = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const Menu = (await import('../../restaurant/models/Menu.js')).default;
+    const Menu = (await import('../models/Menu.js')).default;
 
     // Find restaurant by ID
     const restaurant = await Restaurant.findOne({
@@ -2863,7 +2863,7 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { sections } = req.body;
     const adminId = req.user._id;
-    const Menu = (await import('../../restaurant/models/Menu.js')).default;
+    const Menu = (await import('../models/Menu.js')).default;
 
     // Find restaurant by ID
     const restaurant = await Restaurant.findOne({

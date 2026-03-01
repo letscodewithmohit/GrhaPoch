@@ -47,6 +47,22 @@ const parseDate = (value) => {
   return parsed;
 };
 
+const normalizeWebsiteUrl = (value) => {
+  const rawValue = String(value || '').trim();
+  if (!rawValue) return null;
+
+  const withProtocol = /^https?:\/\//i.test(rawValue) ? rawValue : `https://${rawValue}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    if (!parsed.hostname) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
 const normalizePosition = (value) => {
   const position = String(value || '').trim().toLowerCase();
   if (!ALLOWED_POSITIONS.has(position)) return null;
@@ -104,6 +120,7 @@ const toUserPayload = (ad, options = {}) => {
     adId: ad.adId,
     bannerImage: ad.bannerImage,
     title: ad.title,
+    websiteUrl: ad.websiteUrl || '',
     durationDays,
     pricePerDay: ad.pricePerDay,
     totalAmount: ad.totalAmount,
@@ -252,6 +269,25 @@ const appendPaymentLog = (advertisement, log) => {
   advertisement.paymentLogs = existing.slice(-20);
 };
 
+const hasOverlappingUserBannerDateRange = async ({ position, startDate, endDate, excludeId = null }) => {
+  if (!position || !startDate || !endDate) return null;
+
+  const query = {
+    isDeleted: false,
+    status: { $in: OPEN_USER_ADVERTISEMENT_STATUSES },
+    position,
+    startDate: { $type: 'date', $lte: endDate },
+    endDate: { $type: 'date', $gte: startDate }
+  };
+
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+
+  return UserAdvertisement.findOne(query)
+    .select('_id adId title websiteUrl startDate endDate status paymentStatus position');
+};
+
 const hasPositionConflict = async ({ position, startDate, endDate, excludeId = null }) => {
   if (!position || !startDate || !endDate) return false;
 
@@ -338,6 +374,10 @@ export const createUserAdvertisement = asyncHandler(async (req, res) => {
   if (!title) {
     return errorResponse(res, 400, 'Title is required');
   }
+  const websiteUrl = normalizeWebsiteUrl(req.body.websiteUrl);
+  if (!websiteUrl) {
+    return errorResponse(res, 400, 'Valid websiteUrl is required');
+  }
 
   const parsedStartDateRaw = parseDate(req.body.startDate);
   const parsedEndDateRaw = parseDate(req.body.endDate);
@@ -366,6 +406,21 @@ export const createUserAdvertisement = asyncHandler(async (req, res) => {
   const requestedPosition = normalizePosition(req.body.position);
   const position = requestedPosition || 'home_top';
 
+  const overlappingBanner = await hasOverlappingUserBannerDateRange({
+    position,
+    startDate,
+    endDate
+  });
+
+  if (overlappingBanner) {
+    return errorResponse(
+      res,
+      409,
+      'Dates overlap with an existing banner. Choose different dates.',
+      { advertisement: toUserPayload(overlappingBanner) }
+    );
+  }
+
   const uploadedBanner = await uploadBanner(req.file);
   const pricePerDay = await getUserAdvertisementPricePerDay();
   const totalAmount = calculateTotalAmount(durationDays, pricePerDay);
@@ -375,6 +430,7 @@ export const createUserAdvertisement = asyncHandler(async (req, res) => {
     bannerImage: uploadedBanner.url,
     bannerPublicId: uploadedBanner.publicId,
     title,
+    websiteUrl,
     startDate,
     endDate,
     durationDays,
@@ -779,6 +835,33 @@ export const approveUserAdvertisement = asyncHandler(async (req, res) => {
     return errorResponse(res, 400, 'Invalid banner position');
   }
 
+  const nextPosition = requestedPosition || advertisement.position;
+  const parsedStartDate = parseDate(advertisement.startDate);
+  const parsedEndDate = parseDate(advertisement.endDate);
+
+  if (parsedStartDate && parsedEndDate) {
+    const { startDate, endDate } = normalizeDateRange({
+      startDate: parsedStartDate,
+      endDate: parsedEndDate
+    });
+
+    const overlappingBanner = await hasOverlappingUserBannerDateRange({
+      position: nextPosition,
+      startDate,
+      endDate,
+      excludeId: advertisement._id
+    });
+
+    if (overlappingBanner) {
+      return errorResponse(
+        res,
+        409,
+        'Dates overlap with an existing banner. Choose different dates.',
+        { advertisement: toUserPayload(overlappingBanner) }
+      );
+    }
+  }
+
   advertisement.status = 'approved';
   advertisement.rejectionReason = '';
   advertisement.adminNote = String(req.body?.adminNote || '').trim();
@@ -832,16 +915,30 @@ export const setUserAdvertisementPosition = asyncHandler(async (req, res) => {
     return errorResponse(res, 400, 'Valid banner position is required');
   }
 
-  if (advertisement.status === 'active' && advertisement.startDate && advertisement.endDate) {
-    const hasConflict = await hasPositionConflict({
-      position,
+  if (
+    OPEN_USER_ADVERTISEMENT_STATUSES.includes(advertisement.status) &&
+    advertisement.startDate &&
+    advertisement.endDate
+  ) {
+    const { startDate, endDate } = normalizeDateRange({
       startDate: advertisement.startDate,
-      endDate: advertisement.endDate,
+      endDate: advertisement.endDate
+    });
+
+    const overlappingBanner = await hasOverlappingUserBannerDateRange({
+      position,
+      startDate,
+      endDate,
       excludeId: advertisement._id
     });
 
-    if (hasConflict) {
-      return errorResponse(res, 409, 'Selected banner position is already occupied for this date range');
+    if (overlappingBanner) {
+      return errorResponse(
+        res,
+        409,
+        'Dates overlap with an existing banner. Choose different dates.',
+        { advertisement: toUserPayload(overlappingBanner) }
+      );
     }
   }
 
@@ -971,6 +1068,7 @@ export const listPublicActiveUserAdvertisements = asyncHandler(async (req, res) 
       adId: ad.adId,
       title: ad.title,
       bannerImage: ad.bannerImage,
+      websiteUrl: ad.websiteUrl || '',
       position: ad.position,
       startDate: ad.startDate,
       endDate: ad.endDate,

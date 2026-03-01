@@ -80,6 +80,12 @@ const userAdvertisementSchema = new mongoose.Schema(
       trim: true,
       maxlength: 140
     },
+    websiteUrl: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 2048
+    },
     durationDays: {
       type: Number,
       min: 1,

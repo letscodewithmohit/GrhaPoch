@@ -53,6 +53,20 @@ const parseInputDate = (value) => {
   return new Date(year, month - 1, day, 0, 0, 0, 0)
 }
 
+const normalizeWebsiteUrl = (value) => {
+  const raw = String(value || "").trim()
+  if (!raw) return ""
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+  try {
+    const parsed = new URL(withProtocol)
+    if (!["http:", "https:"].includes(parsed.protocol)) return ""
+    if (!parsed.hostname) return ""
+    return parsed.toString()
+  } catch {
+    return ""
+  }
+}
+
 const getRangeDays = (startDate, endDate) => {
   const start = parseInputDate(startDate)
   const end = parseInputDate(endDate)
@@ -87,6 +101,7 @@ export default function MyAdvertisements() {
   const [currentPage, setCurrentPage] = useState(1)
 
   const [title, setTitle] = useState("")
+  const [websiteUrl, setWebsiteUrl] = useState("")
   const [startDate, setStartDate] = useState(() => getTomorrowInputDate())
   const [endDate, setEndDate] = useState(() => getTomorrowInputDate())
   const [bannerFile, setBannerFile] = useState(null)
@@ -178,6 +193,7 @@ export default function MyAdvertisements() {
 
   const resetForm = () => {
     setTitle("")
+    setWebsiteUrl("")
     const tomorrow = getTomorrowInputDate()
     setStartDate(tomorrow)
     setEndDate(tomorrow)
@@ -206,6 +222,7 @@ export default function MyAdvertisements() {
     const parsedEndDate = parseInputDate(endDate)
     const tomorrow = parseInputDate(getTomorrowInputDate())
     const rangeDays = getRangeDays(startDate, endDate)
+    const normalizedWebsiteUrl = normalizeWebsiteUrl(websiteUrl)
 
     if (!bannerFile) {
       setErrorMessage("Banner image is required")
@@ -213,6 +230,10 @@ export default function MyAdvertisements() {
     }
     if (!title.trim()) {
       setErrorMessage("Title is required")
+      return
+    }
+    if (!normalizedWebsiteUrl) {
+      setErrorMessage("Valid website URL is required")
       return
     }
     if (!parsedStartDate || !parsedEndDate) {
@@ -237,6 +258,7 @@ export default function MyAdvertisements() {
       const payload = new FormData()
       payload.append("banner", bannerFile)
       payload.append("title", title.trim())
+      payload.append("websiteUrl", normalizedWebsiteUrl)
       payload.append("startDate", startDate)
       payload.append("endDate", endDate)
       await userAdvertisementAPI.createMyAdvertisement(payload)
@@ -287,6 +309,16 @@ export default function MyAdvertisements() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Website URL</label>
+                <input
+                  type="url"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="https://example.com"
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm"
                 />
               </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion as Motion } from "framer-motion"
 import { useNavigate, useParams } from "react-router-dom"
 import Lenis from "lenis"
-import { ArrowLeft, Calendar, Megaphone, DollarSign, XCircle } from "lucide-react"
+import { ArrowLeft, Calendar, Megaphone, DollarSign, XCircle, ExternalLink } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { userAdvertisementAPI } from "@/lib/api"
@@ -58,6 +58,7 @@ export default function UserAdDetailsPage() {
   }, [loadAdvertisement])
 
   const coverMedia = useMemo(() => adData?.bannerImage || "", [adData])
+  const websiteUrl = useMemo(() => String(adData?.websiteUrl || "").trim(), [adData])
   const normalizedStatus = String(adData?.status || "").trim().toLowerCase()
   const normalizedPaymentStatus = String(adData?.paymentStatus || "").trim().toLowerCase()
   const canPay = Boolean(adData?.canPay) || (["payment_pending", "approved"].includes(normalizedStatus) && normalizedPaymentStatus === "unpaid")
@@ -210,6 +211,22 @@ export default function UserAdDetailsPage() {
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 mb-1">Title</h3>
                   <p className="text-sm text-gray-600">{adData.title}</p>
+                </div>
+                <div className="mt-3">
+                  <h3 className="text-sm font-bold text-gray-900 mb-1">Website URL</h3>
+                  {websiteUrl ? (
+                    <a
+                      href={websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 break-all"
+                    >
+                      {websiteUrl}
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-500">Not available</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
