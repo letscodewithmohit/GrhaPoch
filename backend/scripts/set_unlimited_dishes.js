@@ -9,13 +9,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 // Temporary models for the script
-const subscriptionPlanSchema = new mongoose.Schema({
-    dishLimit: { type: Number, default: 0 }
-}, { strict: false });
-
-const restaurantSchema = new mongoose.Schema({
-    dishLimit: { type: Number, default: 0 }
-}, { strict: false });
+const subscriptionPlanSchema = new mongoose.Schema({}, { strict: false });
+const restaurantSchema = new mongoose.Schema({}, { strict: false });
 
 const SubscriptionPlan = mongoose.model('SubscriptionPlan', subscriptionPlanSchema);
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
@@ -31,11 +26,11 @@ async function run() {
         await mongoose.connect(mongoUri);
         console.log('Connected to MongoDB');
 
-        const planResult = await SubscriptionPlan.updateMany({}, { $set: { dishLimit: 0 } });
-        console.log(`Updated ${planResult.modifiedCount} subscription plans to unlimited (0)`);
+        const planResult = await SubscriptionPlan.updateMany({}, { $unset: { dishLimit: '' } });
+        console.log(`Removed legacy dishLimit from ${planResult.modifiedCount} subscription plans`);
 
-        const restaurantResult = await Restaurant.updateMany({}, { $set: { dishLimit: 0 } });
-        console.log(`Updated ${restaurantResult.modifiedCount} restaurants to unlimited (0)`);
+        const restaurantResult = await Restaurant.updateMany({}, { $unset: { dishLimit: '' } });
+        console.log(`Removed legacy dishLimit from ${restaurantResult.modifiedCount} restaurants`);
 
         await mongoose.disconnect();
         console.log('Disconnected from MongoDB');

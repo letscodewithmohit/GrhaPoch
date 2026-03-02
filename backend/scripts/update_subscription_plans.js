@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import SubscriptionPlan from '../models/SubscriptionPlan.js';
 import dotenv from 'dotenv';
@@ -32,14 +31,13 @@ const updatePlans = async () => {
                 description: 'Perfect for new restaurants trying out the platform',
                 features: [
                     '0% Commission on all orders',
-                    '50 Dishes limit',
+                    'Standard menu management',
                     'Standard visibility',
                     'Basic analytics',
                     'Email support'
                 ],
                 isActive: true,
-                isPopular: false,
-                dishLimit: 50
+                isPopular: false
             },
             {
                 name: 'Growth',
@@ -48,14 +46,13 @@ const updatePlans = async () => {
                 description: 'Best for growing businesses needing more space',
                 features: [
                     '0% Commission on all orders',
-                    '500 Dishes limit',
+                    'Enhanced menu controls',
                     'Enhanced visibility',
                     'Advanced analytics',
                     'Priority email support'
                 ],
                 isActive: true,
-                isPopular: true,
-                dishLimit: 500
+                isPopular: true
             },
             {
                 name: 'Premium',
@@ -64,24 +61,22 @@ const updatePlans = async () => {
                 description: 'Ultimate solution for established restaurants',
                 features: [
                     '0% Commission on all orders',
-                    'Unlimited Dishes',
+                    'All premium menu controls',
                     'Top search visibility',
                     'Detailed insights & reports',
                     'Dedicated support manager',
                     'Marketing tools access'
                 ],
                 isActive: true,
-                isPopular: false,
-                dishLimit: 0 // Unlimited
+                isPopular: false
             }
         ];
 
         await SubscriptionPlan.insertMany(plans);
         console.log('Successfully created new subscription plans:');
-        plans.forEach(plan => {
-            console.log(`- ${plan.name}: ₹${plan.price} / ${plan.durationMonths} months, limit: ${plan.dishLimit === 0 ? 'Unlimited' : plan.dishLimit}`);
+        plans.forEach((plan) => {
+            console.log(`- ${plan.name}: INR ${plan.price} / ${plan.durationMonths} months`);
         });
-
     } catch (error) {
         console.error('Error updating plans:', error);
     } finally {

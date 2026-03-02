@@ -14,6 +14,11 @@ const environmentVariableSchema = new mongoose.Schema(
       default: '',
       trim: true
     },
+    RAZORPAY_WEBHOOK_SECRET: {
+      type: String,
+      default: '',
+      trim: true
+    },
     
     // Cloudinary
     CLOUDINARY_CLOUD_NAME: {
@@ -160,6 +165,7 @@ environmentVariableSchema.methods.toEnvObject = function() {
   const sensitiveFields = [
     'RAZORPAY_API_KEY',
     'RAZORPAY_SECRET_KEY',
+    'RAZORPAY_WEBHOOK_SECRET',
     'CLOUDINARY_API_KEY',
     'CLOUDINARY_API_SECRET',
     'FIREBASE_API_KEY',
@@ -190,6 +196,7 @@ environmentVariableSchema.pre('save', function(next) {
   const sensitiveFields = [
     'RAZORPAY_API_KEY',
     'RAZORPAY_SECRET_KEY',
+    'RAZORPAY_WEBHOOK_SECRET',
     'CLOUDINARY_API_KEY',
     'CLOUDINARY_API_SECRET',
     'FIREBASE_API_KEY',

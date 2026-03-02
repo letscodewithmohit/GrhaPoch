@@ -7,6 +7,7 @@ import { initializeCloudinary } from '../config/cloudinary.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import mongoose from 'mongoose';
 import { checkSubscriptionExpiry } from './subscriptionController.js';
+import BusinessSettings from '../models/BusinessSettings.js';
 
 /**
  * Check if a point is within a zone polygon using ray casting algorithm
@@ -310,6 +311,7 @@ export const getRestaurantByOwner = async (req, res) => {
 
     let daysRemaining = null;
     let showWarning = false;
+    let warningDays = 5;
 
     if (restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
       const now = new Date();
@@ -317,7 +319,14 @@ export const getRestaurantByOwner = async (req, res) => {
       const diffTime = endDate - now;
       daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-      if (daysRemaining <= 5) {
+      try {
+        const settings = await BusinessSettings.getSettings();
+        warningDays = settings?.subscriptionExpiryWarningDays || 5;
+      } catch (settingsError) {
+        console.error('Error fetching subscription warning days:', settingsError);
+      }
+
+      if (daysRemaining <= warningDays) {
         showWarning = true;
       }
     }
@@ -325,7 +334,8 @@ export const getRestaurantByOwner = async (req, res) => {
     const restaurantData = restaurant.toObject ? restaurant.toObject() : restaurant;
     restaurantData.subscriptionStatus = {
       daysRemaining,
-      showWarning
+      showWarning,
+      warningDays
     };
 
     return successResponse(res, 200, 'Restaurant retrieved successfully', {

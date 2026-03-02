@@ -372,7 +372,12 @@ app.use(cors({
 }));
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => {
+    req.rawBody = buf?.toString('utf8') || '';
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
@@ -713,6 +718,24 @@ function initializeScheduledTasks() {
   }).catch((error) => {
     console.error('❌ Failed to initialize subscription expiry service:', error);
   });
+
+  // Import subscription payment reconciliation service
+  import('./services/subscriptionPaymentReconciliationService.js').then(({ reconcilePendingSubscriptionPayments }) => {
+    // Every 30 minutes: reconcile pending subscription payments with Razorpay
+    cron.schedule('*/30 * * * *', async () => {
+      try {
+        const result = await reconcilePendingSubscriptionPayments();
+        if (result.checked > 0) {
+          console.log(`[Subscription Reconcile Cron] ${result.message}`);
+        }
+      } catch (error) {
+        console.error('[Subscription Reconcile Cron] Error:', error);
+      }
+    });
+  }).catch((error) => {
+    console.error('❌ Failed to initialize subscription payment reconciliation service:', error);
+  });
+
   // Import advertisement expiry service
   import('./services/advertisementExpiryService.js').then(({ processAdvertisementExpiries }) => {
     // Daily at 12:05 AM - expire finished advertisements

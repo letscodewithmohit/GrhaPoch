@@ -48,9 +48,13 @@ const getTomorrowInputDate = () => {
 
 const parseInputDate = (value) => {
   if (!value) return null
-  const [year, month, day] = String(value).split("-").map(Number)
-  if (!year || !month || !day) return null
-  return new Date(year, month - 1, day, 0, 0, 0, 0)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    const [year, month, day] = String(value).split("-").map(Number)
+    if (!year || !month || !day) return null
+    return new Date(year, month - 1, day, 0, 0, 0, 0)
+  }
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
 const normalizeWebsiteUrl = (value) => {
@@ -75,6 +79,15 @@ const getRangeDays = (startDate, endDate) => {
   return Math.floor(ms / (24 * 60 * 60 * 1000)) + 1
 }
 
+const doDateRangesOverlap = (startA, endA, startB, endB) => {
+  const aStart = parseInputDate(startA)
+  const aEnd = parseInputDate(endA)
+  const bStart = parseInputDate(startB)
+  const bEnd = parseInputDate(endB)
+  if (!aStart || !aEnd || !bStart || !bEnd) return false
+  return aStart <= bEnd && bStart <= aEnd
+}
+
 const buildFilterCountsFromAdvertisements = (advertisements) => {
   const base = { all: advertisements.length, pending: 0, active: 0, rejected: 0, expired: 0 }
   advertisements.forEach((ad) => {
@@ -93,7 +106,9 @@ export default function MyAdvertisements() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
+  const [loadingBookedDates, setLoadingBookedDates] = useState(false)
   const [pricePerDay, setPricePerDay] = useState(150)
+  const [bookedRanges, setBookedRanges] = useState([])
   const [ads, setAds] = useState([])
   const [filterCounts, setFilterCounts] = useState({ all: 0, pending: 0, active: 0, rejected: 0, expired: 0 })
   const [errorMessage, setErrorMessage] = useState("")
@@ -117,12 +132,27 @@ export default function MyAdvertisements() {
     return Number((selectedDays * pricePerDay).toFixed(2))
   }, [selectedDays, pricePerDay])
 
+  const overlappingBookedRanges = useMemo(() => {
+    return bookedRanges.filter((range) =>
+      doDateRangesOverlap(startDate, endDate, range?.startDate, range?.endDate)
+    )
+  }, [bookedRanges, startDate, endDate])
+
   const loadData = async () => {
     setLoading(true)
+    setLoadingBookedDates(true)
     try {
-      const [pricingResponse, adsResponse] = await Promise.all([
+      const tomorrow = getTomorrowInputDate()
+      const rangeEndDate = parseInputDate(tomorrow) || new Date()
+      rangeEndDate.setDate(rangeEndDate.getDate() + 365)
+      const [pricingResponse, adsResponse, bookedDatesResponse] = await Promise.all([
         userAdvertisementAPI.getUserAdvertisementPricing(),
         userAdvertisementAPI.getMyAdvertisements({ status: "all" }),
+        userAdvertisementAPI.getMyAdvertisementBookedDates({
+          position: "home_top",
+          startDate: tomorrow,
+          endDate: toDateInputValue(rangeEndDate),
+        }),
       ])
 
       const price = Number(pricingResponse?.data?.data?.pricePerDay || 150)
@@ -130,15 +160,18 @@ export default function MyAdvertisements() {
       const backendFilterCounts = adsResponse?.data?.data?.filterCounts
 
       setPricePerDay(Number.isFinite(price) && price > 0 ? price : 150)
+      setBookedRanges(bookedDatesResponse?.data?.data?.bookedRanges || [])
       setAds(list)
       setFilterCounts(backendFilterCounts || buildFilterCountsFromAdvertisements(list))
       setErrorMessage("")
     } catch (error) {
+      setBookedRanges([])
       setAds([])
       setFilterCounts({ all: 0, pending: 0, active: 0, rejected: 0, expired: 0 })
       setErrorMessage(error?.response?.data?.message || "Failed to load advertisements")
     } finally {
       setLoading(false)
+      setLoadingBookedDates(false)
     }
   }
 
@@ -250,6 +283,10 @@ export default function MyAdvertisements() {
     }
     if (!Number.isFinite(rangeDays) || rangeDays < 1 || rangeDays > 365) {
       setErrorMessage("Date range must be between 1 and 365 days")
+      return
+    }
+    if (overlappingBookedRanges.length > 0) {
+      setErrorMessage("Selected dates overlap with booked dates. Please choose different dates")
       return
     }
 
@@ -367,6 +404,30 @@ export default function MyAdvertisements() {
                     </div>
                   )}
                 </label>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs font-semibold text-amber-900">Booked Dates (Cannot Select)</p>
+                {loadingBookedDates ? (
+                  <p className="text-xs text-amber-800 mt-1">Loading booked dates...</p>
+                ) : bookedRanges.length === 0 ? (
+                  <p className="text-xs text-amber-800 mt-1">No booked ranges found for selected window.</p>
+                ) : (
+                  <div className="mt-1 space-y-1 max-h-24 overflow-auto">
+                    {bookedRanges.slice(0, 8).map((range, index) => (
+                      <p key={`${range?.source || "ad"}-${range?.id || index}`} className="text-xs text-amber-800">
+                        {formatDate(range?.startDate)} - {formatDate(range?.endDate)}
+                      </p>
+                    ))}
+                    {bookedRanges.length > 8 && (
+                      <p className="text-xs text-amber-800">+ {bookedRanges.length - 8} more ranges</p>
+                    )}
+                  </div>
+                )}
+                {overlappingBookedRanges.length > 0 && (
+                  <p className="text-xs text-red-600 mt-2">
+                    Selected range overlaps with booked dates. Please change start/end date.
+                  </p>
+                )}
               </div>
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-xs text-gray-600">Price Per Day: INR {pricePerDay.toFixed(2)}</p>

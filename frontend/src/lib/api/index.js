@@ -1568,6 +1568,10 @@ export const campaignAPI = {
     return apiClient.get('/campaign/restaurant/advertisements/current-banner');
   },
 
+  getRestaurantAdvertisementBookedDates: (params = {}) => {
+    return apiClient.get('/campaign/restaurant/advertisements/booked-dates', { params });
+  },
+
   getRestaurantAdvertisementById: (id) => {
     return apiClient.get(`/campaign/restaurant/advertisements/${id}`);
   },
@@ -1656,6 +1660,10 @@ export const userAdvertisementAPI = {
 
   getMyAdvertisements: (params = {}) => {
     return apiClient.get('/user-advertisements/me/advertisements', { params });
+  },
+
+  getMyAdvertisementBookedDates: (params = {}) => {
+    return apiClient.get('/user-advertisements/me/advertisements/booked-dates', { params });
   },
 
   getMyAdvertisementById: (id) => {

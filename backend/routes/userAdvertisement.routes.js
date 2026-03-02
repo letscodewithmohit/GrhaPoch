@@ -5,6 +5,7 @@ import { authenticateAdmin } from '../middleware/admin.auth.js';
 import { errorResponse } from '../utils/response.js';
 import {
   getUserAdvertisementPricing,
+  getMyAdvertisementBookedDates,
   createUserAdvertisement,
   listMyUserAdvertisements,
   getMyUserAdvertisementById,
@@ -36,6 +37,7 @@ router.get('/public/active', listPublicActiveUserAdvertisements);
 
 router.use('/me', authenticate, ensureUserRole);
 router.get('/me/advertisements/pricing', getUserAdvertisementPricing);
+router.get('/me/advertisements/booked-dates', getMyAdvertisementBookedDates);
 router.get('/me/advertisements', listMyUserAdvertisements);
 router.get('/me/advertisements/:id', getMyUserAdvertisementById);
 router.post('/me/advertisements', uploadMiddleware.single('banner'), createUserAdvertisement);

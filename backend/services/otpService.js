@@ -28,6 +28,27 @@ const TEST_PHONE_NUMBERS = [
 // Default OTP for test phone numbers
 const DEFAULT_TEST_OTP = '110211';
 
+const parseBooleanEnv = (value, fallback = false) => {
+  if (typeof value !== 'string') return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+};
+
+const getMockOTPValue = () => {
+  const envOtp = process.env.MOCK_OTP_CODE?.trim();
+  return envOtp && envOtp.length === 6 ? envOtp : DEFAULT_TEST_OTP;
+};
+
+const isGlobalMockOTPEnabled = () => {
+  // Safety: never allow global mock OTP in production
+  if (process.env.NODE_ENV === 'production') return false;
+  return parseBooleanEnv(process.env.ENABLE_MOCK_OTP, false);
+};
+
+const shouldUseMockOTP = (phone, email) => {
+  if (isGlobalMockOTPEnabled()) return true;
+  return Boolean(phone) && isTestPhoneNumber(phone) && !email;
+};
+
 /**
  * Extract phone number digits (without country code)
  * @param {string} phone - Phone number in format like "+91 9098569620" or "+91-9098569620"
@@ -101,8 +122,8 @@ class OTPService {
         }
       }
 
-      // Generate OTP (use default for test phone numbers)
-      const otp = (phone && isTestPhoneNumber(phone)) ? DEFAULT_TEST_OTP : generateOTP();
+      const useMockOTP = shouldUseMockOTP(phone, email);
+      const otp = useMockOTP ? getMockOTPValue() : generateOTP();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
       // Build query for invalidating previous OTPs
@@ -130,20 +151,27 @@ class OTPService {
       // Send OTP via SMS or Email
       try {
         if (phone) {
-          // Skip actual SMS sending for test phone numbers
-          if (!isTestPhoneNumber(phone)) {
-            // Use SMSIndia Hub for phone OTP
+          if (!useMockOTP) {
             await smsIndiaHubService.sendOTP(phone, otp, purpose);
           } else {
-            logger.info(`Skipping SMS for test phone number: ${phone}`, {
+            logger.info(`Skipping SMS for mock OTP flow`, {
               phone,
               purpose,
-              otp
+              otp,
+              globalMock: isGlobalMockOTPEnabled()
             });
           }
         } else if (email) {
-          // Keep email service as is
-          await emailService.sendOTP(email, otp, purpose);
+          if (!useMockOTP) {
+            await emailService.sendOTP(email, otp, purpose);
+          } else {
+            logger.info(`Skipping email for mock OTP flow`, {
+              email,
+              purpose,
+              otp,
+              globalMock: isGlobalMockOTPEnabled()
+            });
+          }
         }
       } catch (sendError) {
         logger.error(`Failed to send OTP via ${phone ? 'SMS' : 'email'} (continuing for dev/test): ${sendError.message}`);
@@ -160,7 +188,8 @@ class OTPService {
         success: true,
         message: `OTP sent successfully to ${identifierType === 'phone' ? 'phone' : 'email'}`,
         expiresIn: 300, // 5 minutes in seconds
-        identifierType
+        identifierType,
+        isMockOTP: useMockOTP
       };
     } catch (error) {
       logger.error(`Error generating OTP: ${error.message}`, {
@@ -191,11 +220,17 @@ class OTPService {
       const identifier = phone || email;
       const identifierType = phone ? 'phone' : 'email';
 
-      // Check if this is a test phone number and OTP matches default test OTP
-      if (phone && isTestPhoneNumber(phone) && otp === DEFAULT_TEST_OTP) {
+      const mockOTPValue = getMockOTPValue();
+      const isTestNumberMockMatch = phone && isTestPhoneNumber(phone) && otp === mockOTPValue;
+      const isGlobalMockMatch = isGlobalMockOTPEnabled() && otp === mockOTPValue;
+
+      // Allow fast-path validation for test/mock mode
+      if (isTestNumberMockMatch || isGlobalMockMatch) {
         logger.info(`Test OTP verified for ${phone}`, {
           phone,
-          purpose
+          email,
+          purpose,
+          globalMock: isGlobalMockMatch
         });
         return {
           success: true,

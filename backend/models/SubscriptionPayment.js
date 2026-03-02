@@ -26,8 +26,8 @@ const subscriptionPaymentSchema = new mongoose.Schema({
     },
     razorpayPaymentId: {
         type: String,
-        required: true,
-        unique: true
+        default: null,
+        sparse: true
     },
     razorpayOrderId: {
         type: String,
@@ -35,8 +35,8 @@ const subscriptionPaymentSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['success', 'refunded', 'failed'],
-        default: 'success'
+        enum: ['pending', 'success', 'refunded', 'failed'],
+        default: 'pending'
     },
     paymentDate: {
         type: Date,
@@ -57,6 +57,15 @@ const subscriptionPaymentSchema = new mongoose.Schema({
         type: String,
         enum: ['new', 'renewal'],
         default: 'new'
+    },
+    source: {
+        type: String,
+        enum: ['create_order', 'verify_api', 'webhook', 'reconcile'],
+        default: 'create_order'
+    },
+    lastError: {
+        type: String,
+        default: ''
     }
 }, {
     timestamps: true
@@ -64,6 +73,9 @@ const subscriptionPaymentSchema = new mongoose.Schema({
 
 // Indexes
 subscriptionPaymentSchema.index({ createdAt: -1 });
+subscriptionPaymentSchema.index({ razorpayPaymentId: 1 }, { unique: true, sparse: true });
+subscriptionPaymentSchema.index({ razorpayOrderId: 1 });
+subscriptionPaymentSchema.index({ status: 1, createdAt: -1 });
 
 const SubscriptionPayment = mongoose.model('SubscriptionPayment', subscriptionPaymentSchema);
 

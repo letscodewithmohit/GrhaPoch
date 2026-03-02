@@ -42,6 +42,23 @@ const normalizeSubmitError = (message) => {
   return message || "Failed to submit advertisement"
 }
 
+const formatDateLabel = (value) => {
+  if (!value) return "-"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+const doDateRangesOverlap = (startA, endA, startB, endB) => {
+  if (!startA || !endA || !startB || !endB) return false
+  const aStart = parseInputDate(startA)
+  const aEnd = parseInputDate(endA)
+  const bStart = parseInputDate(startB)
+  const bEnd = parseInputDate(endB)
+  if (!aStart || !aEnd || !bStart || !bEnd) return false
+  return aStart <= bEnd && bStart <= aEnd
+}
+
 export default function NewAdvertisementPage() {
   const navigate = useNavigate()
   const today = useMemo(() => new Date(), [])
@@ -62,17 +79,26 @@ export default function NewAdvertisementPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingBookedDates, setLoadingBookedDates] = useState(false)
+  const [bookedRanges, setBookedRanges] = useState([])
   const [errorMessage, setErrorMessage] = useState("")
   const [dynamicTitle, setDynamicTitle] = useState("")
 
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true)
+      setLoadingBookedDates(true)
       setErrorMessage("")
       try {
-        const [pricingResult, restaurantResult] = await Promise.allSettled([
+        const bookedEndDate = new Date(minStartDate)
+        bookedEndDate.setDate(bookedEndDate.getDate() + 365)
+        const [pricingResult, restaurantResult, bookedDatesResult] = await Promise.allSettled([
           campaignAPI.getAdvertisementPricing(),
-          restaurantAPI.getCurrentRestaurant()
+          restaurantAPI.getCurrentRestaurant(),
+          campaignAPI.getRestaurantAdvertisementBookedDates({
+            startDate: toInputDate(minStartDate),
+            endDate: toInputDate(bookedEndDate),
+          }),
         ])
 
         if (pricingResult.status === "fulfilled") {
@@ -91,18 +117,26 @@ export default function NewAdvertisementPage() {
           setDynamicTitle("Restaurant Advertisement")
         }
 
+        if (bookedDatesResult.status === "fulfilled") {
+          setBookedRanges(bookedDatesResult.value?.data?.data?.bookedRanges || [])
+        } else {
+          setBookedRanges([])
+        }
+
         if (pricingResult.status === "rejected") {
           setErrorMessage("Failed to load pricing. Default price is applied.")
         }
       } catch (error) {
         setDynamicTitle("Restaurant Advertisement")
+        setBookedRanges([])
         setErrorMessage(error?.response?.data?.message || "Failed to load advertisement data")
       } finally {
         setLoading(false)
+        setLoadingBookedDates(false)
       }
     }
     loadInitialData()
-  }, [])
+  }, [minStartDate])
 
   useEffect(() => {
     return () => {
@@ -114,6 +148,11 @@ export default function NewAdvertisementPage() {
 
   const totalDays = useMemo(() => getDaysInclusive(startDate, endDate), [startDate, endDate])
   const totalPrice = useMemo(() => Number((totalDays * pricePerDay).toFixed(2)), [totalDays, pricePerDay])
+  const overlappingBookedRanges = useMemo(() => {
+    return bookedRanges.filter((range) =>
+      doDateRangesOverlap(startDate, endDate, range?.startDate, range?.endDate)
+    )
+  }, [bookedRanges, startDate, endDate])
 
   const handleBannerChange = (event) => {
     const file = event.target.files?.[0]
@@ -167,6 +206,11 @@ export default function NewAdvertisementPage() {
 
     if (totalDays > 365) {
       setErrorMessage("Date range must be within 365 days.")
+      return
+    }
+
+    if (overlappingBookedRanges.length > 0) {
+      setErrorMessage("Selected dates overlap with booked dates. Choose a different range.")
       return
     }
 
@@ -262,6 +306,31 @@ export default function NewAdvertisementPage() {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs font-semibold text-amber-900">Booked Dates (Cannot Select)</p>
+                    {loadingBookedDates ? (
+                      <p className="text-xs text-amber-800 mt-1">Loading booked dates...</p>
+                    ) : bookedRanges.length === 0 ? (
+                      <p className="text-xs text-amber-800 mt-1">No booked ranges found for the selected window.</p>
+                    ) : (
+                      <div className="mt-1 space-y-1 max-h-28 overflow-auto">
+                        {bookedRanges.slice(0, 8).map((range, index) => (
+                          <p key={`${range?.source || "ad"}-${range?.id || index}`} className="text-xs text-amber-800">
+                            {formatDateLabel(range?.startDate)} - {formatDateLabel(range?.endDate)}
+                          </p>
+                        ))}
+                        {bookedRanges.length > 8 && (
+                          <p className="text-xs text-amber-800">+ {bookedRanges.length - 8} more ranges</p>
+                        )}
+                      </div>
+                    )}
+                    {overlappingBookedRanges.length > 0 && (
+                      <p className="text-xs text-red-600 mt-2">
+                        Selected range overlaps with booked dates. Please change start/end date.
+                      </p>
+                    )}
                   </div>
 
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">

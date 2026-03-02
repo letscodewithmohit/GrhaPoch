@@ -30,15 +30,13 @@ const restaurantSchema = new mongoose.Schema({
         status: String,
         startDate: Date,
         endDate: Date
-    },
-    dishLimit: Number
+    }
 });
 
 const subscriptionPlanSchema = new mongoose.Schema({
     name: String,
     price: Number,
     durationMonths: Number,
-    dishLimit: Number,
     isActive: Boolean
 });
 
@@ -58,7 +56,6 @@ const inspectData = async () => {
             console.log('--- Restaurant Details ---');
             console.log(`Name: ${restaurant.name}`);
             console.log(`Business Model: ${restaurant.businessModel}`);
-            console.log(`Dish Limit: ${restaurant.dishLimit}`);
             console.log(`Subscription Status: ${restaurant.subscription?.status}`);
             console.log(`Plan ID: ${restaurant.subscription?.planId}`);
 
@@ -68,7 +65,6 @@ const inspectData = async () => {
                 if (plan) {
                     console.log('\n--- Active Plan Details ---');
                     console.log(`Plan Name: ${plan.name}`);
-                    console.log(`Plan Dish Limit: ${plan.dishLimit}`);
                 } else {
                     console.log('\n--- Active Plan Details ---');
                     console.log('Plan not found in database!');
@@ -80,7 +76,7 @@ const inspectData = async () => {
         const allPlans = await SubscriptionPlan.find();
         console.log('\n--- All Available Plans ---');
         allPlans.forEach(p => {
-            console.log(`- ${p.name}: Limit=${p.dishLimit}, ID=${p._id}`);
+            console.log(`- ${p.name}: ID=${p._id}`);
         });
 
     } catch (error) {

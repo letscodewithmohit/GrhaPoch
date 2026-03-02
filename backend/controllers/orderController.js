@@ -398,16 +398,25 @@ export const createOrder = async (req, res) => {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
+    const hasActiveSubscription = (
+      restaurant.businessModel === 'Subscription Base' &&
+      restaurant.subscription?.status === 'active' &&
+      (
+        !restaurant.subscription?.endDate ||
+        new Date(restaurant.subscription.endDate) > new Date()
+      )
+    );
+
     // --- COMMISSION CALCULATION SNAPSHOT LOGIC ---
     let commissionSnapshot = {
       amount: 0,
       rate: 0,
       type: 'percentage',
-      model: restaurant.businessModel || 'Commission Base'
+      model: hasActiveSubscription ? 'Subscription Base' : 'Commission Base'
     };
 
     try {
-      if (restaurant.businessModel === 'Subscription Base') {
+      if (hasActiveSubscription) {
         // Subscription Base: 0 commission
         commissionSnapshot = {
           amount: 0,
@@ -495,7 +504,7 @@ export const createOrder = async (req, res) => {
     } catch (commError) {
       logger.error('❌ Error calculating commission snapshot:', commError);
       // Fallback to default 10% on error to be safe/safe for platform
-      if (restaurant.businessModel !== 'Subscription Base') {
+      if (!hasActiveSubscription) {
         const val = Math.max(0, (pricing.subtotal || 0) - (pricing.discount || 0));
         commissionSnapshot.amount = (val * 10) / 100;
         commissionSnapshot.rate = 10;

@@ -9,6 +9,7 @@ import winston from 'winston';
 import { checkSubscriptionExpiry } from './subscriptionController.js';
 import SubscriptionPlan from '../models/SubscriptionPlan.js';
 import RestaurantCommission from '../models/RestaurantCommission.js';
+import BusinessSettings from '../models/BusinessSettings.js';
 
 /**
  * Build phone query that searches in multiple formats (with/without country code)
@@ -867,7 +868,6 @@ export const getCurrentRestaurant = asyncHandler(async (req, res) => {
     // Fetch warning threshold from business settings
     let warningThreshold = 5;
     try {
-      const { default: BusinessSettings } = await import('../../admin/models/BusinessSettings.js');
       const settings = await BusinessSettings.getSettings();
       warningThreshold = settings?.subscriptionExpiryWarningDays || 5;
     } catch (err) {

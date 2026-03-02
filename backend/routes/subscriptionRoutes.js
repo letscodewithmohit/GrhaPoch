@@ -3,11 +3,15 @@ import { authenticate } from '../middleware/restaurant.auth.js';
 import {
     createSubscriptionOrder,
     verifyPaymentAndActivate,
-    getSubscriptionStatus
+    getSubscriptionStatus,
+    handleSubscriptionWebhook
 } from '../controllers/subscriptionController.js';
 import { getActiveSubscriptionPlans } from '../controllers/subscriptionPlanController.js';
 
 const router = express.Router();
+
+// Razorpay webhook for subscription payments (no auth)
+router.post('/webhook', handleSubscriptionWebhook);
 
 // Create Razorpay order
 router.post('/create-order', authenticate, createSubscriptionOrder);

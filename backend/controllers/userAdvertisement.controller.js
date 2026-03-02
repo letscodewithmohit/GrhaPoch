@@ -1,10 +1,12 @@
 import mongoose from 'mongoose';
 import UserAdvertisement from '../models/UserAdvertisement.js';
+import Advertisement from '../models/Advertisement.js';
 import AdvertisementSetting from '../models/AdvertisementSetting.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinaryService.js';
 import { createOrder, verifyPayment, fetchPayment } from '../services/razorpayService.js';
+import { getRazorpayCredentials } from '../utils/envService.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const USER_ADVERTISEMENT_SETTING_KEY = 'user_banner_pricing';
@@ -13,6 +15,7 @@ const DEFAULT_USER_ADVERTISEMENT_PRICE_PER_DAY = Number(
 );
 const ALLOWED_POSITIONS = new Set(['home_top', 'home_middle', 'home_bottom']);
 const OPEN_USER_ADVERTISEMENT_STATUSES = ['pending', 'approved', 'payment_pending', 'active'];
+const OPEN_RESTAURANT_BANNER_STATUSES = ['pending', 'payment_pending', 'active', 'approved', 'paused'];
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -74,6 +77,22 @@ const normalizeDateRange = ({ startDate, endDate }) => {
     startDate: startOfDay(startDate),
     endDate: endOfDay(endDate)
   };
+};
+
+const getDefaultBookingWindow = () => {
+  const startDate = startOfTomorrow();
+  const endDate = endOfDay(new Date(startDate.getTime() + 365 * DAY_MS));
+  return { startDate, endDate };
+};
+
+const parseBookedDateWindowFromQuery = (query = {}) => {
+  const defaultWindow = getDefaultBookingWindow();
+  const parsedStartDate = parseDate(query.startDate);
+  const parsedEndDate = parseDate(query.endDate);
+  const startDate = startOfDay(parsedStartDate || defaultWindow.startDate);
+  const endDate = endOfDay(parsedEndDate || defaultWindow.endDate);
+  if (startDate > endDate) return null;
+  return { startDate, endDate };
 };
 
 const calculateDurationDays = ({ startDate, endDate }) => {
@@ -309,6 +328,47 @@ const hasPositionConflict = async ({ position, startDate, endDate, excludeId = n
   return Boolean(overlapping);
 };
 
+const hasOverlappingRestaurantBannerDateRange = async ({ startDate, endDate }) => {
+  if (!startDate || !endDate) return null;
+  return Advertisement.findOne({
+    adType: 'restaurant_banner',
+    isDeleted: false,
+    status: { $in: OPEN_RESTAURANT_BANNER_STATUSES },
+    startDate: { $type: 'date', $lte: endDate },
+    endDate: { $type: 'date', $gte: startDate }
+  })
+    .sort({ startDate: 1, createdAt: 1 })
+    .select('_id adId title startDate endDate status paymentStatus restaurant');
+};
+
+const toCrossModuleConflictPayload = (ad, source) => {
+  if (!ad) return null;
+  return {
+    source,
+    id: ad._id,
+    adId: ad.adId || '',
+    title: ad.title || '',
+    startDate: ad.startDate || null,
+    endDate: ad.endDate || null,
+    status: ad.status || '',
+    paymentStatus: ad.paymentStatus || ''
+  };
+};
+
+const toBookedDateRangePayload = (ad, source) => {
+  return {
+    source,
+    id: ad._id,
+    adId: ad.adId || '',
+    title: ad.title || '',
+    startDate: ad.startDate || null,
+    endDate: ad.endDate || ad.validityDate || null,
+    status: ad.status || '',
+    paymentStatus: ad.paymentStatus || '',
+    position: source === 'user_advertisement' ? (ad.position || '') : ''
+  };
+};
+
 const computeCounts = (ads) => {
   const base = {
     all: ads.length,
@@ -365,6 +425,47 @@ export const getUserAdvertisementPricing = asyncHandler(async (req, res) => {
   });
 });
 
+export const getMyAdvertisementBookedDates = asyncHandler(async (req, res) => {
+  const bookingWindow = parseBookedDateWindowFromQuery(req.query);
+  if (!bookingWindow) {
+    return errorResponse(res, 400, 'startDate cannot be after endDate');
+  }
+
+  const selectedPosition = normalizePosition(req.query?.position) || 'home_top';
+  const { startDate, endDate } = bookingWindow;
+
+  const [userAds, restaurantAds] = await Promise.all([
+    UserAdvertisement.find({
+      isDeleted: false,
+      status: { $in: OPEN_USER_ADVERTISEMENT_STATUSES },
+      position: selectedPosition,
+      startDate: { $type: 'date', $lte: endDate },
+      endDate: { $type: 'date', $gte: startDate }
+    })
+      .sort({ startDate: 1, createdAt: 1 })
+      .select('_id adId title startDate endDate status paymentStatus position'),
+    Advertisement.find({
+      adType: 'restaurant_banner',
+      isDeleted: false,
+      status: { $in: OPEN_RESTAURANT_BANNER_STATUSES },
+      startDate: { $type: 'date', $lte: endDate },
+      endDate: { $type: 'date', $gte: startDate }
+    })
+      .sort({ startDate: 1, createdAt: 1 })
+      .select('_id adId title startDate endDate validityDate status paymentStatus')
+  ]);
+
+  return successResponse(res, 200, 'Booked advertisement date ranges fetched successfully', {
+    startDate,
+    endDate,
+    position: selectedPosition,
+    bookedRanges: [
+      ...userAds.map((ad) => toBookedDateRangePayload(ad, 'user_advertisement')),
+      ...restaurantAds.map((ad) => toBookedDateRangePayload(ad, 'restaurant_advertisement'))
+    ]
+  });
+});
+
 export const createUserAdvertisement = asyncHandler(async (req, res) => {
   if (!req.file) {
     return errorResponse(res, 400, 'Banner image is required');
@@ -418,6 +519,16 @@ export const createUserAdvertisement = asyncHandler(async (req, res) => {
       409,
       'Dates overlap with an existing banner. Choose different dates.',
       { advertisement: toUserPayload(overlappingBanner) }
+    );
+  }
+
+  const overlappingRestaurantBanner = await hasOverlappingRestaurantBannerDateRange({ startDate, endDate });
+  if (overlappingRestaurantBanner) {
+    return errorResponse(
+      res,
+      409,
+      'Dates overlap with an existing restaurant advertisement. Choose different dates.',
+      { conflict: toCrossModuleConflictPayload(overlappingRestaurantBanner, 'restaurant_advertisement') }
     );
   }
 
@@ -538,7 +649,16 @@ export const createUserAdvertisementPaymentOrder = asyncHandler(async (req, res)
     return errorResponse(res, 400, 'Invalid advertisement amount');
   }
 
-  if (advertisement.razorpay?.orderId) {
+  const { keyId } = await getRazorpayCredentials();
+  const checkoutKeyId = keyId || process.env.RAZORPAY_KEY_ID || '';
+  if (!checkoutKeyId) {
+    return errorResponse(res, 500, 'Payment gateway key is not configured');
+  }
+
+  const existingOrderId = String(advertisement.razorpay?.orderId || '');
+  const shouldReuseExistingOrder = Boolean(existingOrderId) && !existingOrderId.startsWith('order_mock_');
+
+  if (shouldReuseExistingOrder) {
     if (advertisement.status === 'approved') {
       advertisement.status = 'payment_pending';
       await advertisement.save();
@@ -550,10 +670,15 @@ export const createUserAdvertisementPaymentOrder = asyncHandler(async (req, res)
         orderId: advertisement.razorpay.orderId,
         amount: Math.round(amount * 100),
         currency: 'INR',
-        keyId: process.env.RAZORPAY_KEY_ID,
+        keyId: checkoutKeyId,
         reused: true
       }
     });
+  }
+
+  // Drop stale mock order IDs generated by old mock logic and create a fresh real order.
+  if (existingOrderId && existingOrderId.startsWith('order_mock_')) {
+    advertisement.razorpay.orderId = '';
   }
 
   try {
@@ -586,7 +711,7 @@ export const createUserAdvertisementPaymentOrder = asyncHandler(async (req, res)
         orderId: order.id,
         amount: order.amount,
         currency: order.currency,
-        keyId: process.env.RAZORPAY_KEY_ID
+        keyId: checkoutKeyId
       }
     });
   } catch (error) {
@@ -717,6 +842,24 @@ export const verifyUserAdvertisementPayment = asyncHandler(async (req, res) => {
     });
     await advertisement.save();
     return errorResponse(res, 409, 'Selected banner position is already occupied for this date range');
+  }
+
+  const overlappingRestaurantBanner = await hasOverlappingRestaurantBannerDateRange({ startDate, endDate });
+  if (overlappingRestaurantBanner) {
+    advertisement.paymentStatus = 'failed';
+    appendPaymentLog(advertisement, {
+      status: 'failed',
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      message: 'Dates overlap with an existing restaurant advertisement'
+    });
+    await advertisement.save();
+    return errorResponse(
+      res,
+      409,
+      'Dates overlap with an existing restaurant advertisement. Choose different dates.',
+      { conflict: toCrossModuleConflictPayload(overlappingRestaurantBanner, 'restaurant_advertisement') }
+    );
   }
 
   advertisement.paymentStatus = 'paid';
@@ -858,6 +1001,16 @@ export const approveUserAdvertisement = asyncHandler(async (req, res) => {
         409,
         'Dates overlap with an existing banner. Choose different dates.',
         { advertisement: toUserPayload(overlappingBanner) }
+      );
+    }
+
+    const overlappingRestaurantBanner = await hasOverlappingRestaurantBannerDateRange({ startDate, endDate });
+    if (overlappingRestaurantBanner) {
+      return errorResponse(
+        res,
+        409,
+        'Dates overlap with an existing restaurant advertisement. Choose different dates.',
+        { conflict: toCrossModuleConflictPayload(overlappingRestaurantBanner, 'restaurant_advertisement') }
       );
     }
   }
@@ -1011,6 +1164,16 @@ export const setUserAdvertisementStatusByAdmin = asyncHandler(async (req, res) =
 
     if (hasConflict) {
       return errorResponse(res, 409, 'Selected banner position is already occupied for this date range');
+    }
+
+    const overlappingRestaurantBanner = await hasOverlappingRestaurantBannerDateRange({ startDate, endDate });
+    if (overlappingRestaurantBanner) {
+      return errorResponse(
+        res,
+        409,
+        'Dates overlap with an existing restaurant advertisement. Choose different dates.',
+        { conflict: toCrossModuleConflictPayload(overlappingRestaurantBanner, 'restaurant_advertisement') }
+      );
     }
 
     advertisement.startDate = startDate;

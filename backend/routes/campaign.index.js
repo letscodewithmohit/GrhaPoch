@@ -19,6 +19,7 @@ import {
   deleteAdvertisementByAdmin,
   getAdvertisementPricing,
   getRestaurantCurrentBannerAdvertisement,
+  getRestaurantBannerBookedDates,
   getAdminAdvertisementPricing,
   updateAdminAdvertisementPricing,
   createRestaurantBannerAdvertisement,
@@ -38,6 +39,7 @@ router.get('/active', listPublicActiveAdvertisements);
 router.get('/restaurant/advertisements', authenticateRestaurant, listRestaurantAdvertisements);
 router.get('/restaurant/advertisements/pricing', authenticateRestaurant, getAdvertisementPricing);
 router.get('/restaurant/advertisements/current-banner', authenticateRestaurant, getRestaurantCurrentBannerAdvertisement);
+router.get('/restaurant/advertisements/booked-dates', authenticateRestaurant, getRestaurantBannerBookedDates);
 router.get('/restaurant/advertisements/:id', authenticateRestaurant, getRestaurantAdvertisementById);
 router.post('/restaurant/advertisements', authenticateRestaurant, advertisementUploadFields, createRestaurantAdvertisement);
 router.post('/restaurant/advertisements/banner', authenticateRestaurant, uploadMiddleware.single('banner'), createRestaurantBannerAdvertisement);

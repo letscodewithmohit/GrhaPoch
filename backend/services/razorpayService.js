@@ -15,6 +15,7 @@ const logger = winston.createLogger({
 
 // Initialize Razorpay instance
 let razorpayInstance = null;
+const isMockRazorpayEnabled = String(process.env.ENABLE_MOCK_RAZORPAY || '').toLowerCase() === 'true';
 
 const initializeRazorpay = async () => {
   try {
@@ -92,10 +93,9 @@ const createOrder = async (options) => {
 
     logger.info('Calling Razorpay API to create order...');
 
-    // Check for placeholder credentials and return mock order in development
-    const credentials = await getRazorpayCredentials();
-    if (credentials.keyId === 'grhapoch123' || credentials.keySecret === 'xZrjNjmvhSniJDIOZ2mOmUxS') {
-      logger.warn('⚠️ Using placeholder Razorpay credentials. Returning mock order for development.');
+    // Optional mock mode for local development only
+    if (isMockRazorpayEnabled) {
+      logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock order for development.');
       return {
         id: `order_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         amount: orderOptions.amount,
@@ -167,10 +167,10 @@ const verifyPayment = async (razorpayOrderId, razorpayPaymentId, razorpaySignatu
 
     const isValid = generatedSignature === razorpaySignature;
 
-    // Allow mock payments in development if using placeholder credentials
-    if (!isValid && (credentials.keyId === 'grhapoch123' || credentials.keySecret === 'xZrjNjmvhSniJDIOZ2mOmUxS')) {
+    // Allow mock payments only when explicit mock mode is enabled
+    if (!isValid && isMockRazorpayEnabled) {
       if (razorpayOrderId && razorpayOrderId.startsWith('order_mock_')) {
-        logger.warn('⚠️ Verifying mock payment with placeholder credentials.');
+        logger.warn('⚠️ Verifying mock payment because ENABLE_MOCK_RAZORPAY=true.');
         return true;
       }
     }
@@ -207,6 +207,45 @@ const fetchPayment = async (paymentId) => {
     return payment;
   } catch (error) {
     logger.error(`Error fetching Razorpay payment: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Fetch order details from Razorpay
+ * @param {String} orderId - Razorpay order ID
+ * @returns {Promise<Object>} Order details
+ */
+const fetchOrder = async (orderId) => {
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay is not initialized');
+  }
+
+  try {
+    return await razorpay.orders.fetch(orderId);
+  } catch (error) {
+    logger.error(`Error fetching Razorpay order: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Fetch payments linked to a Razorpay order
+ * @param {String} orderId - Razorpay order ID
+ * @returns {Promise<Array>} Payments list
+ */
+const fetchOrderPayments = async (orderId) => {
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay is not initialized');
+  }
+
+  try {
+    const result = await razorpay.orders.fetchPayments(orderId);
+    return result?.items || [];
+  } catch (error) {
+    logger.error(`Error fetching Razorpay order payments: ${error.message}`);
     throw error;
   }
 };
@@ -253,6 +292,8 @@ export {
   createOrder,
   verifyPayment,
   fetchPayment,
+  fetchOrder,
+  fetchOrderPayments,
   createRefund
 };
 

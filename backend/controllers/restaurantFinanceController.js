@@ -65,6 +65,15 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       console.warn('⚠️ Could not fetch commission setup:', commissionError.message);
     }
 
+    const hasActiveSubscription = (
+      restaurant.businessModel === 'Subscription Base' &&
+      restaurant.subscription?.status === 'active' &&
+      (
+        !restaurant.subscription?.endDate ||
+        new Date(restaurant.subscription.endDate) > new Date()
+      )
+    );
+
     // Helper function to calculate commission for an order
     const calculateCommissionForOrder = (order, orderAmount) => {
       // Check if order has a commission snapshot (New Orders)
@@ -78,7 +87,7 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
 
       // Fallback for old orders: Calculate based on current settings (may be inaccurate if plan changed)
       // Check business model - strict check
-      if (restaurant.businessModel === 'Subscription Base') {
+      if (hasActiveSubscription) {
         return {
           commission: 0,
           type: 'percentage',

@@ -36,7 +36,6 @@ const inspect = async () => {
             console.log(`Name: ${p.name}`);
             console.log(`Price: ${p.price}`);
             console.log(`Duration: ${p.durationMonths}`);
-            console.log(`Dish Limit: ${p.dishLimit}`);
             console.log(`Is Active: ${p.isActive}`);
             console.log('---------------------------');
         });
@@ -47,7 +46,6 @@ const inspect = async () => {
             console.log(`ID: ${restaurant._id}`);
             console.log(`Name: ${restaurant.name}`);
             console.log(`Business Model: ${restaurant.businessModel}`);
-            console.log(`Dish Limit: ${restaurant.dishLimit} (Type: ${typeof restaurant.dishLimit})`);
             console.log(`Plan ID: ${restaurant.subscription?.planId}`);
             console.log(`Subscription Status: ${restaurant.subscription?.status}`);
         } else {

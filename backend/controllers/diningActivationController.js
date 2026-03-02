@@ -16,8 +16,14 @@ export const DINING_STATUSES = {
 const isSubscriptionBasedModel = (businessModel = '') =>
     String(businessModel).toLowerCase().includes('subscription');
 
-const isCommissionBasedModel = (businessModel = '') =>
-    String(businessModel).toLowerCase().includes('commission');
+const hasActiveSubscription = (restaurant) => {
+    if (!restaurant) return false;
+    if (!isSubscriptionBasedModel(restaurant.businessModel)) return false;
+    if (restaurant.subscription?.status !== 'active') return false;
+
+    if (!restaurant.subscription?.endDate) return true;
+    return new Date(restaurant.subscription.endDate) > new Date();
+};
 
 const getRestaurantAndActivationFee = async (restaurantId) => {
     const [restaurant, settings] = await Promise.all([
@@ -51,8 +57,7 @@ const getRestaurantStatusLabel = (restaurant) => {
 const buildDiningActivationStatus = (restaurant, activationFeeAmount = 0) => {
     const businessModel = restaurant?.businessModel || 'None';
     const diningEnabled = Boolean(restaurant?.diningEnabled);
-    const isCommissionBased = isCommissionBasedModel(businessModel);
-    const isSubscriptionBased = isSubscriptionBasedModel(businessModel);
+    const isSubscriptionActive = hasActiveSubscription(restaurant);
     const diningStatus = getEffectiveDiningStatus(restaurant);
     const isApproved = diningStatus === DINING_STATUSES.APPROVED;
     const isEligibleForPayment =
@@ -69,8 +74,8 @@ const buildDiningActivationStatus = (restaurant, activationFeeAmount = 0) => {
         diningActivationDate: restaurant?.diningActivationDate || null,
         businessModel,
         activationFeeAmount: Number(activationFeeAmount) || 0,
-        requiresPayment: isEligibleForPayment && !diningEnabled && isCommissionBased,
-        canEnableWithoutPayment: isApproved && !diningEnabled && isSubscriptionBased,
+        requiresPayment: isEligibleForPayment && !diningEnabled && !isSubscriptionActive,
+        canEnableWithoutPayment: isApproved && !diningEnabled && isSubscriptionActive,
         restaurant: {
             name: restaurant?.name || '',
             email: restaurant?.ownerEmail || '',
@@ -147,8 +152,8 @@ export const enableDiningWithoutPayment = asyncHandler(async (req, res) => {
         });
     }
 
-    if (!isSubscriptionBasedModel(restaurant.businessModel)) {
-        return errorResponse(res, 400, 'Only subscription based restaurants can enable dining without payment');
+    if (!hasActiveSubscription(restaurant)) {
+        return errorResponse(res, 400, 'Only restaurants with an active subscription can enable dining without payment');
     }
 
     if (getEffectiveDiningStatus(restaurant) !== DINING_STATUSES.APPROVED) {
@@ -180,8 +185,8 @@ export const createDiningActivationOrder = asyncHandler(async (req, res) => {
         return errorResponse(res, 400, 'Dining is already enabled for this restaurant');
     }
 
-    if (!isCommissionBasedModel(restaurant.businessModel)) {
-        return errorResponse(res, 400, 'Dining activation payment is only applicable for commission based restaurants');
+    if (hasActiveSubscription(restaurant)) {
+        return errorResponse(res, 400, 'Active subscription restaurants can enable dining without activation payment');
     }
 
     const currentStatus = getEffectiveDiningStatus(restaurant);
@@ -240,8 +245,8 @@ export const verifyDiningActivationPayment = asyncHandler(async (req, res) => {
         });
     }
 
-    if (!isCommissionBasedModel(restaurant.businessModel)) {
-        return errorResponse(res, 400, 'Dining activation payment is only applicable for commission based restaurants');
+    if (hasActiveSubscription(restaurant)) {
+        return errorResponse(res, 400, 'Active subscription restaurants can enable dining without activation payment');
     }
 
     const currentStatus = getEffectiveDiningStatus(restaurant);
