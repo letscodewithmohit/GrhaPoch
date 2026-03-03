@@ -996,7 +996,7 @@ export const confirmReachedPickup = asyncHandler(async (req, res) => {
           // Emit socket event to request order ID confirmation
           let getIO;
           try {
-            const serverModule = await import('../../../server.js');
+            const serverModule = await import('../server.js');
             getIO = serverModule.getIO;
           } catch (importError) {
             console.error('Error importing server module:', importError);
@@ -1430,7 +1430,7 @@ export const confirmOrderId = asyncHandler(async (req, res) => {
     (async () => {
       try {
         // Get IO instance dynamically to avoid circular dependencies
-        const serverModule = await import('../../../server.js');
+        const serverModule = await import('../server.js');
         const getIO = serverModule.getIO;
         const io = getIO ? getIO() : null;
 

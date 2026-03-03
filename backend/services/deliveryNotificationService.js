@@ -8,7 +8,7 @@ let getIO = null;
 
 async function getIOInstance() {
   if (!getIO) {
-    const serverModule = await import('../../../server.js');
+    const serverModule = await import('../server.js');
     getIO = serverModule.getIO;
   }
   return getIO ? getIO() : null;

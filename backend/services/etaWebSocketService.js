@@ -12,7 +12,7 @@ class ETAWebSocketService {
   async getIOInstance() {
     let getIO;
     try {
-      const serverModule = await import('../../../server.js');
+      const serverModule = await import('../server.js');
       getIO = serverModule.getIO;
     } catch (error) {
       console.error('Error getting IO instance:', error);
@@ -133,7 +133,7 @@ class ETAWebSocketService {
       };
 
       io.to(`order:${order.orderId}`).emit('PICKED_UP', eventData);
-      
+
       if (order.userId) {
         io.to(`user:${order.userId}`).emit('PICKED_UP', eventData);
       }
@@ -165,7 +165,7 @@ class ETAWebSocketService {
       };
 
       io.to(`order:${order.orderId}`).emit('NEARBY', eventData);
-      
+
       if (order.userId) {
         io.to(`user:${order.userId}`).emit('NEARBY', eventData);
       }
@@ -192,7 +192,7 @@ class ETAWebSocketService {
 
         // Get live ETA
         const liveETA = await etaCalculationService.getLiveETA(orderId);
-        
+
         // Emit update
         await this.emitETAUpdate(orderId, liveETA);
       } catch (error) {

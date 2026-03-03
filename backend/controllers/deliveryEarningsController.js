@@ -8,7 +8,7 @@ import EarningAddonHistory from '../models/EarningAddonHistory.js';
 import winston from 'winston';
 
 const logger = winston.createLogger({
-  level: 'info',
+  level: 'warn', // suppress noisy info logs
   format: winston.format.json(),
   transports: [
     new winston.transports.Console({
@@ -16,6 +16,10 @@ const logger = winston.createLogger({
     })
   ]
 });
+
+// In-memory cache: prevent DB hammering when frontend polls this endpoint too frequently
+const activeOffersCache = new Map(); // key: deliveryId -> { data, expiresAt }
+const OFFERS_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 
 /**
  * Get Delivery Partner Earnings
@@ -199,22 +203,26 @@ export const getActiveEarningAddons = asyncHandler(async (req, res) => {
   try {
     const delivery = req.delivery;
     const now = new Date();
+    const deliveryKey = delivery._id.toString();
 
-    // Get ALL active earning addons (not just those currently valid)
-    // This includes offers that haven't started yet but are active
+    // Return cached result if still fresh (prevents DB hammering on frequent polls)
+    const cached = activeOffersCache.get(deliveryKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return successResponse(res, 200, 'Active earning addons retrieved successfully', cached.data);
+    }
+
+    // Get ALL active earning addons
     const activeAddons = await EarningAddon.find({
       status: 'active',
-      endDate: { $gte: now }, // Only show offers that haven't ended yet
+      endDate: { $gte: now },
       $or: [
         { maxRedemptions: null },
         { $expr: { $lt: ['$currentRedemptions', '$maxRedemptions'] } }
       ]
     })
       .select('title description requiredOrders earningAmount startDate endDate status maxRedemptions currentRedemptions createdAt')
-      .sort({ createdAt: -1 }) // Get most recent first
+      .sort({ createdAt: -1 })
       .lean();
-
-    logger.info(`Found ${activeAddons.length} active earning addons for delivery partner ${delivery._id}`);
 
     // Check validity for each addon and add delivery partner's progress
     const addonsWithProgress = await Promise.all(
@@ -287,11 +295,11 @@ export const getActiveEarningAddons = asyncHandler(async (req, res) => {
       })
     );
 
-    logger.info(`Returning ${addonsWithProgress.length} offers with progress data`);
+    // Cache result for 3 minutes to prevent DB hammering on frequent polls
+    const responseData = { activeOffers: addonsWithProgress };
+    activeOffersCache.set(deliveryKey, { data: responseData, expiresAt: Date.now() + OFFERS_CACHE_TTL_MS });
 
-    return successResponse(res, 200, 'Active earning addons retrieved successfully', {
-      activeOffers: addonsWithProgress
-    });
+    return successResponse(res, 200, 'Active earning addons retrieved successfully', responseData);
   } catch (error) {
     logger.error(`Error fetching active earning addons: ${error.message}`, { stack: error.stack });
     return errorResponse(res, 500, 'Failed to fetch active earning addons');

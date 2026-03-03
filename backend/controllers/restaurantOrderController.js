@@ -317,10 +317,10 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       console.error('Error sending notification:', notifError);
     }
 
-    // Priority-based order notification: First notify nearest delivery boys, then expand after 30 seconds
+    // AUTO-ASSIGN: Directly assign nearest delivery boy when restaurant accepts order
     if (!order.deliveryPartnerId) {
       try {
-        console.log(`🔄 Starting priority-based order notification for order ${order.orderId}...`);
+        console.log(`🔄 Auto-assigning delivery partner for order ${order.orderId}...`);
 
         // Get restaurant location
         let restaurantDoc = null;
@@ -338,134 +338,52 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
         if (!restaurantDoc) {
           console.error(`❌ Restaurant not found for restaurantId: ${restaurantId}`);
-        } else if (!restaurantDoc.location || !restaurantDoc.location.coordinates ||
+        } else if (
+          !restaurantDoc.location ||
+          !restaurantDoc.location.coordinates ||
           restaurantDoc.location.coordinates.length < 2 ||
-          (restaurantDoc.location.coordinates[0] === 0 && restaurantDoc.location.coordinates[1] === 0)) {
-          console.error(`❌ Restaurant location not found or invalid for restaurant ${restaurantId}`);
+          (restaurantDoc.location.coordinates[0] === 0 && restaurantDoc.location.coordinates[1] === 0)
+        ) {
+          console.error(`❌ Restaurant location is invalid for restaurant ${restaurantId}`);
         } else {
           const [restaurantLng, restaurantLat] = restaurantDoc.location.coordinates;
           console.log(`📍 Restaurant location: ${restaurantLat}, ${restaurantLng}`);
 
-          // Reload order to ensure we have the latest version
+          // Reload order to get latest state
           const freshOrder = await Order.findById(order._id);
           if (!freshOrder) {
             console.error(`❌ Order ${order.orderId} not found after save`);
           } else if (freshOrder.deliveryPartnerId) {
             console.log(`⚠️ Order ${order.orderId} already has delivery partner: ${freshOrder.deliveryPartnerId}`);
           } else {
-            // Step 1: Find nearest delivery boys (within 5km priority distance)
-            const isCod = order.payment?.method === 'cash' || order.payment?.method === 'cod';
-            const priorityDeliveryBoys = await findNearestDeliveryBoys(restaurantLat, restaurantLng, restaurantId, 5, null, isCod);
+            // Auto-assign to nearest delivery boy (within 50km, COD-aware)
+            const assignmentResult = await assignOrderToDeliveryBoy(freshOrder, restaurantLat, restaurantLng, restaurantId);
 
-            if (priorityDeliveryBoys && priorityDeliveryBoys.length > 0) {
-              console.log(`✅ Found ${priorityDeliveryBoys.length} priority delivery partners within 5km`);
-
-              // Store priority notification info in order
-              freshOrder.assignmentInfo = {
-                priorityNotifiedAt: new Date(),
-                priorityDeliveryPartnerIds: priorityDeliveryBoys.map(db => db.deliveryPartnerId),
-                notificationPhase: 'priority'
-              };
-              await freshOrder.save();
-
-              // Reload order with populated userId and restaurantId (with location)
+            if (assignmentResult && assignmentResult.deliveryPartnerId) {
+              // Reload order with populated userId for notification
               const populatedOrder = await Order.findById(freshOrder._id)
                 .populate('userId', 'name phone')
-                .populate('restaurantId', 'name address location phone ownerPhone')
                 .lean();
 
               if (populatedOrder) {
-                // Notify priority delivery boys (without assigning)
-                const priorityIds = priorityDeliveryBoys.map(db => db.deliveryPartnerId);
-                await notifyMultipleDeliveryBoys(populatedOrder, priorityIds, 'priority');
-                console.log(`✅ Notified ${priorityIds.length} priority delivery partners for order ${order.orderId}`);
-
-                // Step 2: Set timeout to expand to other delivery boys after 30 seconds
-                setTimeout(async () => {
-                  try {
-                    // Re-check if order still doesn't have delivery partner
-                    const checkOrder = await Order.findById(order._id);
-                    if (!checkOrder || checkOrder.deliveryPartnerId) {
-                      console.log(`ℹ️ Order ${order.orderId} already assigned, skipping expanded notification`);
-                      return;
-                    }
-
-                    console.log(`⏰ 30 seconds passed, expanding notification to other delivery partners for order ${order.orderId}`);
-
-                    // Find all other delivery boys (excluding already notified priority ones)
-                    // Get all delivery boys within 50km, excluding priority ones
-                    const allDeliveryBoys = await findNearestDeliveryBoys(
-                      restaurantLat,
-                      restaurantLng,
-                      restaurantId,
-                      50, // Max distance 50km
-                      null,
-                      isCod
-                    );
-
-                    // Filter out priority delivery boys
-                    const expandedDeliveryBoys = allDeliveryBoys.filter(
-                      db => !priorityIds.includes(db.deliveryPartnerId)
-                    );
-
-                    if (expandedDeliveryBoys && expandedDeliveryBoys.length > 0) {
-                      const expandedIds = expandedDeliveryBoys.map(db => db.deliveryPartnerId);
-
-                      // Update assignment info
-                      checkOrder.assignmentInfo = {
-                        ...(checkOrder.assignmentInfo || {}),
-                        expandedNotifiedAt: new Date(),
-                        expandedDeliveryPartnerIds: expandedIds,
-                        notificationPhase: 'expanded'
-                      };
-                      await checkOrder.save();
-
-                      // Reload with populated userId and restaurantId (with location)
-                      const expandedOrder = await Order.findById(checkOrder._id)
-                        .populate('userId', 'name phone')
-                        .populate('restaurantId', 'name address location phone ownerPhone')
-                        .lean();
-
-                      if (expandedOrder) {
-                        // Notify all expanded delivery boys
-                        await notifyMultipleDeliveryBoys(expandedOrder, expandedIds, 'expanded');
-                        console.log(`✅ Notified ${expandedIds.length} expanded delivery partners for order ${order.orderId}`);
-                      }
-                    } else {
-                      console.warn(`⚠️ No additional delivery partners found for order ${order.orderId}`);
-                    }
-                  } catch (expandError) {
-                    console.error(`❌ Error in expanded notification for order ${order.orderId}:`, expandError);
-                  }
-                }, 30000); // 30 seconds timeout
+                try {
+                  await notifyDeliveryBoyNewOrder(populatedOrder, assignmentResult.deliveryPartnerId);
+                  console.log(`✅ Order ${order.orderId} auto-assigned to ${assignmentResult.deliveryPartnerName} and notified`);
+                } catch (notifyError) {
+                  console.error(`❌ Assignment succeeded but notification failed:`, notifyError.message);
+                }
               }
             } else {
-              // No priority delivery boys found, immediately try to find any delivery boy
-              console.log(`⚠️ No priority delivery partners found, searching for any available delivery partner`);
-              const anyDeliveryBoy = await findNearestDeliveryBoy(restaurantLat, restaurantLng, restaurantId, 50, [], isCod);
-
-              if (anyDeliveryBoy) {
-                const populatedOrder = await Order.findById(freshOrder._id)
-                  .populate('userId', 'name phone')
-                  .lean();
-
-                if (populatedOrder) {
-                  await notifyMultipleDeliveryBoys(populatedOrder, [anyDeliveryBoy.deliveryPartnerId], 'immediate');
-                  console.log(`✅ Notified delivery partner immediately for order ${order.orderId}`);
-                }
-              } else {
-                console.warn(`⚠️ No delivery partners available for order ${order.orderId}`);
-              }
+              console.warn(`⚠️ No delivery partners available for order ${order.orderId}`);
             }
           }
         }
       } catch (assignmentError) {
-        console.error('❌ Error in priority-based order notification:', assignmentError);
-        console.error('❌ Error stack:', assignmentError.stack);
-        // Don't fail the order acceptance if notification fails
+        console.error('❌ Error in auto-assignment:', assignmentError);
+        // Don't fail the order acceptance if assignment fails
       }
     } else {
-      console.log(`ℹ️ Order ${order.orderId} already has delivery partner assigned: ${order.deliveryPartnerId}`);
+      console.log(`ℹ️ Order ${order.orderId} already has delivery partner: ${order.deliveryPartnerId}`);
     }
 
     return successResponse(res, 200, 'Order accepted successfully', {

@@ -8,7 +8,7 @@ let getIO = null;
 
 async function getIOInstance() {
   if (!getIO) {
-    const serverModule = await import('../../../server.js');
+    const serverModule = await import('../server.js');
     getIO = serverModule.getIO;
   }
   return getIO ? getIO() : null;
@@ -32,7 +32,7 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
     // CRITICAL: Validate restaurantId matches order's restaurantId
     const orderRestaurantId = order.restaurantId?.toString() || order.restaurantId;
     const providedRestaurantId = restaurantId?.toString() || restaurantId;
-    
+
     if (orderRestaurantId !== providedRestaurantId) {
       console.error('❌ CRITICAL: RestaurantId mismatch in notification!', {
         orderRestaurantId: orderRestaurantId,
@@ -57,7 +57,7 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
         ]
       }).lean();
     }
-    
+
     // Validate restaurant name matches order
     if (restaurant && order.restaurantName && restaurant.name !== order.restaurantName) {
       console.warn('⚠️ Restaurant name mismatch:', {
@@ -163,7 +163,7 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
       console.error(`❌ Restaurant name: ${order.restaurantName}`);
       console.error(`❌ Restaurant ID from order: ${order.restaurantId}`);
       console.error(`❌ Normalized restaurant ID: ${normalizedRestaurantId}`);
-      
+
       // Log all connected restaurant sockets for debugging (but don't send to them)
       const allSockets = await restaurantNamespace.fetchSockets();
       console.log(`📊 Total restaurant sockets connected: ${allSockets.length}`);
@@ -179,7 +179,7 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
         }
         console.log(`📊 Connected restaurant sockets and their rooms:`, socketRooms);
       }
-      
+
       // Still try to emit to room variations (in case socket connects later)
       // But DO NOT broadcast to all restaurants
       roomVariations.forEach(room => {
@@ -191,7 +191,7 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
         });
         console.log(`📤 Emitted to room ${room} (no sockets found, but room exists for future connections)`);
       });
-      
+
       // Return error instead of success
       return {
         success: false,
