@@ -20,8 +20,8 @@ export const getOnboarding = async (req, res) => {
     return successResponse(res, 200, 'Onboarding data retrieved', {
       onboarding: {
         ...(restaurant.onboarding || {}),
-        businessModel: restaurant.businessModel,
-      },
+        businessModel: restaurant.businessModel
+      }
     });
   } catch (error) {
     console.error('Error fetching restaurant onboarding:', error);
@@ -71,21 +71,21 @@ export const upsertOnboarding = async (req, res) => {
       update['onboarding.completedSteps'] = completedSteps;
     }
 
-    console.log('📝 Onboarding update payload:', {
-      hasStep1: !!step1,
-      hasStep2: step2 !== undefined,
-      hasStep3: step3 !== undefined,
-      hasStep4: !!step4,
-      businessModel,
-      completedSteps,
-    });
+
+
+
+
+
+
+
+
 
     const restaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
       { $set: update },
       {
         new: true,
-        upsert: false,
+        upsert: false
       }
     );
 
@@ -101,14 +101,14 @@ export const upsertOnboarding = async (req, res) => {
     // Sync fields to main restaurant document if onboarding steps are valid
     if (step1 || step2 || step4) {
       try {
-        console.log('🔄 Syncing onboarding data to restaurant schema...');
+
         const syncData = {
           step1: step1 || onboarding.step1,
           step2: step2 || onboarding.step2,
-          step4: step4 || onboarding.step4,
+          step4: step4 || onboarding.step4
         };
         await createRestaurantFromOnboarding(syncData, restaurantId);
-        console.log('✅ Onboarding data synced to restaurant schema successfully');
+
       } catch (syncError) {
         console.error('⚠️ Error syncing onboarding data to restaurant schema:', syncError);
         // We continue anyway so onboarding state is at least saved
@@ -117,48 +117,48 @@ export const upsertOnboarding = async (req, res) => {
 
     // Update restaurant schema when completing onboarding (step 5)
     if (finalCompletedSteps >= 5 && (step5 || businessModel)) {
-      console.log('🔄 Step5/Final completed, updating restaurant schema with businessModel...');
-      const modelToSave = (step5?.businessModel === 'Subscription Base' || businessModel === 'Subscription Base' || onboarding.businessModel === 'Subscription Base')
-        ? 'Subscription Base'
-        : 'Commission Base';
 
-      console.log('📦 Business Model data received:', {
-        businessModel: modelToSave,
-      });
+      const modelToSave = step5?.businessModel === 'Subscription Base' || businessModel === 'Subscription Base' || onboarding.businessModel === 'Subscription Base' ?
+      'Subscription Base' :
+      'Commission Base';
+
+
+
+
       try {
         const updateData = {};
         updateData.businessModel = modelToSave;
 
         if (Object.keys(updateData).length > 0) {
           const updated = await Restaurant.findByIdAndUpdate(restaurantId, { $set: updateData }, { new: true });
-          console.log('✅ Restaurant schema updated with final data:', {
-            businessModel: updated?.businessModel
-          });
+
+
+
         }
       } catch (bmUpdateError) {
         console.error('⚠️ Error updating restaurant schema with final data:', bmUpdateError);
       }
     }
 
-    console.log('🔍 Onboarding update check:', {
-      requestCompletedSteps: completedSteps,
-      savedCompletedSteps: onboarding.completedSteps,
-      finalCompletedSteps,
-      restaurantId: restaurantId.toString(),
-      willUpdateRestaurant: finalCompletedSteps === 5,
-    });
+
+
+
+
+
+
+
 
     // Update restaurant with final data if onboarding is complete (step 5)
-    if (finalCompletedSteps === 5 || (step5 && completedSteps === 5)) {
-      console.log('✅ Onboarding is complete (step 5), finalizing restaurant data...');
+    if (finalCompletedSteps === 5 || step5 && completedSteps === 5) {
+
 
       // Fetch the complete restaurant to verify all data is saved
       const completeRestaurant = await Restaurant.findById(restaurantId).lean();
 
-      console.log('📋 Final restaurant data verification:', {
-        name: completeRestaurant?.name,
-        businessModel: completeRestaurant?.businessModel
-      });
+
+
+
+
 
       // Return success response with restaurant info
       return successResponse(res, 200, 'Onboarding data saved and restaurant updated', {
@@ -169,13 +169,13 @@ export const upsertOnboarding = async (req, res) => {
           name: completeRestaurant?.name,
           slug: completeRestaurant?.slug,
           isActive: completeRestaurant?.isActive,
-          businessModel: completeRestaurant?.businessModel,
-        },
+          businessModel: completeRestaurant?.businessModel
+        }
       });
     }
 
     return successResponse(res, 200, 'Onboarding data saved', {
-      onboarding,
+      onboarding
     });
   } catch (error) {
     console.error('Error saving restaurant onboarding:', error);
@@ -216,8 +216,8 @@ export const createRestaurantFromOnboardingManual = async (req, res) => {
           _id: updatedRestaurant._id,
           name: updatedRestaurant.name,
           slug: updatedRestaurant.slug,
-          isActive: updatedRestaurant.isActive,
-        },
+          isActive: updatedRestaurant.isActive
+        }
       });
     } catch (error) {
       console.error('Error updating restaurant:', error);
@@ -228,5 +228,3 @@ export const createRestaurantFromOnboardingManual = async (req, res) => {
     return errorResponse(res, 500, 'Failed to process request');
   }
 };
-
-

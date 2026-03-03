@@ -5,6 +5,9 @@ const ORDER_ROOT = 'active_orders';
 const ROUTE_CACHE_ROOT = 'route_cache';
 const USERS_ROOT = 'users';
 const DRIVERS_ROOT = 'drivers';
+const DELIVERY_TRACKING_ROOT = 'delivery';
+const RESTAURANT_TRACKING_ROOT = 'restaurant';
+const ORDERS_TRACKING_ROOT = 'orders';
 
 const sanitizeKey = (value) => String(value || '').replace(/[.#$/\[\]]/g, '_');
 
@@ -30,6 +33,37 @@ const getDb = () => {
   const db = getFirebaseRealtimeDb();
   if (!db) return null;
   return db;
+};
+
+const toRealtimeLocationPayload = ({ primary = null, fallback = null } = {}) => {
+  const primaryLat = toNumberOrNull(primary?.lat);
+  const primaryLng = toNumberOrNull(primary?.lng);
+  const fallbackLat = toNumberOrNull(fallback?.lat);
+  const fallbackLng = toNumberOrNull(fallback?.lng);
+
+  const lat = isValidCoordinate(primaryLat, primaryLng)
+    ? primaryLat
+    : (isValidCoordinate(fallbackLat, fallbackLng) ? fallbackLat : null);
+  const lng = isValidCoordinate(primaryLat, primaryLng)
+    ? primaryLng
+    : (isValidCoordinate(fallbackLat, fallbackLng) ? fallbackLng : null);
+
+  if (!isValidCoordinate(lat, lng)) return null;
+
+  const primaryLastUpdated = toNumberOrNull(primary?.last_updated ?? primary?.timestamp);
+  const fallbackLastUpdated = toNumberOrNull(fallback?.last_updated ?? fallback?.timestamp);
+  const lastUpdated = Number.isFinite(primaryLastUpdated)
+    ? primaryLastUpdated
+    : (Number.isFinite(fallbackLastUpdated) ? fallbackLastUpdated : null);
+
+  return stripUndefined({
+    lat,
+    lng,
+    heading: toNumberOrNull(primary?.heading ?? fallback?.heading),
+    speed: toNumberOrNull(primary?.speed ?? fallback?.speed),
+    accuracy: toNumberOrNull(primary?.accuracy ?? fallback?.accuracy),
+    last_updated: lastUpdated
+  });
 };
 
 const normalizeRoutePoints = (routePoints = []) => {
@@ -196,6 +230,14 @@ export const updateDeliveryPresenceRealtime = async ({
 
   try {
     await db.ref(`${DELIVERY_ROOT}/${deliveryKey}`).update(payload);
+    await db.ref(`${DELIVERY_TRACKING_ROOT}/${deliveryKey}`).update(stripUndefined({
+      status: isOnline ? 'online' : 'offline',
+      is_online: Boolean(isOnline),
+      last_updated: timestamp,
+      name: name || undefined,
+      phone: phone || undefined,
+      zone_id: zoneId || undefined
+    }));
 
     const driverPayload = stripUndefined({
       id: String(deliveryId),
@@ -211,6 +253,12 @@ export const updateDeliveryPresenceRealtime = async ({
 
     if (isValidCoordinate(lat, lng)) {
       driverPayload.l = [lat, lng];
+      await db.ref(`${DELIVERY_TRACKING_ROOT}/${deliveryKey}/location`).update({
+        lat,
+        lng,
+        last_updated: timestamp,
+        timestamp
+      });
     }
 
     await db.ref(`${DRIVERS_ROOT}/driver_${deliveryKey}`).update(driverPayload);
@@ -225,6 +273,7 @@ export const upsertActiveOrderRealtime = async ({
   orderId,
   orderMongoId = '',
   deliveryId = '',
+  restaurantId = '',
   status = 'assigned',
   phase = 'assigned',
   polyline = null,
@@ -302,12 +351,35 @@ export const upsertActiveOrderRealtime = async ({
     });
 
     if (deliveryKey) {
-      await db.ref(`${DELIVERY_ROOT}/${deliveryKey}`).update({
+      const deliveryActiveOrderPayload = {
         active_order_id: orderKey,
         active_order_status: status || 'assigned',
         active_order_phase: phase || 'assigned',
         last_updated: timestamp
-      });
+      };
+      await db.ref(`${DELIVERY_ROOT}/${deliveryKey}`).update(deliveryActiveOrderPayload);
+      await db.ref(`${DELIVERY_TRACKING_ROOT}/${deliveryKey}`).update(deliveryActiveOrderPayload);
+    }
+
+    const trackingPayload = stripUndefined({
+      ...payload,
+      order_id: String(orderId),
+      order_mongo_id: orderMongoId ? String(orderMongoId) : undefined,
+      boy_id: deliveryId ? String(deliveryId) : undefined,
+      restaurant_id: restaurantId ? String(restaurantId) : undefined
+    });
+    await db.ref(`${ORDERS_TRACKING_ROOT}/${orderKey}/tracking`).update(trackingPayload);
+
+    const restaurantKey = sanitizeKey(restaurantId);
+    if (restaurantKey && isValidCoordinate(restaurantLat, restaurantLng)) {
+      await db.ref(`${RESTAURANT_TRACKING_ROOT}/${restaurantKey}/location`).update(stripUndefined({
+        lat: restaurantLat,
+        lng: restaurantLng,
+        name: restaurant?.name || undefined,
+        address: restaurant?.address || undefined,
+        last_updated: timestamp,
+        timestamp
+      }));
     }
 
     if (encodedPolyline && normalizedPoints.length >= 2) {
@@ -365,6 +437,20 @@ export const updateActiveOrderRiderLocationRealtime = async ({
       accuracy: accuracyValue,
       last_updated: timestamp
     });
+    await db.ref(`${DELIVERY_TRACKING_ROOT}/${deliveryKey}`).update({
+      status: 'online',
+      is_online: true,
+      last_updated: timestamp
+    });
+    await db.ref(`${DELIVERY_TRACKING_ROOT}/${deliveryKey}/location`).update(stripUndefined({
+      lat,
+      lng,
+      heading: headingValue,
+      speed: speedValue,
+      accuracy: accuracyValue,
+      last_updated: timestamp,
+      timestamp
+    }));
 
     await db.ref(`${DRIVERS_ROOT}/driver_${deliveryKey}`).update(stripUndefined({
       l: [lat, lng],
@@ -375,16 +461,24 @@ export const updateActiveOrderRiderLocationRealtime = async ({
       updated_at: timestamp
     }));
 
-    const activeOrderKey = orderId
-      ? sanitizeKey(orderId)
-      : sanitizeKey((await db.ref(`${DELIVERY_ROOT}/${deliveryKey}/active_order_id`).get()).val());
+    let activeOrderKey = orderId ? sanitizeKey(orderId) : '';
+    if (!activeOrderKey) {
+      const legacyActiveOrder = (await db.ref(`${DELIVERY_ROOT}/${deliveryKey}/active_order_id`).get()).val();
+      const v2ActiveOrder = (await db.ref(`${DELIVERY_TRACKING_ROOT}/${deliveryKey}/active_order_id`).get()).val();
+      activeOrderKey = sanitizeKey(legacyActiveOrder || v2ActiveOrder);
+    }
     if (!activeOrderKey) return true;
 
-    await db.ref(`${ORDER_ROOT}/${activeOrderKey}`).update({
+    const riderPayload = stripUndefined({
       boy_lat: lat,
       boy_lng: lng,
+      heading: headingValue,
+      speed: speedValue,
+      accuracy: accuracyValue,
       last_updated: timestamp
     });
+    await db.ref(`${ORDER_ROOT}/${activeOrderKey}`).update(riderPayload);
+    await db.ref(`${ORDERS_TRACKING_ROOT}/${activeOrderKey}/tracking`).update(riderPayload);
 
     return true;
   } catch (error) {
@@ -408,20 +502,24 @@ export const completeActiveOrderRealtime = async ({
   const timestamp = Date.now();
 
   try {
-    await db.ref(`${ORDER_ROOT}/${orderKey}`).update({
+    const completedPayload = {
       status: finalStatus || 'delivered',
       phase: 'completed',
       completed_at: timestamp,
       last_updated: timestamp
-    });
+    };
+    await db.ref(`${ORDER_ROOT}/${orderKey}`).update(completedPayload);
+    await db.ref(`${ORDERS_TRACKING_ROOT}/${orderKey}/tracking`).update(completedPayload);
 
     if (deliveryKey) {
-      await db.ref(`${DELIVERY_ROOT}/${deliveryKey}`).update({
+      const clearActiveOrderPayload = {
         active_order_id: null,
         active_order_status: null,
         active_order_phase: null,
         last_updated: timestamp
-      });
+      };
+      await db.ref(`${DELIVERY_ROOT}/${deliveryKey}`).update(clearActiveOrderPayload);
+      await db.ref(`${DELIVERY_TRACKING_ROOT}/${deliveryKey}`).update(clearActiveOrderPayload);
     }
 
     return true;
@@ -429,6 +527,68 @@ export const completeActiveOrderRealtime = async ({
     console.warn(`[FirebaseRealtime] active_orders complete failed: ${error.message}`);
     return false;
   }
+};
+
+export const getDeliveryLocationsByIdsRealtime = async (deliveryIds = []) => {
+  const db = getDb();
+  if (!db) return {};
+
+  const uniqueIds = Array.from(new Set(
+    (Array.isArray(deliveryIds) ? deliveryIds : [])
+      .filter(Boolean)
+      .map((value) => String(value))
+  ));
+  if (!uniqueIds.length) return {};
+
+  const result = {};
+
+  await Promise.all(uniqueIds.map(async (deliveryId) => {
+    const key = sanitizeKey(deliveryId);
+    try {
+      const [v2Snapshot, legacySnapshot] = await Promise.all([
+        db.ref(`${DELIVERY_TRACKING_ROOT}/${key}`).get(),
+        db.ref(`${DELIVERY_ROOT}/${key}`).get()
+      ]);
+
+      const v2Data = v2Snapshot.exists() ? v2Snapshot.val() : null;
+      const legacyData = legacySnapshot.exists() ? legacySnapshot.val() : null;
+
+      const parsed = toRealtimeLocationPayload({
+        primary: v2Data?.location,
+        fallback: {
+          lat: legacyData?.lat,
+          lng: legacyData?.lng,
+          heading: legacyData?.heading,
+          speed: legacyData?.speed,
+          accuracy: legacyData?.accuracy,
+          last_updated: legacyData?.last_updated
+        }
+      });
+      if (!parsed) return;
+
+      const isOnline = (
+        v2Data?.is_online === true ||
+        v2Data?.status === 'online' ||
+        legacyData?.status === 'online'
+      );
+
+      result[deliveryId] = stripUndefined({
+        ...parsed,
+        is_online: isOnline,
+        status: isOnline ? 'online' : 'offline'
+      });
+    } catch (error) {
+      console.warn(`[FirebaseRealtime] failed reading location for ${deliveryId}: ${error.message}`);
+    }
+  }));
+
+  return result;
+};
+
+export const getDeliveryLocationRealtime = async ({ deliveryId }) => {
+  if (!deliveryId) return null;
+  const map = await getDeliveryLocationsByIdsRealtime([deliveryId]);
+  return map[String(deliveryId)] || null;
 };
 
 const haversineDistanceKm = (lat1, lng1, lat2, lng2) => {

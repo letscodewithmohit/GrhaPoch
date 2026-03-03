@@ -1,86 +1,86 @@
-import { useState, useMemo } from "react"
-import { Search, Download, ChevronDown, Filter, ArrowUpDown, Settings, FileText, FileSpreadsheet, Code } from "lucide-react"
-import { subscriptionReportDummy } from "../../data/subscriptionReportDummy"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils"
+import { useState, useMemo } from "react";
+import { Search, Download, ChevronDown, Filter, ArrowUpDown, Settings, FileText, FileSpreadsheet, Code } from "lucide-react";
+import { subscriptionReportDummy } from "../../data/subscriptionReportDummy";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils";
 
 export default function SubscriptionReport() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [subscriptions, setSubscriptions] = useState(subscriptionReportDummy)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [subscriptions, setSubscriptions] = useState(subscriptionReportDummy);
   const [filters, setFilters] = useState({
     restaurant: "All restaurants",
     package: "All packages",
-    all: "All",
-  })
+    all: "All"
+  });
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const filteredSubscriptions = useMemo(() => {
-    let result = [...subscriptions]
-    
+    let result = [...subscriptions];
+
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(subscription =>
-        subscription.transactionId.toLowerCase().includes(query) ||
-        subscription.restaurantName.toLowerCase().includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((subscription) =>
+      subscription.transactionId.toLowerCase().includes(query) ||
+      subscription.restaurantName.toLowerCase().includes(query)
+      );
     }
 
     if (filters.restaurant !== "All restaurants") {
-      result = result.filter(s => s.restaurantName === filters.restaurant)
+      result = result.filter((s) => s.restaurantName === filters.restaurant);
     }
 
     if (filters.package !== "All packages") {
-      result = result.filter(s => s.packageName === filters.package)
+      result = result.filter((s) => s.packageName === filters.package);
     }
 
-    if (filters.all !== "All") {
-      // Filter by active/inactive if needed
-    }
 
-    return result
-  }, [subscriptions, searchQuery, filters])
 
-  const totalSubscriptions = filteredSubscriptions.length
+
+
+    return result;
+  }, [subscriptions, searchQuery, filters]);
+
+  const totalSubscriptions = filteredSubscriptions.length;
 
   const handleExport = (format) => {
     if (filteredSubscriptions.length === 0) {
-      alert("No data to export")
-      return
+      alert("No data to export");
+      return;
     }
     const headers = [
-      { key: "sl", label: "SI" },
-      { key: "transactionId", label: "Transaction ID" },
-      { key: "transactionDate", label: "Transaction Date" },
-      { key: "restaurantName", label: "Restaurant Name" },
-      { key: "packageName", label: "Package Name" },
-      { key: "duration", label: "Duration" },
-      { key: "pricing", label: "Pricing" },
-      { key: "paymentStatus", label: "Payment Status" },
-      { key: "paymentMethod", label: "Payment Method" },
-    ]
+    { key: "sl", label: "SI" },
+    { key: "transactionId", label: "Transaction ID" },
+    { key: "transactionDate", label: "Transaction Date" },
+    { key: "restaurantName", label: "Restaurant Name" },
+    { key: "packageName", label: "Package Name" },
+    { key: "duration", label: "Duration" },
+    { key: "pricing", label: "Pricing" },
+    { key: "paymentStatus", label: "Payment Status" },
+    { key: "paymentMethod", label: "Payment Method" }];
+
     switch (format) {
-      case "csv": exportReportsToCSV(filteredSubscriptions, headers, "subscription_report"); break
-      case "excel": exportReportsToExcel(filteredSubscriptions, headers, "subscription_report"); break
-      case "pdf": exportReportsToPDF(filteredSubscriptions, headers, "subscription_report", "Subscription Report"); break
-      case "json": exportReportsToJSON(filteredSubscriptions, "subscription_report"); break
+      case "csv":exportReportsToCSV(filteredSubscriptions, headers, "subscription_report");break;
+      case "excel":exportReportsToExcel(filteredSubscriptions, headers, "subscription_report");break;
+      case "pdf":exportReportsToPDF(filteredSubscriptions, headers, "subscription_report", "Subscription Report");break;
+      case "json":exportReportsToJSON(filteredSubscriptions, "subscription_report");break;
     }
-  }
+  };
 
   const handleFilterApply = () => {
-    // Filters are already applied via useMemo
-  }
 
+    // Filters are already applied via useMemo
+  };
   const handleResetFilters = () => {
     setFilters({
       restaurant: "All restaurants",
       package: "All packages",
-      all: "All",
-    })
-  }
+      all: "All"
+    });
+  };
 
-  const activeFiltersCount = (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.package !== "All packages" ? 1 : 0) + (filters.all !== "All" ? 1 : 0)
+  const activeFiltersCount = (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.package !== "All packages" ? 1 : 0) + (filters.all !== "All" ? 1 : 0);
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen overflow-x-hidden">
@@ -101,9 +101,9 @@ export default function SubscriptionReport() {
                 </label>
                 <select
                   value={filters.restaurant}
-                  onChange={(e) => setFilters(prev => ({ ...prev, restaurant: e.target.value }))}
-                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, restaurant: e.target.value }))}
+                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All restaurants">All restaurants</option>
                   <option value="Cheese Burger">Cheese Burger</option>
                   <option value="Cheesy Restaurant">Cheesy Restaurant</option>
@@ -120,9 +120,9 @@ export default function SubscriptionReport() {
                 </label>
                 <select
                   value={filters.package}
-                  onChange={(e) => setFilters(prev => ({ ...prev, package: e.target.value }))}
-                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, package: e.target.value }))}
+                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All packages">All packages</option>
                   <option value="Basic">Basic</option>
                   <option value="Standard">Standard</option>
@@ -137,9 +137,9 @@ export default function SubscriptionReport() {
                 </label>
                 <select
                   value={filters.all}
-                  onChange={(e) => setFilters(prev => ({ ...prev, all: e.target.value }))}
-                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, all: e.target.value }))}
+                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All">All</option>
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -149,25 +149,25 @@ export default function SubscriptionReport() {
             </div>
 
             <div className="flex items-end gap-2">
-              <button 
+              <button
                 onClick={handleResetFilters}
-                className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Reset
               </button>
-              <button 
+              <button
                 onClick={handleFilterApply}
                 className={`px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all flex items-center gap-2 relative ${
-                  activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""
-                }`}
-              >
+                activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""}`
+                }>
+                
                 <Filter className="w-4 h-4" />
                 Filter
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
+                {activeFiltersCount > 0 &&
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
                     {activeFiltersCount}
                   </span>
-                )}
+                }
               </button>
             </div>
           </div>
@@ -185,8 +185,8 @@ export default function SubscriptionReport() {
                   placeholder="Search by ID or Restaurant"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-4 pr-10 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="pl-4 pr-10 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
 
@@ -219,10 +219,10 @@ export default function SubscriptionReport() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
+              <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
+                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all">
+                
                 <Settings className="w-5 h-5" />
               </button>
             </div>
@@ -291,18 +291,18 @@ export default function SubscriptionReport() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {filteredSubscriptions.length === 0 ? (
-                  <tr>
+                {filteredSubscriptions.length === 0 ?
+                <tr>
                     <td colSpan={10} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No subscriptions match your search</p>
                       </div>
                     </td>
-                  </tr>
-                ) : (
-                  filteredSubscriptions.map((subscription) => (
-                    <tr key={subscription.sl} className="hover:bg-slate-50 transition-colors">
+                  </tr> :
+
+                filteredSubscriptions.map((subscription) =>
+                <tr key={subscription.sl} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{subscription.sl}</span>
                       </td>
@@ -337,15 +337,15 @@ export default function SubscriptionReport() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
-                          className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="Download"
-                        >
+                      className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
+                      title="Download">
+                      
                           <Download className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
+                )
+                }
               </tbody>
             </table>
           </div>
@@ -369,13 +369,13 @@ export default function SubscriptionReport() {
           <div className="px-6 pb-6 flex items-center justify-end">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+              
               Close
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

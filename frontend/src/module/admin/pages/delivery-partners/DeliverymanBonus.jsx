@@ -1,82 +1,82 @@
-import { useState, useMemo, useEffect } from "react"
-import { Search, Wallet, Settings, Folder, Download, ChevronDown, FileText, FileSpreadsheet, Check, Columns, Loader2 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { exportBonusToExcel, exportBonusToPDF } from "../../components/deliveryman/deliverymanExportUtils"
-import { adminAPI } from "@/lib/api"
-import { API_BASE_URL } from "@/lib/api/config"
+import { useState, useMemo, useEffect } from "react";
+import { Search, Wallet, Settings, Folder, Download, ChevronDown, FileText, FileSpreadsheet, Check, Columns, Loader2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { exportBonusToExcel, exportBonusToPDF } from "../../components/deliveryman/deliverymanExportUtils";
+import { adminAPI } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/api/config";
 
 // Helper function to format bonus amount properly
 const formatBonusAmount = (transaction) => {
   // Use raw amount if available, otherwise clean the bonus string
   if (transaction.amount !== undefined && transaction.amount !== null) {
-    return `₹${parseFloat(transaction.amount).toFixed(2)}`
+    return `₹${parseFloat(transaction.amount).toFixed(2)}`;
   }
-  
-  if (!transaction.bonus) return '₹0.00'
-  
+
+  if (!transaction.bonus) return '₹0.00';
+
   // Clean the bonus string - remove superscript characters
-  let cleaned = transaction.bonus.toString()
-    .replace(/¹/g, '') // Remove superscript 1
-    .replace(/[\u2070-\u207F\u2080-\u208F]/g, '') // Remove all superscript characters
-    .trim()
-  
+  let cleaned = transaction.bonus.toString().
+  replace(/¹/g, '') // Remove superscript 1
+  .replace(/[\u2070-\u207F\u2080-\u208F]/g, '') // Remove all superscript characters
+  .trim();
+
   // Extract numeric value
-  const numericMatch = cleaned.match(/[\d.]+/)
+  const numericMatch = cleaned.match(/[\d.]+/);
   if (numericMatch) {
-    const amount = parseFloat(numericMatch[0])
-    return `₹${amount.toFixed(2)}`
+    const amount = parseFloat(numericMatch[0]);
+    return `₹${amount.toFixed(2)}`;
   }
-  
-  return '₹0.00'
-}
+
+  return '₹0.00';
+};
 
 export default function DeliverymanBonus() {
   const [formData, setFormData] = useState({
     deliveryPartnerId: "",
-    amount: "",
-  })
-  const [searchQuery, setSearchQuery] = useState("")
-  const [transactions, setTransactions] = useState([])
-  const [deliveryPartners, setDeliveryPartners] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState("")
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
-  const [formErrors, setFormErrors] = useState({})
+    amount: ""
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [transactions, setTransactions] = useState([]);
+  const [deliveryPartners, setDeliveryPartners] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     transactionId: true,
     deliveryBoyId: true,
     deliveryman: true,
     bonus: true,
-    createdAt: true,
-  })
+    createdAt: true
+  });
 
   // Fetch delivery partners on mount
   useEffect(() => {
     const fetchDeliveryPartners = async () => {
       try {
-        const response = await adminAPI.getDeliveryPartners({ status: 'approved', limit: 1000 })
+        const response = await adminAPI.getDeliveryPartners({ status: 'approved', limit: 1000 });
         if (response.data?.data?.deliveryPartners) {
-          setDeliveryPartners(response.data.data.deliveryPartners)
+          setDeliveryPartners(response.data.data.deliveryPartners);
         }
       } catch (error) {
-        console.error("Error fetching delivery partners:", error)
+        console.error("Error fetching delivery partners:", error);
       }
-    }
+    };
 
-    fetchDeliveryPartners()
-  }, [])
+    fetchDeliveryPartners();
+  }, []);
 
   // Fetch transactions on mount
   useEffect(() => {
     const fetchTransactions = async () => {
-      setLoading(true)
-      setError("")
+      setLoading(true);
+      setError("");
       try {
-        const response = await adminAPI.getDeliveryPartnerBonusTransactions({ limit: 1000 })
+        const response = await adminAPI.getDeliveryPartnerBonusTransactions({ limit: 1000 });
         if (response.data?.data?.transactions) {
           // Format transactions for display
           const formatted = response.data.data.transactions.map((t, index) => ({
@@ -88,79 +88,79 @@ export default function DeliverymanBonus() {
               hour: '2-digit',
               minute: '2-digit'
             })
-          }))
-          setTransactions(formatted)
+          }));
+          setTransactions(formatted);
         }
       } catch (error) {
-        console.error("Error fetching bonus transactions:", error)
-        setError("Failed to load transactions. Please refresh the page.")
+        console.error("Error fetching bonus transactions:", error);
+        setError("Failed to load transactions. Please refresh the page.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchTransactions()
-  }, [])
+    fetchTransactions();
+  }, []);
 
   const filteredTransactions = useMemo(() => {
     if (!searchQuery.trim()) {
-      return transactions
+      return transactions;
     }
-    
-    const query = searchQuery.toLowerCase().trim()
-    return transactions.filter(transaction =>
-      transaction.deliveryman?.toLowerCase().includes(query) ||
-      transaction.transactionId?.toLowerCase().includes(query) ||
-      transaction.deliveryId?.toLowerCase().includes(query)
-    )
-  }, [transactions, searchQuery])
+
+    const query = searchQuery.toLowerCase().trim();
+    return transactions.filter((transaction) =>
+    transaction.deliveryman?.toLowerCase().includes(query) ||
+    transaction.transactionId?.toLowerCase().includes(query) ||
+    transaction.deliveryId?.toLowerCase().includes(query)
+    );
+  }, [transactions, searchQuery]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: "" }))
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
     }
-  }
+  };
 
   const validateForm = () => {
-    const errors = {}
+    const errors = {};
     if (!formData.deliveryPartnerId || !formData.deliveryPartnerId.trim()) {
-      errors.deliveryPartnerId = "Deliveryman is required"
+      errors.deliveryPartnerId = "Deliveryman is required";
     }
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      errors.amount = "Valid amount is required"
+      errors.amount = "Valid amount is required";
     }
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!validateForm()) return
-    
-    setSubmitting(true)
-    setError("")
-    
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    setError("");
+
     // Log request details
-    console.log("Submitting bonus with data:", {
-      deliveryPartnerId: formData.deliveryPartnerId,
-      amount: formData.amount
-    })
-    
+
+
+
+
+
     try {
       const response = await adminAPI.addDeliveryPartnerBonus(
         formData.deliveryPartnerId,
         formData.amount,
         '' // No reference
-      )
-      
-      console.log("Bonus response:", response)
-      console.log("Response data:", response.data)
-      console.log("Response status:", response.status)
-      
+      );
+
+
+
+
+
       if (response?.data?.success || response?.data?.data) {
         // Refresh transactions
-        const transactionsResponse = await adminAPI.getDeliveryPartnerBonusTransactions({ limit: 1000 })
+        const transactionsResponse = await adminAPI.getDeliveryPartnerBonusTransactions({ limit: 1000 });
         if (transactionsResponse?.data?.data?.transactions) {
           const formatted = transactionsResponse.data.data.transactions.map((t, index) => ({
             ...t,
@@ -171,87 +171,87 @@ export default function DeliverymanBonus() {
               hour: '2-digit',
               minute: '2-digit'
             })
-          }))
-          setTransactions(formatted)
+          }));
+          setTransactions(formatted);
         }
-        
-        setFormData({ deliveryPartnerId: "", amount: "" })
-        setShowSuccessDialog(true)
+
+        setFormData({ deliveryPartnerId: "", amount: "" });
+        setShowSuccessDialog(true);
       } else {
-        setError("Unexpected response format. Please check console for details.")
+        setError("Unexpected response format. Please check console for details.");
       }
     } catch (error) {
-      console.error("=== ERROR ADDING BONUS ===")
-      console.error("Error object:", error)
-      console.error("Error name:", error.name)
-      console.error("Error message:", error.message)
-      console.error("Error code:", error.code)
-      console.error("Error response:", error.response)
-      console.error("Error response status:", error.response?.status)
-      console.error("Error response data:", error.response?.data)
-      console.error("Error request URL:", error.config?.url)
-      console.error("Error request method:", error.config?.method)
-      console.error("Error request data:", error.config?.data)
-      console.error("==========================")
-      
+      console.error("=== ERROR ADDING BONUS ===");
+      console.error("Error object:", error);
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error code:", error.code);
+      console.error("Error response:", error.response);
+      console.error("Error response status:", error.response?.status);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error request URL:", error.config?.url);
+      console.error("Error request method:", error.config?.method);
+      console.error("Error request data:", error.config?.data);
+      console.error("==========================");
+
       // Extract error message
-      let errorMessage = "Failed to add bonus. Please try again."
-      
+      let errorMessage = "Failed to add bonus. Please try again.";
+
       if (error.response) {
         // Server responded with error status
         if (error.response.data?.message) {
-          errorMessage = error.response.data.message
+          errorMessage = error.response.data.message;
         } else if (error.response.data?.error) {
-          errorMessage = error.response.data.error
+          errorMessage = error.response.data.error;
         } else if (error.response.status === 401) {
-          errorMessage = "Unauthorized. Please log in again."
+          errorMessage = "Unauthorized. Please log in again.";
         } else if (error.response.status === 403) {
-          errorMessage = "Forbidden. You don't have permission to perform this action."
+          errorMessage = "Forbidden. You don't have permission to perform this action.";
         } else if (error.response.status === 404) {
-          errorMessage = "Endpoint not found. Please check if backend server is running."
+          errorMessage = "Endpoint not found. Please check if backend server is running.";
         } else if (error.response.status === 500) {
-          errorMessage = "Server error. Please try again later."
+          errorMessage = "Server error. Please try again later.";
         } else {
-          errorMessage = `Error ${error.response.status}: ${error.message}`
+          errorMessage = `Error ${error.response.status}: ${error.message}`;
         }
       } else if (error.request) {
         // Request was made but no response received
-        errorMessage = `No response from server. Please check if backend server is running on ${API_BASE_URL.replace('/api', '')}`
+        errorMessage = `No response from server. Please check if backend server is running on ${API_BASE_URL.replace('/api', '')}`;
       } else {
         // Error setting up the request
-        errorMessage = error.message || "Failed to add bonus. Please try again."
+        errorMessage = error.message || "Failed to add bonus. Please try again.";
       }
-      
-      setError(errorMessage)
+
+      setError(errorMessage);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleReset = () => {
     setFormData({
       deliveryPartnerId: "",
-      amount: "",
-    })
-    setFormErrors({})
-    setError("")
-  }
+      amount: ""
+    });
+    setFormErrors({});
+    setError("");
+  };
 
   const handleExport = (format) => {
     if (filteredTransactions.length === 0) {
-      alert("No data to export")
-      return
+      alert("No data to export");
+      return;
     }
     switch (format) {
-      case "excel": exportBonusToExcel(filteredTransactions); break
-      case "pdf": exportBonusToPDF(filteredTransactions); break
-      default: break
+      case "excel":exportBonusToExcel(filteredTransactions);break;
+      case "pdf":exportBonusToPDF(filteredTransactions);break;
+      default:break;
     }
-  }
+  };
 
   const toggleColumn = (columnKey) => {
-    setVisibleColumns(prev => ({ ...prev, [columnKey]: !prev[columnKey] }))
-  }
+    setVisibleColumns((prev) => ({ ...prev, [columnKey]: !prev[columnKey] }));
+  };
 
   const resetColumns = () => {
     setVisibleColumns({
@@ -260,9 +260,9 @@ export default function DeliverymanBonus() {
       deliveryBoyId: true,
       deliveryman: true,
       bonus: true,
-      createdAt: true,
-    })
-  }
+      createdAt: true
+    });
+  };
 
   const columnsConfig = {
     si: "Serial Number",
@@ -270,18 +270,18 @@ export default function DeliverymanBonus() {
     deliveryBoyId: "Delivery Boy ID",
     deliveryman: "Deliveryman",
     bonus: "Bonus",
-    createdAt: "Created At",
-  }
+    createdAt: "Created At"
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Bonus Form */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 relative">
-          <button 
+          <button
             onClick={() => setIsSettingsOpen(true)}
-            className="absolute top-6 right-6 p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
-          >
+            className="absolute top-6 right-6 p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors">
+            
             <Settings className="w-5 h-5 text-slate-600" />
           </button>
 
@@ -300,16 +300,16 @@ export default function DeliverymanBonus() {
                   value={formData.deliveryPartnerId}
                   onChange={(e) => handleInputChange("deliveryPartnerId", e.target.value)}
                   className={`w-full px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
-                    formErrors.deliveryPartnerId ? "border-red-500" : "border-slate-300"
-                  }`}
-                  disabled={submitting}
-                >
+                  formErrors.deliveryPartnerId ? "border-red-500" : "border-slate-300"}`
+                  }
+                  disabled={submitting}>
+                  
                   <option value="">Select Delivery Man</option>
-                  {deliveryPartners.map((partner) => (
-                    <option key={partner._id} value={partner._id}>
+                  {deliveryPartners.map((partner) =>
+                  <option key={partner._id} value={partner._id}>
                       {partner.name} ({partner.deliveryId})
                     </option>
-                  ))}
+                  )}
                 </select>
                 {formErrors.deliveryPartnerId && <p className="text-xs text-red-500 mt-1">{formErrors.deliveryPartnerId}</p>}
               </div>
@@ -325,18 +325,18 @@ export default function DeliverymanBonus() {
                   onChange={(e) => handleInputChange("amount", e.target.value)}
                   placeholder="Enter amount"
                   className={`w-full px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
-                    formErrors.amount ? "border-red-500" : "border-slate-300"
-                  }`}
-                  disabled={submitting}
-                />
+                  formErrors.amount ? "border-red-500" : "border-slate-300"}`
+                  }
+                  disabled={submitting} />
+                
                 {formErrors.amount && <p className="text-xs text-red-500 mt-1">{formErrors.amount}</p>}
               </div>
 
-              {error && (
-                <div className="md:col-span-2">
+              {error &&
+              <div className="md:col-span-2">
                   <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>
                 </div>
-              )}
+              }
             </div>
 
             <div className="flex items-center justify-end gap-4 mt-6">
@@ -344,15 +344,15 @@ export default function DeliverymanBonus() {
                 type="button"
                 onClick={handleReset}
                 className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={submitting}
-              >
+                disabled={submitting}>
+                
                 Reset
               </button>
               <button
                 type="submit"
                 className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                disabled={submitting}
-              >
+                disabled={submitting}>
+                
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 {submitting ? "Submitting..." : "Submit"}
               </button>
@@ -377,8 +377,8 @@ export default function DeliverymanBonus() {
                   placeholder="Search by name or transac"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                />
+                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
+                
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
               <DropdownMenu>
@@ -406,13 +406,13 @@ export default function DeliverymanBonus() {
           </div>
 
           {/* Table */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
+          {loading ?
+          <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
               <p className="text-sm text-slate-600">Loading transactions...</p>
-            </div>
-          ) : filteredTransactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
+            </div> :
+          filteredTransactions.length === 0 ?
+          <div className="flex flex-col items-center justify-center py-20">
               <div className="w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mb-6 shadow-inner relative">
                 <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center shadow-md">
                   <div className="relative">
@@ -424,9 +424,9 @@ export default function DeliverymanBonus() {
                 </div>
               </div>
               <p className="text-lg font-semibold text-slate-700">No Data Found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> :
+
+          <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
@@ -440,44 +440,44 @@ export default function DeliverymanBonus() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.sl} className="hover:bg-slate-50 transition-colors">
-                      {visibleColumns.si && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                  {filteredTransactions.map((transaction) =>
+                <tr key={transaction.sl} className="hover:bg-slate-50 transition-colors">
+                      {visibleColumns.si &&
+                  <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-slate-700">{transaction.sl}</span>
                         </td>
-                      )}
-                      {visibleColumns.transactionId && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                  }
+                      {visibleColumns.transactionId &&
+                  <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{transaction.transactionId}</span>
                         </td>
-                      )}
-                      {visibleColumns.deliveryBoyId && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                  }
+                      {visibleColumns.deliveryBoyId &&
+                  <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700 font-medium">{transaction.deliveryId || 'N/A'}</span>
                         </td>
-                      )}
-                      {visibleColumns.deliveryman && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                  }
+                      {visibleColumns.deliveryman &&
+                  <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{transaction.deliveryman}</span>
                         </td>
-                      )}
-                      {visibleColumns.bonus && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                  }
+                      {visibleColumns.bonus &&
+                  <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-slate-900">{formatBonusAmount(transaction)}</span>
                         </td>
-                      )}
-                      {visibleColumns.createdAt && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                  }
+                      {visibleColumns.createdAt &&
+                  <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{transaction.createdAt}</span>
                         </td>
-                      )}
+                  }
                     </tr>
-                  ))}
+                )}
                 </tbody>
               </table>
             </div>
-          )}
+          }
         </div>
       </div>
 
@@ -495,8 +495,8 @@ export default function DeliverymanBonus() {
           <div className="px-6 pb-6 flex items-center justify-end">
             <button
               onClick={() => setShowSuccessDialog(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+              
               OK
             </button>
           </div>
@@ -519,42 +519,42 @@ export default function DeliverymanBonus() {
                 Visible Columns
               </h3>
               <div className="space-y-2">
-                {Object.entries(columnsConfig).map(([key, label]) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                  >
+                {Object.entries(columnsConfig).map(([key, label]) =>
+                <label
+                  key={key}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                  
                     <input
-                      type="checkbox"
-                      checked={visibleColumns[key]}
-                      onChange={() => toggleColumn(key)}
-                      className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
-                    />
+                    type="checkbox"
+                    checked={visibleColumns[key]}
+                    onChange={() => toggleColumn(key)}
+                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+                  
                     <span className="text-sm text-slate-700">{label}</span>
-                    {visibleColumns[key] && (
-                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
-                    )}
+                    {visibleColumns[key] &&
+                  <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+                  }
                   </label>
-                ))}
+                )}
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
               <button
                 onClick={resetColumns}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Reset
               </button>
               <button
                 onClick={() => setIsSettingsOpen(false)}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+                
                 Apply
               </button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

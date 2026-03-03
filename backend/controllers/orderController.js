@@ -29,6 +29,7 @@ const logger = winston.createLogger({
 });
 
 const ACTIVE_ORDERS_RT_ROOT = 'active_orders';
+const ORDERS_TRACKING_RT_ROOT = 'orders';
 const sanitizeFirebaseKey = (value) => String(value || '').replace(/[.#$/\[\]]/g, '_');
 
 const getOrderRealtimeTracking = async (order) => {
@@ -44,11 +45,19 @@ const getOrderRealtimeTracking = async (order) => {
 
   for (const key of candidateKeys) {
     try {
-      const snapshot = await db.ref(`${ACTIVE_ORDERS_RT_ROOT}/${key}`).get();
-      if (snapshot.exists()) {
+      const trackingSnapshot = await db.ref(`${ORDERS_TRACKING_RT_ROOT}/${key}/tracking`).get();
+      if (trackingSnapshot.exists()) {
         return {
           order_key: key,
-          ...snapshot.val()
+          ...trackingSnapshot.val()
+        };
+      }
+
+      const legacySnapshot = await db.ref(`${ACTIVE_ORDERS_RT_ROOT}/${key}`).get();
+      if (legacySnapshot.exists()) {
+        return {
+          order_key: key,
+          ...legacySnapshot.val()
         };
       }
     } catch (error) {
@@ -691,7 +700,7 @@ export const createOrder = async (req, res) => {
           await wallet.save();
 
           // Update user's wallet balance in User model (for backward compatibility)
-          const User = (await import('../../auth/models/User.js')).default;
+          const User = (await import('../models/User.js')).default;
           await User.findByIdAndUpdate(userId, {
             'wallet.balance': wallet.balance,
             'wallet.currency': wallet.currency
@@ -1596,7 +1605,7 @@ export const verifyTipPayment = async (req, res) => {
     // Credit the tip to delivery boy's wallet as PENDING (requires admin approval)
     if (order.deliveryPartnerId && tipDiff > 0) {
       try {
-        const DeliveryWallet = (await import('../../delivery/models/DeliveryWallet.js')).default;
+        const DeliveryWallet = (await import('../models/DeliveryWallet.js')).default;
         const wallet = await DeliveryWallet.findOrCreateByDeliveryId(order.deliveryPartnerId);
 
         wallet.addTransaction({
@@ -1705,7 +1714,7 @@ export const addTipToOrder = async (req, res) => {
     // If order is delivered, add the tip to delivery boy's wallet as PENDING (requires admin approval)
     if ((order.status === 'delivered' || order.status === 'completed') && order.deliveryPartnerId && tipDiff > 0) {
       try {
-        const DeliveryWallet = (await import('../../delivery/models/DeliveryWallet.js')).default;
+        const DeliveryWallet = (await import('../models/DeliveryWallet.js')).default;
         const wallet = await DeliveryWallet.findOrCreateByDeliveryId(order.deliveryPartnerId);
 
         wallet.addTransaction({

@@ -1,7 +1,7 @@
-import { useParams, Link, useSearchParams } from "react-router-dom"
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { toast } from "sonner"
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Share2,
@@ -16,105 +16,105 @@ import {
   Shield,
   Receipt,
   CircleSlash,
-  Loader2
-} from "lucide-react"
-import AnimatedPage from "../../components/AnimatedPage"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+  Loader2 } from
+"lucide-react";
+import AnimatedPage from "../../components/AnimatedPage";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { useOrders } from "../../context/OrdersContext"
-import { useProfile } from "../../context/ProfileContext"
-import { useLocation as useUserLocation } from "../../hooks/useLocation"
-import DeliveryTrackingMap from "../../components/DeliveryTrackingMap"
-import { orderAPI, restaurantAPI } from "@/lib/api"
-import circleIcon from "@/assets/circleicon.png"
-import { initRazorpayPayment } from "@/lib/utils/razorpay"
-import { getRazorpayKeyId } from "@/lib/utils/razorpayKey"
-const AnimatedCheckmark = ({ delay = 0 }) => (
-  <motion.svg
-    width="80"
-    height="80"
-    viewBox="0 0 80 80"
-    initial="hidden"
-    animate="visible"
-    className="mx-auto"
-  >
+  DialogTitle } from
+"@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useOrders } from "../../context/OrdersContext";
+import { useProfile } from "../../context/ProfileContext";
+import { useLocation as useUserLocation } from "../../hooks/useLocation";
+import DeliveryTrackingMap from "../../components/DeliveryTrackingMap";
+import { orderAPI, restaurantAPI } from "@/lib/api";
+import circleIcon from "@/assets/circleicon.png";
+import { initRazorpayPayment } from "@/lib/utils/razorpay";
+import { getRazorpayKeyId } from "@/lib/utils/razorpayKey";
+const AnimatedCheckmark = ({ delay = 0 }) =>
+<motion.svg
+  width="80"
+  height="80"
+  viewBox="0 0 80 80"
+  initial="hidden"
+  animate="visible"
+  className="mx-auto">
+  
     <motion.circle
-      cx="40"
-      cy="40"
-      r="36"
-      fill="none"
-      stroke="#22c55e"
-      strokeWidth="4"
-      initial={{ pathLength: 0, opacity: 0 }}
-      animate={{ pathLength: 1, opacity: 1 }}
-      transition={{ duration: 0.5, delay, ease: "easeOut" }}
-    />
+    cx="40"
+    cy="40"
+    r="36"
+    fill="none"
+    stroke="#22c55e"
+    strokeWidth="4"
+    initial={{ pathLength: 0, opacity: 0 }}
+    animate={{ pathLength: 1, opacity: 1 }}
+    transition={{ duration: 0.5, delay, ease: "easeOut" }} />
+  
     <motion.path
-      d="M24 40 L35 51 L56 30"
-      fill="none"
-      stroke="#22c55e"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      initial={{ pathLength: 0, opacity: 0 }}
-      animate={{ pathLength: 1, opacity: 1 }}
-      transition={{ duration: 0.4, delay: delay + 0.4, ease: "easeOut" }}
-    />
-  </motion.svg>
-)
+    d="M24 40 L35 51 L56 30"
+    fill="none"
+    stroke="#22c55e"
+    strokeWidth="4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    initial={{ pathLength: 0, opacity: 0 }}
+    animate={{ pathLength: 1, opacity: 1 }}
+    transition={{ duration: 0.4, delay: delay + 0.4, ease: "easeOut" }} />
+  
+  </motion.svg>;
+
 
 // Real Delivery Map Component with User Live Location
 const DeliveryMap = ({ orderId, order, isVisible }) => {
-  const { location: userLocation } = useUserLocation() // Get user's live location
+  const { location: userLocation } = useUserLocation(); // Get user's live location
 
   // Get coordinates from order or use defaults (Indore)
   const getRestaurantCoords = () => {
-    console.log('🔍 Getting restaurant coordinates from order:', {
-      hasOrder: !!order,
-      restaurantLocation: order?.restaurantLocation,
-      coordinates: order?.restaurantLocation?.coordinates,
-      restaurantId: order?.restaurantId,
-      restaurantIdLocation: order?.restaurantId?.location,
-      restaurantIdCoordinates: order?.restaurantId?.location?.coordinates
-    });
+
+
+
+
+
+
+
+
 
     // Try multiple sources for restaurant coordinates
     let coords = null;
 
     // Priority 1: restaurantLocation.coordinates (already extracted in transformed order)
     if (order?.restaurantLocation?.coordinates &&
-      Array.isArray(order.restaurantLocation.coordinates) &&
-      order.restaurantLocation.coordinates.length >= 2) {
+    Array.isArray(order.restaurantLocation.coordinates) &&
+    order.restaurantLocation.coordinates.length >= 2) {
       coords = order.restaurantLocation.coordinates;
-      console.log('✅ Using restaurantLocation.coordinates:', coords);
+
     }
     // Priority 2: restaurantId.location.coordinates (if restaurantId is populated)
     else if (order?.restaurantId?.location?.coordinates &&
-      Array.isArray(order.restaurantId.location.coordinates) &&
-      order.restaurantId.location.coordinates.length >= 2) {
+    Array.isArray(order.restaurantId.location.coordinates) &&
+    order.restaurantId.location.coordinates.length >= 2) {
       coords = order.restaurantId.location.coordinates;
-      console.log('✅ Using restaurantId.location.coordinates:', coords);
+
     }
     // Priority 3: restaurantId.location with latitude/longitude
     else if (order?.restaurantId?.location?.latitude && order?.restaurantId?.location?.longitude) {
       coords = [order.restaurantId.location.longitude, order.restaurantId.location.latitude];
-      console.log('✅ Using restaurantId.location (lat/lng):', coords);
+
     }
 
     if (coords && coords.length >= 2) {
       // GeoJSON format is [longitude, latitude]
       const result = {
         lat: coords[1], // Latitude is second element
-        lng: coords[0]  // Longitude is first element
+        lng: coords[0] // Longitude is first element
       };
-      console.log('✅ Final restaurant coordinates (lat, lng):', result, 'from GeoJSON:', coords);
+
       return result;
     }
 
@@ -161,9 +161,9 @@ const DeliveryMap = ({ orderId, order, isVisible }) => {
         className="relative h-64 bg-gradient-to-b from-gray-100 to-gray-200"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      />
-    );
+        transition={{ duration: 0.5 }} />);
+
+
   }
 
   return (
@@ -171,8 +171,8 @@ const DeliveryMap = ({ orderId, order, isVisible }) => {
       className="relative h-64 w-full"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
+      transition={{ duration: 0.5 }}>
+      
       <DeliveryTrackingMap
         orderId={orderId}
         restaurantCoords={restaurantCoords}
@@ -180,19 +180,19 @@ const DeliveryMap = ({ orderId, order, isVisible }) => {
         userLiveCoords={userLiveCoords}
         userLocationAccuracy={userLocation?.accuracy}
         deliveryBoyData={deliveryBoyData}
-        order={order}
-      />
-    </motion.div>
-  );
-}
+        order={order} />
+      
+    </motion.div>);
+
+};
 
 // Section item component
-const SectionItem = ({ icon: Icon, title, subtitle, onClick, showArrow = true, rightContent }) => (
-  <motion.button
-    onClick={onClick}
-    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left border-b border-dashed border-gray-200 last:border-0"
-    whileTap={{ scale: 0.99 }}
-  >
+const SectionItem = ({ icon: Icon, title, subtitle, onClick, showArrow = true, rightContent }) =>
+<motion.button
+  onClick={onClick}
+  className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left border-b border-dashed border-gray-200 last:border-0"
+  whileTap={{ scale: 0.99 }}>
+  
     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
       <Icon className="w-5 h-5 text-gray-600" />
     </div>
@@ -200,37 +200,37 @@ const SectionItem = ({ icon: Icon, title, subtitle, onClick, showArrow = true, r
       <p className="font-medium text-gray-900 truncate">{title}</p>
       {subtitle && <p className="text-sm text-gray-500 truncate">{subtitle}</p>}
     </div>
-    {rightContent || (showArrow && <ChevronRight className="w-5 h-5 text-gray-400" />)}
-  </motion.button>
-)
+    {rightContent || showArrow && <ChevronRight className="w-5 h-5 text-gray-400" />}
+  </motion.button>;
+
 
 export default function OrderTracking() {
-  const { orderId } = useParams()
-  const [searchParams] = useSearchParams()
-  const confirmed = searchParams.get("confirmed") === "true"
-  const { getOrderById } = useOrders()
-  const { profile, getDefaultAddress } = useProfile()
+  const { orderId } = useParams();
+  const [searchParams] = useSearchParams();
+  const confirmed = searchParams.get("confirmed") === "true";
+  const { getOrderById } = useOrders();
+  const { profile, getDefaultAddress } = useProfile();
 
   // State for order data
-  const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [showConfirmation, setShowConfirmation] = useState(confirmed)
-  const [orderStatus, setOrderStatus] = useState('placed')
-  const [estimatedTime, setEstimatedTime] = useState(29)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showCancelDialog, setShowCancelDialog] = useState(false)
-  const [cancellationReason, setCancellationReason] = useState("")
-  const [isCancelling, setIsCancelling] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(confirmed);
+  const [orderStatus, setOrderStatus] = useState('placed');
+  const [estimatedTime, setEstimatedTime] = useState(29);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Tip states
-  const [selectedTip, setSelectedTip] = useState(0)
-  const [isTipping, setIsTipping] = useState(false)
-  const [tipAdded, setTipAdded] = useState(false)
-  const tipAmounts = [10, 20, 30, 50]
+  const [selectedTip, setSelectedTip] = useState(0);
+  const [isTipping, setIsTipping] = useState(false);
+  const [tipAdded, setTipAdded] = useState(false);
+  const tipAmounts = [10, 20, 30, 50];
 
-  const defaultAddress = getDefaultAddress()
+  const defaultAddress = getDefaultAddress();
 
   // Poll for order updates (especially when delivery partner accepts)
   // Only poll if delivery partner is not yet assigned to avoid unnecessary updates
@@ -241,9 +241,9 @@ export default function OrderTracking() {
     const currentDeliveryStatus = order?.deliveryState?.status;
     const currentPhase = order?.deliveryState?.currentPhase;
     const hasDeliveryPartner = currentDeliveryStatus === 'accepted' ||
-      currentPhase === 'en_route_to_pickup' ||
-      currentPhase === 'at_pickup' ||
-      currentPhase === 'en_route_to_delivery';
+    currentPhase === 'en_route_to_pickup' ||
+    currentPhase === 'at_pickup' ||
+    currentPhase === 'en_route_to_delivery';
 
     // If delivery partner is assigned, reduce polling frequency to 30 seconds
     // If not assigned, poll every 5 seconds to detect assignment
@@ -268,21 +268,21 @@ export default function OrderTracking() {
 
           // Only update if status actually changed
           if (newDeliveryStatus === 'accepted' ||
-            (newDeliveryStatus !== currentDeliveryStatus) ||
-            (newPhase !== currentPhase) ||
-            (newOrderStatus !== currentOrderStatus)) {
-            console.log('🔄 Order status updated:', {
-              oldStatus: currentDeliveryStatus,
-              newStatus: newDeliveryStatus,
-              oldPhase: currentPhase,
-              newPhase: newPhase
-            });
+          newDeliveryStatus !== currentDeliveryStatus ||
+          newPhase !== currentPhase ||
+          newOrderStatus !== currentOrderStatus) {
+
+
+
+
+
+
 
             // Re-fetch and update order (same logic as initial fetch)
             let restaurantCoords = null;
             if (apiOrder.restaurantId?.location?.coordinates &&
-              Array.isArray(apiOrder.restaurantId.location.coordinates) &&
-              apiOrder.restaurantId.location.coordinates.length >= 2) {
+            Array.isArray(apiOrder.restaurantId.location.coordinates) &&
+            apiOrder.restaurantId.location.coordinates.length >= 2) {
               restaurantCoords = apiOrder.restaurantId.location.coordinates;
             } else if (typeof apiOrder.restaurantId === 'string') {
               try {
@@ -324,7 +324,7 @@ export default function OrderTracking() {
   useEffect(() => {
     const fetchOrder = async () => {
       // First try to get from context (localStorage)
-      const contextOrder = getOrderById(orderId)
+      const contextOrder = getOrderById(orderId);
       if (contextOrder) {
         // Ensure restaurant location is available in context order
         if (!contextOrder.restaurantLocation?.coordinates && contextOrder.restaurantId?.location?.coordinates) {
@@ -333,62 +333,62 @@ export default function OrderTracking() {
           };
         }
         // Also ensure restaurantId is present
-        if (!contextOrder.restaurantId && contextOrder.restaurant) {
-          // Try to preserve restaurantId if it exists
-          console.log('⚠️ Context order missing restaurantId, will fetch from API');
-        }
-        setOrder(contextOrder)
-        setLoading(false)
-        return
+
+
+
+
+        setOrder(contextOrder);
+        setLoading(false);
+        return;
       }
 
       // If not in context, fetch from API
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
-        const response = await orderAPI.getOrderDetails(orderId)
+        const response = await orderAPI.getOrderDetails(orderId);
 
         if (response.data?.success && response.data.data?.order) {
-          const apiOrder = response.data.data.order
+          const apiOrder = response.data.data.order;
 
           // Log full API response structure for debugging
-          console.log('🔍 Full API Order Response:', {
-            orderId: apiOrder.orderId || apiOrder._id,
-            hasRestaurantId: !!apiOrder.restaurantId,
-            restaurantIdType: typeof apiOrder.restaurantId,
-            restaurantIdKeys: apiOrder.restaurantId ? Object.keys(apiOrder.restaurantId) : [],
-            restaurantIdLocation: apiOrder.restaurantId?.location,
-            restaurantIdLocationKeys: apiOrder.restaurantId?.location ? Object.keys(apiOrder.restaurantId.location) : [],
-            restaurantIdCoordinates: apiOrder.restaurantId?.location?.coordinates,
-            fullRestaurantId: apiOrder.restaurantId
-          });
+
+
+
+
+
+
+
+
+
+
 
           // Extract restaurant location coordinates with multiple fallbacks
           let restaurantCoords = null;
 
           // Priority 1: restaurantId.location.coordinates (GeoJSON format: [lng, lat])
           if (apiOrder.restaurantId?.location?.coordinates &&
-            Array.isArray(apiOrder.restaurantId.location.coordinates) &&
-            apiOrder.restaurantId.location.coordinates.length >= 2) {
+          Array.isArray(apiOrder.restaurantId.location.coordinates) &&
+          apiOrder.restaurantId.location.coordinates.length >= 2) {
             restaurantCoords = apiOrder.restaurantId.location.coordinates;
-            console.log('✅ Found coordinates in restaurantId.location.coordinates:', restaurantCoords);
+
           }
           // Priority 2: restaurantId.location with latitude/longitude properties
           else if (apiOrder.restaurantId?.location?.latitude && apiOrder.restaurantId?.location?.longitude) {
             restaurantCoords = [apiOrder.restaurantId.location.longitude, apiOrder.restaurantId.location.latitude];
-            console.log('✅ Found coordinates in restaurantId.location (lat/lng):', restaurantCoords);
+
           }
           // Priority 3: Check if restaurantId is a string ID and fetch restaurant details
           else if (typeof apiOrder.restaurantId === 'string') {
-            console.log('⚠️ restaurantId is a string ID, fetching restaurant details...', apiOrder.restaurantId);
+
             try {
               const restaurantResponse = await restaurantAPI.getRestaurantById(apiOrder.restaurantId);
               if (restaurantResponse?.data?.success && restaurantResponse.data.data?.restaurant) {
                 const restaurant = restaurantResponse.data.data.restaurant;
                 if (restaurant.location?.coordinates && Array.isArray(restaurant.location.coordinates) && restaurant.location.coordinates.length >= 2) {
                   restaurantCoords = restaurant.location.coordinates;
-                  console.log('✅ Fetched restaurant coordinates from API:', restaurantCoords);
+
                 }
               }
             } catch (err) {
@@ -398,11 +398,11 @@ export default function OrderTracking() {
           // Priority 4: Check nested restaurant data
           else if (apiOrder.restaurant?.location?.coordinates) {
             restaurantCoords = apiOrder.restaurant.location.coordinates;
-            console.log('✅ Found coordinates in restaurant.location.coordinates:', restaurantCoords);
+
           }
 
-          console.log('📍 Final restaurant coordinates:', restaurantCoords);
-          console.log('📍 Customer coordinates:', apiOrder.address?.location?.coordinates);
+
+
 
           // Transform API order to match component structure
           const transformedOrder = {
@@ -418,16 +418,16 @@ export default function OrderTracking() {
               state: apiOrder.address?.state || '',
               zipCode: apiOrder.address?.zipCode || '',
               additionalDetails: apiOrder.address?.additionalDetails || '',
-              formattedAddress: apiOrder.address?.formattedAddress ||
-                (apiOrder.address?.street && apiOrder.address?.city
-                  ? `${apiOrder.address.street}${apiOrder.address.additionalDetails ? `, ${apiOrder.address.additionalDetails}` : ''}, ${apiOrder.address.city}${apiOrder.address.state ? `, ${apiOrder.address.state}` : ''}${apiOrder.address.zipCode ? ` ${apiOrder.address.zipCode}` : ''}`
-                  : apiOrder.address?.city || ''),
+              formattedAddress: apiOrder.address?.formattedAddress || (
+              apiOrder.address?.street && apiOrder.address?.city ?
+              `${apiOrder.address.street}${apiOrder.address.additionalDetails ? `, ${apiOrder.address.additionalDetails}` : ''}, ${apiOrder.address.city}${apiOrder.address.state ? `, ${apiOrder.address.state}` : ''}${apiOrder.address.zipCode ? ` ${apiOrder.address.zipCode}` : ''}` :
+              apiOrder.address?.city || ''),
               coordinates: apiOrder.address?.location?.coordinates || null
             },
             restaurantLocation: {
               coordinates: restaurantCoords
             },
-            items: apiOrder.items?.map(item => ({
+            items: apiOrder.items?.map((item) => ({
               name: item.name,
               quantity: item.quantity,
               price: item.price
@@ -444,10 +444,10 @@ export default function OrderTracking() {
             tracking: apiOrder.tracking || {},
             deliveryState: apiOrder.deliveryState || null,
             realtimeTracking: apiOrder.realtimeTracking || null
-          }
+          };
 
-          setOrder(transformedOrder)
-          setTipAdded((apiOrder.pricing?.tip || 0) > 0)
+          setOrder(transformedOrder);
+          setTipAdded((apiOrder.pricing?.tip || 0) > 0);
 
           // Update orderStatus based on API order status
           if (apiOrder.status === 'cancelled') {
@@ -464,46 +464,46 @@ export default function OrderTracking() {
             setOrderStatus('placed');
           }
         } else {
-          throw new Error('Order not found')
+          throw new Error('Order not found');
         }
       } catch (err) {
-        console.error('Error fetching order:', err)
-        setError(err.response?.data?.message || err.message || 'Failed to fetch order')
+        console.error('Error fetching order:', err);
+        setError(err.response?.data?.message || err.message || 'Failed to fetch order');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (orderId) {
-      fetchOrder()
+      fetchOrder();
     }
-  }, [orderId, getOrderById])
+  }, [orderId, getOrderById]);
 
   // Simulate order status progression
   useEffect(() => {
     if (confirmed) {
       const timer1 = setTimeout(() => {
-        setShowConfirmation(false)
-        setOrderStatus('preparing')
-      }, 3000)
-      return () => clearTimeout(timer1)
+        setShowConfirmation(false);
+        setOrderStatus('preparing');
+      }, 3000);
+      return () => clearTimeout(timer1);
     }
-  }, [confirmed])
+  }, [confirmed]);
 
   // Countdown timer
   useEffect(() => {
     const timer = setInterval(() => {
-      setEstimatedTime((prev) => Math.max(0, prev - 1))
-    }, 60000)
-    return () => clearInterval(timer)
-  }, [])
+      setEstimatedTime((prev) => Math.max(0, prev - 1));
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Listen for order status updates from socket (e.g., "Delivery partner on the way")
   useEffect(() => {
     const handleOrderStatusNotification = (event) => {
       const { message, title, status, estimatedDeliveryTime } = event.detail;
 
-      console.log('📢 Order status notification received:', { message, status });
+
 
       // Update order status in UI
       if (status === 'out_for_delivery') {
@@ -516,9 +516,9 @@ export default function OrderTracking() {
           duration: 5000,
           icon: '🏍️',
           position: 'top-center',
-          description: estimatedDeliveryTime
-            ? `Estimated delivery in ${Math.round(estimatedDeliveryTime / 60)} minutes`
-            : undefined
+          description: estimatedDeliveryTime ?
+          `Estimated delivery in ${Math.round(estimatedDeliveryTime / 60)} minutes` :
+          undefined
         });
 
         // Optional: Vibrate device if supported
@@ -534,7 +534,7 @@ export default function OrderTracking() {
     return () => {
       window.removeEventListener('orderStatusNotification', handleOrderStatusNotification);
     };
-  }, [])
+  }, []);
 
   const handleCancelOrder = () => {
     // Check if order can be cancelled (only Razorpay orders that aren't delivered/cancelled)
@@ -567,10 +567,10 @@ export default function OrderTracking() {
       const response = await orderAPI.cancelOrder(orderId, cancellationReason.trim());
       if (response.data?.success) {
         const paymentMethod = order?.payment?.method || order?.paymentMethod;
-        const successMessage = response.data?.message ||
-          (paymentMethod === 'cash' || paymentMethod === 'cod'
-            ? 'Order cancelled successfully. No refund required as payment was not made.'
-            : 'Order cancelled successfully. Refund will be processed after admin approval.');
+        const successMessage = response.data?.message || (
+        paymentMethod === 'cash' || paymentMethod === 'cod' ?
+        'Order cancelled successfully. No refund required as payment was not made.' :
+        'Order cancelled successfully. Refund will be processed after admin approval.');
         toast.success(successMessage);
         setShowCancelDialog(false);
         setCancellationReason("");
@@ -598,18 +598,18 @@ export default function OrderTracking() {
   // Replace handleAddTip
   const handleAddTip = async (amount) => {
     try {
-      setIsTipping(true)
+      setIsTipping(true);
 
       // 1. Initiate tip payment to get Razorpay order ID
-      const response = await orderAPI.initiateTipPayment(orderId, amount)
+      const response = await orderAPI.initiateTipPayment(orderId, amount);
       if (!response.data?.success) {
-        throw new Error(response.data?.message || 'Failed to initiate tip')
+        throw new Error(response.data?.message || 'Failed to initiate tip');
       }
 
-      const { razorpayOrder, tipAmount, razorpayKeyId } = response.data.data
+      const { razorpayOrder, tipAmount, razorpayKeyId } = response.data.data;
 
       // 2. Open Razorpay checkout
-      const razorpayKey = razorpayKeyId || await getRazorpayKeyId()
+      const razorpayKey = razorpayKeyId || (await getRazorpayKeyId());
       await initRazorpayPayment({
         key: razorpayKey || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YourKeyHere', // Use fetched key, env var or fallback
         amount: razorpayOrder.amount,
@@ -631,62 +631,62 @@ export default function OrderTracking() {
               razorpayPaymentId: paymentResponse.razorpay_payment_id,
               razorpaySignature: paymentResponse.razorpay_signature,
               tip: tipAmount
-            })
+            });
 
             if (verifyResponse.data?.success) {
-              setSelectedTip(amount)
-              setTipAdded(true)
-              toast.success("Tip added successfully!")
+              setSelectedTip(amount);
+              setTipAdded(true);
+              toast.success("Tip added successfully!");
               // Update local state immediately for better UX
-              setOrder(prev => ({
+              setOrder((prev) => ({
                 ...prev,
                 pricing: {
                   ...prev.pricing,
                   tip: (prev.pricing?.tip || 0) + tipAmount,
                   total: (prev.pricing?.total || 0) + tipAmount
                 }
-              }))
+              }));
               // Refresh full order data
-              handleRefresh()
+              handleRefresh();
             } else {
-              toast.error(verifyResponse.data?.message || 'Payment verification failed')
+              toast.error(verifyResponse.data?.message || 'Payment verification failed');
             }
           } catch (verifyError) {
-            console.error('Error verifying tip payment:', verifyError)
-            toast.error('Failed to verify tip payment')
+            console.error('Error verifying tip payment:', verifyError);
+            toast.error('Failed to verify tip payment');
           }
         },
         onError: (error) => {
-          console.error('Razorpay payment error:', error)
-          toast.error('Payment failed')
-          setIsTipping(false)
+          console.error('Razorpay payment error:', error);
+          toast.error('Payment failed');
+          setIsTipping(false);
         },
         onClose: () => {
-          setIsTipping(false)
+          setIsTipping(false);
         }
-      })
+      });
 
     } catch (error) {
-      console.error("Error adding tip:", error)
-      toast.error(error.message || "Failed to add tip")
-      setIsTipping(false)
+      console.error("Error adding tip:", error);
+      toast.error(error.message || "Failed to add tip");
+      setIsTipping(false);
     }
-  }
+  };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true)
+    setIsRefreshing(true);
     try {
-      const response = await orderAPI.getOrderDetails(orderId)
+      const response = await orderAPI.getOrderDetails(orderId);
       if (response.data?.success && response.data.data?.order) {
-        const apiOrder = response.data.data.order
+        const apiOrder = response.data.data.order;
 
         // Extract restaurant location coordinates with multiple fallbacks
         let restaurantCoords = null;
 
         // Priority 1: restaurantId.location.coordinates (GeoJSON format: [lng, lat])
         if (apiOrder.restaurantId?.location?.coordinates &&
-          Array.isArray(apiOrder.restaurantId.location.coordinates) &&
-          apiOrder.restaurantId.location.coordinates.length >= 2) {
+        Array.isArray(apiOrder.restaurantId.location.coordinates) &&
+        apiOrder.restaurantId.location.coordinates.length >= 2) {
           restaurantCoords = apiOrder.restaurantId.location.coordinates;
         }
         // Priority 2: restaurantId.location with latitude/longitude properties
@@ -699,14 +699,14 @@ export default function OrderTracking() {
         }
         // Priority 4: Check if restaurantId is a string ID and fetch restaurant details
         else if (typeof apiOrder.restaurantId === 'string') {
-          console.log('⚠️ restaurantId is a string ID, fetching restaurant details...', apiOrder.restaurantId);
+
           try {
             const restaurantResponse = await restaurantAPI.getRestaurantById(apiOrder.restaurantId);
             if (restaurantResponse?.data?.success && restaurantResponse.data.data?.restaurant) {
               const restaurant = restaurantResponse.data.data.restaurant;
               if (restaurant.location?.coordinates && Array.isArray(restaurant.location.coordinates) && restaurant.location.coordinates.length >= 2) {
                 restaurantCoords = restaurant.location.coordinates;
-                console.log('✅ Fetched restaurant coordinates from API:', restaurantCoords);
+
               }
             }
           } catch (err) {
@@ -727,16 +727,16 @@ export default function OrderTracking() {
             state: apiOrder.address?.state || '',
             zipCode: apiOrder.address?.zipCode || '',
             additionalDetails: apiOrder.address?.additionalDetails || '',
-            formattedAddress: apiOrder.address?.formattedAddress ||
-              (apiOrder.address?.street && apiOrder.address?.city
-                ? `${apiOrder.address.street}${apiOrder.address.additionalDetails ? `, ${apiOrder.address.additionalDetails}` : ''}, ${apiOrder.address.city}${apiOrder.address.state ? `, ${apiOrder.address.state}` : ''}${apiOrder.address.zipCode ? ` ${apiOrder.address.zipCode}` : ''}`
-                : apiOrder.address?.city || ''),
+            formattedAddress: apiOrder.address?.formattedAddress || (
+            apiOrder.address?.street && apiOrder.address?.city ?
+            `${apiOrder.address.street}${apiOrder.address.additionalDetails ? `, ${apiOrder.address.additionalDetails}` : ''}, ${apiOrder.address.city}${apiOrder.address.state ? `, ${apiOrder.address.state}` : ''}${apiOrder.address.zipCode ? ` ${apiOrder.address.zipCode}` : ''}` :
+            apiOrder.address?.city || ''),
             coordinates: apiOrder.address?.location?.coordinates || null
           },
           restaurantLocation: {
             coordinates: restaurantCoords
           },
-          items: apiOrder.items?.map(item => ({
+          items: apiOrder.items?.map((item) => ({
             name: item.name,
             quantity: item.quantity,
             price: item.price
@@ -749,28 +749,28 @@ export default function OrderTracking() {
           } : null,
           tracking: apiOrder.tracking || {},
           realtimeTracking: apiOrder.realtimeTracking || null
-        }
-        setOrder(transformedOrder)
+        };
+        setOrder(transformedOrder);
 
         // Update order status for UI
         if (apiOrder.status === 'cancelled') {
           setOrderStatus('cancelled');
         } else if (apiOrder.status === 'preparing') {
-          setOrderStatus('preparing')
+          setOrderStatus('preparing');
         } else if (apiOrder.status === 'ready') {
-          setOrderStatus('pickup')
+          setOrderStatus('pickup');
         } else if (apiOrder.status === 'out_for_delivery') {
-          setOrderStatus('pickup')
+          setOrderStatus('pickup');
         } else if (apiOrder.status === 'delivered') {
-          setOrderStatus('delivered')
+          setOrderStatus('delivered');
         }
       }
     } catch (err) {
-      console.error('Error refreshing order:', err)
+      console.error('Error refreshing order:', err);
     } finally {
-      setIsRefreshing(false)
+      setIsRefreshing(false);
     }
-  }
+  };
 
   // Loading state
   if (loading) {
@@ -780,8 +780,8 @@ export default function OrderTracking() {
           <Loader2 className="w-8 h-8 animate-spin text-gray-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading order details...</p>
         </div>
-      </AnimatedPage>
-    )
+      </AnimatedPage>);
+
   }
 
   // Error state
@@ -795,8 +795,8 @@ export default function OrderTracking() {
             <Button>Back to Orders</Button>
           </Link>
         </div>
-      </AnimatedPage>
-    )
+      </AnimatedPage>);
+
   }
 
   const statusConfig = {
@@ -825,79 +825,79 @@ export default function OrderTracking() {
       subtitle: "This order has been cancelled",
       color: "bg-red-600"
     }
-  }
+  };
 
-  const currentStatus = statusConfig[orderStatus] || statusConfig.placed
+  const currentStatus = statusConfig[orderStatus] || statusConfig.placed;
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#0a0a0a]">
       {/* Order Confirmed Modal */}
       <AnimatePresence>
-        {showConfirmation && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-white dark:bg-[#1a1a1a] flex flex-col items-center justify-center"
-          >
+        {showConfirmation &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-white dark:bg-[#1a1a1a] flex flex-col items-center justify-center">
+          
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="text-center px-8"
-            >
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, type: "spring" }}
+            className="text-center px-8">
+            
               <AnimatedCheckmark delay={0.3} />
               <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 }}
-                className="text-2xl font-bold text-gray-900 mt-6"
-              >
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+              className="text-2xl font-bold text-gray-900 mt-6">
+              
                 Order Confirmed!
               </motion.h1>
               <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.1 }}
-                className="text-gray-600 mt-2"
-              >
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1 }}
+              className="text-gray-600 mt-2">
+              
                 Your order has been placed successfully
               </motion.p>
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.5 }}
-                className="mt-8"
-              >
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+              className="mt-8">
+              
                 <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-sm text-gray-500 mt-3">Loading order details...</p>
               </motion.div>
             </motion.div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
 
       {/* Green Header */}
       <motion.div
         className={`${currentStatus.color} text-white sticky top-0 z-40`}
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
+        animate={{ opacity: 1 }}>
+        
         {/* Navigation bar */}
         <div className="flex items-center justify-between px-4 py-3">
           <Link to="/user/orders">
             <motion.button
               className="w-10 h-10 flex items-center justify-center"
-              whileTap={{ scale: 0.9 }}
-            >
+              whileTap={{ scale: 0.9 }}>
+              
               <ArrowLeft className="w-6 h-6" />
             </motion.button>
           </Link>
           <h2 className="font-semibold text-lg">{order.restaurant}</h2>
           <motion.button
             className="w-10 h-10 flex items-center justify-center"
-            whileTap={{ scale: 0.9 }}
-          >
+            whileTap={{ scale: 0.9 }}>
+            
             <Share2 className="w-5 h-5" />
           </motion.button>
         </div>
@@ -908,8 +908,8 @@ export default function OrderTracking() {
             className="text-2xl font-bold mb-3"
             key={currentStatus.title}
             initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+            animate={{ opacity: 1, y: 0 }}>
+            
             {currentStatus.title}
           </motion.h1>
 
@@ -918,21 +918,21 @@ export default function OrderTracking() {
             className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
+            transition={{ delay: 0.2 }}>
+            
             <span className="text-sm">{currentStatus.subtitle}</span>
-            {orderStatus === 'preparing' && (
-              <>
+            {orderStatus === 'preparing' &&
+            <>
                 <span className="w-1 h-1 rounded-full bg-white" />
                 <span className="text-sm text-green-200">On time</span>
               </>
-            )}
+            }
             <motion.button
               onClick={handleRefresh}
               className="ml-1"
               animate={{ rotate: isRefreshing ? 360 : 0 }}
-              transition={{ duration: 0.5 }}
-            >
+              transition={{ duration: 0.5 }}>
+              
               <RefreshCw className="w-4 h-4" />
             </motion.button>
           </motion.div>
@@ -943,8 +943,8 @@ export default function OrderTracking() {
       <DeliveryMap
         orderId={orderId}
         order={order}
-        isVisible={!showConfirmation && order !== null}
-      />
+        isVisible={!showConfirmation && order !== null} />
+      
 
       {/* Scrollable Content */}
       <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4 md:space-y-6 pb-24 md:pb-32">
@@ -956,9 +956,9 @@ export default function OrderTracking() {
           // Check if delivery partner has accepted pickup
           // Delivery partner accepts when status is 'ready' or 'out_for_delivery' or tracking shows outForDelivery
           const hasAcceptedPickup = order?.tracking?.outForDelivery?.status === true ||
-            order?.tracking?.out_for_delivery?.status === true ||
-            order?.status === 'out_for_delivery' ||
-            order?.status === 'ready'
+          order?.tracking?.out_for_delivery?.status === true ||
+          order?.status === 'out_for_delivery' ||
+          order?.status === 'ready';
 
           // Show "Food is Cooking" until delivery partner accepts pickup
           if (!hasAcceptedPickup) {
@@ -967,24 +967,24 @@ export default function OrderTracking() {
                 className="bg-white rounded-xl p-4 shadow-sm"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
+                transition={{ delay: 0.3 }}>
+                
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden">
                     <img
                       src={circleIcon}
                       alt="Food cooking"
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full object-cover" />
+                    
                   </div>
                   <p className="font-semibold text-gray-900">Food is Cooking</p>
                 </div>
-              </motion.div>
-            )
+              </motion.div>);
+
           }
 
           // Don't show card if delivery partner has accepted pickup
-          return null
+          return null;
         })()}
 
         {/* Delivery Partner Safety */}
@@ -993,8 +993,8 @@ export default function OrderTracking() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          whileTap={{ scale: 0.99 }}
-        >
+          whileTap={{ scale: 0.99 }}>
+          
           <Shield className="w-6 h-6 text-gray-600" />
           <span className="flex-1 text-left font-medium text-gray-900">
             Learn about delivery partner safety
@@ -1007,8 +1007,8 @@ export default function OrderTracking() {
           className="bg-yellow-50 rounded-xl p-4 text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65 }}
-        >
+          transition={{ delay: 0.65 }}>
+          
           <p className="text-yellow-800 font-medium">
             All your delivery details in one place 👇
           </p>
@@ -1019,80 +1019,80 @@ export default function OrderTracking() {
           className="bg-white rounded-xl shadow-sm overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-        >
+          transition={{ delay: 0.7 }}>
+          
           <SectionItem
             icon={Phone}
             title={
-              order?.userName ||
-              order?.userId?.fullName ||
-              order?.userId?.name ||
-              profile?.fullName ||
-              profile?.name ||
-              'Customer'
+            order?.userName ||
+            order?.userId?.fullName ||
+            order?.userId?.name ||
+            profile?.fullName ||
+            profile?.name ||
+            'Customer'
             }
             subtitle={
-              order?.userPhone ||
-              order?.userId?.phone ||
-              profile?.phone ||
-              defaultAddress?.phone ||
-              'Phone number not available'
+            order?.userPhone ||
+            order?.userId?.phone ||
+            profile?.phone ||
+            defaultAddress?.phone ||
+            'Phone number not available'
             }
             rightContent={
-              <span className="text-green-600 font-medium text-sm">Edit</span>
-            }
-          />
+            <span className="text-green-600 font-medium text-sm">Edit</span>
+            } />
+          
           <SectionItem
             icon={HomeIcon}
             title="Delivery at Location"
             subtitle={(() => {
               // Priority 1: Use order address formattedAddress (live location address)
               if (order?.address?.formattedAddress && order.address.formattedAddress !== "Select location") {
-                return order.address.formattedAddress
+                return order.address.formattedAddress;
               }
 
               // Priority 2: Build full address from order address parts
               if (order?.address) {
-                const orderAddressParts = []
-                if (order.address.street) orderAddressParts.push(order.address.street)
-                if (order.address.additionalDetails) orderAddressParts.push(order.address.additionalDetails)
-                if (order.address.city) orderAddressParts.push(order.address.city)
-                if (order.address.state) orderAddressParts.push(order.address.state)
-                if (order.address.zipCode) orderAddressParts.push(order.address.zipCode)
+                const orderAddressParts = [];
+                if (order.address.street) orderAddressParts.push(order.address.street);
+                if (order.address.additionalDetails) orderAddressParts.push(order.address.additionalDetails);
+                if (order.address.city) orderAddressParts.push(order.address.city);
+                if (order.address.state) orderAddressParts.push(order.address.state);
+                if (order.address.zipCode) orderAddressParts.push(order.address.zipCode);
                 if (orderAddressParts.length > 0) {
-                  return orderAddressParts.join(', ')
+                  return orderAddressParts.join(', ');
                 }
               }
 
               // Priority 3: Use defaultAddress formattedAddress (live location address)
               if (defaultAddress?.formattedAddress && defaultAddress.formattedAddress !== "Select location") {
-                return defaultAddress.formattedAddress
+                return defaultAddress.formattedAddress;
               }
 
               // Priority 4: Build full address from defaultAddress parts
               if (defaultAddress) {
-                const defaultAddressParts = []
-                if (defaultAddress.street) defaultAddressParts.push(defaultAddress.street)
-                if (defaultAddress.additionalDetails) defaultAddressParts.push(defaultAddress.additionalDetails)
-                if (defaultAddress.city) defaultAddressParts.push(defaultAddress.city)
-                if (defaultAddress.state) defaultAddressParts.push(defaultAddress.state)
-                if (defaultAddress.zipCode) defaultAddressParts.push(defaultAddress.zipCode)
+                const defaultAddressParts = [];
+                if (defaultAddress.street) defaultAddressParts.push(defaultAddress.street);
+                if (defaultAddress.additionalDetails) defaultAddressParts.push(defaultAddress.additionalDetails);
+                if (defaultAddress.city) defaultAddressParts.push(defaultAddress.city);
+                if (defaultAddress.state) defaultAddressParts.push(defaultAddress.state);
+                if (defaultAddress.zipCode) defaultAddressParts.push(defaultAddress.zipCode);
                 if (defaultAddressParts.length > 0) {
-                  return defaultAddressParts.join(', ')
+                  return defaultAddressParts.join(', ');
                 }
               }
 
-              return 'Add delivery address'
+              return 'Add delivery address';
             })()}
             rightContent={
-              <span className="text-green-600 font-medium text-sm">Edit</span>
-            }
-          />
+            <span className="text-green-600 font-medium text-sm">Edit</span>
+            } />
+          
           <SectionItem
             icon={MessageSquare}
             title="Add delivery instructions"
-            subtitle=""
-          />
+            subtitle="" />
+          
         </motion.div>
 
         {/* Restaurant Section */}
@@ -1100,8 +1100,8 @@ export default function OrderTracking() {
           className="bg-white rounded-xl shadow-sm overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.75 }}
-        >
+          transition={{ delay: 0.75 }}>
+          
           <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200">
             <div className="w-12 h-12 rounded-full bg-orange-100 overflow-hidden flex items-center justify-center">
               <span className="text-2xl">🍔</span>
@@ -1112,8 +1112,8 @@ export default function OrderTracking() {
             </div>
             <motion.button
               className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center"
-              whileTap={{ scale: 0.9 }}
-            >
+              whileTap={{ scale: 0.9 }}>
+              
               <Phone className="w-5 h-5 text-green-700" />
             </motion.button>
           </div>
@@ -1125,14 +1125,14 @@ export default function OrderTracking() {
               <div className="flex-1">
                 <p className="font-medium text-gray-900">Order #{order?.id || order?.orderId || 'N/A'}</p>
                 <div className="mt-2 space-y-1">
-                  {order?.items?.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                  {order?.items?.map((item, index) =>
+                  <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="w-4 h-4 rounded border border-green-600 flex items-center justify-center">
                         <span className="w-2 h-2 rounded-full bg-green-600" />
                       </span>
                       <span>{item.quantity} x {item.name}</span>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -1145,14 +1145,14 @@ export default function OrderTracking() {
           className="bg-white rounded-xl shadow-sm overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-        >
+          transition={{ delay: 0.8 }}>
+          
           <SectionItem
             icon={CircleSlash}
             title="Cancel order"
             subtitle=""
-            onClick={handleCancelOrder}
-          />
+            onClick={handleCancelOrder} />
+          
         </motion.div>
 
       </div>
@@ -1172,8 +1172,8 @@ export default function OrderTracking() {
                 onChange={(e) => setCancellationReason(e.target.value)}
                 placeholder="e.g., Changed my mind, Wrong address, etc."
                 className="w-full min-h-[100px] resize-none border-2 border-gray-300 rounded-lg px-4 py-3 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed disabled:border-gray-200"
-                disabled={isCancelling}
-              />
+                disabled={isCancelling} />
+              
             </div>
             <div className="flex gap-3 pt-2">
               <Button
@@ -1183,28 +1183,28 @@ export default function OrderTracking() {
                   setCancellationReason("");
                 }}
                 disabled={isCancelling}
-                className="flex-1"
-              >
+                className="flex-1">
+                
                 Cancel
               </Button>
               <Button
                 onClick={handleConfirmCancel}
                 disabled={isCancelling || !cancellationReason.trim()}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              >
-                {isCancelling ? (
-                  <>
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+                
+                {isCancelling ?
+                <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Cancelling...
-                  </>
-                ) : (
-                  'Confirm Cancellation'
-                )}
+                  </> :
+
+                'Confirm Cancellation'
+                }
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

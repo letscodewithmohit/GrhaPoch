@@ -1,84 +1,84 @@
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { IndianRupee, Loader2 } from "lucide-react"
-import { userAPI } from "@/lib/api"
-import { initRazorpayPayment } from "@/lib/utils/razorpay"
-import { toast } from "sonner"
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { IndianRupee, Loader2 } from "lucide-react";
+import { userAPI } from "@/lib/api";
+import { initRazorpayPayment } from "@/lib/utils/razorpay";
+import { toast } from "sonner";
 
 export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
-  const [amount, setAmount] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [processing, setProcessing] = useState(false)
+  const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   // Quick amount buttons
-  const quickAmounts = [100, 250, 500, 1000, 2000, 5000]
+  const quickAmounts = [100, 250, 500, 1000, 2000, 5000];
 
   const handleAmountSelect = (selectedAmount) => {
-    setAmount(selectedAmount.toString())
-  }
+    setAmount(selectedAmount.toString());
+  };
 
   const handleAmountChange = (e) => {
-    const value = e.target.value.replace(/[^0-9.]/g, "")
-    if (value === "" || (parseFloat(value) >= 1 && parseFloat(value) <= 50000)) {
-      setAmount(value)
+    const value = e.target.value.replace(/[^0-9.]/g, "");
+    if (value === "" || parseFloat(value) >= 1 && parseFloat(value) <= 50000) {
+      setAmount(value);
     }
-  }
+  };
 
   const handleAddMoney = async () => {
-    const amountNum = parseFloat(amount)
-    
+    const amountNum = parseFloat(amount);
+
     if (!amount || isNaN(amountNum) || amountNum < 1) {
-      toast.error("Please enter a valid amount (minimum ₹1)")
-      return
+      toast.error("Please enter a valid amount (minimum ₹1)");
+      return;
     }
 
     if (amountNum > 50000) {
-      toast.error("Maximum amount is ₹50,000")
-      return
+      toast.error("Maximum amount is ₹50,000");
+      return;
     }
 
     try {
-      setLoading(true)
+      setLoading(true);
 
       // Create Razorpay order
-      console.log('Creating wallet top-up order for amount:', amountNum)
-      const orderResponse = await userAPI.createWalletTopupOrder(amountNum)
-      console.log('Order response:', orderResponse)
-      
-      const { razorpay } = orderResponse.data.data
+
+      const orderResponse = await userAPI.createWalletTopupOrder(amountNum);
+
+
+      const { razorpay } = orderResponse.data.data;
 
       if (!razorpay || !razorpay.orderId || !razorpay.key) {
-        console.error('Invalid Razorpay response:', { razorpay, orderResponse })
-        throw new Error("Failed to initialize payment gateway")
+        console.error('Invalid Razorpay response:', { razorpay, orderResponse });
+        throw new Error("Failed to initialize payment gateway");
       }
 
-      setLoading(false)
-      
+      setLoading(false);
+
       // Close the modal before opening Razorpay to avoid z-index conflicts
-      onOpenChange(false)
-      
+      onOpenChange(false);
+
       // Small delay to ensure modal is closed
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      setProcessing(true)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      setProcessing(true);
 
       // Get user info for Razorpay prefill
-      let userInfo = {}
+      let userInfo = {};
       try {
-        const userResponse = await userAPI.getProfile()
-        userInfo = userResponse?.data?.data?.user || userResponse?.data?.user || {}
+        const userResponse = await userAPI.getProfile();
+        userInfo = userResponse?.data?.data?.user || userResponse?.data?.user || {};
       } catch (err) {
-        console.warn("Could not fetch user profile for Razorpay prefill:", err)
+        console.warn("Could not fetch user profile for Razorpay prefill:", err);
       }
 
-      const userPhone = userInfo.phone || ""
-      const userEmail = userInfo.email || ""
-      const userName = userInfo.name || ""
+      const userPhone = userInfo.phone || "";
+      const userEmail = userInfo.email || "";
+      const userName = userInfo.name || "";
 
       // Format phone number (remove non-digits, take last 10 digits)
-      const formattedPhone = userPhone.replace(/\D/g, "").slice(-10)
+      const formattedPhone = userPhone.replace(/\D/g, "").slice(-10);
 
       // Initialize Razorpay payment
       await initRazorpayPayment({
@@ -105,68 +105,68 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
               amount: amountNum
-            })
+            });
 
-            toast.success(`₹${amountNum} added to wallet successfully!`)
-            
+            toast.success(`₹${amountNum} added to wallet successfully!`);
+
             // Reset form
-            setAmount("")
-            setProcessing(false)
-            onOpenChange(false)
-            
+            setAmount("");
+            setProcessing(false);
+            onOpenChange(false);
+
             // Refresh wallet data
             if (onSuccess) {
-              onSuccess()
+              onSuccess();
             }
           } catch (error) {
-            console.error("Payment verification error:", error)
-            toast.error(error?.response?.data?.message || "Payment verification failed. Please contact support.")
-            setProcessing(false)
+            console.error("Payment verification error:", error);
+            toast.error(error?.response?.data?.message || "Payment verification failed. Please contact support.");
+            setProcessing(false);
           }
         },
         onError: (error) => {
-          console.error("Razorpay payment error:", error)
-          toast.error(error?.description || "Payment failed. Please try again.")
-          setProcessing(false)
+          console.error("Razorpay payment error:", error);
+          toast.error(error?.description || "Payment failed. Please try again.");
+          setProcessing(false);
         },
         onClose: () => {
-          setProcessing(false)
+          setProcessing(false);
           // Modal already closed, no need to close again
         }
-      })
+      });
     } catch (error) {
-      console.error("Error creating payment order:", error)
-      console.error("Error response:", error?.response)
-      console.error("Error response data:", error?.response?.data)
-      
+      console.error("Error creating payment order:", error);
+      console.error("Error response:", error?.response);
+      console.error("Error response data:", error?.response?.data);
+
       // Extract error message from response
-      let errorMessage = "Failed to initialize payment. Please try again."
-      
+      let errorMessage = "Failed to initialize payment. Please try again.";
+
       if (error?.response?.data) {
         if (error.response.data.message) {
-          errorMessage = error.response.data.message
+          errorMessage = error.response.data.message;
         } else if (error.response.data.error) {
-          errorMessage = error.response.data.error
+          errorMessage = error.response.data.error;
         } else if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data
+          errorMessage = error.response.data;
         }
       } else if (error?.message) {
-        errorMessage = error.message
+        errorMessage = error.message;
       }
-      
-      console.error("Final error message:", errorMessage)
-      toast.error(errorMessage)
-      setLoading(false)
-      setProcessing(false)
+
+      console.error("Final error message:", errorMessage);
+      toast.error(errorMessage);
+      setLoading(false);
+      setProcessing(false);
     }
-  }
+  };
 
   const handleClose = () => {
     if (!loading && !processing) {
-      setAmount("")
-      onOpenChange(false)
+      setAmount("");
+      onOpenChange(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -196,8 +196,8 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
                 onChange={handleAmountChange}
                 placeholder="Enter amount"
                 className="pl-10 h-12 text-lg"
-                disabled={loading || processing}
-              />
+                disabled={loading || processing} />
+              
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Minimum: ₹1 | Maximum: ₹50,000
@@ -210,18 +210,18 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
               Quick Select
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {quickAmounts.map((quickAmount) => (
-                <Button
-                  key={quickAmount}
-                  type="button"
-                  variant={amount === quickAmount.toString() ? "default" : "outline"}
-                  className="h-10"
-                  onClick={() => handleAmountSelect(quickAmount)}
-                  disabled={loading || processing}
-                >
+              {quickAmounts.map((quickAmount) =>
+              <Button
+                key={quickAmount}
+                type="button"
+                variant={amount === quickAmount.toString() ? "default" : "outline"}
+                className="h-10"
+                onClick={() => handleAmountSelect(quickAmount)}
+                disabled={loading || processing}>
+                
                   ₹{quickAmount}
                 </Button>
-              ))}
+              )}
             </div>
           </div>
 
@@ -229,20 +229,19 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
           <Button
             onClick={handleAddMoney}
             disabled={!amount || loading || processing || parseFloat(amount) < 1}
-            className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold text-base"
-          >
-            {loading || processing ? (
-              <>
+            className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold text-base">
+            
+            {loading || processing ?
+            <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {loading ? "Processing..." : "Opening Payment Gateway..."}
-              </>
-            ) : (
-              `Add ₹${amount || "0"}`
-            )}
+              </> :
+
+            `Add ₹${amount || "0"}`
+            }
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
-  )
-}
+    </Dialog>);
 
+}

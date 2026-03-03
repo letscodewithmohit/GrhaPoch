@@ -28,13 +28,17 @@ const logger = winston.createLogger({
 const updateLocationSchema = Joi.object({
   latitude: Joi.number().min(-90).max(90).optional(),
   longitude: Joi.number().min(-180).max(180).optional(),
-  isOnline: Joi.boolean().optional()
+  isOnline: Joi.boolean().optional(),
+  heading: Joi.number().min(0).max(360).optional(),
+  speed: Joi.number().min(0).optional(),
+  accuracy: Joi.number().min(0).optional(),
+  orderId: Joi.string().trim().optional()
 }).min(1); // At least one field must be provided
 
 export const updateLocation = asyncHandler(async (req, res) => {
   try {
     const delivery = req.delivery;
-    const { latitude, longitude, isOnline } = req.body;
+    const { latitude, longitude, isOnline, heading, speed, accuracy, orderId } = req.body;
 
     // Manual validation: at least one field must be provided
     const hasLatitude = latitude !== undefined && latitude !== null;
@@ -64,6 +68,31 @@ export const updateLocation = asyncHandler(async (req, res) => {
     
     if (hasIsOnline && typeof isOnline !== 'boolean') {
       return errorResponse(res, 400, 'isOnline must be a boolean');
+    }
+
+    if (heading !== undefined && heading !== null) {
+      const headingNumber = Number(heading);
+      if (!Number.isFinite(headingNumber) || headingNumber < 0 || headingNumber > 360) {
+        return errorResponse(res, 400, 'heading must be a number between 0 and 360');
+      }
+    }
+
+    if (speed !== undefined && speed !== null) {
+      const speedNumber = Number(speed);
+      if (!Number.isFinite(speedNumber) || speedNumber < 0) {
+        return errorResponse(res, 400, 'speed must be a non-negative number');
+      }
+    }
+
+    if (accuracy !== undefined && accuracy !== null) {
+      const accuracyNumber = Number(accuracy);
+      if (!Number.isFinite(accuracyNumber) || accuracyNumber < 0) {
+        return errorResponse(res, 400, 'accuracy must be a non-negative number');
+      }
+    }
+
+    if (orderId !== undefined && orderId !== null && typeof orderId !== 'string') {
+      return errorResponse(res, 400, 'orderId must be a string');
     }
 
     const updateData = {};
@@ -119,7 +148,11 @@ export const updateLocation = asyncHandler(async (req, res) => {
         await updateActiveOrderRiderLocationRealtime({
           deliveryId: updatedDelivery._id?.toString() || delivery._id?.toString(),
           latitude: currentLat,
-          longitude: currentLng
+          longitude: currentLng,
+          heading,
+          speed,
+          accuracy,
+          orderId: typeof orderId === 'string' && orderId.trim() ? orderId.trim() : null
         });
       }
     } catch (firebaseSyncError) {

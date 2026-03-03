@@ -8,10 +8,10 @@ const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
   transports: [
-    new winston.transports.Console({
-      format: winston.format.simple()
-    })
-  ]
+  new winston.transports.Console({
+    format: winston.format.simple()
+  })]
+
 });
 
 /**
@@ -21,9 +21,9 @@ const logger = winston.createLogger({
  */
 export const getJoinRequests = asyncHandler(async (req, res) => {
   try {
-    const { 
-      status = 'pending', 
-      page = 1, 
+    const {
+      status = 'pending',
+      page = 1,
       limit = 50,
       search,
       zone,
@@ -33,7 +33,7 @@ export const getJoinRequests = asyncHandler(async (req, res) => {
 
     // Build query
     const query = {};
-    
+
     // Status filter
     if (status === 'pending') {
       query.status = 'pending';
@@ -44,10 +44,10 @@ export const getJoinRequests = asyncHandler(async (req, res) => {
     // Search filter
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
-      ];
+      { name: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } }];
+
     }
 
     // Zone filter (if zones are stored in availability.zones)
@@ -69,12 +69,12 @@ export const getJoinRequests = asyncHandler(async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Fetch delivery partners
-    const deliveries = await Delivery.find(query)
-      .select('-password -refreshToken')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    const deliveries = await Delivery.find(query).
+    select('-password -refreshToken').
+    sort({ createdAt: -1 }).
+    skip(skip).
+    limit(parseInt(limit)).
+    lean();
 
     // Get total count
     const total = await Delivery.countDocuments(query);
@@ -87,24 +87,24 @@ export const getJoinRequests = asyncHandler(async (req, res) => {
 
       // Get zone from location (city, state, country)
       let zone = 'All over the World'; // Default
-      
+
       if (delivery.location) {
         const locationParts = [];
-        
+
         // Add city if available
         if (delivery.location.city) {
           locationParts.push(delivery.location.city);
         }
-        
+
         // Add state if available
         if (delivery.location.state) {
           locationParts.push(delivery.location.state);
         }
-        
+
         // Add country (default to India if not specified)
         const country = delivery.location.country || 'India';
         locationParts.push(country);
-        
+
         // If we have location parts, join them
         if (locationParts.length > 0) {
           zone = locationParts.join(', ');
@@ -117,9 +117,9 @@ export const getJoinRequests = asyncHandler(async (req, res) => {
       }
 
       // Get vehicle type
-      const vehicleType = delivery.vehicle?.type 
-        ? delivery.vehicle.type.charAt(0).toUpperCase() + delivery.vehicle.type.slice(1)
-        : 'N/A';
+      const vehicleType = delivery.vehicle?.type ?
+      delivery.vehicle.type.charAt(0).toUpperCase() + delivery.vehicle.type.slice(1) :
+      'N/A';
 
       return {
         _id: delivery._id.toString(),
@@ -164,9 +164,9 @@ export const getDeliveryPartnerById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
-    const delivery = await Delivery.findById(id)
-      .select('-password -refreshToken')
-      .lean();
+    const delivery = await Delivery.findById(id).
+    select('-password -refreshToken').
+    lean();
 
     if (!delivery) {
       return errorResponse(res, 404, 'Delivery partner not found');
@@ -288,9 +288,9 @@ export const rejectDeliveryPartner = asyncHandler(async (req, res) => {
  */
 export const getDeliveryPartners = asyncHandler(async (req, res) => {
   try {
-    const { 
-      status, 
-      page = 1, 
+    const {
+      status,
+      page = 1,
       limit = 50,
       search,
       isActive,
@@ -301,7 +301,7 @@ export const getDeliveryPartners = asyncHandler(async (req, res) => {
     const query = {
       status: { $in: ['approved', 'active'] } // Only show approved/active partners
     };
-    
+
     // Status filter (if provided, override default)
     if (status) {
       query.status = status;
@@ -315,11 +315,11 @@ export const getDeliveryPartners = asyncHandler(async (req, res) => {
     // Search filter
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { deliveryId: { $regex: search, $options: 'i' } }
-      ];
+      { name: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } },
+      { deliveryId: { $regex: search, $options: 'i' } }];
+
     }
 
     // Calculate pagination
@@ -329,57 +329,57 @@ export const getDeliveryPartners = asyncHandler(async (req, res) => {
     // Note: In Mongoose, if a field is not explicitly excluded, it's included by default
     // So we just need to make sure we're not excluding availability
     let selectFields = '-password -refreshToken';
-    
+
     // Fetch delivery partners
-    const deliveries = await Delivery.find(query)
-      .select(selectFields)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
-    
+    const deliveries = await Delivery.find(query).
+    select(selectFields).
+    sort({ createdAt: -1 }).
+    skip(skip).
+    limit(parseInt(limit)).
+    lean();
+
     // Log for debugging
     if (includeAvailability === 'true' || includeAvailability === true) {
-      console.log(`📦 Fetching ${deliveries.length} delivery partners with availability data`);
+
       deliveries.forEach((d, idx) => {
         const hasLocation = d.availability?.currentLocation?.coordinates;
-        console.log(`  ${idx + 1}. ${d.name}: online=${d.availability?.isOnline}, hasLocation=${!!hasLocation}`);
+
       });
     }
 
     // Import Order model for order counts
-    const Order = (await import('../../order/models/Order.js')).default;
+    const Order = (await import('../models/Order.js')).default;
 
     // Get order statistics for each delivery partner
-    const deliveryIds = deliveries.map(d => d._id);
-    
+    const deliveryIds = deliveries.map((d) => d._id);
+
     // Get order counts for each delivery partner
     const orderStats = await Order.aggregate([
-      {
-        $match: {
-          deliveryPartnerId: { $in: deliveryIds }
-        }
-      },
-      {
-        $group: {
-          _id: '$deliveryPartnerId',
-          totalOrders: { $sum: 1 },
-          assignedOrders: {
-            $sum: {
-              $cond: [
-                { $in: ['$status', ['out_for_delivery', 'ready', 'preparing']] },
-                1,
-                0
-              ]
-            }
+    {
+      $match: {
+        deliveryPartnerId: { $in: deliveryIds }
+      }
+    },
+    {
+      $group: {
+        _id: '$deliveryPartnerId',
+        totalOrders: { $sum: 1 },
+        assignedOrders: {
+          $sum: {
+            $cond: [
+            { $in: ['$status', ['out_for_delivery', 'ready', 'preparing']] },
+            1,
+            0]
+
           }
         }
       }
-    ]);
+    }]
+    );
 
     // Create a map of deliveryId -> stats
     const statsMap = {};
-    orderStats.forEach(stat => {
+    orderStats.forEach((stat) => {
       statsMap[stat._id.toString()] = {
         totalOrders: stat.totalOrders || 0,
         assignedOrders: stat.assignedOrders || 0
@@ -389,7 +389,7 @@ export const getDeliveryPartners = asyncHandler(async (req, res) => {
     // Format response with order stats and zone info
     const formattedPartners = deliveries.map((delivery, index) => {
       const stats = statsMap[delivery._id.toString()] || { totalOrders: 0, assignedOrders: 0 };
-      
+
       // Get zone from location
       let zone = 'All over the World';
       if (delivery.location) {
@@ -467,8 +467,8 @@ export const deleteDeliveryPartner = asyncHandler(async (req, res) => {
     }
 
     // Import related models
-    const DeliveryWallet = (await import('../../delivery/models/DeliveryWallet.js')).default;
-    const Order = (await import('../../order/models/Order.js')).default;
+    const DeliveryWallet = (await import('../models/DeliveryWallet.js')).default;
+    const Order = (await import('../models/Order.js')).default;
 
     // Start transaction for atomic operations
     const session = await mongoose.startSession();
@@ -486,8 +486,8 @@ export const deleteDeliveryPartner = asyncHandler(async (req, res) => {
         { $unset: { deliveryPartnerId: 1 } },
         { session }
       );
-      logger.info(`Updated orders for delivery partner: ${id}`, { 
-        ordersUpdated: ordersUpdated.modifiedCount 
+      logger.info(`Updated orders for delivery partner: ${id}`, {
+        ordersUpdated: ordersUpdated.modifiedCount
       });
 
       // 3. Clear refreshToken to force logout
@@ -619,4 +619,3 @@ export const updateDeliveryPartnerStatus = asyncHandler(async (req, res) => {
     return errorResponse(res, 500, 'Failed to update delivery partner status');
   }
 });
-

@@ -20,10 +20,10 @@ const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
   transports: [
-    new winston.transports.Console({
-      format: winston.format.simple()
-    })
-  ]
+  new winston.transports.Console({
+    format: winston.format.simple()
+  })]
+
 });
 
 
@@ -39,48 +39,48 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     // Get total revenue (sum of all completed orders)
     const revenueStats = await Order.aggregate([
-      {
-        $match: {
-          status: 'delivered',
-          'pricing.total': { $exists: true }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$pricing.total' },
-          totalTips: { $sum: { $ifNull: ['$pricing.tip', 0] } },
-          last30DaysRevenue: {
-            $sum: {
-              $cond: [
-                { $gte: ['$createdAt', last30Days] },
-                '$pricing.total',
-                0
-              ]
-            }
-          },
-          last30DaysTips: {
-            $sum: {
-              $cond: [
-                { $gte: ['$createdAt', last30Days] },
-                { $ifNull: ['$pricing.tip', 0] },
-                0
-              ]
-            }
-          },
-          totalDonations: { $sum: { $ifNull: ['$pricing.donation', 0] } },
-          last30DaysDonations: {
-            $sum: {
-              $cond: [
-                { $gte: ['$createdAt', last30Days] },
-                { $ifNull: ['$pricing.donation', 0] },
-                0
-              ]
-            }
+    {
+      $match: {
+        status: 'delivered',
+        'pricing.total': { $exists: true }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalRevenue: { $sum: '$pricing.total' },
+        totalTips: { $sum: { $ifNull: ['$pricing.tip', 0] } },
+        last30DaysRevenue: {
+          $sum: {
+            $cond: [
+            { $gte: ['$createdAt', last30Days] },
+            '$pricing.total',
+            0]
+
+          }
+        },
+        last30DaysTips: {
+          $sum: {
+            $cond: [
+            { $gte: ['$createdAt', last30Days] },
+            { $ifNull: ['$pricing.tip', 0] },
+            0]
+
+          }
+        },
+        totalDonations: { $sum: { $ifNull: ['$pricing.donation', 0] } },
+        last30DaysDonations: {
+          $sum: {
+            $cond: [
+            { $gte: ['$createdAt', last30Days] },
+            { $ifNull: ['$pricing.donation', 0] },
+            0]
+
           }
         }
       }
-    ]);
+    }]
+    );
 
     // Get revenue data from aggregation result
     const revenueData = revenueStats[0] || {
@@ -94,53 +94,53 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     // Get subscription revenue stats
     const subscriptionStats = await SubscriptionPayment.aggregate([
-      {
-        $facet: {
-          total: [{ $group: { _id: null, amount: { $sum: '$amount' } } }],
-          last30Days: [
-            { $match: { paymentDate: { $gte: last30Days } } },
-            { $group: { _id: null, amount: { $sum: '$amount' } } }
-          ]
-        }
+    {
+      $facet: {
+        total: [{ $group: { _id: null, amount: { $sum: '$amount' } } }],
+        last30Days: [
+        { $match: { paymentDate: { $gte: last30Days } } },
+        { $group: { _id: null, amount: { $sum: '$amount' } } }]
+
       }
-    ]);
+    }]
+    );
 
     const totalSubscriptionRevenue = subscriptionStats[0]?.total[0]?.amount || 0;
     const last30DaysSubscriptionRevenue = subscriptionStats[0]?.last30Days[0]?.amount || 0;
 
-    console.log(`📊 Dashboard Stats - Subscription Revenue: ₹${totalSubscriptionRevenue}`);
+
 
     // Get advertisement revenue stats (paid restaurant banner advertisements)
     const advertisementRevenueStats = await Advertisement.aggregate([
-      {
-        $match: {
-          adType: 'restaurant_banner',
-          paymentStatus: 'paid',
-          isDeleted: false,
-          price: { $gt: 0 }
-        }
-      },
-      {
-        $addFields: {
-          paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$price' },
-          last30Days: {
-            $sum: {
-              $cond: [
-                { $gte: ['$paidAt', last30Days] },
-                '$price',
-                0
-              ]
-            }
+    {
+      $match: {
+        adType: 'restaurant_banner',
+        paymentStatus: 'paid',
+        isDeleted: false,
+        price: { $gt: 0 }
+      }
+    },
+    {
+      $addFields: {
+        paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$price' },
+        last30Days: {
+          $sum: {
+            $cond: [
+            { $gte: ['$paidAt', last30Days] },
+            '$price',
+            0]
+
           }
         }
       }
-    ]);
+    }]
+    );
 
     const advertisementRevenueData = advertisementRevenueStats[0] || {
       total: 0,
@@ -150,23 +150,23 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     // Get all settlements for delivered orders only (to match with revenue calculation)
     // First get delivered order IDs
     const deliveredOrderIds = await Order.find({ status: 'delivered' }).select('_id').lean();
-    const deliveredOrderIdArray = deliveredOrderIds.map(o => o._id);
+    const deliveredOrderIdArray = deliveredOrderIds.map((o) => o._id);
 
     // Get settlements only for delivered orders
     const allSettlements = await OrderSettlement.find({
       orderId: { $in: deliveredOrderIdArray }
     }).lean();
 
-    console.log(`📊 Dashboard Stats - Total settlements found: ${allSettlements.length}`);
+
 
     // Debug: Log first settlement to see actual structure
     if (allSettlements.length > 0) {
       const firstSettlement = allSettlements[0];
-      console.log('🔍 First settlement sample:', {
-        orderNumber: firstSettlement.orderNumber,
-        adminEarning: firstSettlement.adminEarning,
-        userPayment: firstSettlement.userPayment
-      });
+
+
+
+
+
     }
 
     // Calculate totals from all settlements - use adminEarning fields
@@ -187,9 +187,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       totalGST += gst;
 
       // Log each settlement for debugging
-      if (index < 5) { // Log first 5 settlements
-        console.log(`📦 Settlement ${index + 1} (${s.orderNumber}): Commission: ₹${commission}, Platform: ₹${platformFee}, Delivery: ₹${deliveryFee}, GST: ₹${gst}`);
-      }
+
+
+
     });
 
     totalCommission = Math.round(totalCommission * 100) / 100;
@@ -197,7 +197,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     totalDeliveryFee = Math.round(totalDeliveryFee * 100) / 100;
     totalGST = Math.round(totalGST * 100) / 100;
 
-    console.log(`💰 Final calculated totals - Commission: ₹${totalCommission}, Platform Fee: ₹${totalPlatformFee}, Delivery Fee: ₹${totalDeliveryFee}, GST: ₹${totalGST}`);
+
 
     // Get last 30 days data from OrderSettlement
     const last30DaysSettlements = await OrderSettlement.find({
@@ -210,16 +210,16 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     // Get order statistics
     const orderStats = await Order.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
       }
-    ]);
+    }]
+    );
 
     const orderStatusMap = {};
-    orderStats.forEach(stat => {
+    orderStats.forEach((stat) => {
       orderStatusMap[stat._id] = stat.count;
     });
 
@@ -245,23 +245,23 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     const pendingRestaurantRequestsQuery = {
       isActive: false,
       $and: [
+      {
+        $or: [
+        { 'onboarding.completedSteps': { $gte: 1 } },
         {
-          $or: [
-            { 'onboarding.completedSteps': { $gte: 1 } },
-            {
-              $and: [
-                { 'name': { $exists: true, $ne: null, $ne: '' } }
-              ]
-            }
-          ]
-        },
-        {
-          $or: [
-            { 'rejectionReason': { $exists: false } },
-            { 'rejectionReason': null }
-          ]
-        }
-      ]
+          $and: [
+          { 'name': { $exists: true, $ne: null, $ne: '' } }]
+
+        }]
+
+      },
+      {
+        $or: [
+        { 'rejectionReason': { $exists: false } },
+        { 'rejectionReason': null }]
+
+      }]
+
     };
     const pendingRestaurantRequests = await Restaurant.countDocuments(pendingRestaurantRequestsQuery);
 
@@ -273,9 +273,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     const pendingDeliveryBoyRequests = await User.countDocuments({
       role: 'delivery',
       $or: [
-        { isActive: false },
-        { deliveryStatus: 'pending' }
-      ]
+      { isActive: false },
+      { deliveryStatus: 'pending' }]
+
     });
 
     // Total foods (Menu items) - Count all individual menu items from active menus
@@ -284,14 +284,14 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     // Get all active menus and count items in sections and subsections
     const activeMenus = await Menu.find({ isActive: true }).select('sections').lean();
     let totalFoods = 0;
-    activeMenus.forEach(menu => {
+    activeMenus.forEach((menu) => {
       if (menu.sections && Array.isArray(menu.sections)) {
-        menu.sections.forEach(section => {
+        menu.sections.forEach((section) => {
           // Count items from ALL sections (enabled and disabled)
 
           // Count items directly in section (all items, excluding only rejected)
           if (section.items && Array.isArray(section.items)) {
-            totalFoods += section.items.filter(item => {
+            totalFoods += section.items.filter((item) => {
               // Must have required fields
               if (!item || !item.id || !item.name) return false;
               // Exclude only rejected items (include all others: pending, approved, available, unavailable)
@@ -302,9 +302,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
           }
           // Count items in subsections (all items, excluding only rejected)
           if (section.subsections && Array.isArray(section.subsections)) {
-            section.subsections.forEach(subsection => {
+            section.subsections.forEach((subsection) => {
               if (subsection.items && Array.isArray(subsection.items)) {
-                totalFoods += subsection.items.filter(item => {
+                totalFoods += subsection.items.filter((item) => {
                   // Must have required fields
                   if (!item || !item.id || !item.name) return false;
                   // Exclude only rejected items (include all others: pending, approved, available, unavailable)
@@ -323,13 +323,13 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     // Count ALL addons (including unavailable, pending/approved, excluding only rejected)
     let totalAddons = 0;
     const menusWithAddons = await Menu.find({ isActive: true }).select('addons').lean();
-    menusWithAddons.forEach(menu => {
+    menusWithAddons.forEach((menu) => {
       // Only process if menu has addons array and it's not empty
       if (!menu.addons || !Array.isArray(menu.addons) || menu.addons.length === 0) {
         return;
       }
 
-      totalAddons += menu.addons.filter(addon => {
+      totalAddons += menu.addons.filter((addon) => {
         // Only count if addon exists and has required fields (id and name are mandatory)
         if (!addon || typeof addon !== 'object') return false;
         if (!addon.id || typeof addon.id !== 'string' || addon.id.trim() === '') return false;
@@ -344,10 +344,10 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     // Total customers (users with role 'user' or no role specified)
     const totalCustomers = await User.countDocuments({
       $or: [
-        { role: 'user' },
-        { role: { $exists: false } },
-        { role: null }
-      ]
+      { role: 'user' },
+      { role: { $exists: false } },
+      { role: null }]
+
     });
 
     // Pending orders (already in orderStatusMap)
@@ -382,7 +382,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       }).select('_id pricing deliveredAt').lean();
 
       // Get order IDs for this month
-      const monthOrderIds = monthOrders.map(o => o._id);
+      const monthOrderIds = monthOrders.map((o) => o._id);
 
       // Get settlements for these orders (match by orderId, not by createdAt)
       const monthSettlements = await OrderSettlement.find({
@@ -391,7 +391,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
       // Create a map of orderId to settlement for quick lookup
       const settlementMap = new Map();
-      monthSettlements.forEach(s => {
+      monthSettlements.forEach((s) => {
         settlementMap.set(s.orderId.toString(), s);
       });
 
@@ -399,7 +399,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       let monthRevenue = 0;
       let monthCommission = 0;
 
-      monthOrders.forEach(order => {
+      monthOrders.forEach((order) => {
         // Add revenue from order
         monthRevenue += order.pricing?.total || 0;
 
@@ -538,17 +538,17 @@ export const getAdmins = asyncHandler(async (req, res) => {
 
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
+      { name: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }];
+
     }
 
-    const admins = await Admin.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip(parseInt(offset))
-      .lean();
+    const admins = await Admin.find(query).
+    select('-password').
+    sort({ createdAt: -1 }).
+    limit(parseInt(limit)).
+    skip(parseInt(offset)).
+    lean();
 
     const total = await Admin.countDocuments(query);
 
@@ -572,9 +572,9 @@ export const getAdminById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
-    const admin = await Admin.findById(id)
-      .select('-password')
-      .lean();
+    const admin = await Admin.findById(id).
+    select('-password').
+    lean();
 
     if (!admin) {
       return errorResponse(res, 404, 'Admin not found');
@@ -728,9 +728,9 @@ export const deleteAdmin = asyncHandler(async (req, res) => {
  */
 export const getAdminProfile = asyncHandler(async (req, res) => {
   try {
-    const admin = await Admin.findById(req.user._id)
-      .select('-password')
-      .lean();
+    const admin = await Admin.findById(req.user._id).
+    select('-password').
+    lean();
 
     if (!admin) {
       return errorResponse(res, 404, 'Admin profile not found');
@@ -859,10 +859,10 @@ export const getUsers = asyncHandler(async (req, res) => {
     // Search filter
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
-      ];
+      { name: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } }];
+
     }
 
     // Status filter
@@ -882,35 +882,35 @@ export const getUsers = asyncHandler(async (req, res) => {
     }
 
     // Get users
-    const users = await User.find(query)
-      .select('-password -__v')
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip(parseInt(offset))
-      .lean();
+    const users = await User.find(query).
+    select('-password -__v').
+    sort({ createdAt: -1 }).
+    limit(parseInt(limit)).
+    skip(parseInt(offset)).
+    lean();
 
     // Get user IDs
-    const userIds = users.map(user => user._id);
+    const userIds = users.map((user) => user._id);
 
     // Get order statistics for each user
     const orderStats = await Order.aggregate([
-      {
-        $match: {
-          userId: { $in: userIds }
-        }
-      },
-      {
-        $group: {
-          _id: '$userId',
-          totalOrders: { $sum: 1 },
-          totalAmount: { $sum: '$pricing.total' }
-        }
+    {
+      $match: {
+        userId: { $in: userIds }
       }
-    ]);
+    },
+    {
+      $group: {
+        _id: '$userId',
+        totalOrders: { $sum: 1 },
+        totalAmount: { $sum: '$pricing.total' }
+      }
+    }]
+    );
 
     // Create a map of userId -> stats
     const statsMap = {};
-    orderStats.forEach(stat => {
+    orderStats.forEach((stat) => {
       statsMap[stat._id.toString()] = {
         totalOrder: stat.totalOrders || 0,
         totalOrderAmount: stat.totalAmount || 0
@@ -958,10 +958,10 @@ export const getUsers = asyncHandler(async (req, res) => {
 
     // Order date filter (filter by order date after aggregation)
     let filteredUsers = formattedUsers;
-    if (orderDate) {
-      // This would require additional query to filter by order date
-      // For now, we'll skip this as it's complex and may require different approach
-    }
+
+
+
+
 
     const total = await User.countDocuments(query);
 
@@ -986,9 +986,9 @@ export const getUserById = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const User = (await import('../models/User.js')).default;
 
-    const user = await User.findById(id)
-      .select('-password -__v')
-      .lean();
+    const user = await User.findById(id).
+    select('-password -__v').
+    lean();
 
     if (!user) {
       return errorResponse(res, 404, 'User not found');
@@ -996,26 +996,26 @@ export const getUserById = asyncHandler(async (req, res) => {
 
     // Get order statistics
     const orderStats = await Order.aggregate([
-      {
-        $match: { userId: user._id }
-      },
-      {
-        $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          totalAmount: { $sum: '$pricing.total' },
-          orders: {
-            $push: {
-              orderId: '$orderId',
-              status: '$status',
-              total: '$pricing.total',
-              createdAt: '$createdAt',
-              restaurantName: '$restaurantName'
-            }
+    {
+      $match: { userId: user._id }
+    },
+    {
+      $group: {
+        _id: null,
+        totalOrders: { $sum: 1 },
+        totalAmount: { $sum: '$pricing.total' },
+        orders: {
+          $push: {
+            orderId: '$orderId',
+            status: '$status',
+            total: '$pricing.total',
+            createdAt: '$createdAt',
+            restaurantName: '$restaurantName'
           }
         }
       }
-    ]);
+    }]
+    );
 
     const stats = orderStats[0] || { totalOrders: 0, totalAmount: 0, orders: [] };
 
@@ -1126,21 +1126,21 @@ export const getRestaurants = asyncHandler(async (req, res) => {
     }
     // If status is not provided, don't filter by isActive - show all restaurants
 
-    console.log('🔍 Admin Restaurants List Query:', {
-      status,
-      isActive: query.isActive,
-      query: JSON.stringify(query, null, 2)
-    });
+
+
+
+
+
 
     // Search filter
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { ownerName: { $regex: search, $options: 'i' } },
-        { ownerPhone: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
+      { name: { $regex: search, $options: 'i' } },
+      { ownerName: { $regex: search, $options: 'i' } },
+      { ownerPhone: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }];
+
     }
 
     // Cuisine filter
@@ -1151,21 +1151,21 @@ export const getRestaurants = asyncHandler(async (req, res) => {
     // Zone filter
     if (zone && zone !== 'All over the World') {
       query.$or = [
-        { 'location.area': { $regex: zone, $options: 'i' } },
-        { 'location.city': { $regex: zone, $options: 'i' } }
-      ];
+      { 'location.area': { $regex: zone, $options: 'i' } },
+      { 'location.city': { $regex: zone, $options: 'i' } }];
+
     }
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Fetch restaurants
-    const restaurants = await Restaurant.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    const restaurants = await Restaurant.find(query).
+    select('-password').
+    sort({ createdAt: -1 }).
+    skip(skip).
+    limit(parseInt(limit)).
+    lean();
 
     // Get total count
     const total = await Restaurant.countDocuments(query);
@@ -1249,28 +1249,28 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
       // Build conditions array for $and - ensures all conditions are met
       // Check for rejectionReason: either doesn't exist OR is null
       const conditions = [
-        { isActive: false },
-        {
-          $or: [
-            { 'rejectionReason': { $exists: false } },
-            { 'rejectionReason': null }
-          ]
-        }
-      ];
+      { isActive: false },
+      {
+        $or: [
+        { 'rejectionReason': { $exists: false } },
+        { 'rejectionReason': null }]
+
+      }];
+
 
       // Only show restaurants that have completed ALL onboarding steps (all 4 steps)
       // Check if onboarding.completedSteps is 4, OR if restaurant has all required data filled
       // This handles both cases: restaurants with proper tracking AND restaurants that completed onboarding before tracking was added
       const completionCheck = {
         $or: [
-          { 'onboarding.completedSteps': { $gte: 1 } },
-          // Fallback: If completedSteps missing, check if restaurant has a name
-          {
-            $and: [
-              { 'name': { $exists: true, $ne: null, $ne: '' } }
-            ]
-          }
-        ]
+        { 'onboarding.completedSteps': { $gte: 1 } },
+        // Fallback: If completedSteps missing, check if restaurant has a name
+        {
+          $and: [
+          { 'name': { $exists: true, $ne: null, $ne: '' } }]
+
+        }]
+
       };
 
       conditions.push(completionCheck);
@@ -1279,25 +1279,25 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
       query['rejectionReason'] = { $exists: true, $ne: null };
       // For rejected, also check if onboarding is complete
       query.$or = [
-        { 'onboarding.completedSteps': { $gte: 1 } },
-        {
-          $and: [
-            { 'name': { $exists: true, $ne: null, $ne: '' } }
-          ]
-        }
-      ];
+      { 'onboarding.completedSteps': { $gte: 1 } },
+      {
+        $and: [
+        { 'name': { $exists: true, $ne: null, $ne: '' } }]
+
+      }];
+
     }
 
     // Search filter - combine with $and if search is provided
     if (search && search.trim()) {
       const searchConditions = {
         $or: [
-          { name: { $regex: search.trim(), $options: 'i' } },
-          { ownerName: { $regex: search.trim(), $options: 'i' } },
-          { ownerPhone: { $regex: search.trim(), $options: 'i' } },
-          { phone: { $regex: search.trim(), $options: 'i' } },
-          { email: { $regex: search.trim(), $options: 'i' } }
-        ]
+        { name: { $regex: search.trim(), $options: 'i' } },
+        { ownerName: { $regex: search.trim(), $options: 'i' } },
+        { ownerPhone: { $regex: search.trim(), $options: 'i' } },
+        { phone: { $regex: search.trim(), $options: 'i' } },
+        { email: { $regex: search.trim(), $options: 'i' } }]
+
       };
 
       // If query already has $and, add search to it; otherwise create new $and
@@ -1308,102 +1308,102 @@ export const getRestaurantJoinRequests = asyncHandler(async (req, res) => {
         const baseConditions = { ...query };
         query = {
           $and: [
-            baseConditions,
-            searchConditions
-          ]
+          baseConditions,
+          searchConditions]
+
         };
       }
     }
 
-    console.log('🔍 Restaurant Join Requests Query:', JSON.stringify(query, null, 2));
+
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Fetch restaurants
-    const restaurants = await Restaurant.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    const restaurants = await Restaurant.find(query).
+    select('-password').
+    sort({ createdAt: -1 }).
+    skip(skip).
+    limit(parseInt(limit)).
+    lean();
 
     // Debug: Log found restaurants with detailed info
-    console.log(`📊 Found ${restaurants.length} restaurants matching query:`, {
-      status,
-      queryStructure: Object.keys(query).length,
-      restaurantsFound: restaurants.length,
-      sampleRestaurants: restaurants.slice(0, 5).map(r => ({
-        _id: r._id.toString().substring(0, 10) + '...',
-        name: r.name,
-        isActive: r.isActive,
-        completedSteps: r.onboarding?.completedSteps,
-        hasRejectionReason: !!r.rejectionReason,
-        hasName: !!r.name,
-        hasCuisines: !!r.cuisines && r.cuisines.length > 0,
-        hasOpenDays: !!r.openDays && r.openDays.length > 0,
-        hasEstimatedDeliveryTime: !!r.estimatedDeliveryTime,
-        hasFeaturedDish: !!r.featuredDish,
-      }))
-    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Get total count
     const total = await Restaurant.countDocuments(query);
 
-    console.log(`📊 Total count: ${total} restaurants`);
+
 
     // Also log a sample of ALL inactive restaurants (for debugging)
     if (status === 'pending' && restaurants.length === 0) {
       const allInactive = await Restaurant.find({
         isActive: false,
         $or: [
-          { 'rejectionReason': { $exists: false } },
-          { 'rejectionReason': null }
-        ]
-      })
-        .select('name isActive onboarding.completedSteps cuisines openDays estimatedDeliveryTime featuredDish')
-        .limit(10)
-        .lean();
+        { 'rejectionReason': { $exists: false } },
+        { 'rejectionReason': null }]
+
+      }).
+      select('name isActive onboarding.completedSteps cuisines openDays estimatedDeliveryTime featuredDish').
+      limit(10).
+      lean();
 
       const totalInactive = await Restaurant.countDocuments({
         isActive: false,
         $or: [
-          { 'rejectionReason': { $exists: false } },
-          { 'rejectionReason': null }
-        ]
+        { 'rejectionReason': { $exists: false } },
+        { 'rejectionReason': null }]
+
       });
 
-      console.log('⚠️ No restaurants found with query. Debugging inactive restaurants:', {
-        totalInactive,
-        queryUsed: JSON.stringify(query, null, 2),
-        samples: allInactive.map(r => ({
-          _id: r._id.toString(),
-          name: r.name,
-          isActive: r.isActive,
-          completedSteps: r.onboarding?.completedSteps,
-          hasAllFields: {
-            hasName: !!r.name && r.name !== '',
-            hasCuisines: !!r.cuisines && Array.isArray(r.cuisines) && r.cuisines.length > 0,
-            hasOpenDays: !!r.openDays && Array.isArray(r.openDays) && r.openDays.length > 0,
-            hasEstimatedDeliveryTime: !!r.estimatedDeliveryTime && r.estimatedDeliveryTime !== '',
-            hasFeaturedDish: !!r.featuredDish && r.featuredDish !== '',
-          },
-          fieldValues: {
-            name: r.name || 'MISSING',
-            cuisinesCount: r.cuisines?.length || 0,
-            openDaysCount: r.openDays?.length || 0,
-            estimatedDeliveryTime: r.estimatedDeliveryTime || 'MISSING',
-            featuredDish: r.featuredDish || 'MISSING',
-          },
-          shouldMatch: (
-            (!!r.name && r.name !== '') &&
-            (!!r.cuisines && Array.isArray(r.cuisines) && r.cuisines.length > 0) &&
-            (!!r.openDays && Array.isArray(r.openDays) && r.openDays.length > 0) &&
-            (!!r.estimatedDeliveryTime && r.estimatedDeliveryTime !== '') &&
-            (!!r.featuredDish && r.featuredDish !== '')
-          ) || r.onboarding?.completedSteps === 4
-        }))
-      });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 
     // Format response to match frontend expectations
@@ -1701,9 +1701,9 @@ export const createRestaurant = asyncHandler(async (req, res) => {
     // Check if restaurant already exists with same email or phone
     const existingRestaurant = await Restaurant.findOne({
       $or: [
-        ...(email ? [{ email: email.toLowerCase().trim() }] : []),
-        ...(normalizedPhone ? [{ phone: normalizedPhone }] : [])
-      ]
+      ...(email ? [{ email: email.toLowerCase().trim() }] : []),
+      ...(normalizedPhone ? [{ phone: normalizedPhone }] : [])]
+
     });
 
     if (existingRestaurant) {
@@ -2046,12 +2046,12 @@ export const getAllOffers = asyncHandler(async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Fetch offers with restaurant details
-    const offers = await Offer.find(query)
-      .populate('restaurant', 'name restaurantId')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    const offers = await Offer.find(query).
+    populate('restaurant', 'name restaurantId').
+    sort({ createdAt: -1 }).
+    skip(skip).
+    limit(parseInt(limit)).
+    lean();
 
     // Get total count
     const total = await Offer.countDocuments(query);
@@ -2065,9 +2065,9 @@ export const getAllOffers = asyncHandler(async (req, res) => {
           if (search) {
             const searchLower = search.toLowerCase();
             const matchesSearch =
-              offer.restaurant?.name?.toLowerCase().includes(searchLower) ||
-              item.itemName?.toLowerCase().includes(searchLower) ||
-              item.couponCode?.toLowerCase().includes(searchLower);
+            offer.restaurant?.name?.toLowerCase().includes(searchLower) ||
+            item.itemName?.toLowerCase().includes(searchLower) ||
+            item.couponCode?.toLowerCase().includes(searchLower);
 
             if (!matchesSearch) {
               return; // Skip this item if it doesn't match search
@@ -2089,7 +2089,7 @@ export const getAllOffers = asyncHandler(async (req, res) => {
             status: offer.status || 'active',
             startDate: offer.startDate || null,
             endDate: offer.endDate || null,
-            createdAt: offer.createdAt || new Date(),
+            createdAt: offer.createdAt || new Date()
           });
         });
       }
@@ -2170,50 +2170,50 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
     // Build query to match restaurantId in multiple formats
     const orderMatchQuery = {
       $or: [
-        { restaurantId: restaurantIdString },
-        { restaurantId: restaurantIdField },
-        { restaurantId: restaurantObjectIdString }
-      ]
+      { restaurantId: restaurantIdString },
+      { restaurantId: restaurantIdField },
+      { restaurantId: restaurantObjectIdString }]
+
     };
 
     logger.info(`🔍 Order query:`, orderMatchQuery);
 
     const orderStats = await Order.aggregate([
-      {
-        $match: orderMatchQuery
-      },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalRevenue: {
-            $sum: {
-              $cond: [
-                { $eq: ['$status', 'delivered'] },
-                { $ifNull: ['$pricing.total', 0] },
-                0
-              ]
-            }
+    {
+      $match: orderMatchQuery
+    },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+        totalRevenue: {
+          $sum: {
+            $cond: [
+            { $eq: ['$status', 'delivered'] },
+            { $ifNull: ['$pricing.total', 0] },
+            0]
+
           }
         }
       }
-    ]);
+    }]
+    );
 
     logger.info(`📊 Order stats found:`, orderStats);
 
     const orderStatusMap = {};
     let totalRevenue = 0;
-    orderStats.forEach(stat => {
+    orderStats.forEach((stat) => {
       orderStatusMap[stat._id] = stat.count;
       if (stat._id === 'delivered') {
         totalRevenue += stat.totalRevenue || 0;
       }
     });
 
-    const totalOrders = (orderStatusMap.delivered || 0) + (orderStatusMap.cancelled || 0) +
-      (orderStatusMap.pending || 0) + (orderStatusMap.confirmed || 0) +
-      (orderStatusMap.preparing || 0) + (orderStatusMap.ready || 0) +
-      (orderStatusMap.out_for_delivery || 0);
+    const totalOrders = (orderStatusMap.delivered || 0) + (orderStatusMap.cancelled || 0) + (
+    orderStatusMap.pending || 0) + (orderStatusMap.confirmed || 0) + (
+    orderStatusMap.preparing || 0) + (orderStatusMap.ready || 0) + (
+    orderStatusMap.out_for_delivery || 0);
     const completedOrders = orderStatusMap.delivered || 0;
     const cancelledOrders = orderStatusMap.cancelled || 0;
 
@@ -2226,57 +2226,57 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
     // Get monthly orders and revenue
     const monthlyStats = await Order.aggregate([
-      {
-        $match: {
-          $or: [
-            { restaurantId: restaurantIdString },
-            { restaurantId: restaurantIdField }
-          ],
-          status: 'delivered',
-          createdAt: { $gte: startOfMonth }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          count: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ['$pricing.total', 0] } }
-        }
+    {
+      $match: {
+        $or: [
+        { restaurantId: restaurantIdString },
+        { restaurantId: restaurantIdField }],
+
+        status: 'delivered',
+        createdAt: { $gte: startOfMonth }
       }
-    ]);
+    },
+    {
+      $group: {
+        _id: null,
+        count: { $sum: 1 },
+        revenue: { $sum: { $ifNull: ['$pricing.total', 0] } }
+      }
+    }]
+    );
 
     const monthlyOrders = monthlyStats[0]?.count || 0;
     const monthlyRevenue = monthlyStats[0]?.revenue || 0;
 
     // Get yearly orders and revenue
     const yearlyStats = await Order.aggregate([
-      {
-        $match: {
-          $or: [
-            { restaurantId: restaurantIdString },
-            { restaurantId: restaurantIdField }
-          ],
-          status: 'delivered',
-          createdAt: { $gte: startOfYear }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          count: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ['$pricing.total', 0] } }
-        }
+    {
+      $match: {
+        $or: [
+        { restaurantId: restaurantIdString },
+        { restaurantId: restaurantIdField }],
+
+        status: 'delivered',
+        createdAt: { $gte: startOfYear }
       }
-    ]);
+    },
+    {
+      $group: {
+        _id: null,
+        count: { $sum: 1 },
+        revenue: { $sum: { $ifNull: ['$pricing.total', 0] } }
+      }
+    }]
+    );
 
     const yearlyOrders = yearlyStats[0]?.count || 0;
     const yearlyRevenue = yearlyStats[0]?.revenue || 0;
 
     // Get commission and earnings data from OrderSettlement (more accurate)
     // Match settlements by restaurantId (ObjectId in OrderSettlement)
-    const restaurantIdForSettlement = restaurant._id instanceof mongoose.Types.ObjectId
-      ? restaurant._id
-      : new mongoose.Types.ObjectId(restaurant._id);
+    const restaurantIdForSettlement = restaurant._id instanceof mongoose.Types.ObjectId ?
+    restaurant._id :
+    new mongoose.Types.ObjectId(restaurant._id);
 
     // Get all settlements for this restaurant
     const allSettlements = await OrderSettlement.find({
@@ -2288,7 +2288,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
     let totalRestaurantEarning = 0;
     let totalFoodPrice = 0;
 
-    allSettlements.forEach(s => {
+    allSettlements.forEach((s) => {
       totalCommission += s.restaurantEarning?.commission || 0;
       totalRestaurantEarning += s.restaurantEarning?.netEarning || 0;
       totalFoodPrice += s.restaurantEarning?.foodPrice || 0;
@@ -2306,7 +2306,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
     let monthlyCommission = 0;
     let monthlyRestaurantEarning = 0;
-    monthlySettlements.forEach(s => {
+    monthlySettlements.forEach((s) => {
       monthlyCommission += s.restaurantEarning?.commission || 0;
       monthlyRestaurantEarning += s.restaurantEarning?.netEarning || 0;
     });
@@ -2323,7 +2323,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
     let yearlyCommission = 0;
     let yearlyRestaurantEarning = 0;
-    yearlySettlements.forEach(s => {
+    yearlySettlements.forEach((s) => {
       yearlyCommission += s.restaurantEarning?.commission || 0;
       yearlyRestaurantEarning += s.restaurantEarning?.netEarning || 0;
     });
@@ -2341,23 +2341,23 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
     // Group by month
     const monthlyEarningsMap = new Map();
-    last12MonthsSettlements.forEach(s => {
+    last12MonthsSettlements.forEach((s) => {
       const monthKey = `${new Date(s.createdAt).getFullYear()}-${new Date(s.createdAt).getMonth()}`;
       const current = monthlyEarningsMap.get(monthKey) || 0;
       monthlyEarningsMap.set(monthKey, current + (s.restaurantEarning?.netEarning || 0));
     });
 
-    const avgMonthlyProfit = monthlyEarningsMap.size > 0
-      ? Array.from(monthlyEarningsMap.values()).reduce((sum, val) => sum + val, 0) / monthlyEarningsMap.size
-      : 0;
+    const avgMonthlyProfit = monthlyEarningsMap.size > 0 ?
+    Array.from(monthlyEarningsMap.values()).reduce((sum, val) => sum + val, 0) / monthlyEarningsMap.size :
+    0;
 
     // Get commission percentage from RestaurantCommission
     const RestaurantCommission = (await import('../models/RestaurantCommission.js')).default;
 
     // Use restaurant._id directly - ensure it's an ObjectId
-    const restaurantIdForQuery = restaurant._id instanceof mongoose.Types.ObjectId
-      ? restaurant._id
-      : new mongoose.Types.ObjectId(restaurant._id);
+    const restaurantIdForQuery = restaurant._id instanceof mongoose.Types.ObjectId ?
+    restaurant._id :
+    new mongoose.Types.ObjectId(restaurant._id);
 
     logger.info(`🔍 Looking for commission config:`, {
       restaurantId: restaurantId,
@@ -2416,7 +2416,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
     if (!commissionConfig) {
       const allCommissions = await RestaurantCommission.find({}).lean();
       logger.warn(`❌ No commission found. Total commissions in DB: ${allCommissions.length}`);
-      logger.info(`📋 All commissions:`, allCommissions.map(c => ({
+      logger.info(`📋 All commissions:`, allCommissions.map((c) => ({
         _id: c._id,
         restaurant: c.restaurant?.toString ? c.restaurant.toString() : String(c.restaurant),
         restaurantId: c.restaurantId,
@@ -2426,7 +2426,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
       })));
 
       // Check if restaurant ObjectId matches any commission
-      const matching = allCommissions.filter(c => {
+      const matching = allCommissions.filter((c) => {
         const cRestaurantId = c.restaurant?.toString ? c.restaurant.toString() : String(c.restaurant);
         return cRestaurantId === restaurantIdForQuery.toString();
       });
@@ -2457,9 +2457,9 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
         if (commissionConfig.defaultCommission.type === 'percentage') {
           const rawValue = commissionConfig.defaultCommission.value;
-          commissionPercentage = typeof rawValue === 'number'
-            ? rawValue
-            : parseFloat(rawValue) || 0;
+          commissionPercentage = typeof rawValue === 'number' ?
+          rawValue :
+          parseFloat(rawValue) || 0;
           logger.info(`✅ Found commission percentage: ${commissionPercentage}% for restaurant ${restaurantId} (raw value: ${rawValue})`);
         } else if (commissionConfig.defaultCommission.type === 'amount') {
           // For amount type, we can't show a percentage, so keep it as 0
@@ -2482,9 +2482,9 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
     // Get ratings from FeedbackExperience (restaurantId is ObjectId in FeedbackExperience)
     const FeedbackExperience = (await import('../models/FeedbackExperience.js')).default;
 
-    const restaurantIdForRating = restaurant._id instanceof mongoose.Types.ObjectId
-      ? restaurant._id
-      : new mongoose.Types.ObjectId(restaurant._id);
+    const restaurantIdForRating = restaurant._id instanceof mongoose.Types.ObjectId ?
+    restaurant._id :
+    new mongoose.Types.ObjectId(restaurant._id);
 
     logger.info(`⭐ Fetching ratings for restaurant:`, {
       restaurantId: restaurantId,
@@ -2492,20 +2492,20 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
     });
 
     const ratingStats = await FeedbackExperience.aggregate([
-      {
-        $match: {
-          restaurantId: restaurantIdForRating,
-          rating: { $exists: true, $ne: null, $gt: 0 }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          averageRating: { $avg: '$rating' },
-          totalRatings: { $sum: 1 }
-        }
+    {
+      $match: {
+        restaurantId: restaurantIdForRating,
+        rating: { $exists: true, $ne: null, $gt: 0 }
       }
-    ]);
+    },
+    {
+      $group: {
+        _id: null,
+        averageRating: { $avg: '$rating' },
+        totalRatings: { $sum: 1 }
+      }
+    }]
+    );
 
     logger.info(`⭐ Rating stats found:`, ratingStats);
 
@@ -2519,32 +2519,32 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
 
     // Get unique customers
     const customerStats = await Order.aggregate([
-      {
-        $match: {
-          $or: [
-            { restaurantId: restaurantIdString },
-            { restaurantId: restaurantIdField }
-          ],
-          status: 'delivered'
-        }
-      },
-      {
-        $group: {
-          _id: '$userId',
-          orderCount: { $sum: 1 }
-        }
+    {
+      $match: {
+        $or: [
+        { restaurantId: restaurantIdString },
+        { restaurantId: restaurantIdField }],
+
+        status: 'delivered'
       }
-    ]);
+    },
+    {
+      $group: {
+        _id: '$userId',
+        orderCount: { $sum: 1 }
+      }
+    }]
+    );
 
     const totalCustomers = customerStats.length;
-    const repeatCustomers = customerStats.filter(c => c.orderCount > 1).length;
+    const repeatCustomers = customerStats.filter((c) => c.orderCount > 1).length;
 
     // Calculate average order value
     const averageOrderValue = completedOrders > 0 ? totalRevenue / completedOrders : 0;
 
     // Calculate rates
-    const cancellationRate = totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0;
-    const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
+    const cancellationRate = totalOrders > 0 ? cancelledOrders / totalOrders * 100 : 0;
+    const completionRate = totalOrders > 0 ? completedOrders / totalOrders * 100 : 0;
 
     // Calculate average yearly profit (if restaurant has been active for multiple years)
     const restaurantCreatedAt = restaurant.createdAt || new Date();
@@ -2597,7 +2597,7 @@ export const getRestaurantAnalytics = asyncHandler(async (req, res) => {
  */
 export const getCustomerWalletReport = asyncHandler(async (req, res) => {
   try {
-    console.log('🔍 Fetching customer wallet report...');
+
     const {
       fromDate,
       toDate,
@@ -2606,7 +2606,7 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
       search
     } = req.query;
 
-    console.log('📋 Query params:', { fromDate, toDate, all, customer, search });
+
 
     const UserWallet = (await import('../models/UserWallet.js')).default;
     const User = (await import('../models/User.js')).default;
@@ -2631,18 +2631,18 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
     const wallets = await UserWallet.find({
       ...dateFilter,
       'transactions.0': { $exists: true } // Only wallets with transactions
-    })
-      .populate('userId', 'name email phone')
-      .lean();
+    }).
+    populate('userId', 'name email phone').
+    lean();
 
     // Flatten transactions with user info
     let allTransactions = [];
-    wallets.forEach(wallet => {
+    wallets.forEach((wallet) => {
       if (!wallet.userId) return;
 
       // Sort transactions by date (oldest first for balance calculation)
       const sortedTransactions = [...wallet.transactions].sort((a, b) =>
-        new Date(a.createdAt) - new Date(b.createdAt)
+      new Date(a.createdAt) - new Date(b.createdAt)
       );
 
       let runningBalance = 0;
@@ -2715,26 +2715,26 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
     // Filter by transaction type (Credit/Debit)
     if (all && all !== 'All') {
       if (all === 'Credit') {
-        allTransactions = allTransactions.filter(t => t.credit > 0);
+        allTransactions = allTransactions.filter((t) => t.credit > 0);
       } else if (all === 'Debit') {
-        allTransactions = allTransactions.filter(t => t.debit > 0);
+        allTransactions = allTransactions.filter((t) => t.debit > 0);
       }
     }
 
     // Filter by customer
     if (customer && customer !== 'Select Customer') {
-      allTransactions = allTransactions.filter(t =>
-        t.customer.toLowerCase().includes(customer.toLowerCase())
+      allTransactions = allTransactions.filter((t) =>
+      t.customer.toLowerCase().includes(customer.toLowerCase())
       );
     }
 
     // Search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      allTransactions = allTransactions.filter(t =>
-        t.transactionId.toLowerCase().includes(searchLower) ||
-        t.customer.toLowerCase().includes(searchLower) ||
-        t.reference.toLowerCase().includes(searchLower)
+      allTransactions = allTransactions.filter((t) =>
+      t.transactionId.toLowerCase().includes(searchLower) ||
+      t.customer.toLowerCase().includes(searchLower) ||
+      t.reference.toLowerCase().includes(searchLower)
       );
     }
 
@@ -2780,7 +2780,7 @@ export const getCustomerWalletReport = asyncHandler(async (req, res) => {
     const totalBalance = totalCredit - totalDebit;
 
     // Get unique customers for dropdown
-    const uniqueCustomers = [...new Set(allTransactions.map(t => t.customer))].sort();
+    const uniqueCustomers = [...new Set(allTransactions.map((t) => t.customer))].sort();
 
     return successResponse(res, 200, 'Customer wallet report retrieved successfully', {
       transactions: transformedTransactions,
@@ -2816,10 +2816,10 @@ export const getRestaurantMenu = asyncHandler(async (req, res) => {
     // Find restaurant by ID
     const restaurant = await Restaurant.findOne({
       $or: [
-        { _id: id },
-        { restaurantId: id },
-        { slug: id }
-      ]
+      { _id: id },
+      { restaurantId: id },
+      { slug: id }]
+
     });
 
     if (!restaurant) {
@@ -2829,7 +2829,7 @@ export const getRestaurantMenu = asyncHandler(async (req, res) => {
     // Find menu
     const menu = await Menu.findOne({
       restaurant: restaurant._id,
-      isActive: true,
+      isActive: true
     });
 
     if (!menu) {
@@ -2837,16 +2837,16 @@ export const getRestaurantMenu = asyncHandler(async (req, res) => {
       return successResponse(res, 200, 'Menu retrieved successfully', {
         menu: {
           sections: [],
-          isActive: true,
-        },
+          isActive: true
+        }
       });
     }
 
     return successResponse(res, 200, 'Menu retrieved successfully', {
       menu: {
         sections: menu.sections || [],
-        isActive: menu.isActive,
-      },
+        isActive: menu.isActive
+      }
     });
   } catch (error) {
     logger.error(`Error fetching restaurant menu: ${error.message}`, { error: error.stack });
@@ -2868,10 +2868,10 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
     // Find restaurant by ID
     const restaurant = await Restaurant.findOne({
       $or: [
-        { _id: id },
-        { restaurantId: id },
-        { slug: id }
-      ]
+      { _id: id },
+      { restaurantId: id },
+      { slug: id }]
+
     });
 
     if (!restaurant) {
@@ -2884,15 +2884,15 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
     // Normalize sections (similar to restaurant menu controller)
     const normalizedSections = Array.isArray(sections) ? sections.map((section, index) => {
       const existingSection = existingMenu?.sections?.find(
-        s => s.id === section.id || s.name === section.name
+        (s) => s.id === section.id || s.name === section.name
       );
 
       return {
         id: section.id || existingSection?.id || `section-${Date.now()}-${index}`,
         name: section.name || existingSection?.name || `Section ${index + 1}`,
-        items: Array.isArray(section.items) ? section.items.map(item => {
+        items: Array.isArray(section.items) ? section.items.map((item) => {
           const existingItem = existingSection?.items?.find(
-            i => String(i.id) === String(item.id)
+            (i) => String(i.id) === String(item.id)
           );
 
           return {
@@ -2902,12 +2902,12 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
             approvedAt: existingItem?.approvedAt || item.approvedAt || new Date(),
             approvedBy: existingItem?.approvedBy || item.approvedBy || adminId,
             rejectedAt: existingItem?.rejectedAt || item.rejectedAt,
-            rejectionReason: existingItem?.rejectionReason || item.rejectionReason || "",
+            rejectionReason: existingItem?.rejectionReason || item.rejectionReason || ""
           };
         }) : [],
         subsections: Array.isArray(section.subsections) ? section.subsections : [],
         isEnabled: section.isEnabled !== undefined ? section.isEnabled : true,
-        order: section.order !== undefined ? section.order : index,
+        order: section.order !== undefined ? section.order : index
       };
     }) : [];
 
@@ -2918,7 +2918,7 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
       menu = new Menu({
         restaurant: restaurant._id,
         sections: normalizedSections,
-        isActive: true,
+        isActive: true
       });
     } else {
       menu.set('sections', normalizedSections);
@@ -2937,8 +2937,8 @@ export const updateRestaurantMenu = asyncHandler(async (req, res) => {
     return successResponse(res, 200, 'Menu updated successfully', {
       menu: {
         sections: menu.sections || [],
-        isActive: menu.isActive,
-      },
+        isActive: menu.isActive
+      }
     });
   } catch (error) {
     logger.error(`Error updating restaurant menu: ${error.message}`, { error: error.stack });

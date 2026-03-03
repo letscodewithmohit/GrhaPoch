@@ -1,23 +1,23 @@
-import { useState, useEffect, useRef } from "react"
-import { motion } from "framer-motion"
-import { useNavigate, useParams } from "react-router-dom"
-import Lenis from "lenis"
-import { 
+import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import { useNavigate, useParams } from "react-router-dom";
+import Lenis from "lenis";
+import {
   ArrowLeft,
   ChevronDown,
   Calendar,
   Upload,
-  Megaphone
-} from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+  Megaphone } from
+"lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function EditAdvertisementPage() {
-  const navigate = useNavigate()
-  const { id } = useParams()
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
-  const [showValidityPicker, setShowValidityPicker] = useState(false)
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showValidityPicker, setShowValidityPicker] = useState(false);
   const [formData, setFormData] = useState({
     category: "Video Promotion",
     validity: "",
@@ -25,11 +25,11 @@ export default function EditAdvertisementPage() {
     description: "",
     fileDescription: "",
     videoDescription: ""
-  })
-  const [uploadedFile, setUploadedFile] = useState(null)
-  const [uploadedVideo, setUploadedVideo] = useState(null)
-  const categoryRef = useRef(null)
-  const validityRef = useRef(null)
+  });
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedVideo, setUploadedVideo] = useState(null);
+  const categoryRef = useRef(null);
+  const validityRef = useRef(null);
 
   // Load ad data on mount
   useEffect(() => {
@@ -44,8 +44,8 @@ export default function EditAdvertisementPage() {
       videoDescription: "",
       profileImage: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=400&fit=crop",
       coverImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=400&fit=crop"
-    }
-    
+    };
+
     // In real app, fetch ad data from API
     setFormData({
       category: adData.category,
@@ -54,88 +54,88 @@ export default function EditAdvertisementPage() {
       description: adData.description,
       fileDescription: adData.fileDescription,
       videoDescription: adData.videoDescription || ""
-    })
-  }, [id])
+    });
+  }, [id]);
 
   // Mock ad data for display - In real app, this would come from state/API
   const adData = {
     id: id || "1000003",
     profileImage: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=400&fit=crop",
     coverImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=400&fit=crop"
-  }
+  };
 
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+      smoothWheel: true
+    });
 
     function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf)
+    requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy()
-    }
-  }, [])
+      lenis.destroy();
+    };
+  }, []);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (categoryRef.current && !categoryRef.current.contains(event.target)) {
-        setShowCategoryDropdown(false)
+        setShowCategoryDropdown(false);
       }
       if (validityRef.current && !validityRef.current.contains(event.target)) {
-        setShowValidityPicker(false)
+        setShowValidityPicker(false);
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const categories = [
-    "Video Promotion",
-    "Restaurant Promotion",
-    "Image Promotion",
-    "Banner Promotion"
-  ]
+  "Video Promotion",
+  "Restaurant Promotion",
+  "Image Promotion",
+  "Banner Promotion"];
+
 
   const handleFileUpload = (e, type) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (type === "file") {
-      setUploadedFile(file)
+      setUploadedFile(file);
     } else if (type === "video") {
-      setUploadedVideo(file)
+      setUploadedVideo(file);
     }
-  }
+  };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value
-    }))
-  }
+    }));
+  };
 
   const getCharacterCount = (text, maxLength = 100) => {
-    return `${text.length}/${maxLength}`
-  }
+    return `${text.length}/${maxLength}`;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 overflow-x-hidden pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
-        <button 
+        <button
           onClick={() => navigate(-1)}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-        >
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+          
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Edit Advertisement</h1>
@@ -147,8 +147,8 @@ export default function EditAdvertisementPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+          transition={{ duration: 0.3 }}>
+          
           <Card className="bg-white shadow-sm border border-gray-100">
             <CardContent className="p-4 space-y-4">
               <h2 className="text-base font-bold text-gray-900">Category Info</h2>
@@ -157,33 +157,33 @@ export default function EditAdvertisementPage() {
               <div className="relative" ref={categoryRef}>
                 <button
                   onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                >
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                  
                   <span className="text-sm font-medium text-gray-900">{formData.category}</span>
                   <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 
-                {showCategoryDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
-                  >
-                    {categories.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => {
-                          handleInputChange("category", category)
-                          setShowCategoryDropdown(false)
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
+                {showCategoryDropdown &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  
+                    {categories.map((category) =>
+                  <button
+                    key={category}
+                    onClick={() => {
+                      handleInputChange("category", category);
+                      setShowCategoryDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg">
+                    
                         {category}
                       </button>
-                    ))}
+                  )}
                   </motion.div>
-                )}
+                }
               </div>
 
               {/* Validity Field */}
@@ -193,30 +193,30 @@ export default function EditAdvertisementPage() {
                 </label>
                 <button
                   onClick={() => setShowValidityPicker(!showValidityPicker)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                >
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                  
                   <span className={`text-sm ${formData.validity ? 'text-gray-900' : 'text-gray-400'}`}>
                     {formData.validity || "Select date"}
                   </span>
                   <Calendar className="w-5 h-5 text-blue-600" />
                 </button>
-                {showValidityPicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4"
-                  >
+                {showValidityPicker &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+                  
                     <input
-                      type="date"
-                      value={formData.validity}
-                      onChange={(e) => {
-                        handleInputChange("validity", e.target.value)
-                        setShowValidityPicker(false)
-                      }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    type="date"
+                    value={formData.validity}
+                    onChange={(e) => {
+                      handleInputChange("validity", e.target.value);
+                      setShowValidityPicker(false);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  
                   </motion.div>
-                )}
+                }
               </div>
 
               {/* Title Field */}
@@ -229,8 +229,8 @@ export default function EditAdvertisementPage() {
                   value={formData.title}
                   onChange={(e) => handleInputChange("title", e.target.value)}
                   placeholder="Enter title"
-                  className="w-full"
-                />
+                  className="w-full" />
+                
               </div>
 
               {/* Description Field */}
@@ -245,8 +245,8 @@ export default function EditAdvertisementPage() {
                     placeholder="Enter description"
                     maxLength={100}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  />
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  
                   <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                     {getCharacterCount(formData.description)}
                   </div>
@@ -260,8 +260,8 @@ export default function EditAdvertisementPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
+          transition={{ duration: 0.3, delay: 0.1 }}>
+          
           <Card className="bg-white shadow-sm border border-gray-100">
             <CardContent className="p-4 space-y-4">
               <h2 className="text-base font-bold text-gray-900">
@@ -275,31 +275,31 @@ export default function EditAdvertisementPage() {
                   id="file-upload"
                   onChange={(e) => handleFileUpload(e, "file")}
                   className="hidden"
-                  accept="image/*"
-                />
+                  accept="image/*" />
+                
                 <label
                   htmlFor="file-upload"
-                  className="block cursor-pointer"
-                >
-                  {uploadedFile ? (
-                    <div className="text-center">
+                  className="block cursor-pointer">
+                  
+                  {uploadedFile ?
+                  <div className="text-center">
                       <p className="text-sm text-gray-700">{uploadedFile.name}</p>
-                    </div>
-                  ) : adData.profileImage ? (
-                    <div className="text-center">
-                      <img 
-                        src={adData.profileImage} 
-                        alt="Profile" 
-                        className="w-24 h-24 mx-auto rounded-lg object-cover mb-2"
-                      />
+                    </div> :
+                  adData.profileImage ?
+                  <div className="text-center">
+                      <img
+                      src={adData.profileImage}
+                      alt="Profile"
+                      className="w-24 h-24 mx-auto rounded-lg object-cover mb-2" />
+                    
                       <p className="text-xs text-gray-500">Current profile image</p>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
+                    </div> :
+
+                  <div className="text-center py-4">
                       <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-500">Click to upload file</p>
                     </div>
-                  )}
+                  }
                 </label>
 
                 {/* File Description */}
@@ -314,8 +314,8 @@ export default function EditAdvertisementPage() {
                       placeholder="Enter description"
                       maxLength={100}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    />
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    
                     <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                       {getCharacterCount(formData.fileDescription)}
                     </div>
@@ -330,8 +330,8 @@ export default function EditAdvertisementPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
+          transition={{ duration: 0.3, delay: 0.2 }}>
+          
           <Card className="bg-white shadow-sm border border-gray-100">
             <CardContent className="p-4 space-y-4">
               <h2 className="text-base font-bold text-gray-900">
@@ -346,34 +346,34 @@ export default function EditAdvertisementPage() {
                     id="video-upload"
                     onChange={(e) => handleFileUpload(e, "video")}
                     className="hidden"
-                    accept="video/mp4,video/webm,video/x-matroska"
-                  />
+                    accept="video/mp4,video/webm,video/x-matroska" />
+                  
                   <label
                     htmlFor="video-upload"
-                    className="block cursor-pointer text-center"
-                  >
-                    {uploadedVideo ? (
-                      <div>
+                    className="block cursor-pointer text-center">
+                    
+                    {uploadedVideo ?
+                    <div>
                         <p className="text-sm text-gray-700 mb-2">{uploadedVideo.name}</p>
                         <p className="text-xs text-gray-500">{(uploadedVideo.size / (1024 * 1024)).toFixed(2)} MB</p>
-                      </div>
-                    ) : adData.coverImage ? (
-                      <div>
-                        <img 
-                          src={adData.coverImage} 
-                          alt="Cover" 
-                          className="w-full h-48 mx-auto rounded-lg object-cover mb-2"
-                        />
+                      </div> :
+                    adData.coverImage ?
+                    <div>
+                        <img
+                        src={adData.coverImage}
+                        alt="Cover"
+                        className="w-full h-48 mx-auto rounded-lg object-cover mb-2" />
+                      
                         <p className="text-xs text-gray-500">Current cover image/video</p>
-                      </div>
-                    ) : (
-                      <>
+                      </div> :
+
+                    <>
                         <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                         <p className="text-sm font-medium text-gray-700 mb-1">Click to Upload Ads Video</p>
                         <p className="text-xs text-gray-500 mb-1">Maximum 5 MB</p>
                         <p className="text-xs text-gray-500">Supports: MP4, WEBM, MKV</p>
                       </>
-                    )}
+                    }
                   </label>
                 </div>
 
@@ -405,30 +405,29 @@ export default function EditAdvertisementPage() {
                 description: "Indulge in culinary delights at our Food Fest Extravaganza! From gourmet dishes to savory snacks, satisfy your cravings with irresistible flavors. Join us for a feast you won't forget!",
                 fileDescription: "Delicious food festival promotion",
                 videoDescription: ""
-              }
-              setFormData(originalData)
-              setUploadedFile(null)
-              setUploadedVideo(null)
+              };
+              setFormData(originalData);
+              setUploadedFile(null);
+              setUploadedVideo(null);
             }}
             variant="outline"
-            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg border-0"
-          >
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg border-0">
+            
             Reset
           </Button>
           <Button
             onClick={() => {
-              console.log("Update ad:", id, formData)
+
               // Navigate to advertisements list after update
-              navigate("/restaurant/advertisements")
+              navigate("/restaurant/advertisements");
             }}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg"
-          >
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">
+            
             Update Ads
           </Button>
         </div>
       </div>
 
-    </div>
-  )
-}
+    </div>);
 
+}

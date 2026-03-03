@@ -111,20 +111,20 @@ class SMSIndiaHubService {
       // The message text MUST match the registered DLT template EXACTLY
       // Check if custom message template is provided (must match registered DLT template exactly)
       const customTemplate = process.env.SMSINDIAHUB_MESSAGE_TEMPLATE?.trim();
-      
+
       // Check if template ID is provided (for DLT registered templates)
       const templateId = process.env.SMSINDIAHUB_TEMPLATE_ID?.trim();
-      
+
       // Check if promotional SMS is enabled (temporary workaround for template issues)
       // ⚠️ WARNING: Promotional SMS is not recommended for OTP - use only for testing
       const usePromotional = process.env.SMSINDIAHUB_USE_PROMOTIONAL === 'true';
       // Always use transactional SMS (gwid=2) like RentYatra, unless promotional is explicitly enabled
       const gatewayId = usePromotional ? "1" : "2"; // 1 = promotional, 2 = transactional
-      
+
       if (usePromotional) {
         console.warn("⚠️ Using promotional SMS mode - not recommended for production OTP!");
       }
-      
+
       // For transactional SMS (DLT), message must match registered template EXACTLY
       // Use fixed template text that matches DLT registration, regardless of purpose
       // Based on working template: "Welcome to the DriveOn powered by SMSINDIAHUB. Your OTP for registration is {otp}"
@@ -146,7 +146,7 @@ class SMSIndiaHubService {
         // IMPORTANT: This must match the registered DLT template exactly
         message = `Welcome to the GrhaPoch powered by SMSINDIAHUB. Your OTP for registration is ${otp}`;
       }
-      
+
       // Build the API URL with query parameters (same format as RentYatra)
       const params = new URLSearchParams({
         APIKey: apiKey,
@@ -155,9 +155,9 @@ class SMSIndiaHubService {
         msg: message,
         fl: "0", // Flash message flag (0 = normal SMS)
         dc: "0", // Delivery confirmation (0 = no confirmation)
-        gwid: gatewayId, // Gateway ID (2 = transactional, same as RentYatra)
+        gwid: gatewayId // Gateway ID (2 = transactional, same as RentYatra)
       });
-      
+
       // Add template ID if provided (required for some DLT templates)
       if (templateId) {
         params.append('templateid', templateId);
@@ -170,41 +170,41 @@ class SMSIndiaHubService {
         headers: {
           "User-Agent": "DriveOn/1.0",
           Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         },
-        timeout: 15000, // 15 second timeout
+        timeout: 15000 // 15 second timeout
       });
 
-      console.log("📱 SMSIndia Hub Response Status:", response.status);
-      console.log("📱 SMSIndia Hub Response Data:", response.data);
+
+
 
       // SMSIndia Hub can return JSON or plain text response
       let responseData = response.data;
-      const responseText = typeof responseData === "string" 
-        ? responseData 
-        : JSON.stringify(responseData);
-      
-      console.log("📱 SMSIndia Hub Response Text:", responseText);
-      
+      const responseText = typeof responseData === "string" ?
+      responseData :
+      JSON.stringify(responseData);
+
+
+
       // Try to parse as JSON first (SMSIndia Hub sometimes returns JSON)
       let parsedResponse = null;
       if (typeof responseData === "string") {
         try {
           parsedResponse = JSON.parse(responseData);
         } catch (e) {
+
           // Not JSON, continue with string check
-        }
-      } else if (typeof responseData === "object") {
+        }} else if (typeof responseData === "object") {
         parsedResponse = responseData;
       }
-      
+
       // Check JSON response for error codes (like ErrorCode: "006" for template error)
       if (parsedResponse && typeof parsedResponse === "object") {
         if (parsedResponse.ErrorCode === "000" && parsedResponse.ErrorMessage === "Done") {
-          console.log("✅ SMS sent successfully - JSON success response");
-          const messageId = parsedResponse.MessageData && parsedResponse.MessageData[0]
-            ? parsedResponse.MessageData[0].MessageId
-            : `sms_${Date.now()}`;
+
+          const messageId = parsedResponse.MessageData && parsedResponse.MessageData[0] ?
+          parsedResponse.MessageData[0].MessageId :
+          `sms_${Date.now()}`;
           return {
             success: true,
             messageId: messageId,
@@ -221,10 +221,10 @@ class SMSIndiaHubService {
           throw new Error(`SMSIndia Hub API error: ${errorMsg} (Code: ${parsedResponse.ErrorCode})`);
         }
       }
-      
+
       // Check for success indicators in text response (same logic as RentYatra)
       if (responseText.includes('success') || responseText.includes('sent') || responseText.includes('accepted')) {
-        console.log("✅ SMS sent successfully - success indicator found in text");
+
         return {
           success: true,
           messageId: `sms_${Date.now()}`,
@@ -239,7 +239,7 @@ class SMSIndiaHubService {
         throw new Error(`SMSIndia Hub API error: ${responseText}`);
       } else {
         // If we can't determine success/failure from response, assume success if we got a response (same as RentYatra)
-        console.log("⚠️ Ambiguous response - assuming success (same as RentYatra)");
+
         return {
           success: true,
           messageId: `sms_${Date.now()}`,
@@ -334,7 +334,7 @@ class SMSIndiaHubService {
         msg: message,
         fl: "0", // Flash message flag (0 = normal SMS)
         dc: "0", // Delivery confirmation (0 = no confirmation)
-        gwid: "2", // Gateway ID (2 = transactional)
+        gwid: "2" // Gateway ID (2 = transactional)
       });
 
       const apiUrl = `${this.baseUrl}?${params.toString()}`;
@@ -344,19 +344,19 @@ class SMSIndiaHubService {
         headers: {
           "User-Agent": "DriveOn/1.0",
           Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         },
-        timeout: 15000, // 15 second timeout
+        timeout: 15000 // 15 second timeout
       });
 
       const responseText = response.data.toString();
 
       // Check for success indicators in the response
       if (
-        responseText.includes("success") ||
-        responseText.includes("sent") ||
-        responseText.includes("accepted")
-      ) {
+      responseText.includes("success") ||
+      responseText.includes("sent") ||
+      responseText.includes("accepted"))
+      {
         return {
           success: true,
           messageId: `sms_${Date.now()}`,
@@ -364,13 +364,13 @@ class SMSIndiaHubService {
           to: normalizedPhone,
           body: message,
           provider: "SMSIndia Hub",
-          response: responseText,
+          response: responseText
         };
       } else if (
-        responseText.includes("error") ||
-        responseText.includes("failed") ||
-        responseText.includes("invalid")
-      ) {
+      responseText.includes("error") ||
+      responseText.includes("failed") ||
+      responseText.includes("invalid"))
+      {
         throw new Error(`SMSIndia Hub API error: ${responseText}`);
       } else {
         return {
@@ -380,7 +380,7 @@ class SMSIndiaHubService {
           to: normalizedPhone,
           body: message,
           provider: "SMSIndia Hub",
-          response: responseText,
+          response: responseText
         };
       }
     } catch (error) {
@@ -418,7 +418,7 @@ class SMSIndiaHubService {
       // Test with a simple SMS to verify connection
       const testPhone = "919109992290"; // Use a test phone number
       const testMessage =
-        "Test message from DriveOn. SMS service is working correctly.";
+      "Test message from DriveOn. SMS service is working correctly.";
 
       const params = new URLSearchParams({
         APIKey: apiKey,
@@ -427,7 +427,7 @@ class SMSIndiaHubService {
         msg: testMessage,
         fl: "0",
         dc: "0",
-        gwid: "2",
+        gwid: "2"
       });
 
       const testUrl = `${this.baseUrl}?${params.toString()}`;
@@ -436,21 +436,21 @@ class SMSIndiaHubService {
         headers: {
           "User-Agent": "DriveOn/1.0",
           Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         },
-        timeout: 10000,
+        timeout: 10000
       });
 
       return {
         success: true,
         message: "SMSIndia Hub connection successful",
-        response: response.data.toString(),
+        response: response.data.toString()
       };
     } catch (error) {
       return {
         success: false,
         message: `Connection test failed: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -484,9 +484,9 @@ class SMSIndiaHubService {
         headers: {
           "User-Agent": "DriveOn/1.0",
           Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         },
-        timeout: 10000,
+        timeout: 10000
       });
 
       const responseText = response.data.toString();
@@ -499,7 +499,7 @@ class SMSIndiaHubService {
         success: true,
         balance: balance,
         currency: "INR",
-        response: responseText,
+        response: responseText
       };
     } catch (error) {
       throw new Error(`Failed to fetch SMSIndia Hub balance: ${error.message}`);

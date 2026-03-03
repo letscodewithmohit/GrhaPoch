@@ -84,7 +84,7 @@ deliverySupportTicketSchema.index({ createdAt: -1 });
 deliverySupportTicketSchema.index({ ticketId: 1 });
 
 // Generate unique ticket ID before saving
-deliverySupportTicketSchema.pre('save', async function(next) {
+deliverySupportTicketSchema.pre('save', async function (next) {
   // Only generate ticketId if it doesn't exist (for new documents)
   if (!this.ticketId && this.isNew) {
     let attempts = 0;
@@ -105,7 +105,7 @@ deliverySupportTicketSchema.pre('save', async function(next) {
           isUnique = true;
         } else {
           // If exists, wait a bit and try again with new timestamp
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
         }
       } catch (error) {
         // If error checking, assume it's unique and proceed
@@ -120,13 +120,13 @@ deliverySupportTicketSchema.pre('save', async function(next) {
     }
 
     this.ticketId = ticketId;
-    console.log('Generated ticketId:', ticketId);
+
   }
   next();
 });
 
 // Validate ticketId after save (ensure it was generated)
-deliverySupportTicketSchema.post('save', function(doc, next) {
+deliverySupportTicketSchema.post('save', function (doc, next) {
   if (!doc.ticketId) {
     console.error('Warning: ticketId was not generated for ticket:', doc._id);
   }
@@ -136,4 +136,3 @@ deliverySupportTicketSchema.post('save', function(doc, next) {
 const DeliverySupportTicket = mongoose.model('DeliverySupportTicket', deliverySupportTicketSchema);
 
 export default DeliverySupportTicket;
-

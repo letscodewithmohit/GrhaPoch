@@ -68,7 +68,7 @@ const authenticateFlexible = async (req, res, next) => {
     // Check if token is for delivery
     if (decoded.role === 'delivery') {
       try {
-        const Delivery = (await import('../../delivery/models/Delivery.js')).default;
+        const Delivery = (await import('../models/Delivery.js')).default;
         const delivery = await Delivery.findById(decoded.userId).select('-password');
         
         if (!delivery) {

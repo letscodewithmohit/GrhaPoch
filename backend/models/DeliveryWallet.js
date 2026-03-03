@@ -170,9 +170,9 @@ deliveryWalletSchema.virtual('pocketBalance').get(function () {
 
 // Virtual for pending withdrawals
 deliveryWalletSchema.virtual('pendingWithdrawals').get(function () {
-  return this.transactions
-    .filter(t => t.type === 'withdrawal' && t.status === 'Pending')
-    .reduce((sum, t) => sum + t.amount, 0);
+  return this.transactions.
+  filter((t) => t.type === 'withdrawal' && t.status === 'Pending').
+  reduce((sum, t) => sum + t.amount, 0);
 });
 
 // Method to add transaction and update balances
@@ -192,14 +192,14 @@ deliveryWalletSchema.methods.addTransaction = function (transactionData) {
       this.totalEarned += transaction.amount;
 
       // Log bonus/earning_addon transaction for debugging
-      if (transaction.type === 'bonus' || transaction.type === 'earning_addon') {
-        console.log(`💰 ${transaction.type.toUpperCase()} TRANSACTION ADDED:`, {
-          amount: transaction.amount,
-          oldBalance: oldBalance,
-          newBalance: this.totalBalance,
-          walletId: this._id
-        });
-      }
+
+
+
+
+
+
+
+
 
       // If payment is collected (COD), add to cash in hand
       if (transaction.paymentCollected) {
@@ -288,8 +288,8 @@ deliveryWalletSchema.methods.updateTransactionStatus = function (transactionId, 
 // Method to collect payment (mark payment as collected and update cashInHand)
 deliveryWalletSchema.methods.collectPayment = function (orderId, amount) {
   const paymentTransaction = this.transactions.find(
-    t => t.orderId && t.orderId.toString() === orderId.toString() &&
-      t.type === 'payment' && t.status === 'Completed'
+    (t) => t.orderId && t.orderId.toString() === orderId.toString() &&
+    t.type === 'payment' && t.status === 'Completed'
   );
 
   if (!paymentTransaction) {
@@ -324,4 +324,3 @@ deliveryWalletSchema.statics.findOrCreateByDeliveryId = async function (delivery
 };
 
 export default mongoose.model('DeliveryWallet', deliveryWalletSchema);
-

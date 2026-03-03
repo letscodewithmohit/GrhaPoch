@@ -22,19 +22,19 @@ import subscriptionRoutes from './subscriptionRoutes.js';
 import { getOutletTimingsByRestaurantId } from '../controllers/outletTimingsController.js';
 import { getTables, addTable, deleteTable } from '../controllers/diningTableController.js';
 import {
-    getDiningActivationStatus,
-    requestDiningEnable,
-    enableDiningWithoutPayment,
-    createDiningActivationOrder,
-    verifyDiningActivationPayment
-} from '../controllers/diningActivationController.js';
+  getDiningActivationStatus,
+  requestDiningEnable,
+  enableDiningWithoutPayment,
+  createDiningActivationOrder,
+  verifyDiningActivationPayment } from
+'../controllers/diningActivationController.js';
 
 const router = express.Router();
 
 // Debug middleware
 router.use((req, res, next) => {
-    console.log(`[Restaurant Module] ${req.method} ${req.url} (baseUrl: ${req.baseUrl})`);
-    next();
+
+  next();
 });
 
 // Restaurant authentication routes

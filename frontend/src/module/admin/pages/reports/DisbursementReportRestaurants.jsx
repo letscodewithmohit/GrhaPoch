@@ -1,97 +1,97 @@
-import { useState, useMemo } from "react"
-import { Search, Download, ChevronDown, Filter, UtensilsCrossed, Eye, ArrowUpDown, Info, Settings, FileText, FileSpreadsheet, Code } from "lucide-react"
-import { disbursementReportRestaurantsDummy, disbursementStats } from "../../data/disbursementReportRestaurantsDummy"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils"
+import { useState, useMemo } from "react";
+import { Search, Download, ChevronDown, Filter, UtensilsCrossed, Eye, ArrowUpDown, Info, Settings, FileText, FileSpreadsheet, Code } from "lucide-react";
+import { disbursementReportRestaurantsDummy, disbursementStats } from "../../data/disbursementReportRestaurantsDummy";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils";
 
 // Import icons from Transaction-report-icons
-import pendingIcon from "../../assets/Transaction-report-icons/trx1.png"
-import completedIcon from "../../assets/Transaction-report-icons/trx3.png"
-import canceledIcon from "../../assets/Transaction-report-icons/trx5.png"
+import pendingIcon from "../../assets/Transaction-report-icons/trx1.png";
+import completedIcon from "../../assets/Transaction-report-icons/trx3.png";
+import canceledIcon from "../../assets/Transaction-report-icons/trx5.png";
 
 export default function DisbursementReportRestaurants() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [disbursements, setDisbursements] = useState(disbursementReportRestaurantsDummy)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [disbursements, setDisbursements] = useState(disbursementReportRestaurantsDummy);
   const [filters, setFilters] = useState({
     zone: "All Zones",
     restaurant: "All restaurants",
     paymentMethod: "All Payment Method",
     status: "All status",
-    time: "All Time",
-  })
+    time: "All Time"
+  });
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const filteredDisbursements = useMemo(() => {
-    let result = [...disbursements]
-    
+    let result = [...disbursements];
+
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(disbursement =>
-        disbursement.id.toLowerCase().includes(query) ||
-        disbursement.restaurantName.toLowerCase().includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((disbursement) =>
+      disbursement.id.toLowerCase().includes(query) ||
+      disbursement.restaurantName.toLowerCase().includes(query)
+      );
     }
 
-    if (filters.zone !== "All Zones") {
-      // Filter by zone if needed
-    }
+
+
+
 
     if (filters.restaurant !== "All restaurants") {
-      result = result.filter(d => d.restaurantName === filters.restaurant)
+      result = result.filter((d) => d.restaurantName === filters.restaurant);
     }
 
     if (filters.paymentMethod !== "All Payment Method") {
-      result = result.filter(d => d.paymentMethod === filters.paymentMethod)
+      result = result.filter((d) => d.paymentMethod === filters.paymentMethod);
     }
 
     if (filters.status !== "All status") {
-      result = result.filter(d => d.status.toLowerCase() === filters.status.toLowerCase())
+      result = result.filter((d) => d.status.toLowerCase() === filters.status.toLowerCase());
     }
 
-    return result
-  }, [disbursements, searchQuery, filters])
+    return result;
+  }, [disbursements, searchQuery, filters]);
 
-  const totalDisbursements = filteredDisbursements.length
+  const totalDisbursements = filteredDisbursements.length;
 
   const handleExport = (format) => {
     if (filteredDisbursements.length === 0) {
-      alert("No data to export")
-      return
+      alert("No data to export");
+      return;
     }
     const headers = [
-      { key: "sl", label: "SI" },
-      { key: "id", label: "ID" },
-      { key: "restaurantName", label: "Restaurant Info" },
-      { key: "createdAt", label: "Created At" },
-      { key: "disburseAmount", label: "Disburse Amount" },
-      { key: "paymentMethod", label: "Payment Method" },
-      { key: "status", label: "Status" },
-    ]
+    { key: "sl", label: "SI" },
+    { key: "id", label: "ID" },
+    { key: "restaurantName", label: "Restaurant Info" },
+    { key: "createdAt", label: "Created At" },
+    { key: "disburseAmount", label: "Disburse Amount" },
+    { key: "paymentMethod", label: "Payment Method" },
+    { key: "status", label: "Status" }];
+
     switch (format) {
-      case "csv": exportReportsToCSV(filteredDisbursements, headers, "disbursement_report_restaurants"); break
-      case "excel": exportReportsToExcel(filteredDisbursements, headers, "disbursement_report_restaurants"); break
-      case "pdf": exportReportsToPDF(filteredDisbursements, headers, "disbursement_report_restaurants", "Restaurant Disbursement Report"); break
-      case "json": exportReportsToJSON(filteredDisbursements, "disbursement_report_restaurants"); break
+      case "csv":exportReportsToCSV(filteredDisbursements, headers, "disbursement_report_restaurants");break;
+      case "excel":exportReportsToExcel(filteredDisbursements, headers, "disbursement_report_restaurants");break;
+      case "pdf":exportReportsToPDF(filteredDisbursements, headers, "disbursement_report_restaurants", "Restaurant Disbursement Report");break;
+      case "json":exportReportsToJSON(filteredDisbursements, "disbursement_report_restaurants");break;
     }
-  }
+  };
 
   const handleFilterApply = () => {
-    // Filters are already applied via useMemo
-  }
 
+    // Filters are already applied via useMemo
+  };
   const handleResetFilters = () => {
     setFilters({
       zone: "All Zones",
       restaurant: "All restaurants",
       paymentMethod: "All Payment Method",
       status: "All status",
-      time: "All Time",
-    })
-  }
+      time: "All Time"
+    });
+  };
 
-  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.paymentMethod !== "All Payment Method" ? 1 : 0) + (filters.status !== "All status" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.paymentMethod !== "All Payment Method" ? 1 : 0) + (filters.status !== "All status" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0);
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -168,9 +168,9 @@ export default function DisbursementReportRestaurants() {
                 </label>
                 <select
                   value={filters.zone}
-                  onChange={(e) => setFilters(prev => ({ ...prev, zone: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, zone: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Zones">All Zones</option>
                   <option value="Zone 1">Zone 1</option>
                   <option value="Zone 2">Zone 2</option>
@@ -185,9 +185,9 @@ export default function DisbursementReportRestaurants() {
                 </label>
                 <select
                   value={filters.restaurant}
-                  onChange={(e) => setFilters(prev => ({ ...prev, restaurant: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, restaurant: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All restaurants">All restaurants</option>
                   <option value="Café Monarch">Café Monarch</option>
                   <option value="Hungry Puppets">Hungry Puppets</option>
@@ -202,9 +202,9 @@ export default function DisbursementReportRestaurants() {
                 </label>
                 <select
                   value={filters.paymentMethod}
-                  onChange={(e) => setFilters(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Payment Method">All Payment Method</option>
                   <option value="6cash">6cash</option>
                   <option value="Bank Transfer">Bank Transfer</option>
@@ -218,9 +218,9 @@ export default function DisbursementReportRestaurants() {
                 </label>
                 <select
                   value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All status">All status</option>
                   <option value="Pending">Pending</option>
                   <option value="Completed">Completed</option>
@@ -237,9 +237,9 @@ export default function DisbursementReportRestaurants() {
                 </label>
                 <select
                   value={filters.time}
-                  onChange={(e) => setFilters(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, time: e.target.value }))}
+                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Time">All Time</option>
                   <option value="Today">Today</option>
                   <option value="This Week">This Week</option>
@@ -250,25 +250,25 @@ export default function DisbursementReportRestaurants() {
               </div>
 
               <div className="flex items-end gap-2">
-                <button 
+                <button
                   onClick={handleResetFilters}
-                  className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-                >
+                  className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                  
                   Reset
                 </button>
-                <button 
+                <button
                   onClick={handleFilterApply}
                   className={`px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all flex items-center gap-2 relative ${
-                    activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""
-                  }`}
-                >
+                  activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""}`
+                  }>
+                  
                   <Filter className="w-4 h-4" />
                   Filter
-                  {activeFiltersCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
+                  {activeFiltersCount > 0 &&
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
                       {activeFiltersCount}
                     </span>
-                  )}
+                  }
                 </button>
               </div>
             </div>
@@ -287,8 +287,8 @@ export default function DisbursementReportRestaurants() {
                   placeholder="Search by id"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-4 pr-10 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="pl-4 pr-10 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
 
@@ -321,10 +321,10 @@ export default function DisbursementReportRestaurants() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
+              <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
+                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all">
+                
                 <Settings className="w-5 h-5" />
               </button>
             </div>
@@ -381,18 +381,18 @@ export default function DisbursementReportRestaurants() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {filteredDisbursements.length === 0 ? (
-                  <tr>
+                {filteredDisbursements.length === 0 ?
+                <tr>
                     <td colSpan={8} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No disbursements match your search</p>
                       </div>
                     </td>
-                  </tr>
-                ) : (
-                  filteredDisbursements.map((disbursement) => (
-                    <tr key={disbursement.sl} className="hover:bg-slate-50 transition-colors">
+                  </tr> :
+
+                filteredDisbursements.map((disbursement) =>
+                <tr key={disbursement.sl} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{disbursement.sl}</span>
                       </td>
@@ -418,15 +418,15 @@ export default function DisbursementReportRestaurants() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
-                          className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="View Details"
-                        >
+                      className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
+                      title="View Details">
+                      
                           <Eye className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
+                )
+                }
               </tbody>
             </table>
           </div>
@@ -450,13 +450,13 @@ export default function DisbursementReportRestaurants() {
           <div className="px-6 pb-6 flex items-center justify-end">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+              
               Close
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

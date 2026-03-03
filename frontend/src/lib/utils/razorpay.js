@@ -78,13 +78,13 @@ export const initRazorpayPayment = async (options) => {
       theme: {
         color: '#E23744'
       },
-      handler: function(response) {
+      handler: function (response) {
         if (options.handler) {
           options.handler(response);
         }
       },
       modal: {
-        ondismiss: function() {
+        ondismiss: function () {
           if (options.onClose) {
             options.onClose();
           }
@@ -101,9 +101,9 @@ export const initRazorpayPayment = async (options) => {
     };
 
     const razorpay = new window.Razorpay(razorpayOptions);
-    
+
     // Handle payment failures
-    razorpay.on('payment.failed', function(response) {
+    razorpay.on('payment.failed', function (response) {
       console.error('Razorpay payment failed:', response);
       if (options.onError) {
         options.onError(response.error || { description: 'Payment failed. Please try again.' });
@@ -111,7 +111,7 @@ export const initRazorpayPayment = async (options) => {
     });
 
     // Handle payment method selection failures
-    razorpay.on('payment.method_selection_failed', function(response) {
+    razorpay.on('payment.method_selection_failed', function (response) {
       console.error('Razorpay payment method selection failed:', response);
       if (options.onError) {
         options.onError(response.error || { description: 'Please select another payment method.' });
@@ -120,13 +120,13 @@ export const initRazorpayPayment = async (options) => {
 
     // Open Razorpay modal
     razorpay.open();
-    
-    console.log('✅ Razorpay checkout opened successfully');
-    console.log('Razorpay options:', {
-      key: razorpayOptions.key ? 'Present' : 'Missing',
-      amount: razorpayOptions.amount,
-      order_id: razorpayOptions.order_id
-    });
+
+
+
+
+
+
+
 
     return razorpay;
   } catch (error) {
@@ -146,4 +146,3 @@ export const initRazorpayPayment = async (options) => {
 export const formatAmount = (amount) => {
   return `₹${(amount / 100).toFixed(2)}`;
 };
-

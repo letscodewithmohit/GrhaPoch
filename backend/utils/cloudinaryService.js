@@ -8,18 +8,18 @@ const storage = multer.memoryStorage();
 // Generic file filter for common image/video mime types
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = [
-    // images
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/gif',
-    'image/svg+xml',
-    // videos
-    'video/mp4',
-    'video/quicktime',
-    'video/x-msvideo',
-    'video/x-matroska'
-  ];
+  // images
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+  // videos
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/x-matroska'];
+
 
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
@@ -61,17 +61,17 @@ export function uploadToCloudinary(buffer, options = {}) {
       };
 
       // Copy other options (excluding folder and resource_type which are already set)
-      Object.keys(options).forEach(key => {
+      Object.keys(options).forEach((key) => {
         if (key !== 'folder' && key !== 'resource_type') {
           uploadOptions[key] = options[key];
         }
       });
 
-      console.log('📤 Cloudinary upload options:', {
-        folder: uploadOptions.folder,
-        resource_type: uploadOptions.resource_type,
-        bufferSize: buffer.length
-      });
+
+
+
+
+
 
       // Use upload_stream method which is more efficient for buffers
       // Create a readable stream from buffer
@@ -93,11 +93,11 @@ export function uploadToCloudinary(buffer, options = {}) {
           if (!result) {
             return reject(new Error('Upload failed: No result returned from Cloudinary'));
           }
-          console.log('✅ Cloudinary upload successful:', {
-            publicId: result.public_id,
-            url: result.secure_url,
-            resourceType: result.resource_type
-          });
+
+
+
+
+
           resolve(result);
         }
       );

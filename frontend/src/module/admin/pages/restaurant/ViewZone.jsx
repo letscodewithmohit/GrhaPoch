@@ -1,132 +1,132 @@
-import { useState, useEffect, useRef, useMemo } from "react"
-import { useNavigate, useParams } from "react-router-dom"
-import { MapPin, ArrowLeft } from "lucide-react"
-import { adminAPI } from "@/lib/api"
-import { getGoogleMapsApiKey } from "@/lib/utils/googleMapsApiKey"
-import { Loader } from "@googlemaps/js-api-loader"
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { MapPin, ArrowLeft } from "lucide-react";
+import { adminAPI } from "@/lib/api";
+import { getGoogleMapsApiKey } from "@/lib/utils/googleMapsApiKey";
+import { Loader } from "@googlemaps/js-api-loader";
 
 export default function ViewZone() {
-  const navigate = useNavigate()
-  const { id } = useParams()
-  const mapRef = useRef(null)
-  const mapInstanceRef = useRef(null)
-  const polygonRef = useRef(null)
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const polygonRef = useRef(null);
 
-  const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
-  const [mapLoading, setMapLoading] = useState(true)
-  const [zone, setZone] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState("");
+  const [mapLoading, setMapLoading] = useState(true);
+  const [zone, setZone] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Memoize zone dependencies to keep dependency array stable
-  const zoneId = useMemo(() => zone?._id ?? null, [zone?._id])
-  const coordinatesLength = useMemo(() => zone?.coordinates?.length ?? 0, [zone?.coordinates?.length])
+  const zoneId = useMemo(() => zone?._id ?? null, [zone?._id]);
+  const coordinatesLength = useMemo(() => zone?.coordinates?.length ?? 0, [zone?.coordinates?.length]);
 
   useEffect(() => {
-    fetchZone()
+    fetchZone();
     // Load Google Maps immediately
-    loadGoogleMaps()
-  }, [id])
+    loadGoogleMaps();
+  }, [id]);
 
   // Trigger map resize when component is fully mounted
   useEffect(() => {
     if (mapInstanceRef.current && !mapLoading) {
       const timer = setTimeout(() => {
         if (window.google && window.google.maps && mapInstanceRef.current) {
-          window.google.maps.event.trigger(mapInstanceRef.current, 'resize')
+          window.google.maps.event.trigger(mapInstanceRef.current, 'resize');
         }
-      }, 500)
-      return () => clearTimeout(timer)
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [mapLoading])
+  }, [mapLoading]);
 
   const fetchZone = async () => {
     try {
-      setLoading(true)
-      const response = await adminAPI.getZoneById(id)
+      setLoading(true);
+      const response = await adminAPI.getZoneById(id);
       if (response.data?.success && response.data.data?.zone) {
-        setZone(response.data.data.zone)
+        setZone(response.data.data.zone);
       }
     } catch (error) {
-      console.error("Error fetching zone:", error)
-      alert("Failed to load zone")
-      navigate("/admin/zone-setup")
+      console.error("Error fetching zone:", error);
+      alert("Failed to load zone");
+      navigate("/admin/zone-setup");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadGoogleMaps = async () => {
     try {
-      console.log("Loading Google Maps...")
-      const apiKey = await getGoogleMapsApiKey()
-      setGoogleMapsApiKey(apiKey || "loaded")
+
+      const apiKey = await getGoogleMapsApiKey();
+      setGoogleMapsApiKey(apiKey || "loaded");
 
       // Wait for Google Maps to be loaded from main.jsx if it's loading
-      let retries = 0
-      const maxRetries = 50
+      let retries = 0;
+      const maxRetries = 50;
 
       while (!window.google && retries < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        retries++
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        retries++;
       }
 
       if (window.google && window.google.maps) {
-        console.log("Google Maps already loaded, initializing map...")
+
         // Wait a bit for DOM to be ready
         setTimeout(() => {
-          initializeMap(window.google)
-        }, 100)
-        return
+          initializeMap(window.google);
+        }, 100);
+        return;
       }
 
       if (apiKey) {
-        console.log("Loading Google Maps with Loader...")
+
         const loader = new Loader({
           apiKey: apiKey,
           version: "weekly",
           libraries: ["places", "drawing", "geometry"]
-        })
+        });
 
-        const google = await loader.load()
-        console.log("Google Maps loaded, initializing map...")
+        const google = await loader.load();
+
         // Wait a bit for DOM to be ready
         setTimeout(() => {
-          initializeMap(google)
-        }, 100)
+          initializeMap(google);
+        }, 100);
       } else {
-        console.log("No API key found")
-        setMapLoading(false)
+
+        setMapLoading(false);
       }
     } catch (error) {
-      console.error("Error loading Google Maps:", error)
-      setMapLoading(false)
+      console.error("Error loading Google Maps:", error);
+      setMapLoading(false);
     }
-  }
+  };
 
   const initializeMap = (google) => {
-    console.log("initializeMap called, mapRef.current:", mapRef.current)
+
 
     if (!mapRef.current) {
-      console.log("Map ref not available, retrying...")
-      setTimeout(() => initializeMap(google), 300)
-      return
+
+      setTimeout(() => initializeMap(google), 300);
+      return;
     }
 
     // Check if container has dimensions, retry if not
-    const container = mapRef.current
-    console.log("Container dimensions:", container.offsetWidth, "x", container.offsetHeight)
+    const container = mapRef.current;
+
 
     if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-      console.log("Map container has no dimensions, retrying...")
-      setTimeout(() => initializeMap(google), 300)
-      return
+
+      setTimeout(() => initializeMap(google), 300);
+      return;
     }
 
     try {
       // Initial location (India center)
-      const initialLocation = { lat: 20.5937, lng: 78.9629 }
+      const initialLocation = { lat: 20.5937, lng: 78.9629 };
 
-      console.log("Creating Google Map with container:", container)
+
 
       // Create map
       const map = new google.maps.Map(container, {
@@ -137,83 +137,83 @@ export default function ViewZone() {
           style: google.maps.MapTypeControlStyle ? google.maps.MapTypeControlStyle.HORIZONTAL_BAR : 0,
           position: google.maps.ControlPosition ? google.maps.ControlPosition.TOP_RIGHT : 1,
           mapTypeIds: [
-            google.maps.MapTypeId ? google.maps.MapTypeId.ROADMAP : 'roadmap',
-            google.maps.MapTypeId ? google.maps.MapTypeId.SATELLITE : 'satellite'
-          ]
+          google.maps.MapTypeId ? google.maps.MapTypeId.ROADMAP : 'roadmap',
+          google.maps.MapTypeId ? google.maps.MapTypeId.SATELLITE : 'satellite']
+
         },
         zoomControl: true,
         streetViewControl: false,
         fullscreenControl: true,
         scrollwheel: true,
         gestureHandling: 'greedy',
-        disableDoubleClickZoom: false,
-      })
+        disableDoubleClickZoom: false
+      });
 
-      mapInstanceRef.current = map
-      console.log("Map instance created successfully, map:", map)
+      mapInstanceRef.current = map;
+
 
       // Wait for map to be ready before hiding loading
       google.maps.event.addListenerOnce(map, 'idle', () => {
-        console.log("Map is idle, hiding loading overlay")
-        setMapLoading(false)
+
+        setMapLoading(false);
 
         // Trigger resize to ensure map renders properly
         setTimeout(() => {
           if (mapInstanceRef.current) {
-            google.maps.event.trigger(mapInstanceRef.current, 'resize')
-            console.log("Map resize triggered after idle")
+            google.maps.event.trigger(mapInstanceRef.current, 'resize');
+
 
             // Draw zone polygon if zone data is available
             if (zone && zone.coordinates && zone.coordinates.length >= 3) {
-              console.log("Drawing zone polygon from initializeMap")
-              drawZonePolygon(google, mapInstanceRef.current, zone.coordinates)
+
+              drawZonePolygon(google, mapInstanceRef.current, zone.coordinates);
             }
           }
-        }, 200)
-      })
+        }, 200);
+      });
 
       // Fallback: hide loading after timeout
       setTimeout(() => {
         if (mapLoading) {
-          console.log("Fallback: hiding loading overlay after timeout")
-          setMapLoading(false)
+
+          setMapLoading(false);
         }
-      }, 2000)
+      }, 2000);
 
     } catch (error) {
-      console.error("Error initializing map:", error)
-      setMapLoading(false)
+      console.error("Error initializing map:", error);
+      setMapLoading(false);
     }
-  }
+  };
 
   const drawZonePolygon = (google, map, coordinates) => {
     if (!coordinates || coordinates.length < 3) {
-      console.log("Not enough coordinates to draw polygon:", coordinates?.length)
-      return
+
+      return;
     }
 
-    console.log("Drawing zone polygon with", coordinates.length, "coordinates")
+
 
     try {
       // Convert coordinates to LatLng array
-      const path = coordinates.map(coord => {
-        const lat = typeof coord === 'object' ? (coord.latitude || coord.lat) : null
-        const lng = typeof coord === 'object' ? (coord.longitude || coord.lng) : null
+      const path = coordinates.map((coord) => {
+        const lat = typeof coord === 'object' ? coord.latitude || coord.lat : null;
+        const lng = typeof coord === 'object' ? coord.longitude || coord.lng : null;
         if (lat === null || lng === null) {
-          console.error("Invalid coordinate:", coord)
-          return null
+          console.error("Invalid coordinate:", coord);
+          return null;
         }
-        return new google.maps.LatLng(lat, lng)
-      }).filter(Boolean)
+        return new google.maps.LatLng(lat, lng);
+      }).filter(Boolean);
 
       if (path.length < 3) {
-        console.error("Not enough valid coordinates after conversion")
-        return
+        console.error("Not enough valid coordinates after conversion");
+        return;
       }
 
       // Clear existing polygon
       if (polygonRef.current) {
-        polygonRef.current.setMap(null)
+        polygonRef.current.setMap(null);
       }
 
       // Create polygon
@@ -227,22 +227,22 @@ export default function ViewZone() {
         editable: false,
         draggable: false,
         clickable: false
-      })
+      });
 
-      polygon.setMap(map)
-      polygonRef.current = polygon
-      console.log("Polygon created and added to map")
+      polygon.setMap(map);
+      polygonRef.current = polygon;
+
 
       // Fit map to polygon bounds
-      const bounds = new google.maps.LatLngBounds()
-      path.forEach(latLng => bounds.extend(latLng))
-      map.fitBounds(bounds)
-      console.log("Map fitted to polygon bounds")
+      const bounds = new google.maps.LatLngBounds();
+      path.forEach((latLng) => bounds.extend(latLng));
+      map.fitBounds(bounds);
+
 
       // Add markers for each point
       coordinates.forEach((coord, index) => {
-        const lat = typeof coord === 'object' ? (coord.latitude || coord.lat) : null
-        const lng = typeof coord === 'object' ? (coord.longitude || coord.lng) : null
+        const lat = typeof coord === 'object' ? coord.latitude || coord.lat : null;
+        const lng = typeof coord === 'object' ? coord.longitude || coord.lng : null;
         if (lat !== null && lng !== null) {
           new google.maps.Marker({
             position: { lat, lng },
@@ -257,59 +257,59 @@ export default function ViewZone() {
             },
             zIndex: 1000,
             title: `Point ${index + 1}`
-          })
+          });
         }
-      })
-      console.log("Markers added to map")
+      });
+
     } catch (error) {
-      console.error("Error drawing zone polygon:", error)
+      console.error("Error drawing zone polygon:", error);
     }
-  }
+  };
 
   // Redraw polygon when zone data loads and map is ready
   useEffect(() => {
-    console.log("Polygon drawing useEffect triggered", {
-      hasZone: !!zone,
-      hasCoordinates: !!(zone?.coordinates),
-      coordinatesLength: zone?.coordinates?.length,
-      hasMap: !!mapInstanceRef.current,
-      hasGoogle: !!window.google,
-      mapLoading
-    })
+
+
+
+
+
+
+
+
 
     // Only draw if map is not loading
     if (zone && zone.coordinates && zone.coordinates.length >= 3 && mapInstanceRef.current && window.google && !mapLoading) {
-      console.log("All conditions met, drawing polygon...")
+
       // Small delay to ensure map is fully rendered
       setTimeout(() => {
         if (mapInstanceRef.current) {
-          console.log("Drawing polygon now")
+
           // Clear existing polygon
           if (polygonRef.current) {
-            polygonRef.current.setMap(null)
+            polygonRef.current.setMap(null);
           }
-          drawZonePolygon(window.google, mapInstanceRef.current, zone.coordinates)
+          drawZonePolygon(window.google, mapInstanceRef.current, zone.coordinates);
         }
-      }, 800)
+      }, 800);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoneId, coordinatesLength])
+  }, [zoneId, coordinatesLength]);
 
   // Draw polygon when map finishes loading
   useEffect(() => {
     if (!mapLoading && zone && zone.coordinates && zone.coordinates.length >= 3 && mapInstanceRef.current && window.google) {
-      console.log("Map finished loading, drawing polygon...")
+
       setTimeout(() => {
         if (mapInstanceRef.current) {
           if (polygonRef.current) {
-            polygonRef.current.setMap(null)
+            polygonRef.current.setMap(null);
           }
-          drawZonePolygon(window.google, mapInstanceRef.current, zone.coordinates)
+          drawZonePolygon(window.google, mapInstanceRef.current, zone.coordinates);
         }
-      }, 500)
+      }, 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoading])
+  }, [mapLoading]);
 
   if (loading) {
     return (
@@ -318,8 +318,8 @@ export default function ViewZone() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-slate-600">Loading zone...</p>
         </div>
-      </div>
-    )
+      </div>);
+
   }
 
   if (!zone) {
@@ -329,13 +329,13 @@ export default function ViewZone() {
           <p className="text-slate-600">Zone not found</p>
           <button
             onClick={() => navigate("/admin/zone-setup")}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            
             Back to Zones
           </button>
         </div>
-      </div>
-    )
+      </div>);
+
   }
 
   return (
@@ -345,8 +345,8 @@ export default function ViewZone() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => navigate("/admin/zone-setup")}
-            className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-          >
+            className="p-2 hover:bg-slate-200 rounded-lg transition-colors">
+            
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
           <div className="flex items-center gap-3">
@@ -384,18 +384,18 @@ export default function ViewZone() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Status</label>
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"
-                    }`}>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"}`
+                  }>
                     {zone.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
 
-                {zone.coordinates && zone.coordinates.length > 0 && (
-                  <div>
+                {zone.coordinates && zone.coordinates.length > 0 &&
+                <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Points</label>
                     <p className="text-sm text-slate-900">{zone.coordinates.length}</p>
                   </div>
-                )}
+                }
               </div>
             </div>
           </div>
@@ -415,32 +415,31 @@ export default function ViewZone() {
                     minHeight: "600px",
                     backgroundColor: "#e5e7eb",
                     position: "relative"
-                  }}
-                />
+                  }} />
+                
 
-                {mapLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg" style={{ zIndex: 10, pointerEvents: "none" }}>
+                {mapLoading &&
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg" style={{ zIndex: 10, pointerEvents: "none" }}>
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
                       <p className="text-slate-600">Loading map...</p>
                     </div>
                   </div>
-                )}
+                }
 
-                {!googleMapsApiKey && !mapLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg" style={{ zIndex: 10 }}>
+                {!googleMapsApiKey && !mapLoading &&
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg" style={{ zIndex: 10 }}>
                     <div className="text-center p-6">
                       <MapPin className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                       <p className="text-sm text-slate-600">Google Maps API key not found</p>
                     </div>
                   </div>
-                )}
+                }
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  )
-}
+    </div>);
 
+}

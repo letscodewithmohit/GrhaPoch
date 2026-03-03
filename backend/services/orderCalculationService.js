@@ -11,9 +11,9 @@ import { calculateRoute } from './routeCalculationService.js';
  */
 const getFeeSettings = async () => {
   try {
-    const feeSettings = await FeeSettings.findOne({ isActive: true })
-      .sort({ createdAt: -1 })
-      .lean();
+    const feeSettings = await FeeSettings.findOne({ isActive: true }).
+    sort({ createdAt: -1 }).
+    lean();
 
     if (feeSettings) {
       return feeSettings;
@@ -25,7 +25,7 @@ const getFeeSettings = async () => {
       freeDeliveryThreshold: 149,
       platformFee: 5,
       gstRate: 5,
-      fixedFee: 0,
+      fixedFee: 0
     };
   } catch (error) {
     console.error('Error fetching fee settings:', error);
@@ -35,7 +35,7 @@ const getFeeSettings = async () => {
       freeDeliveryThreshold: 149,
       platformFee: 5,
       gstRate: 5,
-      fixedFee: 0,
+      fixedFee: 0
     };
   }
 };
@@ -95,7 +95,7 @@ export const calculateDistance = (point1, point2) => {
   const [lng2, lat2] = coord2;
 
   // If any coordinates are [0,0], return 0 to avoid massive incorrect distances
-  if ((lng1 === 0 && lat1 === 0) || (lng2 === 0 && lat2 === 0)) {
+  if (lng1 === 0 && lat1 === 0 || lng2 === 0 && lat2 === 0) {
     return 0;
   }
 
@@ -104,9 +104,9 @@ export const calculateDistance = (point1, point2) => {
   const dLng = (lng2 - lng1) * Math.PI / 180;
 
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+  Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
@@ -128,7 +128,7 @@ export const calculateDeliveryDistance = async (restaurant, deliveryAddress = nu
   const [customerLng, customerLat] = customerCoord;
 
   // Guard invalid map points
-  if ((restaurantLng === 0 && restaurantLat === 0) || (customerLng === 0 && customerLat === 0)) {
+  if (restaurantLng === 0 && restaurantLat === 0 || customerLng === 0 && customerLat === 0) {
     return 0;
   }
 
@@ -161,9 +161,9 @@ export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddre
     try {
       const commissionResult = await DeliveryBoyCommission.calculateCommission(distance);
       if (commissionResult && commissionResult.commission > 0) {
-        if (process.env.DEBUG_PRICING_LOGS === 'true') {
-          console.log(`[Pricing] Dynamic Delivery Fee Applied: ₹${commissionResult.commission} for ${distance.toFixed(2)}km`);
-        }
+
+
+
         return commissionResult.commission;
       }
     } catch (error) {
@@ -208,9 +208,9 @@ export const calculatePlatformFee = async (distanceInKm = null) => {
 
   // If distance is provided and platform fee ranges are configured, use range-based calculation
   if (distanceInKm !== null && distanceInKm !== undefined &&
-    feeSettings.platformFeeRanges &&
-    Array.isArray(feeSettings.platformFeeRanges) &&
-    feeSettings.platformFeeRanges.length > 0) {
+  feeSettings.platformFeeRanges &&
+  Array.isArray(feeSettings.platformFeeRanges) &&
+  feeSettings.platformFeeRanges.length > 0) {
 
     // Sort ranges by min value to ensure proper checking
     const sortedRanges = [...feeSettings.platformFeeRanges].sort((a, b) => a.min - b.min);
@@ -309,9 +309,9 @@ export const calculateOrderPricing = async ({
       if (!restaurant) {
         restaurant = await Restaurant.findOne({
           $or: [
-            { restaurantId: restaurantId },
-            { slug: restaurantId }
-          ]
+          { restaurantId: restaurantId },
+          { slug: restaurantId }]
+
         }).lean();
       }
     }
@@ -338,18 +338,18 @@ export const calculateOrderPricing = async ({
             'items.couponCode': couponCode,
             startDate: { $lte: now },
             $or: [
-              { endDate: { $gte: now } },
-              { endDate: null }
-            ]
+            { endDate: { $gte: now } },
+            { endDate: null }]
+
           }).lean();
 
           if (offer) {
             // Find the specific item coupon
-            const couponItem = offer.items.find(item => item.couponCode === couponCode);
+            const couponItem = offer.items.find((item) => item.couponCode === couponCode);
 
             if (couponItem) {
               // Check if coupon is valid for items in cart
-              const cartItemIds = items.map(item => item.itemId);
+              const cartItemIds = items.map((item) => item.itemId);
               const isValidForCart = couponItem.itemId && cartItemIds.includes(couponItem.itemId);
 
               // Check minimum order value
@@ -357,7 +357,7 @@ export const calculateOrderPricing = async ({
 
               if (isValidForCart && minOrderMet) {
                 // Calculate discount based on offer type
-                const itemInCart = items.find(item => item.itemId === couponItem.itemId);
+                const itemInCart = items.find((item) => item.itemId === couponItem.itemId);
                 if (itemInCart) {
                   const itemQuantity = itemInCart.quantity || 1;
 
@@ -381,7 +381,7 @@ export const calculateOrderPricing = async ({
                   itemId: couponItem.itemId,
                   itemName: couponItem.itemName,
                   originalPrice: couponItem.originalPrice,
-                  discountedPrice: couponItem.discountedPrice,
+                  discountedPrice: couponItem.discountedPrice
                 };
               }
             }

@@ -1,29 +1,29 @@
-import { useState, useEffect, useRef } from "react"
-import { motion } from "framer-motion"
-import { useNavigate } from "react-router-dom"
-import Lenis from "lenis"
-import { 
+import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import Lenis from "lenis";
+import {
   ArrowLeft,
   Calendar,
   ChevronDown,
   Wand2,
   ChevronUp,
-  ChevronDown as ChevronDownIcon
-} from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import BottomNavbar from "../components/BottomNavbar"
+  ChevronDown as ChevronDownIcon } from
+"lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import BottomNavbar from "../components/BottomNavbar";
 
 export default function AddCouponPage(props) {
-  const { mode = "create", couponId } = props || {}
-  const isEditMode = mode === "edit"
+  const { mode = "create", couponId } = props || {};
+  const isEditMode = mode === "edit";
 
-  const navigate = useNavigate()
-  const [showDiscountDropdown, setShowDiscountDropdown] = useState(false)
-  const [showDiscountDropdown2, setShowDiscountDropdown2] = useState(false)
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false)
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false)
+  const navigate = useNavigate();
+  const [showDiscountDropdown, setShowDiscountDropdown] = useState(false);
+  const [showDiscountDropdown2, setShowDiscountDropdown2] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     couponCode: "",
@@ -39,93 +39,93 @@ export default function AddCouponPage(props) {
     maxDiscount2: "",
     startDate: "",
     endDate: ""
-  })
-  const discountRef = useRef(null)
-  const discountRef2 = useRef(null)
-  const startDateRef = useRef(null)
-  const endDateRef = useRef(null)
+  });
+  const discountRef = useRef(null);
+  const discountRef2 = useRef(null);
+  const startDateRef = useRef(null);
+  const endDateRef = useRef(null);
 
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+      smoothWheel: true
+    });
 
     function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf)
+    requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy()
-    }
-  }, [])
+      lenis.destroy();
+    };
+  }, []);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (discountRef.current && !discountRef.current.contains(event.target)) {
-        setShowDiscountDropdown(false)
+        setShowDiscountDropdown(false);
       }
       if (discountRef2.current && !discountRef2.current.contains(event.target)) {
-        setShowDiscountDropdown2(false)
+        setShowDiscountDropdown2(false);
       }
       if (startDateRef.current && !startDateRef.current.contains(event.target)) {
-        setShowStartDatePicker(false)
+        setShowStartDatePicker(false);
       }
       if (endDateRef.current && !endDateRef.current.contains(event.target)) {
-        setShowEndDatePicker(false)
+        setShowEndDatePicker(false);
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
-  const discountTypes = ["%", "$"]
+  const discountTypes = ["%", "$"];
 
   const generateCouponCode = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    let code = ""
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
     for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length))
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setFormData(prev => ({ ...prev, couponCode: code }))
-  }
+    setFormData((prev) => ({ ...prev, couponCode: code }));
+  };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value
-    }))
-  }
+    }));
+  };
 
   const incrementLimit = () => {
-    const current = parseInt(formData.limitForSameUser2) || 1
-    setFormData(prev => ({ ...prev, limitForSameUser2: (current + 1).toString() }))
-  }
+    const current = parseInt(formData.limitForSameUser2) || 1;
+    setFormData((prev) => ({ ...prev, limitForSameUser2: (current + 1).toString() }));
+  };
 
   const decrementLimit = () => {
-    const current = parseInt(formData.limitForSameUser2) || 1
+    const current = parseInt(formData.limitForSameUser2) || 1;
     if (current > 1) {
-      setFormData(prev => ({ ...prev, limitForSameUser2: (current - 1).toString() }))
+      setFormData((prev) => ({ ...prev, limitForSameUser2: (current - 1).toString() }));
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24 md:pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
-        <button 
+        <button
           onClick={() => navigate(-1)}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-        >
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+          
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">
@@ -139,8 +139,8 @@ export default function AddCouponPage(props) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+          transition={{ duration: 0.3 }}>
+          
           <Card className="bg-white shadow-sm border border-gray-100">
             <CardContent className="p-4 space-y-4">
               {/* Title */}
@@ -153,8 +153,8 @@ export default function AddCouponPage(props) {
                   value={formData.title}
                   onChange={(e) => handleInputChange("title", e.target.value)}
                   placeholder="Title *"
-                  className="w-full"
-                />
+                  className="w-full" />
+                
               </div>
 
               {/* Coupon Code */}
@@ -168,12 +168,12 @@ export default function AddCouponPage(props) {
                     value={formData.couponCode}
                     onChange={(e) => handleInputChange("couponCode", e.target.value)}
                     placeholder="Coupon Code *"
-                    className="flex-1"
-                  />
+                    className="flex-1" />
+                  
                   <button
                     onClick={generateCouponCode}
-                    className="p-2.5 bg-[#ff8100] hover:bg-[#e67300] rounded-lg transition-colors flex items-center justify-center"
-                  >
+                    className="p-2.5 bg-[#ff8100] hover:bg-[#e67300] rounded-lg transition-colors flex items-center justify-center">
+                    
                     <Wand2 className="w-5 h-5 text-white" />
                   </button>
                 </div>
@@ -189,8 +189,8 @@ export default function AddCouponPage(props) {
                   value={formData.limitForSameUser}
                   onChange={(e) => handleInputChange("limitForSameUser", e.target.value)}
                   placeholder="Limit for same user"
-                  className="w-full"
-                />
+                  className="w-full" />
+                
               </div>
 
               {/* Min purchase */}
@@ -203,8 +203,8 @@ export default function AddCouponPage(props) {
                   value={formData.minPurchase}
                   onChange={(e) => handleInputChange("minPurchase", e.target.value)}
                   placeholder="Min purchase"
-                  className="w-full"
-                />
+                  className="w-full" />
+                
               </div>
 
               {/* Discount */}
@@ -218,36 +218,36 @@ export default function AddCouponPage(props) {
                     value={formData.discount}
                     onChange={(e) => handleInputChange("discount", e.target.value)}
                     placeholder="Discount *"
-                    className="flex-1"
-                  />
+                    className="flex-1" />
+                  
                   <button
                     onClick={() => setShowDiscountDropdown(!showDiscountDropdown)}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
-                  >
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1">
+                    
                     <span className="text-sm font-medium text-gray-700">{formData.discountType}</span>
                     <ChevronDown className="w-4 h-4 text-gray-600" />
                   </button>
                 </div>
-                {showDiscountDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[100px]"
-                  >
-                    {discountTypes.map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => {
-                          handleInputChange("discountType", type)
-                          setShowDiscountDropdown(false)
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
+                {showDiscountDropdown &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[100px]">
+                  
+                    {discountTypes.map((type) =>
+                  <button
+                    key={type}
+                    onClick={() => {
+                      handleInputChange("discountType", type);
+                      setShowDiscountDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg">
+                    
                         {type}
                       </button>
-                    ))}
+                  )}
                   </motion.div>
-                )}
+                }
               </div>
 
               {/* Max Discount */}
@@ -260,8 +260,8 @@ export default function AddCouponPage(props) {
                   value={formData.maxDiscount}
                   onChange={(e) => handleInputChange("maxDiscount", e.target.value)}
                   placeholder="Max Discount"
-                  className="w-full"
-                />
+                  className="w-full" />
+                
               </div>
             </CardContent>
           </Card>
@@ -271,8 +271,8 @@ export default function AddCouponPage(props) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
+          transition={{ duration: 0.3, delay: 0.1 }}>
+          
           <Card className="bg-white shadow-sm border border-gray-100">
             <CardContent className="p-4 space-y-4">
               {/* Limit for same user 2 */}
@@ -286,19 +286,19 @@ export default function AddCouponPage(props) {
                     value={formData.limitForSameUser2}
                     onChange={(e) => handleInputChange("limitForSameUser2", e.target.value)}
                     placeholder="Limit for same user"
-                    className="flex-1"
-                  />
+                    className="flex-1" />
+                  
                   <div className="flex flex-col">
                     <button
                       onClick={incrementLimit}
-                      className="p-1 bg-[#ff8100] hover:bg-[#e67300] rounded-t transition-colors"
-                    >
+                      className="p-1 bg-[#ff8100] hover:bg-[#e67300] rounded-t transition-colors">
+                      
                       <ChevronUp className="w-3 h-3 text-white" />
                     </button>
                     <button
                       onClick={decrementLimit}
-                      className="p-1 bg-[#ff8100] hover:bg-[#e67300] rounded-b transition-colors"
-                    >
+                      className="p-1 bg-[#ff8100] hover:bg-[#e67300] rounded-b transition-colors">
+                      
                       <ChevronDownIcon className="w-3 h-3 text-white" />
                     </button>
                   </div>
@@ -315,8 +315,8 @@ export default function AddCouponPage(props) {
                   value={formData.minPurchase2}
                   onChange={(e) => handleInputChange("minPurchase2", e.target.value)}
                   placeholder="Min purchase"
-                  className="w-full"
-                />
+                  className="w-full" />
+                
               </div>
 
               {/* Discount 2 */}
@@ -330,36 +330,36 @@ export default function AddCouponPage(props) {
                     value={formData.discount2}
                     onChange={(e) => handleInputChange("discount2", e.target.value)}
                     placeholder="Discount *"
-                    className="flex-1"
-                  />
+                    className="flex-1" />
+                  
                   <button
                     onClick={() => setShowDiscountDropdown2(!showDiscountDropdown2)}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
-                  >
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1">
+                    
                     <span className="text-sm font-medium text-gray-700">{formData.discountType2}</span>
                     <ChevronDown className="w-4 h-4 text-gray-600" />
                   </button>
                 </div>
-                {showDiscountDropdown2 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[100px]"
-                  >
-                    {discountTypes.map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => {
-                          handleInputChange("discountType2", type)
-                          setShowDiscountDropdown2(false)
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
+                {showDiscountDropdown2 &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[100px]">
+                  
+                    {discountTypes.map((type) =>
+                  <button
+                    key={type}
+                    onClick={() => {
+                      handleInputChange("discountType2", type);
+                      setShowDiscountDropdown2(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg">
+                    
                         {type}
                       </button>
-                    ))}
+                  )}
                   </motion.div>
-                )}
+                }
               </div>
 
               {/* Max Discount 2 */}
@@ -372,8 +372,8 @@ export default function AddCouponPage(props) {
                   value={formData.maxDiscount2}
                   onChange={(e) => handleInputChange("maxDiscount2", e.target.value)}
                   placeholder="Max Discount"
-                  className="w-full"
-                />
+                  className="w-full" />
+                
               </div>
             </CardContent>
           </Card>
@@ -383,8 +383,8 @@ export default function AddCouponPage(props) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
+          transition={{ duration: 0.3, delay: 0.2 }}>
+          
           <Card className="bg-white shadow-sm border border-gray-100">
             <CardContent className="p-4 space-y-4">
               {/* Start Date */}
@@ -400,32 +400,32 @@ export default function AddCouponPage(props) {
                     placeholder="Start Date *"
                     className="w-full pr-10"
                     readOnly
-                    onClick={() => setShowStartDatePicker(!showStartDatePicker)}
-                  />
+                    onClick={() => setShowStartDatePicker(!showStartDatePicker)} />
+                  
                   <button
                     onClick={() => setShowStartDatePicker(!showStartDatePicker)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5"
-                  >
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5">
+                    
                     <Calendar className="w-5 h-5 text-[#ff8100]" />
                   </button>
                 </div>
-                {showStartDatePicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4"
-                  >
+                {showStartDatePicker &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+                  
                     <input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => {
-                        handleInputChange("startDate", e.target.value)
-                        setShowStartDatePicker(false)
-                      }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]"
-                    />
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => {
+                      handleInputChange("startDate", e.target.value);
+                      setShowStartDatePicker(false);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]" />
+                  
                   </motion.div>
-                )}
+                }
               </div>
 
               {/* End Date */}
@@ -441,32 +441,32 @@ export default function AddCouponPage(props) {
                     placeholder="End Date *"
                     className="w-full pr-10"
                     readOnly
-                    onClick={() => setShowEndDatePicker(!showEndDatePicker)}
-                  />
+                    onClick={() => setShowEndDatePicker(!showEndDatePicker)} />
+                  
                   <button
                     onClick={() => setShowEndDatePicker(!showEndDatePicker)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5"
-                  >
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5">
+                    
                     <Calendar className="w-5 h-5 text-[#ff8100]" />
                   </button>
                 </div>
-                {showEndDatePicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4"
-                  >
+                {showEndDatePicker &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+                  
                     <input
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => {
-                        handleInputChange("endDate", e.target.value)
-                        setShowEndDatePicker(false)
-                      }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]"
-                    />
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => {
+                      handleInputChange("endDate", e.target.value);
+                      setShowEndDatePicker(false);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]" />
+                  
                   </motion.div>
-                )}
+                }
               </div>
             </CardContent>
           </Card>
@@ -477,23 +477,22 @@ export default function AddCouponPage(props) {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 z-50 md:relative md:border-t-0 md:px-4 md:py-4 md:mt-6">
         <Button
           onClick={() => {
-            if (isEditMode) {
-              console.log("Update coupon:", { id: couponId, ...formData })
-            } else {
-              console.log("Add coupon:", formData)
-            }
+
+
+
+
+
             // Navigate to coupon list after save
-            navigate("/restaurant/coupon")
+            navigate("/restaurant/coupon");
           }}
-          className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg"
-        >
+          className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg">
+          
           {isEditMode ? "Update" : "Add"}
         </Button>
       </div>
 
       {/* Bottom Navigation Bar */}
       <BottomNavbar />
-    </div>
-  )
-}
+    </div>);
 
+}

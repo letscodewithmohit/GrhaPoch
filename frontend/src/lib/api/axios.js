@@ -10,7 +10,7 @@ const networkErrorState = {
   errorCount: 0,
   toastShown: false,
   COOLDOWN_PERIOD: 30000, // 30 seconds cooldown for console errors
-  TOAST_COOLDOWN_PERIOD: 60000, // 60 seconds cooldown for toast notifications
+  TOAST_COOLDOWN_PERIOD: 60000 // 60 seconds cooldown for toast notifications
 };
 
 // Validate API base URL on import
@@ -25,9 +25,9 @@ if (import.meta.env.DEV) {
     console.error('💡 Backend should be at: http://localhost:5000');
     console.error('💡 Fix: Check .env file - VITE_API_BASE_URL should be http://localhost:5000/api');
   } else {
-    console.log('✅ API_BASE_URL correctly points to backend:', API_BASE_URL);
-    console.log('✅ Backend URL:', backendUrl);
-    console.log('✅ Frontend URL:', frontendUrl);
+
+
+
   }
 }
 
@@ -36,35 +36,35 @@ if (import.meta.env.DEV) {
  * - In-flight: same API called in parallel -> share one network request
  * - Cache: same API called within TTL -> return cached response, no network call
  */
-const inFlightMap = new Map()
-const responseCache = new Map()
-const CACHE_TTL_MS = 30000 // 30 seconds - avoid duplicate calls from StrictMode, multiple components
+const inFlightMap = new Map();
+const responseCache = new Map();
+const CACHE_TTL_MS = 30000; // 30 seconds - avoid duplicate calls from StrictMode, multiple components
 
 function getDedupKey(config) {
-  if ((config.method || 'get').toLowerCase() !== 'get') return null
-  const url = config.url || ''
-  const params = config.params
-  const paramsStr = params && typeof params === 'object'
-    ? '?' + new URLSearchParams(params).toString()
-    : (typeof params === 'string' ? '?' + params : '')
+  if ((config.method || 'get').toLowerCase() !== 'get') return null;
+  const url = config.url || '';
+  const params = config.params;
+  const paramsStr = params && typeof params === 'object' ?
+  '?' + new URLSearchParams(params).toString() :
+  typeof params === 'string' ? '?' + params : '';
   // Include auth header in key so user-specific data (me, addresses) stays per-user
-  const auth = config.headers?.Authorization || config.headers?.authorization || ''
-  return url + paramsStr + '|' + (auth ? auth.slice(0, 20) : 'anon')
+  const auth = config.headers?.Authorization || config.headers?.authorization || '';
+  return url + paramsStr + '|' + (auth ? auth.slice(0, 20) : 'anon');
 }
 
 function getCachedResponse(key) {
-  const entry = responseCache.get(key)
-  if (!entry) return null
+  const entry = responseCache.get(key);
+  if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-    responseCache.delete(key)
-    return null
+    responseCache.delete(key);
+    return null;
   }
-  return entry.response
+  return entry.response;
 }
 
 function setCachedResponse(key, response) {
   if (response && response.status >= 200 && response.status < 300) {
-    responseCache.set(key, { response, timestamp: Date.now() })
+    responseCache.set(key, { response, timestamp: Date.now() });
   }
 }
 
@@ -75,39 +75,39 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 seconds
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   },
-  withCredentials: true, // Include cookies for refresh token
+  withCredentials: true // Include cookies for refresh token
 });
 
 // Apply GET request deduplication + response caching
 // axios.defaults.adapter is the xhr adapter in browser
-const defaultAdapter = axios.defaults?.adapter
+const defaultAdapter = axios.defaults?.adapter;
 if (typeof defaultAdapter === 'function') {
   apiClient.defaults.adapter = async (config) => {
-    const key = getDedupKey(config)
-    if (!key) return defaultAdapter(config)
+    const key = getDedupKey(config);
+    if (!key) return defaultAdapter(config);
 
     // 1. Check cache - return cached response if valid
-    const cached = getCachedResponse(key)
-    if (cached) return Promise.resolve(cached)
+    const cached = getCachedResponse(key);
+    if (cached) return Promise.resolve(cached);
 
     // 2. Check in-flight - share same request if already in progress
-    const inFlight = inFlightMap.get(key)
-    if (inFlight) return inFlight
+    const inFlight = inFlightMap.get(key);
+    if (inFlight) return inFlight;
 
     // 3. Make request, cache response, track in-flight
-    const promise = defaultAdapter(config)
-      .then((response) => {
-        setCachedResponse(key, response)
-        return response
-      })
-      .finally(() => {
-        inFlightMap.delete(key)
-      })
-    inFlightMap.set(key, promise)
-    return promise
-  }
+    const promise = defaultAdapter(config).
+    then((response) => {
+      setCachedResponse(key, response);
+      return response;
+    }).
+    finally(() => {
+      inFlightMap.delete(key);
+    });
+    inFlightMap.set(key, promise);
+    return promise;
+  };
 }
 
 /**
@@ -125,7 +125,7 @@ function getTokenForCurrentRoute() {
     return localStorage.getItem('restaurant_accessToken');
   } else if (path.startsWith('/delivery')) {
     return localStorage.getItem('delivery_accessToken');
-  } else if (path.startsWith('/user') || path.startsWith('/usermain') || path === '/' || (!path.startsWith('/admin') && !(path.startsWith('/restaurant') && !path.startsWith('/restaurants')) && !path.startsWith('/delivery'))) {
+  } else if (path.startsWith('/user') || path.startsWith('/usermain') || path === '/' || !path.startsWith('/admin') && !(path.startsWith('/restaurant') && !path.startsWith('/restaurants')) && !path.startsWith('/delivery')) {
     // User module includes /restaurants/* and /usermain/* paths
     return localStorage.getItem('user_accessToken');
   }
@@ -154,15 +154,15 @@ apiClient.interceptors.request.use(
     }
 
     // Debug logging for FormData requests
-    if (import.meta.env.DEV && config.data instanceof FormData) {
-      console.log('[API Interceptor] FormData request detected:', {
-        url: config.url,
-        method: config.method,
-        hasAuthHeader: !!config.headers.Authorization,
-        authHeaderPrefix: config.headers.Authorization?.substring(0, 30),
-        hasAccessToken: !!accessToken
-      });
-    }
+
+
+
+
+
+
+
+
+
 
     // Determine if this is an authenticated route
     const path = window.location.pathname;
@@ -181,46 +181,46 @@ apiClient.interceptors.request.use(
 
     // Check if this is a public restaurant route (should not require authentication)
     const isPublicRestaurantRoute = normalizedRequestUrl.includes('/restaurant/list') ||
-      normalizedRequestUrl.includes('/restaurant/under-250') ||
-      (normalizedRequestUrl.startsWith('/restaurant/') &&
-        !normalizedRequestUrl.includes('/restaurant/orders') &&
-        !normalizedRequestUrl.includes('/restaurant/auth') &&
-        !normalizedRequestUrl.includes('/restaurant/menu') &&
-        !normalizedRequestUrl.includes('/restaurant/profile') &&
-        !normalizedRequestUrl.includes('/restaurant/staff') &&
-        !normalizedRequestUrl.includes('/restaurant/offers') &&
-        !normalizedRequestUrl.includes('/restaurant/inventory') &&
-        !normalizedRequestUrl.includes('/restaurant/categories') &&
-        !normalizedRequestUrl.includes('/restaurant/onboarding') &&
-        !normalizedRequestUrl.includes('/restaurant/delivery-status') &&
-        !normalizedRequestUrl.includes('/restaurant/dining-settings') &&
-        !normalizedRequestUrl.includes('/restaurant/finance') &&
-        !normalizedRequestUrl.includes('/restaurant/wallet') &&
-        !normalizedRequestUrl.includes('/restaurant/analytics') &&
-        !normalizedRequestUrl.includes('/restaurant/complaints') &&
-        !normalizedRequestUrl.includes('/restaurant/dining-tables') &&
-        !normalizedRequestUrl.includes('/restaurant/dining-activation') &&
-        (normalizedRequestUrl.match(/\/restaurant\/[^/]+$/) ||
-          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/menu/) ||
-          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/addons/) ||
-          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/inventory/) ||
-          normalizedRequestUrl.match(/\/restaurant\/[^/]+\/offers/)));
+    normalizedRequestUrl.includes('/restaurant/under-250') ||
+    normalizedRequestUrl.startsWith('/restaurant/') &&
+    !normalizedRequestUrl.includes('/restaurant/orders') &&
+    !normalizedRequestUrl.includes('/restaurant/auth') &&
+    !normalizedRequestUrl.includes('/restaurant/menu') &&
+    !normalizedRequestUrl.includes('/restaurant/profile') &&
+    !normalizedRequestUrl.includes('/restaurant/staff') &&
+    !normalizedRequestUrl.includes('/restaurant/offers') &&
+    !normalizedRequestUrl.includes('/restaurant/inventory') &&
+    !normalizedRequestUrl.includes('/restaurant/categories') &&
+    !normalizedRequestUrl.includes('/restaurant/onboarding') &&
+    !normalizedRequestUrl.includes('/restaurant/delivery-status') &&
+    !normalizedRequestUrl.includes('/restaurant/dining-settings') &&
+    !normalizedRequestUrl.includes('/restaurant/finance') &&
+    !normalizedRequestUrl.includes('/restaurant/wallet') &&
+    !normalizedRequestUrl.includes('/restaurant/analytics') &&
+    !normalizedRequestUrl.includes('/restaurant/complaints') &&
+    !normalizedRequestUrl.includes('/restaurant/dining-tables') &&
+    !normalizedRequestUrl.includes('/restaurant/dining-activation') && (
+    normalizedRequestUrl.match(/\/restaurant\/[^/]+$/) ||
+    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/menu/) ||
+    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/addons/) ||
+    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/inventory/) ||
+    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/offers/));
 
     const isAuthenticatedRoute = (path.startsWith('/admin') ||
-      (path.startsWith('/restaurant') && !path.startsWith('/restaurants') && !isPublicRestaurantRoute) ||
-      path.startsWith('/delivery')) && !isPublicRestaurantRoute;
+    path.startsWith('/restaurant') && !path.startsWith('/restaurants') && !isPublicRestaurantRoute ||
+    path.startsWith('/delivery')) && !isPublicRestaurantRoute;
 
     // For authenticated routes, ALWAYS ensure Authorization header is set if we have a token
     // This ensures FormData requests and other requests always have the token
     if (isAuthenticatedRoute) {
       // If no Authorization header or invalid format, set it
       if (!config.headers.Authorization ||
-        (typeof config.headers.Authorization === 'string' && !config.headers.Authorization.startsWith('Bearer '))) {
+      typeof config.headers.Authorization === 'string' && !config.headers.Authorization.startsWith('Bearer ')) {
         if (accessToken && accessToken.trim() !== '' && accessToken !== 'null' && accessToken !== 'undefined') {
           config.headers.Authorization = `Bearer ${accessToken.trim()}`;
-          if (import.meta.env.DEV && config.data instanceof FormData) {
-            console.log('[API Interceptor] Added Authorization header for authenticated FormData request');
-          }
+
+
+
         } else {
           // Log warning in development if token is missing for authenticated routes
           if (import.meta.env.DEV) {
@@ -230,15 +230,15 @@ apiClient.interceptors.request.use(
               restaurant: localStorage.getItem('restaurant_accessToken') ? 'exists' : 'missing',
               delivery: localStorage.getItem('delivery_accessToken') ? 'exists' : 'missing',
               user: localStorage.getItem('user_accessToken') ? 'exists' : 'missing',
-              legacy: localStorage.getItem('accessToken') ? 'exists' : 'missing',
+              legacy: localStorage.getItem('accessToken') ? 'exists' : 'missing'
             });
           }
         }
       } else {
-        // Authorization header already set (from getAuthConfig), log in dev mode for FormData
-        if (import.meta.env.DEV && config.data instanceof FormData) {
-          console.log('[API Interceptor] Authorization header already set, preserving it for FormData request');
-        }
+
+
+
+
       }
     } else {
       // For non-authenticated routes (including public restaurant routes), don't add token
@@ -262,15 +262,15 @@ apiClient.interceptors.request.use(
       // Always restore Authorization header if it was set (critical for authentication)
       if (authHeader) {
         config.headers.Authorization = authHeader;
-        if (import.meta.env.DEV) {
-          console.log('[API Interceptor] Preserved Authorization header for FormData request');
-        }
+
+
+
       } else if (accessToken && accessToken.trim() !== '' && accessToken !== 'null' && accessToken !== 'undefined') {
         // If no auth header but we have a token, add it
         config.headers.Authorization = `Bearer ${accessToken.trim()}`;
-        if (import.meta.env.DEV) {
-          console.log('[API Interceptor] Added Authorization header for FormData request');
-        }
+
+
+
       }
     }
 
@@ -293,9 +293,9 @@ apiClient.interceptors.response.use(
       networkErrorState.errorCount = 0;
       networkErrorState.lastErrorTime = 0;
       networkErrorState.toastShown = false;
-      if (import.meta.env.DEV) {
-        console.log('✅ Backend connection restored');
-      }
+
+
+
     }
 
     // If response contains new access token, store it for the current module
@@ -364,7 +364,7 @@ apiClient.interceptors.response.use(
           `${API_BASE_URL}${refreshEndpoint}`,
           {},
           {
-            withCredentials: true,
+            withCredentials: true
           }
         );
 
@@ -411,10 +411,10 @@ apiClient.interceptors.response.use(
         // Show error toast in development mode for refresh errors
         if (import.meta.env.DEV) {
           const refreshErrorMessage =
-            refreshError.response?.data?.message ||
-            refreshError.response?.data?.error ||
-            refreshError.message ||
-            'Token refresh failed';
+          refreshError.response?.data?.message ||
+          refreshError.response?.data?.error ||
+          refreshError.message ||
+          'Token refresh failed';
 
           toast.error(refreshErrorMessage, {
             duration: 3000,
@@ -426,9 +426,9 @@ apiClient.interceptors.response.use(
               padding: '16px',
               fontSize: '14px',
               fontWeight: '500',
-              boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.3), 0 8px 10px -6px rgba(239, 68, 68, 0.2)',
+              boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.3), 0 8px 10px -6px rgba(239, 68, 68, 0.2)'
             },
-            className: 'error-toast',
+            className: 'error-toast'
           });
         }
 
@@ -487,9 +487,9 @@ apiClient.interceptors.response.use(
 
           // Log error details (only once per cooldown period)
           if (networkErrorState.errorCount === 1) {
+
             // Network error logging removed - errors handled via toast notifications
-          } else {
-            // For subsequent errors, show a brief message
+          } else {// For subsequent errors, show a brief message
             console.warn(`⚠️ Network Error (${networkErrorState.errorCount}x) - Backend still not connected`);
           }
         }
@@ -511,9 +511,9 @@ apiClient.interceptors.response.use(
               padding: '16px',
               fontSize: '14px',
               fontWeight: '500',
-              boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.3), 0 8px 10px -6px rgba(245, 158, 11, 0.2)',
+              boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.3), 0 8px 10px -6px rgba(245, 158, 11, 0.2)'
             },
-            className: 'network-error-toast',
+            className: 'network-error-toast'
           });
         }
       }
@@ -551,9 +551,9 @@ apiClient.interceptors.response.use(
               padding: '16px',
               fontSize: '14px',
               fontWeight: '500',
-              boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.3), 0 8px 10px -6px rgba(245, 158, 11, 0.2)',
+              boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.3), 0 8px 10px -6px rgba(245, 158, 11, 0.2)'
             },
-            className: 'timeout-error-toast',
+            className: 'timeout-error-toast'
           });
         }
       }
@@ -578,8 +578,8 @@ apiClient.interceptors.response.use(
               borderRadius: '12px',
               padding: '16px',
               fontSize: '14px',
-              fontWeight: '500',
-            },
+              fontWeight: '500'
+            }
           });
         }
         // Show toast for restaurant routes (but not for getRestaurantById which can legitimately return 404)
@@ -588,7 +588,7 @@ apiClient.interceptors.response.use(
           // Individual restaurant lookups (like /restaurant/:id) can legitimately return 404 if restaurant doesn't exist
           // So we silently handle those 404s
           const isIndividualRestaurantLookup = /\/restaurant\/[a-f0-9]{24}$/i.test(url) ||
-            (url.match(/\/restaurant\/[^/]+$/) && !url.includes('/restaurant/list'));
+          url.match(/\/restaurant\/[^/]+$/) && !url.includes('/restaurant/list');
 
           if (!isIndividualRestaurantLookup && url.includes('/restaurant/list')) {
             toast.error('Restaurant API endpoint not found. Check backend routes.', {
@@ -600,8 +600,8 @@ apiClient.interceptors.response.use(
                 borderRadius: '12px',
                 padding: '16px',
                 fontSize: '14px',
-                fontWeight: '500',
-              },
+                fontWeight: '500'
+              }
             });
           }
           // Silently handle 404 for individual restaurant lookups (getRestaurantById)
@@ -622,15 +622,15 @@ apiClient.interceptors.response.use(
       if (Array.isArray(errorData?.message)) {
         errorMessages = errorData.message;
       } else if (Array.isArray(errorData?.errors)) {
-        errorMessages = errorData.errors.map(err => err.message || err);
+        errorMessages = errorData.errors.map((err) => err.message || err);
       } else if (errorData?.message) {
         errorMessages = [errorData.message];
       } else if (errorData?.error) {
         errorMessages = [errorData.error];
       } else if (errorData?.data?.message) {
-        errorMessages = Array.isArray(errorData.data.message)
-          ? errorData.data.message
-          : [errorData.data.message];
+        errorMessages = Array.isArray(errorData.data.message) ?
+        errorData.data.message :
+        [errorData.data.message];
       } else if (error.message) {
         errorMessages = [error.message];
       } else {
@@ -651,9 +651,9 @@ apiClient.interceptors.response.use(
               padding: '16px',
               fontSize: '14px',
               fontWeight: '500',
-              boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.3), 0 8px 10px -6px rgba(239, 68, 68, 0.2)',
+              boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.3), 0 8px 10px -6px rgba(239, 68, 68, 0.2)'
             },
-            className: 'error-toast',
+            className: 'error-toast'
           });
         }, index * 100); // Stagger multiple toasts by 100ms
       });
@@ -665,4 +665,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-

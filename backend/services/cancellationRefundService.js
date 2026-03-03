@@ -69,7 +69,7 @@ export const calculateCancellationRefund = async (orderId, cancellationReason) =
         // Restaurant gets: food cost - commission
         restaurantCompensation = settlement.restaurantEarning.netEarning;
         // User gets: delivery fee + platform fee back (or partial)
-        refundAmount = userPayment.deliveryFee + (userPayment.platformFee * 0.5); // 50% platform fee refund
+        refundAmount = userPayment.deliveryFee + userPayment.platformFee * 0.5; // 50% platform fee refund
         break;
 
       case 'post_pickup':
@@ -177,7 +177,7 @@ export const processCancellationRefund = async (orderId, cancellationReason) => 
         // Restaurant gets: food cost - commission
         restaurantCompensation = settlement.restaurantEarning.netEarning;
         // User gets: delivery fee + platform fee back (or partial)
-        refundAmount = userPayment.deliveryFee + (userPayment.platformFee * 0.5); // 50% platform fee refund
+        refundAmount = userPayment.deliveryFee + userPayment.platformFee * 0.5; // 50% platform fee refund
         break;
 
       case 'post_pickup':
@@ -270,7 +270,7 @@ export const processCancellationRefund = async (orderId, cancellationReason) => 
 const refundToUser = async (userId, orderId, amount, orderNumber, reason) => {
   try {
     const wallet = await UserWallet.findOrCreateByUserId(userId);
-    
+
     wallet.addTransaction({
       amount: amount,
       type: 'refund',
@@ -278,7 +278,7 @@ const refundToUser = async (userId, orderId, amount, orderNumber, reason) => {
       description: `Refund for cancelled order ${orderNumber}. Reason: ${reason}`,
       orderId: orderId
     });
-    
+
     await wallet.save();
 
     // Create audit log
@@ -312,7 +312,7 @@ const refundToUser = async (userId, orderId, amount, orderNumber, reason) => {
 const compensateRestaurant = async (restaurantId, orderId, amount, orderNumber) => {
   try {
     const wallet = await RestaurantWallet.findOrCreateByRestaurantId(restaurantId);
-    
+
     wallet.addTransaction({
       amount: amount,
       type: 'payment',
@@ -320,7 +320,7 @@ const compensateRestaurant = async (restaurantId, orderId, amount, orderNumber) 
       description: `Compensation for cancelled order ${orderNumber}`,
       orderId: orderId
     });
-    
+
     await wallet.save();
 
     // Create audit log
@@ -459,13 +459,13 @@ export const processRazorpayRefund = async (orderId, adminId = null) => {
     }
 
     // Check if refund already processed
-    if (settlement.cancellationDetails?.refundStatus === 'processed' || 
-        settlement.cancellationDetails?.refundStatus === 'initiated') {
+    if (settlement.cancellationDetails?.refundStatus === 'processed' ||
+    settlement.cancellationDetails?.refundStatus === 'initiated') {
       throw new Error('Refund already processed or initiated for this order');
     }
 
     const refundAmount = settlement.cancellationDetails?.refundAmount || 0;
-    
+
     if (refundAmount <= 0) {
       throw new Error('No refund amount calculated for this order');
     }
@@ -495,7 +495,7 @@ export const processRazorpayRefund = async (orderId, adminId = null) => {
         }
       );
 
-      console.log(`✅ Razorpay refund initiated: ${razorpayRefund.id} for order ${order.orderId}`);
+
     } catch (razorpayError) {
       // Update refund status to 'failed'
       settlement.cancellationDetails.refundStatus = 'failed';
@@ -506,7 +506,7 @@ export const processRazorpayRefund = async (orderId, adminId = null) => {
     }
 
     // Update Payment model with refund details
-    const payment = await Payment.findOne({ 
+    const payment = await Payment.findOne({
       orderId: order._id,
       'razorpay.paymentId': order.payment.razorpayPaymentId
     });
@@ -606,39 +606,39 @@ export const processRazorpayRefund = async (orderId, adminId = null) => {
  */
 export const processWalletRefund = async (orderId, adminId = null, refundAmount = null) => {
   try {
-    console.log('🔍 [processWalletRefund] Starting wallet refund process...', {
-      orderId: orderId?.toString(),
-      orderIdType: typeof orderId,
-      isObjectId: mongoose.Types.ObjectId.isValid(orderId)
-    });
-    
+
+
+
+
+
+
     // Try to find order by MongoDB _id first
     let order = null;
     if (mongoose.Types.ObjectId.isValid(orderId)) {
-      order = await Order.findById(orderId)
-        .populate('userId', 'name email phone _id')
-        .lean();
+      order = await Order.findById(orderId).
+      populate('userId', 'name email phone _id').
+      lean();
     }
-    
+
     // If not found, try by orderId string
     if (!order) {
-      order = await Order.findOne({ orderId: orderId })
-        .populate('userId', 'name email phone _id')
-        .lean();
+      order = await Order.findOne({ orderId: orderId }).
+      populate('userId', 'name email phone _id').
+      lean();
     }
-    
+
     if (!order) {
       console.error('❌ [processWalletRefund] Order not found:', orderId);
       throw new Error('Order not found');
     }
 
-    console.log('✅ [processWalletRefund] Order found:', {
-      orderId: order.orderId,
-      mongoId: order._id.toString(),
-      status: order.status,
-      paymentMethod: order.payment?.method,
-      userId: order.userId?._id?.toString() || order.userId?.toString()
-    });
+
+
+
+
+
+
+
 
     if (order.status !== 'cancelled') {
       console.error('❌ [processWalletRefund] Order is not cancelled:', order.status);
@@ -650,7 +650,7 @@ export const processWalletRefund = async (orderId, adminId = null, refundAmount 
       console.error('❌ [processWalletRefund] Payment method is not wallet:', order.payment?.method);
       throw new Error('This function can only process wallet refunds. Wallet payments do not use Razorpay.');
     }
-    
+
     // Ensure no Razorpay payment ID exists (wallet payments are direct, no Razorpay involved)
     if (order.payment?.razorpayPaymentId) {
       console.warn('⚠️ [processWalletRefund] Warning: Wallet payment has Razorpay payment ID. This should not happen for wallet payments.');
@@ -659,22 +659,22 @@ export const processWalletRefund = async (orderId, adminId = null, refundAmount 
 
     // Get settlement (for wallet payments, settlement might not exist - create proper one if needed)
     let settlement = await OrderSettlement.findOne({ orderId });
-    
+
     if (!settlement) {
-      console.log('📝 [processWalletRefund] Settlement not found, creating settlement with order data for wallet refund...');
-      
+
+
       const pricing = order.pricing || {};
       const subtotal = pricing.subtotal || 0;
       const deliveryFee = pricing.deliveryFee || 0;
       const platformFee = pricing.platformFee || 0;
       const tax = pricing.tax || 0;
       const total = pricing.total || 0;
-      
+
       // Calculate earnings (simplified for wallet refunds - we just need the structure)
       const foodPrice = subtotal;
       const commission = 0; // For wallet refunds, we don't need actual commission
       const netEarning = foodPrice; // Simplified
-      
+
       settlement = new OrderSettlement({
         orderId: order._id,
         orderNumber: order.orderId,
@@ -726,27 +726,27 @@ export const processWalletRefund = async (orderId, adminId = null, refundAmount 
         }
       });
       await settlement.save();
-      console.log('✅ [processWalletRefund] Settlement created for wallet refund');
+
     }
 
     // Check if refund already processed
-    if (settlement.cancellationDetails?.refundStatus === 'processed' || 
-        settlement.cancellationDetails?.refundStatus === 'initiated') {
+    if (settlement.cancellationDetails?.refundStatus === 'processed' ||
+    settlement.cancellationDetails?.refundStatus === 'initiated') {
       throw new Error('Refund already processed or initiated for this order');
     }
 
     // Determine refund amount: use provided amount, or calculate from order/settlement
     let finalRefundAmount = 0;
-    
+
     if (refundAmount !== null && refundAmount !== undefined && refundAmount > 0) {
       // Use provided refund amount
       finalRefundAmount = parseFloat(refundAmount);
-      console.log('💰 [processWalletRefund] Using provided refund amount:', finalRefundAmount);
+
     } else {
       // Calculate refund amount from order or settlement
       const orderTotal = order.pricing?.total || settlement.userPayment?.total || 0;
       const calculatedRefund = settlement.cancellationDetails?.refundAmount || 0;
-      
+
       // For wallet, use order total if calculated refund is 0
       if (calculatedRefund > 0) {
         finalRefundAmount = calculatedRefund;
@@ -755,19 +755,19 @@ export const processWalletRefund = async (orderId, adminId = null, refundAmount 
       } else {
         throw new Error('No refund amount found for this order');
       }
-      
-      console.log('💰 [processWalletRefund] Calculated refund amount:', {
-        orderTotal: order.pricing?.total,
-        settlementTotal: settlement.userPayment?.total,
-        calculatedRefund: settlement.cancellationDetails?.refundAmount,
-        finalRefundAmount
-      });
+
+
+
+
+
+
+
     }
-    
+
     if (finalRefundAmount <= 0) {
       throw new Error('Invalid refund amount. Refund amount must be greater than 0');
     }
-    
+
     // Update the variable name for consistency
     const refundAmountToProcess = finalRefundAmount;
 
@@ -781,41 +781,41 @@ export const processWalletRefund = async (orderId, adminId = null, refundAmount 
 
     // Refund to user wallet - verify user exists first
     try {
-      console.log('💰 [processWalletRefund] Processing refund to user wallet...', {
-        userId: order.userId?.toString() || order.userId,
-        orderId: order.orderId,
-        refundAmount: refundAmountToProcess
-      });
-      
+
+
+
+
+
+
       // Get user ID (handle both populated and non-populated)
       const userId = order.userId?._id || order.userId;
       if (!userId) {
         throw new Error('User ID not found in order');
       }
-      
-      console.log('👤 [processWalletRefund] User ID for refund:', userId.toString());
-      
+
+
+
       const wallet = await UserWallet.findOrCreateByUserId(userId);
-      console.log('💳 [processWalletRefund] User wallet found/created:', {
-        walletId: wallet._id.toString(),
-        currentBalance: wallet.balance,
-        userId: wallet.userId.toString()
-      });
-      
+
+
+
+
+
+
       // Check if refund already exists for this order (prevent duplicate)
       const existingRefund = wallet.transactions.find(
-        t => t.orderId && t.orderId.toString() === order._id.toString() && t.type === 'refund'
+        (t) => t.orderId && t.orderId.toString() === order._id.toString() && t.type === 'refund'
       );
 
       if (existingRefund) {
-        console.log('⚠️ [processWalletRefund] Refund already processed for this order, skipping duplicate');
-        console.log('⚠️ [processWalletRefund] Existing refund transaction:', {
-          transactionId: existingRefund._id.toString(),
-          amount: existingRefund.amount,
-          createdAt: existingRefund.createdAt
-        });
+
+
+
+
+
+
       } else {
-        console.log('➕ [processWalletRefund] Adding refund transaction to wallet...');
+
         const transaction = wallet.addTransaction({
           amount: refundAmountToProcess,
           type: 'refund',
@@ -823,26 +823,26 @@ export const processWalletRefund = async (orderId, adminId = null, refundAmount 
           description: `Refund for cancelled order ${settlement.orderNumber || order.orderId}. Reason: ${order.cancellationReason || 'Order cancelled'}`,
           orderId: order._id
         });
-        
+
         // Get balance before save to verify it's being updated
         const balanceBeforeSave = wallet.balance;
         await wallet.save();
-        
+
         // Reload wallet to verify balance was saved correctly
         const savedWallet = await UserWallet.findById(wallet._id);
-        console.log('✅ [processWalletRefund] Wallet transaction added and saved:', {
-          transactionId: transaction._id?.toString(),
-          amount: transaction.amount,
-          type: transaction.type,
-          balanceBeforeSave,
-          balanceAfterSave: wallet.balance,
-          savedWalletBalance: savedWallet?.balance,
-          walletId: wallet._id.toString()
-        });
-        
+
+
+
+
+
+
+
+
+
+
         // Verify balance was actually updated
         if (savedWallet && savedWallet.balance !== balanceBeforeSave) {
-          console.log('✅ [processWalletRefund] Balance update verified in database');
+
         } else {
           console.error('⚠️ [processWalletRefund] WARNING: Balance may not have been updated correctly!', {
             balanceBeforeSave,
@@ -852,29 +852,29 @@ export const processWalletRefund = async (orderId, adminId = null, refundAmount 
         }
 
         // Update user's wallet balance in User model (for backward compatibility)
-        const User = (await import('../../auth/models/User.js')).default;
+        const User = (await import('../models/User.js')).default;
         const userUpdateResult = await User.findByIdAndUpdate(
-          userId, 
+          userId,
           {
             'wallet.balance': savedWallet?.balance || wallet.balance,
             'wallet.currency': wallet.currency || 'INR'
           },
           { new: true }
         );
-        console.log('✅ [processWalletRefund] User model wallet balance updated:', {
-          userId: userId.toString(),
-          newBalance: userUpdateResult?.wallet?.balance,
-          walletBalance: savedWallet?.balance || wallet.balance
-        });
 
-        console.log('✅✅✅ [processWalletRefund] WALLET REFUND SUCCESSFUL ✅✅✅', {
-          userId: userId.toString(),
-          orderId: order.orderId,
-          refundAmount: refundAmountToProcess,
-          previousBalance: wallet.balance - refundAmountToProcess,
-          newBalance: wallet.balance,
-          transactionId: transaction._id?.toString()
-        });
+
+
+
+
+
+
+
+
+
+
+
+
+
       }
 
       // Create audit log

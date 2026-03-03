@@ -16,88 +16,88 @@ import {
   Settings,
   FileText,
   FileSpreadsheet,
-  Code,
-} from "lucide-react";
+  Code } from
+"lucide-react";
 import { campaignOrderReportDummy, campaignOrderStats } from "../../data/campaignOrderReportDummy";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils";
 
 export default function CampaignOrderReport() {
   const [filters, setFilters] = useState({
     campaign: "All Campaignes",
     restaurant: "All restaurants",
     customer: "All customers",
-    time: "All Time",
-  })
-  const [searchQuery, setSearchQuery] = useState("")
-  const [orders] = useState(campaignOrderReportDummy)
+    time: "All Time"
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [orders] = useState(campaignOrderReportDummy);
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const filteredOrders = useMemo(() => {
-    let result = [...orders]
+    let result = [...orders];
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(order =>
-        order.orderId.toLowerCase().includes(query) ||
-        order.restaurant.toLowerCase().includes(query) ||
-        order.customerName.toLowerCase().includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((order) =>
+      order.orderId.toLowerCase().includes(query) ||
+      order.restaurant.toLowerCase().includes(query) ||
+      order.customerName.toLowerCase().includes(query)
+      );
     }
 
-    if (filters.campaign !== "All Campaignes") {
-      // Filter by campaign if needed
-    }
+
+
+
 
     if (filters.restaurant !== "All restaurants") {
-      result = result.filter(o => o.restaurant === filters.restaurant)
+      result = result.filter((o) => o.restaurant === filters.restaurant);
     }
 
     if (filters.customer !== "All customers") {
-      result = result.filter(o => o.customerName === filters.customer)
+      result = result.filter((o) => o.customerName === filters.customer);
     }
 
-    return result
-  }, [orders, searchQuery, filters])
+    return result;
+  }, [orders, searchQuery, filters]);
 
   const handleExport = (format) => {
     if (filteredOrders.length === 0) {
-      alert("No data to export")
-      return
+      alert("No data to export");
+      return;
     }
     const headers = [
-      { key: "sl", label: "SI" },
-      { key: "orderId", label: "Order ID" },
-      { key: "restaurant", label: "Restaurant" },
-      { key: "customerName", label: "Customer Name" },
-      { key: "orderAmount", label: "Order Amount" },
-      { key: "paymentMethod", label: "Payment Method" },
-      { key: "orderStatus", label: "Order Status" },
-    ]
+    { key: "sl", label: "SI" },
+    { key: "orderId", label: "Order ID" },
+    { key: "restaurant", label: "Restaurant" },
+    { key: "customerName", label: "Customer Name" },
+    { key: "orderAmount", label: "Order Amount" },
+    { key: "paymentMethod", label: "Payment Method" },
+    { key: "orderStatus", label: "Order Status" }];
+
     switch (format) {
-      case "csv": exportReportsToCSV(filteredOrders, headers, "campaign_order_report"); break
-      case "excel": exportReportsToExcel(filteredOrders, headers, "campaign_order_report"); break
-      case "pdf": exportReportsToPDF(filteredOrders, headers, "campaign_order_report", "Campaign Order Report"); break
-      case "json": exportReportsToJSON(filteredOrders, "campaign_order_report"); break
+      case "csv":exportReportsToCSV(filteredOrders, headers, "campaign_order_report");break;
+      case "excel":exportReportsToExcel(filteredOrders, headers, "campaign_order_report");break;
+      case "pdf":exportReportsToPDF(filteredOrders, headers, "campaign_order_report", "Campaign Order Report");break;
+      case "json":exportReportsToJSON(filteredOrders, "campaign_order_report");break;
     }
-  }
+  };
 
   const handleFilterApply = () => {
-    // Filters are already applied via useMemo
-  }
 
+    // Filters are already applied via useMemo
+  };
   const handleResetFilters = () => {
     setFilters({
       campaign: "All Campaignes",
       restaurant: "All restaurants",
       customer: "All customers",
-      time: "All Time",
-    })
-  }
+      time: "All Time"
+    });
+  };
 
-  const activeFiltersCount = (filters.campaign !== "All Campaignes" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.customer !== "All customers" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = (filters.campaign !== "All Campaignes" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.customer !== "All customers" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0);
 
   const getStatusBadge = (status) => {
     const statusColors = {
@@ -105,10 +105,10 @@ export default function CampaignOrderReport() {
       Pending: "bg-blue-100 text-blue-800",
       Canceled: "bg-red-100 text-red-800",
       "In Progress": "bg-yellow-100 text-yellow-800",
-      Failed: "bg-orange-100 text-orange-800",
-    }
-    return statusColors[status] || "bg-gray-100 text-gray-800"
-  }
+      Failed: "bg-orange-100 text-orange-800"
+    };
+    return statusColors[status] || "bg-gray-100 text-gray-800";
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen overflow-x-hidden w-full max-w-full">
@@ -131,9 +131,9 @@ export default function CampaignOrderReport() {
                 </label>
                 <select
                   value={filters.campaign}
-                  onChange={(e) => setFilters(prev => ({ ...prev, campaign: e.target.value }))}
-                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, campaign: e.target.value }))}
+                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Campaignes">All Campaignes</option>
                   <option value="Campaign 1">Campaign 1</option>
                   <option value="Campaign 2">Campaign 2</option>
@@ -147,9 +147,9 @@ export default function CampaignOrderReport() {
                 </label>
                 <select
                   value={filters.restaurant}
-                  onChange={(e) => setFilters(prev => ({ ...prev, restaurant: e.target.value }))}
-                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, restaurant: e.target.value }))}
+                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All restaurants">All restaurants</option>
                   <option value="Hungry Puppets">Hungry Puppets</option>
                   <option value="Café Monarch">Café Monarch</option>
@@ -163,9 +163,9 @@ export default function CampaignOrderReport() {
                 </label>
                 <select
                   value={filters.customer}
-                  onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
-                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, customer: e.target.value }))}
+                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All customers">All customers</option>
                   <option value="John Doe">John Doe</option>
                   <option value="V H">V H</option>
@@ -179,9 +179,9 @@ export default function CampaignOrderReport() {
                 </label>
                 <select
                   value={filters.time}
-                  onChange={(e) => setFilters(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, time: e.target.value }))}
+                  className="w-full px-3 py-2 pr-8 text-xs rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Time">All Time</option>
                   <option value="Today">Today</option>
                   <option value="This Week">This Week</option>
@@ -192,25 +192,25 @@ export default function CampaignOrderReport() {
             </div>
 
             <div className="flex items-end gap-2 pt-1">
-              <button 
+              <button
                 onClick={handleResetFilters}
-                className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Reset
               </button>
-              <button 
+              <button
                 onClick={handleFilterApply}
                 className={`px-4 py-2 text-xs font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all flex items-center gap-2 relative ${
-                  activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""
-                }`}
-              >
+                activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""}`
+                }>
+                
                 <Filter className="w-3.5 h-3.5" />
                 Filter
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold">
+                {activeFiltersCount > 0 &&
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold">
                     {activeFiltersCount}
                   </span>
-                )}
+                }
               </button>
             </div>
           </div>
@@ -310,8 +310,8 @@ export default function CampaignOrderReport() {
                   placeholder="Search by Order ID, Restaurant, Customer"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-3 pr-9 py-2 w-full text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="pl-3 pr-9 py-2 w-full text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                
                 <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
 
@@ -344,10 +344,10 @@ export default function CampaignOrderReport() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
+              <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
+                className="p-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all">
+                
                 <Settings className="w-4 h-4" />
               </button>
             </div>
@@ -385,8 +385,8 @@ export default function CampaignOrderReport() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {filteredOrders.map((order) => (
-                  <tr key={order.sl} className="hover:bg-slate-50 transition-colors">
+                {filteredOrders.map((order) =>
+                <tr key={order.sl} className="hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className="text-xs font-medium text-slate-700">{order.sl}</span>
                     </td>
@@ -428,7 +428,7 @@ export default function CampaignOrderReport() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -452,14 +452,13 @@ export default function CampaignOrderReport() {
           <div className="px-6 pb-6 flex items-center justify-end">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+              
               Close
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
+    </div>);
 
+}

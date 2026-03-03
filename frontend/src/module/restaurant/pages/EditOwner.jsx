@@ -1,163 +1,163 @@
-import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
-import Lenis from "lenis"
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import Lenis from "lenis";
 import {
   ArrowLeft,
   User,
   Edit,
-  Trash2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+  Trash2 } from
+"lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { restaurantAPI } from "@/lib/api"
-import OptimizedImage from "@/components/OptimizedImage"
-import { clearModuleAuth } from "@/lib/utils/auth"
-import { firebaseAuth } from "@/lib/firebase"
+  DialogTitle } from
+"@/components/ui/dialog";
+import { restaurantAPI } from "@/lib/api";
+import OptimizedImage from "@/components/OptimizedImage";
+import { clearModuleAuth } from "@/lib/utils/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
-const STORAGE_KEY = "restaurant_owner_contact"
+const STORAGE_KEY = "restaurant_owner_contact";
 
 export default function EditOwner() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const [ownerData, setOwnerData] = useState({
     name: "",
     phone: "",
     email: "",
     photo: null
-  })
-  
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     email: "",
     photo: null
-  })
-  const [hasChanges, setHasChanges] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [profileImageFile, setProfileImageFile] = useState(null)
-  const fileInputRef = useRef(null)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  });
+  const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const fileInputRef = useRef(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+      smoothWheel: true
+    });
 
     function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf)
+    requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy()
-    }
-  }, [])
+      lenis.destroy();
+    };
+  }, []);
 
   // Fetch restaurant data from backend on mount
   useEffect(() => {
     const fetchRestaurantData = async () => {
       try {
-        setLoading(true)
-        const response = await restaurantAPI.getCurrentRestaurant()
-        const data = response?.data?.data?.restaurant || response?.data?.restaurant
+        setLoading(true);
+        const response = await restaurantAPI.getCurrentRestaurant();
+        const data = response?.data?.data?.restaurant || response?.data?.restaurant;
         if (data) {
           const ownerDataFromBackend = {
             name: data.ownerName || data.name || "",
             phone: data.ownerPhone || data.primaryContactNumber || data.phone || "",
             email: data.ownerEmail || data.email || "",
             photo: data.profileImage?.url || null
-          }
-          setOwnerData(ownerDataFromBackend)
-          setFormData(ownerDataFromBackend)
+          };
+          setOwnerData(ownerDataFromBackend);
+          setFormData(ownerDataFromBackend);
         }
       } catch (error) {
         // Only log error if it's not a network/timeout error (backend might be down/slow)
         if (error.code !== 'ERR_NETWORK' && error.code !== 'ECONNABORTED' && !error.message?.includes('timeout')) {
-          console.error("Error fetching restaurant data:", error)
+          console.error("Error fetching restaurant data:", error);
         }
         // Fallback to localStorage
         try {
-          const saved = localStorage.getItem(STORAGE_KEY)
+          const saved = localStorage.getItem(STORAGE_KEY);
           if (saved) {
-            const parsed = JSON.parse(saved)
-            setOwnerData(parsed)
-            setFormData(parsed)
+            const parsed = JSON.parse(saved);
+            setOwnerData(parsed);
+            setFormData(parsed);
           }
         } catch (e) {
-          console.error("Error loading owner data from localStorage:", e)
+          console.error("Error loading owner data from localStorage:", e);
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchRestaurantData()
-  }, [])
+    fetchRestaurantData();
+  }, []);
 
   // Check for changes
   useEffect(() => {
-    const changed = 
-      formData.name !== ownerData.name ||
-      formData.phone !== ownerData.phone ||
-      formData.email !== ownerData.email ||
-      profileImageFile !== null
-    setHasChanges(changed)
-  }, [formData.name, formData.phone, formData.email, ownerData.name, ownerData.phone, ownerData.email, profileImageFile])
+    const changed =
+    formData.name !== ownerData.name ||
+    formData.phone !== ownerData.phone ||
+    formData.email !== ownerData.email ||
+    profileImageFile !== null;
+    setHasChanges(changed);
+  }, [formData.name, formData.phone, formData.email, ownerData.name, ownerData.phone, ownerData.email, profileImageFile]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value
-    }))
-  }
+    }));
+  };
 
   const handlePhotoChange = (event) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0];
     if (file) {
-      setProfileImageFile(file)
-      const reader = new FileReader()
+      setProfileImageFile(file);
+      const reader = new FileReader();
       reader.onload = (e) => {
-        const photoData = e.target?.result
-        setFormData(prev => ({
+        const photoData = e.target?.result;
+        setFormData((prev) => ({
           ...prev,
           photo: photoData
-        }))
-      }
-      reader.readAsDataURL(file)
+        }));
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleSave = async () => {
     try {
-      setSaving(true)
+      setSaving(true);
 
       // First, upload profile image if changed
       if (profileImageFile) {
         try {
-          const imageResponse = await restaurantAPI.uploadProfileImage(profileImageFile)
-          const imageData = imageResponse?.data?.data?.image || imageResponse?.data?.image
+          const imageResponse = await restaurantAPI.uploadProfileImage(profileImageFile);
+          const imageData = imageResponse?.data?.data?.image || imageResponse?.data?.image;
           if (imageData?.url) {
-            formData.photo = imageData.url
+            formData.photo = imageData.url;
           }
         } catch (error) {
-          console.error("Error uploading profile image:", error)
-          alert("Failed to upload profile image. Please try again.")
-          setSaving(false)
-          return
+          console.error("Error uploading profile image:", error);
+          alert("Failed to upload profile image. Please try again.");
+          setSaving(false);
+          return;
         }
       }
 
@@ -165,97 +165,97 @@ export default function EditOwner() {
       const updatePayload = {
         ownerName: formData.name.trim(),
         ownerEmail: formData.email.trim(),
-        ownerPhone: formData.phone.trim(),
-      }
+        ownerPhone: formData.phone.trim()
+      };
 
       // If profile image was uploaded, include it
-      if (profileImageFile && formData.photo) {
-        // Extract publicId from the uploaded image response if available
-        // For now, we'll let the backend handle it via the profileImage field
-        // The uploadProfileImage already updates it, so we might not need to send it again
-      }
 
-      const response = await restaurantAPI.updateProfile(updatePayload)
-      
+
+
+
+
+
+      const response = await restaurantAPI.updateProfile(updatePayload);
+
       if (response?.data?.success) {
         // Save to localStorage as backup
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(formData))
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
         } catch (e) {
-          console.error("Error saving to localStorage:", e)
+          console.error("Error saving to localStorage:", e);
         }
-        
+
         // Dispatch event to notify parent page
-        window.dispatchEvent(new Event("ownerDataUpdated"))
-        
+        window.dispatchEvent(new Event("ownerDataUpdated"));
+
         // Update local state
-        setOwnerData({ ...formData })
-        setProfileImageFile(null)
-        setHasChanges(false)
-        
+        setOwnerData({ ...formData });
+        setProfileImageFile(null);
+        setHasChanges(false);
+
         // Navigate back
-        navigate(-1)
+        navigate(-1);
       } else {
-        throw new Error("Invalid response from server")
+        throw new Error("Invalid response from server");
       }
     } catch (error) {
-      console.error("Error saving owner data:", error)
-      alert(`Failed to save owner details: ${error.response?.data?.message || error.message || "Please try again."}`)
+      console.error("Error saving owner data:", error);
+      alert(`Failed to save owner details: ${error.response?.data?.message || error.message || "Please try again."}`);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleDeleteAccount = async () => {
-    if (isDeleting) return // Prevent multiple clicks
-    
-    setIsDeleting(true)
-    
+    if (isDeleting) return; // Prevent multiple clicks
+
+    setIsDeleting(true);
+
     try {
       // Call backend API to delete the account
-      await restaurantAPI.deleteAccount()
-      
+      await restaurantAPI.deleteAccount();
+
       // Sign out from Firebase if restaurant logged in via Google
       try {
-        const { signOut } = await import("firebase/auth")
-        const currentUser = firebaseAuth.currentUser
+        const { signOut } = await import("firebase/auth");
+        const currentUser = firebaseAuth.currentUser;
         if (currentUser) {
-          await signOut(firebaseAuth)
+          await signOut(firebaseAuth);
         }
       } catch (firebaseError) {
         // Continue even if Firebase logout fails
-        console.warn("Firebase logout failed, continuing with cleanup:", firebaseError)
+        console.warn("Firebase logout failed, continuing with cleanup:", firebaseError);
       }
 
       // Clear restaurant module authentication data
-      clearModuleAuth("restaurant")
-      
+      clearModuleAuth("restaurant");
+
       // Clear all restaurant-related localStorage data
-      localStorage.removeItem(STORAGE_KEY)
-      localStorage.removeItem("restaurant_onboarding")
-      localStorage.removeItem("restaurant_accessToken")
-      localStorage.removeItem("restaurant_authenticated")
-      localStorage.removeItem("restaurant_user")
-      localStorage.removeItem("restaurant_invited_users")
-      
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("restaurant_onboarding");
+      localStorage.removeItem("restaurant_accessToken");
+      localStorage.removeItem("restaurant_authenticated");
+      localStorage.removeItem("restaurant_user");
+      localStorage.removeItem("restaurant_invited_users");
+
       // Clear sessionStorage
-      sessionStorage.removeItem("restaurantAuthData")
-      
+      sessionStorage.removeItem("restaurantAuthData");
+
       // Dispatch auth change event to notify other components
-      window.dispatchEvent(new Event("restaurantAuthChanged"))
-      
-      setShowDeleteDialog(false)
-      
+      window.dispatchEvent(new Event("restaurantAuthChanged"));
+
+      setShowDeleteDialog(false);
+
       // Navigate to welcome page
       setTimeout(() => {
-        navigate("/restaurant/welcome", { replace: true })
-      }, 300)
+        navigate("/restaurant/welcome", { replace: true });
+      }, 300);
     } catch (error) {
-      console.error("Error deleting account:", error)
-      alert(`Failed to delete account: ${error.response?.data?.message || error.message || "Please try again."}`)
-      setIsDeleting(false)
+      console.error("Error deleting account:", error);
+      alert(`Failed to delete account: ${error.response?.data?.message || error.message || "Please try again."}`);
+      setIsDeleting(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
@@ -265,8 +265,8 @@ export default function EditOwner() {
           <button
             onClick={() => navigate(-1)}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Go back"
-          >
+            aria-label="Go back">
+            
             <ArrowLeft className="w-6 h-6 text-gray-900" />
           </button>
           <h1 className="text-lg font-bold text-gray-900">Contact details</h1>
@@ -279,24 +279,24 @@ export default function EditOwner() {
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-              {loading ? (
-                <User className="w-12 h-12 text-gray-500" />
-              ) : formData.photo ? (
-                <OptimizedImage
-                  src={formData.photo}
-                  alt="Owner profile"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-12 h-12 text-gray-500" />
-              )}
+              {loading ?
+              <User className="w-12 h-12 text-gray-500" /> :
+              formData.photo ?
+              <OptimizedImage
+                src={formData.photo}
+                alt="Owner profile"
+                className="w-full h-full object-cover" /> :
+
+
+              <User className="w-12 h-12 text-gray-500" />
+              }
             </div>
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={loading || saving}
-            className="text-blue-600 text-sm font-normal hover:text-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+            className="text-blue-600 text-sm font-normal hover:text-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            
             Edit photo
           </button>
           <input
@@ -305,8 +305,8 @@ export default function EditOwner() {
             accept="image/*"
             className="hidden"
             onChange={handlePhotoChange}
-            disabled={loading || saving}
-          />
+            disabled={loading || saving} />
+          
         </div>
 
         {/* Editable Fields */}
@@ -321,8 +321,8 @@ export default function EditOwner() {
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="Enter name"
                 className="w-full pr-10"
-                disabled={loading || saving}
-              />
+                disabled={loading || saving} />
+              
               <Edit className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-600" />
             </div>
           </div>
@@ -337,8 +337,8 @@ export default function EditOwner() {
                 onChange={(e) => handleInputChange("phone", e.target.value)}
                 placeholder="Enter phone number"
                 className="w-full pr-10 focus-visible:border-black focus-visible:ring-0"
-                disabled={loading || saving}
-              />
+                disabled={loading || saving} />
+              
               <Edit className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-600" />
             </div>
           </div>
@@ -353,8 +353,8 @@ export default function EditOwner() {
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="Enter email address"
                 className="w-full pr-10 focus-visible:border-black focus-visible:ring-0"
-                disabled={loading || saving}
-              />
+                disabled={loading || saving} />
+              
               <Edit className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-600" />
             </div>
           </div>
@@ -364,8 +364,8 @@ export default function EditOwner() {
         <div className="pt-4">
           <button
             onClick={() => setShowDeleteDialog(true)}
-            className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors"
-          >
+            className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors">
+            
             <Trash2 className="w-5 h-5" />
             <span className="text-sm font-normal">Delete your Zomato account</span>
           </button>
@@ -391,16 +391,16 @@ export default function EditOwner() {
             <Button
               onClick={handleDeleteAccount}
               disabled={isDeleting}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+              
               {isDeleting ? "Deleting..." : "Confirm"}
             </Button>
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
               disabled={isDeleting}
-              className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="w-full disabled:opacity-50 disabled:cursor-not-allowed">
+              
               Cancel
             </Button>
           </DialogFooter>
@@ -413,14 +413,14 @@ export default function EditOwner() {
           onClick={handleSave}
           disabled={!hasChanges || loading || saving}
           className={`w-full py-3 ${
-            hasChanges && !loading && !saving
-              ? "bg-black hover:bg-gray-900 text-white" 
-              : "bg-gray-200 text-gray-500 cursor-not-allowed"
-          } transition-colors`}
-        >
+          hasChanges && !loading && !saving ?
+          "bg-black hover:bg-gray-900 text-white" :
+          "bg-gray-200 text-gray-500 cursor-not-allowed"} transition-colors`
+          }>
+          
           {saving ? "Saving..." : "Save"}
         </Button>
       </div>
-    </div>
-  )
+    </div>);
+
 }

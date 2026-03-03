@@ -14,22 +14,22 @@ export async function testBackendHealth() {
     const response = await fetch(`${BACKEND_URL}/health`, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       signal: AbortSignal.timeout(5000)
     });
-    
+
     if (!response.ok) {
       throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    console.log('✅ Backend health check passed:', data);
+
     return { success: true, data };
   } catch (error) {
     console.error('❌ Backend health check failed:', error.message);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message,
       message: 'Backend server is not running or not accessible'
     };
@@ -44,22 +44,22 @@ export async function testRestaurantAPI() {
     const response = await fetch(`${API_BASE_URL}/restaurant/list`, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       signal: AbortSignal.timeout(5000)
     });
-    
+
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    console.log('✅ Restaurant API test passed:', data);
+
     return { success: true, data };
   } catch (error) {
     console.error('❌ Restaurant API test failed:', error.message);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message,
       message: 'Restaurant API endpoint is not accessible'
     };
@@ -70,27 +70,27 @@ export async function testRestaurantAPI() {
  * Run all connection tests
  */
 export async function runConnectionTests() {
-  console.log('🚀 Starting backend connection tests...');
-  console.log('🌐 Backend URL:', BACKEND_URL);
-  console.log('🌐 API Base URL:', API_BASE_URL);
-  
+
+
+
+
   const results = {
     health: await testBackendHealth(),
-    restaurantAPI: await testRestaurantAPI(),
+    restaurantAPI: await testRestaurantAPI()
   };
-  
+
   // Summary
   const allPassed = results.health.success && results.restaurantAPI.success;
-  
+
   if (allPassed) {
-    console.log('✅ All connection tests passed!');
+
   } else {
     console.error('❌ Some connection tests failed');
     console.error('💡 Make sure backend server is running:');
     console.error('   cd appzetofood/backend && npm run dev');
     console.error('💡 Backend should be running on:', BACKEND_URL);
   }
-  
+
   return results;
 }
 
@@ -106,7 +106,7 @@ export function displayConnectionStatus(results) {
       action: 'Start backend server: cd appzetofood/backend && npm run dev'
     };
   }
-  
+
   if (!results.restaurantAPI.success) {
     return {
       type: 'warning',
@@ -115,7 +115,7 @@ export function displayConnectionStatus(results) {
       action: 'Check backend routes and MongoDB connection'
     };
   }
-  
+
   return {
     type: 'success',
     title: 'Connection Successful',
@@ -132,4 +132,3 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     }, 2000);
   });
 }
-

@@ -1,16 +1,16 @@
-import { useState } from "react"
-import { X, Monitor } from "lucide-react"
+import { useState } from "react";
+import { X, Monitor } from "lucide-react";
 
 export default function ReactSite() {
-  const [reactLicenseCode, setReactLicenseCode] = useState("")
-  const [reactDomain, setReactDomain] = useState("")
-  const [showWarning, setShowWarning] = useState(true)
+  const [reactLicenseCode, setReactLicenseCode] = useState("");
+  const [reactDomain, setReactDomain] = useState("");
+  const [showWarning, setShowWarning] = useState(true);
 
   const handleSave = (e) => {
-    e.preventDefault()
-    console.log("Saving React Site:", { reactLicenseCode, reactDomain })
-    alert("React Site settings saved successfully!")
-  }
+    e.preventDefault();
+
+    alert("React Site settings saved successfully!");
+  };
 
   return (
     <div className="p-2 lg:p-3 bg-slate-50 min-h-screen">
@@ -24,8 +24,8 @@ export default function ReactSite() {
         </div>
 
         {/* Warning Banner */}
-        {showWarning && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start justify-between gap-3">
+        {showWarning &&
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start justify-between gap-3">
             <p className="text-xs text-slate-700 flex-1">
               Please check if your domain is register or not at 6amTech Store .{" "}
               <a href="#" className="text-blue-600 hover:underline">
@@ -34,14 +34,14 @@ export default function ReactSite() {
               To login in Store.
             </p>
             <button
-              type="button"
-              onClick={() => setShowWarning(false)}
-              className="p-1 hover:bg-amber-100 rounded transition-colors flex-shrink-0"
-            >
+            type="button"
+            onClick={() => setShowWarning(false)}
+            className="p-1 hover:bg-amber-100 rounded transition-colors flex-shrink-0">
+            
               <X className="w-4 h-4 text-slate-600" />
             </button>
           </div>
-        )}
+        }
 
         {/* Form Section */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
@@ -56,8 +56,8 @@ export default function ReactSite() {
                   value={reactLicenseCode}
                   onChange={(e) => setReactLicenseCode(e.target.value)}
                   placeholder="React license code"
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                
               </div>
 
               <div>
@@ -69,8 +69,8 @@ export default function ReactSite() {
                   value={reactDomain}
                   onChange={(e) => setReactDomain(e.target.value)}
                   placeholder="React Domain"
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                
               </div>
             </div>
 
@@ -78,14 +78,14 @@ export default function ReactSite() {
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
+                className="px-6 py-2.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                
                 Save
               </button>
             </div>
           </form>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }

@@ -839,20 +839,31 @@ export const deliveryAPI = {
   // Get active earning addon offers
   getActiveEarningAddons: () => {
     const endpoint = API_ENDPOINTS.DELIVERY.EARNINGS_ACTIVE_OFFERS;
-    if (import.meta.env.DEV) {
-      console.log('📡 Fetching active earning addons from:', endpoint);
-    }
     return apiClient.get(endpoint);
   },
 
   // Update location
-  updateLocation: (latitude, longitude, isOnline = null) => {
+  updateLocation: (latitude, longitude, isOnline = null, metadata = {}) => {
     const payload = {
       latitude,
       longitude,
     };
     if (typeof isOnline === 'boolean') {
       payload.isOnline = isOnline;
+    }
+    if (metadata && typeof metadata === 'object') {
+      if (metadata.heading !== undefined && metadata.heading !== null) {
+        payload.heading = metadata.heading;
+      }
+      if (metadata.speed !== undefined && metadata.speed !== null) {
+        payload.speed = metadata.speed;
+      }
+      if (metadata.accuracy !== undefined && metadata.accuracy !== null) {
+        payload.accuracy = metadata.accuracy;
+      }
+      if (metadata.orderId !== undefined && metadata.orderId !== null) {
+        payload.orderId = metadata.orderId;
+      }
     }
     return apiClient.post(API_ENDPOINTS.DELIVERY.LOCATION, payload);
   },

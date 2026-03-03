@@ -1,55 +1,55 @@
-import { useState, useEffect } from "react"
-import { useNavigate, useLocation } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
-import { 
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
   Wallet,
   Wifi,
   X,
-  ArrowLeft
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { 
-  getDeliveryWalletState, 
-  calculateDeliveryBalances 
-} from "../utils/deliveryWalletState"
-import { formatCurrency } from "../../restaurant/utils/currency"
+  ArrowLeft } from
+"lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  getDeliveryWalletState,
+  calculateDeliveryBalances } from
+"../utils/deliveryWalletState";
+import { formatCurrency } from "../../restaurant/utils/currency";
 
 export default function MyAccount() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [walletState, setWalletState] = useState(() => getDeliveryWalletState())
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [walletState, setWalletState] = useState(() => getDeliveryWalletState());
 
   // Listen for wallet state updates
   useEffect(() => {
     const handleWalletUpdate = () => {
-      setWalletState(getDeliveryWalletState())
-    }
+      setWalletState(getDeliveryWalletState());
+    };
 
     // Check on mount
-    handleWalletUpdate()
+    handleWalletUpdate();
 
     // Listen for custom event (for same tab updates)
-    window.addEventListener('deliveryWalletStateUpdated', handleWalletUpdate)
+    window.addEventListener('deliveryWalletStateUpdated', handleWalletUpdate);
     // Listen for storage event (for cross-tab updates)
-    window.addEventListener('storage', handleWalletUpdate)
+    window.addEventListener('storage', handleWalletUpdate);
 
     return () => {
-      window.removeEventListener('deliveryWalletStateUpdated', handleWalletUpdate)
-      window.removeEventListener('storage', handleWalletUpdate)
-    }
-  }, [location.pathname])
+      window.removeEventListener('deliveryWalletStateUpdated', handleWalletUpdate);
+      window.removeEventListener('storage', handleWalletUpdate);
+    };
+  }, [location.pathname]);
 
-  const balances = calculateDeliveryBalances(walletState)
+  const balances = calculateDeliveryBalances(walletState);
 
   return (
     <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4 md:py-6 flex items-center gap-4 rounded-b-3xl md:rounded-b-none">
-        <button 
+        <button
           onClick={() => navigate("/delivery")}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+          
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <div className="flex-1 flex flex-col items-center">
@@ -76,20 +76,20 @@ export default function MyAccount() {
               </div>
             </div>
             <div className="flex flex-col gap-2 w-full md:w-auto md:flex-shrink-0">
-              <Button 
+              <Button
                 onClick={() => setShowConfirmDialog(true)}
-                className="bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm w-full md:w-auto"
-              >
+                className="bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm w-full md:w-auto">
+                
                 Adjust Payments
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   // TODO: Process payment
-                  console.log("Pay Now clicked")
-                  alert("Payment processing feature coming soon")
+
+                  alert("Payment processing feature coming soon");
                 }}
-                className="bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm w-full md:w-auto"
-              >
+                className="bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm w-full md:w-auto">
+                
                 Pay Now
               </Button>
             </div>
@@ -116,10 +116,10 @@ export default function MyAccount() {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Transaction History</h2>
-            <button 
+            <button
               onClick={() => navigate("/delivery/transactions")}
-              className="text-[#ff8100] text-sm md:text-base font-medium hover:underline"
-            >
+              className="text-[#ff8100] text-sm md:text-base font-medium hover:underline">
+              
               View All
             </button>
           </div>
@@ -132,35 +132,35 @@ export default function MyAccount() {
 
       {/* Confirmation Dialog */}
       <AnimatePresence>
-        {showConfirmDialog && (
-          <>
+        {showConfirmDialog &&
+        <>
             {/* Backdrop */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setShowConfirmDialog(false)}
-              className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            >
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowConfirmDialog(false)}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            
               {/* Dialog Box */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 300, 
-                  damping: 30 
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative"
-              >
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+              
                 {/* Close Button */}
                 <button
-                  onClick={() => setShowConfirmDialog(false)}
-                  className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
+                onClick={() => setShowConfirmDialog(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
 
@@ -176,21 +176,21 @@ export default function MyAccount() {
                   {/* Buttons */}
                   <div className="flex gap-3">
                     <Button
-                      onClick={() => setShowConfirmDialog(false)}
-                      variant="outline"
-                      className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                    >
+                    onClick={() => setShowConfirmDialog(false)}
+                    variant="outline"
+                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50">
+                    
                       Cancel
                     </Button>
                     <Button
-                      onClick={() => {
-                        // Handle OK action
-                        console.log("Adjust Payments confirmed")
-                        setShowConfirmDialog(false)
-                        // TODO: Add actual adjustment logic here
-                      }}
-                      className="flex-1 bg-[#ff8100] hover:bg-[#e67300] text-white"
-                    >
+                    onClick={() => {
+                      // Handle OK action
+
+                      setShowConfirmDialog(false);
+                      // TODO: Add actual adjustment logic here
+                    }}
+                    className="flex-1 bg-[#ff8100] hover:bg-[#e67300] text-white">
+                    
                       OK
                     </Button>
                   </div>
@@ -198,10 +198,9 @@ export default function MyAccount() {
               </motion.div>
             </motion.div>
           </>
-        )}
+        }
       </AnimatePresence>
 
-    </div>
-  )
-}
+    </div>);
 
+}

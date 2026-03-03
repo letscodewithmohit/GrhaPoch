@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react"
-import { Search, Wallet, Info, Calendar, Edit, Trash2 } from "lucide-react"
-import { walletBonusDummy } from "../../data/walletBonusDummy"
+import { useState, useMemo } from "react";
+import { Search, Wallet, Info, Calendar, Edit, Trash2 } from "lucide-react";
+import { walletBonusDummy } from "../../data/walletBonusDummy";
 
 export default function Bonus() {
-  const [activeLanguage, setActiveLanguage] = useState("default")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [bonuses, setBonuses] = useState(walletBonusDummy)
+  const [activeLanguage, setActiveLanguage] = useState("default");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [bonuses, setBonuses] = useState(walletBonusDummy);
   const [formData, setFormData] = useState({
     bonusTitle: "",
     shortDescription: "",
@@ -14,37 +14,37 @@ export default function Bonus() {
     minAddMoney: "",
     maxBonus: "",
     startDate: "",
-    expireDate: "",
-  })
+    expireDate: ""
+  });
 
   const languageTabs = [
-    { key: "default", label: "Default" },
-    { key: "en", label: "English(EN)" },
-    { key: "bn", label: "Bengali - বাংলা(BN)" },
-    { key: "ar", label: "Arabic - العربية (AR)" },
-    { key: "es", label: "Spanish - español(ES)" },
-  ]
+  { key: "default", label: "Default" },
+  { key: "en", label: "English(EN)" },
+  { key: "bn", label: "Bengali - বাংলা(BN)" },
+  { key: "ar", label: "Arabic - العربية (AR)" },
+  { key: "es", label: "Spanish - español(ES)" }];
+
 
   const filteredBonuses = useMemo(() => {
     if (!searchQuery.trim()) {
-      return bonuses
+      return bonuses;
     }
-    
-    const query = searchQuery.toLowerCase().trim()
-    return bonuses.filter(bonus =>
-      bonus.bonusTitle.toLowerCase().includes(query)
-    )
-  }, [bonuses, searchQuery])
+
+    const query = searchQuery.toLowerCase().trim();
+    return bonuses.filter((bonus) =>
+    bonus.bonusTitle.toLowerCase().includes(query)
+    );
+  }, [bonuses, searchQuery]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log("Form submitted:", formData)
-    alert("Bonus setup saved successfully!")
-  }
+    e.preventDefault();
+
+    alert("Bonus setup saved successfully!");
+  };
 
   const handleReset = () => {
     setFormData({
@@ -55,21 +55,21 @@ export default function Bonus() {
       minAddMoney: "",
       maxBonus: "",
       startDate: "",
-      expireDate: "",
-    })
-  }
+      expireDate: ""
+    });
+  };
 
   const handleToggleStatus = (sl) => {
-    setBonuses(bonuses.map(bonus =>
-      bonus.sl === sl ? { ...bonus, status: !bonus.status } : bonus
-    ))
-  }
+    setBonuses(bonuses.map((bonus) =>
+    bonus.sl === sl ? { ...bonus, status: !bonus.status } : bonus
+    ));
+  };
 
   const handleDelete = (sl) => {
     if (window.confirm("Are you sure you want to delete this bonus?")) {
-      setBonuses(bonuses.filter(bonus => bonus.sl !== sl))
+      setBonuses(bonuses.filter((bonus) => bonus.sl !== sl));
     }
-  }
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -85,47 +85,47 @@ export default function Bonus() {
 
           {/* Language Tabs */}
           <div className="flex items-center gap-2 border-b border-slate-200 mb-6">
-            {languageTabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveLanguage(tab.key)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeLanguage === tab.key
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-600 hover:text-slate-900"
-                }`}
-              >
+            {languageTabs.map((tab) =>
+            <button
+              key={tab.key}
+              onClick={() => setActiveLanguage(tab.key)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeLanguage === tab.key ?
+              "border-blue-600 text-blue-600" :
+              "border-transparent text-slate-600 hover:text-slate-900"}`
+              }>
+              
                 {tab.label}
               </button>
-            ))}
+            )}
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Bonus Title ({activeLanguage === "default" ? "Default" : languageTabs.find(t => t.key === activeLanguage)?.label})
+                  Bonus Title ({activeLanguage === "default" ? "Default" : languageTabs.find((t) => t.key === activeLanguage)?.label})
                 </label>
                 <input
                   type="text"
                   value={formData.bonusTitle}
                   onChange={(e) => handleInputChange("bonusTitle", e.target.value)}
                   placeholder="Ex: EID Dhamaka"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Short Description ({activeLanguage === "default" ? "Default" : languageTabs.find(t => t.key === activeLanguage)?.label})
+                  Short Description ({activeLanguage === "default" ? "Default" : languageTabs.find((t) => t.key === activeLanguage)?.label})
                 </label>
                 <input
                   type="text"
                   value={formData.shortDescription}
                   onChange={(e) => handleInputChange("shortDescription", e.target.value)}
                   placeholder="Ex: EID Dhamaka"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                
               </div>
 
               <div>
@@ -135,8 +135,8 @@ export default function Bonus() {
                 <select
                   value={formData.bonusType}
                   onChange={(e) => handleInputChange("bonusType", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                >
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                  
                   <option value="Percentage (%)">Percentage (%)</option>
                   <option value="Amount ($)">Amount ($)</option>
                 </select>
@@ -154,8 +154,8 @@ export default function Bonus() {
                   value={formData.bonusAmount}
                   onChange={(e) => handleInputChange("bonusAmount", e.target.value)}
                   placeholder="Ex: 100"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                
               </div>
 
               <div>
@@ -170,8 +170,8 @@ export default function Bonus() {
                   value={formData.minAddMoney}
                   onChange={(e) => handleInputChange("minAddMoney", e.target.value)}
                   placeholder="Ex: 10"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                
               </div>
 
               <div>
@@ -186,8 +186,8 @@ export default function Bonus() {
                   value={formData.maxBonus}
                   onChange={(e) => handleInputChange("maxBonus", e.target.value)}
                   placeholder="Ex: 1000"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                
               </div>
 
               <div>
@@ -199,8 +199,8 @@ export default function Bonus() {
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => handleInputChange("startDate", e.target.value)}
-                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
+                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                  
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
@@ -214,8 +214,8 @@ export default function Bonus() {
                     type="date"
                     value={formData.expireDate}
                     onChange={(e) => handleInputChange("expireDate", e.target.value)}
-                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
+                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                  
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
@@ -225,14 +225,14 @@ export default function Bonus() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Reset
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
-              >
+                className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">
+                
                 Submit
               </button>
             </div>
@@ -255,8 +255,8 @@ export default function Bonus() {
                 placeholder="Ex: Search by bonus title"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-              />
+                className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
+              
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
           </div>
@@ -277,8 +277,8 @@ export default function Bonus() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {filteredBonuses.map((bonus) => (
-                  <tr key={bonus.sl} className="hover:bg-slate-50 transition-colors">
+                {filteredBonuses.map((bonus) =>
+                <tr key={bonus.sl} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-slate-700">{bonus.sl}</span>
                     </td>
@@ -299,42 +299,42 @@ export default function Bonus() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => handleToggleStatus(bonus.sl)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          bonus.status ? "bg-blue-600" : "bg-slate-300"
-                        }`}
-                      >
+                      onClick={() => handleToggleStatus(bonus.sl)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      bonus.status ? "bg-blue-600" : "bg-slate-300"}`
+                      }>
+                      
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            bonus.status ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        bonus.status ? "translate-x-6" : "translate-x-1"}`
+                        } />
+                      
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="Edit"
-                        >
+                        className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="Edit">
+                        
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(bonus.sl)}
-                          className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
-                          title="Delete"
-                        >
+                        onClick={() => handleDelete(bonus.sl)}
+                        className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete">
+                        
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }

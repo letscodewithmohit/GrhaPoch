@@ -14,10 +14,10 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
   const R = 6371000; // Earth's radius in meters
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const a =
+  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+  Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -42,7 +42,7 @@ export const useLocationSharing = (orderId, enabled = false) => {
     }
 
     if (isSharingRef.current) {
-      console.log('Location sharing already active');
+
       return;
     }
 
@@ -56,12 +56,12 @@ export const useLocationSharing = (orderId, enabled = false) => {
       });
 
       socketRef.current.on('connect', () => {
-        console.log('✅ Socket connected for location sharing');
+
         socketRef.current.emit('join-delivery', orderId);
       });
 
       socketRef.current.on('disconnect', () => {
-        console.log('❌ Socket disconnected');
+
       });
     }
 
@@ -90,7 +90,7 @@ export const useLocationSharing = (orderId, enabled = false) => {
               latitude,
               longitude
             );
-            
+
             // Skip if moved less than 5 meters (reduce unnecessary updates)
             if (distance < 5) {
               return;
@@ -112,7 +112,7 @@ export const useLocationSharing = (orderId, enabled = false) => {
               timestamp: now
             });
 
-            console.log(`📍 Location sent (throttled):`, { lat: latitude, lng: longitude, heading, interval: LOCATION_UPDATE_INTERVAL });
+
           }
         },
         (error) => {
@@ -140,7 +140,7 @@ export const useLocationSharing = (orderId, enabled = false) => {
       );
 
       isSharingRef.current = true;
-      console.log('✅ Location sharing started');
+
     } else {
       console.error('Geolocation is not supported by this browser');
     }
@@ -151,14 +151,14 @@ export const useLocationSharing = (orderId, enabled = false) => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
-      console.log('📍 Geolocation watch stopped');
+
     }
 
     // Disconnect socket
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
-      console.log('🔌 Socket disconnected');
+
     }
 
     isSharingRef.current = false;
@@ -192,4 +192,3 @@ export const useLocationSharing = (orderId, enabled = false) => {
 };
 
 export default useLocationSharing;
-

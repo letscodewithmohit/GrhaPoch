@@ -1,48 +1,48 @@
-import { useState } from "react"
-import { Lightbulb, ChevronDown } from "lucide-react"
+import { useState } from "react";
+import { Lightbulb, ChevronDown } from "lucide-react";
 
 const marketingTools = [
-  {
-    id: 1,
-    name: "Google Analytics",
-    description: "To know more click How it works."
-  },
-  {
-    id: 2,
-    name: "Google Tag Manager",
-    description: "To know more click How it works."
-  },
-  {
-    id: 3,
-    name: "LinkedIn Insight Tag",
-    description: "To know more click How it works."
-  },
-  {
-    id: 4,
-    name: "Meta Pixel",
-    description: "To know more click How it works."
-  },
-  {
-    id: 5,
-    name: "Pinterest Pixel",
-    description: "To know more click How it works."
-  },
-  {
-    id: 6,
-    name: "Snapchat Pixel",
-    description: "To know more click How it works."
-  },
-  {
-    id: 7,
-    name: "TikTok Pixel",
-    description: "To know more click How it works."
-  },
-  {
-    id: 8,
-    name: "X (Twitter) Pixel",
-    description: "To know more click How it works."
-  }
-]
+{
+  id: 1,
+  name: "Google Analytics",
+  description: "To know more click How it works."
+},
+{
+  id: 2,
+  name: "Google Tag Manager",
+  description: "To know more click How it works."
+},
+{
+  id: 3,
+  name: "LinkedIn Insight Tag",
+  description: "To know more click How it works."
+},
+{
+  id: 4,
+  name: "Meta Pixel",
+  description: "To know more click How it works."
+},
+{
+  id: 5,
+  name: "Pinterest Pixel",
+  description: "To know more click How it works."
+},
+{
+  id: 6,
+  name: "Snapchat Pixel",
+  description: "To know more click How it works."
+},
+{
+  id: 7,
+  name: "TikTok Pixel",
+  description: "To know more click How it works."
+},
+{
+  id: 8,
+  name: "X (Twitter) Pixel",
+  description: "To know more click How it works."
+}];
+
 
 function ToggleSwitch({ enabled, onToggle }) {
   return (
@@ -50,39 +50,39 @@ function ToggleSwitch({ enabled, onToggle }) {
       type="button"
       onClick={onToggle}
       className={`inline-flex items-center w-11 h-6 rounded-full border transition-all ${
-        enabled
-          ? "bg-blue-600 border-blue-600 justify-end"
-          : "bg-slate-200 border-slate-300 justify-start"
-      }`}
-    >
+      enabled ?
+      "bg-blue-600 border-blue-600 justify-end" :
+      "bg-slate-200 border-slate-300 justify-start"}`
+      }>
+      
       <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
-    </button>
-  )
+    </button>);
+
 }
 
 export default function AnalyticsScript() {
   const [toolStates, setToolStates] = useState(
     marketingTools.reduce((acc, tool) => {
-      acc[tool.id] = false
-      return acc
+      acc[tool.id] = false;
+      return acc;
     }, {})
-  )
+  );
 
   const handleToggle = (id) => {
-    setToolStates(prev => ({
+    setToolStates((prev) => ({
       ...prev,
       [id]: !prev[id]
-    }))
-  }
+    }));
+  };
 
   const handleView = (id) => {
-    console.log("View tool:", id)
-  }
+
+  };
 
   const handleHowItWorks = (e) => {
-    e.preventDefault()
-    console.log("How it works clicked")
-  }
+    e.preventDefault();
+
+  };
 
   return (
     <div className="p-2 lg:p-3 bg-slate-50 min-h-screen">
@@ -102,11 +102,11 @@ export default function AnalyticsScript() {
 
         {/* Marketing Tools Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {marketingTools.map((tool) => (
-            <div
-              key={tool.id}
-              className="bg-white rounded-lg shadow-sm border border-slate-200 p-4"
-            >
+          {marketingTools.map((tool) =>
+          <div
+            key={tool.id}
+            className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+            
               <div className="mb-3">
                 <h3 className="text-sm font-semibold text-slate-900 mb-2">
                   {tool.name}
@@ -114,10 +114,10 @@ export default function AnalyticsScript() {
                 <p className="text-xs text-slate-600">
                   {tool.description.split("How it works")[0]}
                   <a
-                    href="#"
-                    onClick={handleHowItWorks}
-                    className="text-blue-600 hover:underline"
-                  >
+                  href="#"
+                  onClick={handleHowItWorks}
+                  className="text-blue-600 hover:underline">
+                  
                     How it works
                   </a>
                   .
@@ -126,22 +126,22 @@ export default function AnalyticsScript() {
 
               <div className="flex items-center justify-between">
                 <button
-                  type="button"
-                  onClick={() => handleView(tool.id)}
-                  className="flex items-center gap-1 text-xs text-slate-700 hover:text-slate-900"
-                >
+                type="button"
+                onClick={() => handleView(tool.id)}
+                className="flex items-center gap-1 text-xs text-slate-700 hover:text-slate-900">
+                
                   <span>View</span>
                   <ChevronDown className="w-3 h-3" />
                 </button>
                 <ToggleSwitch
-                  enabled={toolStates[tool.id]}
-                  onToggle={() => handleToggle(tool.id)}
-                />
+                enabled={toolStates[tool.id]}
+                onToggle={() => handleToggle(tool.id)} />
+              
               </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }

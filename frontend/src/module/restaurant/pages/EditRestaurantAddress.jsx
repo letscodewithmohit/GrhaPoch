@@ -1,142 +1,142 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import Lenis from "lenis"
-import { ArrowLeft, ChevronDown } from "lucide-react"
-import BottomPopup from "@/module/delivery/components/BottomPopup"
-import { restaurantAPI } from "@/lib/api"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Lenis from "lenis";
+import { ArrowLeft, ChevronDown } from "lucide-react";
+import BottomPopup from "@/module/delivery/components/BottomPopup";
+import { restaurantAPI } from "@/lib/api";
 
-const ADDRESS_STORAGE_KEY = "restaurant_address"
+const ADDRESS_STORAGE_KEY = "restaurant_address";
 
 // Default coordinates for Indore (can be updated based on actual location)
-const DEFAULT_LAT = 22.7196
-const DEFAULT_LNG = 75.8577
+const DEFAULT_LAT = 22.7196;
+const DEFAULT_LNG = 75.8577;
 
 export default function EditRestaurantAddress() {
-  const navigate = useNavigate()
-  const [address, setAddress] = useState("")
-  const [restaurantName, setRestaurantName] = useState("")
-  const [location, setLocation] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [showSelectOptionDialog, setShowSelectOptionDialog] = useState(false)
-  const [selectedOption, setSelectedOption] = useState("minor_correction") // "update_address" or "minor_correction"
-  const [lat, setLat] = useState(DEFAULT_LAT)
-  const [lng, setLng] = useState(DEFAULT_LNG)
+  const navigate = useNavigate();
+  const [address, setAddress] = useState("");
+  const [restaurantName, setRestaurantName] = useState("");
+  const [location, setLocation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showSelectOptionDialog, setShowSelectOptionDialog] = useState(false);
+  const [selectedOption, setSelectedOption] = useState("minor_correction"); // "update_address" or "minor_correction"
+  const [lat, setLat] = useState(DEFAULT_LAT);
+  const [lng, setLng] = useState(DEFAULT_LNG);
 
   // Format address from location object
   const formatAddress = (loc) => {
-    if (!loc) return ""
-    const parts = []
-    if (loc.addressLine1) parts.push(loc.addressLine1.trim())
-    if (loc.addressLine2) parts.push(loc.addressLine2.trim())
-    if (loc.area) parts.push(loc.area.trim())
+    if (!loc) return "";
+    const parts = [];
+    if (loc.addressLine1) parts.push(loc.addressLine1.trim());
+    if (loc.addressLine2) parts.push(loc.addressLine2.trim());
+    if (loc.area) parts.push(loc.area.trim());
     if (loc.city) {
-      const city = loc.city.trim()
+      const city = loc.city.trim();
       if (!loc.area || !loc.area.includes(city)) {
-        parts.push(city)
+        parts.push(city);
       }
     }
-    if (loc.landmark) parts.push(loc.landmark.trim())
-    return parts.join(", ") || ""
-  }
+    if (loc.landmark) parts.push(loc.landmark.trim());
+    return parts.join(", ") || "";
+  };
 
   // Fetch restaurant data from backend
   useEffect(() => {
     const fetchRestaurantData = async () => {
       try {
-        setLoading(true)
-        const response = await restaurantAPI.getCurrentRestaurant()
-        const data = response?.data?.data?.restaurant || response?.data?.restaurant
+        setLoading(true);
+        const response = await restaurantAPI.getCurrentRestaurant();
+        const data = response?.data?.data?.restaurant || response?.data?.restaurant;
         if (data) {
-          setRestaurantName(data.name || "")
+          setRestaurantName(data.name || "");
           if (data.location) {
-            setLocation(data.location)
-            const formatted = formatAddress(data.location)
-            setAddress(formatted)
+            setLocation(data.location);
+            const formatted = formatAddress(data.location);
+            setAddress(formatted);
             // Set coordinates if available
             if (data.location.latitude && data.location.longitude) {
-              setLat(data.location.latitude)
-              setLng(data.location.longitude)
+              setLat(data.location.latitude);
+              setLng(data.location.longitude);
             }
           } else {
             // Fallback to localStorage
             try {
-              const savedAddress = localStorage.getItem(ADDRESS_STORAGE_KEY)
+              const savedAddress = localStorage.getItem(ADDRESS_STORAGE_KEY);
               if (savedAddress) {
-                setAddress(savedAddress)
+                setAddress(savedAddress);
               }
             } catch (error) {
-              console.error("Error loading address from storage:", error)
+              console.error("Error loading address from storage:", error);
             }
           }
         }
       } catch (error) {
         // Only log error if it's not a network/timeout error (backend might be down/slow)
         if (error.code !== 'ERR_NETWORK' && error.code !== 'ECONNABORTED' && !error.message?.includes('timeout')) {
-          console.error("Error fetching restaurant data:", error)
+          console.error("Error fetching restaurant data:", error);
         }
         // Fallback to localStorage
         try {
-          const savedAddress = localStorage.getItem(ADDRESS_STORAGE_KEY)
+          const savedAddress = localStorage.getItem(ADDRESS_STORAGE_KEY);
           if (savedAddress) {
-            setAddress(savedAddress)
+            setAddress(savedAddress);
           }
           // Try to get restaurant name from localStorage, but prefer empty string over hardcoded value
-          const savedName = localStorage.getItem("restaurant_name") || 
-                           localStorage.getItem("restaurantName") ||
-                           ""
-          setRestaurantName(savedName)
+          const savedName = localStorage.getItem("restaurant_name") ||
+          localStorage.getItem("restaurantName") ||
+          "";
+          setRestaurantName(savedName);
         } catch (e) {
-          console.error("Error loading from localStorage:", e)
+          console.error("Error loading from localStorage:", e);
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchRestaurantData()
+    fetchRestaurantData();
 
     // Listen for address updates
     const handleAddressUpdate = () => {
-      fetchRestaurantData()
-    }
+      fetchRestaurantData();
+    };
 
-    window.addEventListener("addressUpdated", handleAddressUpdate)
-    return () => window.removeEventListener("addressUpdated", handleAddressUpdate)
-  }, [])
+    window.addEventListener("addressUpdated", handleAddressUpdate);
+    return () => window.removeEventListener("addressUpdated", handleAddressUpdate);
+  }, []);
 
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+      smoothWheel: true
+    });
 
     function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf)
+    requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy()
-    }
-  }, [])
+      lenis.destroy();
+    };
+  }, []);
 
   // Handle opening Google Maps app
   const handleViewOnMap = () => {
     // Create Google Maps URL for the restaurant location
-    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-    
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
     // Try to open in Google Maps app (mobile) or web
-    window.open(googleMapsUrl, "_blank")
-  }
+    window.open(googleMapsUrl, "_blank");
+  };
 
   // Handle Update button click
   const handleUpdateClick = () => {
-    setShowSelectOptionDialog(true)
-  }
+    setShowSelectOptionDialog(true);
+  };
 
   // Handle Proceed to update
   const handleProceedUpdate = async () => {
@@ -146,36 +146,36 @@ export default function EditRestaurantAddress() {
       if (selectedOption === "update_address") {
         // For major address update, you might want to navigate to a form
         // For now, we'll just show a message
-        alert("For major address updates, FSSAI verification may be required. Please contact support.")
-        setShowSelectOptionDialog(false)
-        return
+        alert("For major address updates, FSSAI verification may be required. Please contact support.");
+        setShowSelectOptionDialog(false);
+        return;
       } else {
         // Minor correction - update location coordinates
         // Fetch live address from coordinates using Google Maps API
         try {
           // Get Google Maps API key
-          const { getGoogleMapsApiKey } = await import('@/lib/utils/googleMapsApiKey.js')
-          const GOOGLE_MAPS_API_KEY = await getGoogleMapsApiKey()
-          
-          let formattedAddress = location?.formattedAddress || ""
-          
+          const { getGoogleMapsApiKey } = await import('@/lib/utils/googleMapsApiKey.js');
+          const GOOGLE_MAPS_API_KEY = await getGoogleMapsApiKey();
+
+          let formattedAddress = location?.formattedAddress || "";
+
           // Fetch formattedAddress from coordinates if API key available
           if (GOOGLE_MAPS_API_KEY && lat && lng) {
             try {
               const response = await fetch(
                 `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}&language=en&region=in&result_type=street_address|premise|point_of_interest|establishment`
-              )
-              const data = await response.json()
-              
+              );
+              const data = await response.json();
+
               if (data.status === 'OK' && data.results && data.results.length > 0) {
-                formattedAddress = data.results[0].formatted_address
-                console.log("✅ Fetched formattedAddress from coordinates:", formattedAddress)
+                formattedAddress = data.results[0].formatted_address;
+
               }
             } catch (error) {
-              console.warn("⚠️ Failed to fetch formattedAddress, using existing:", error)
+              console.warn("⚠️ Failed to fetch formattedAddress, using existing:", error);
             }
           }
-          
+
           // Update location with coordinates array and formattedAddress
           const updatedLocation = {
             ...location,
@@ -183,42 +183,42 @@ export default function EditRestaurantAddress() {
             longitude: lng,
             coordinates: [lng, lat], // GeoJSON format: [longitude, latitude]
             formattedAddress: formattedAddress || location?.formattedAddress || ""
-          }
-          
-          const response = await restaurantAPI.updateProfile({ location: updatedLocation })
-          
+          };
+
+          const response = await restaurantAPI.updateProfile({ location: updatedLocation });
+
           if (response?.data?.data?.restaurant) {
             // Update local state
-            setLocation(updatedLocation)
+            setLocation(updatedLocation);
             // Dispatch event to notify other components
-            window.dispatchEvent(new Event("addressUpdated"))
-            setShowSelectOptionDialog(false)
-            navigate(-1)
+            window.dispatchEvent(new Event("addressUpdated"));
+            setShowSelectOptionDialog(false);
+            navigate(-1);
           } else {
-            throw new Error("Invalid response from server")
+            throw new Error("Invalid response from server");
           }
         } catch (updateError) {
-          console.error("Error updating address:", updateError)
-          alert(`Failed to update address: ${updateError.response?.data?.message || updateError.message || "Please try again."}`)
+          console.error("Error updating address:", updateError);
+          alert(`Failed to update address: ${updateError.response?.data?.message || updateError.message || "Please try again."}`);
         }
       }
     } catch (error) {
-      console.error("Error updating address:", error)
-      alert(`Failed to update address: ${error.response?.data?.message || error.message || "Please try again."}`)
+      console.error("Error updating address:", error);
+      alert(`Failed to update address: ${error.response?.data?.message || error.message || "Please try again."}`);
     }
-  }
+  };
 
   // Get simplified address for navbar (last two parts: area, city)
   const getSimplifiedAddress = (fullAddress) => {
-    const parts = fullAddress.split(",").map(p => p.trim())
+    const parts = fullAddress.split(",").map((p) => p.trim());
     if (parts.length >= 2) {
       // Return last two parts (e.g., "By Pass Road (South), Indore")
-      return parts.slice(-2).join(", ")
+      return parts.slice(-2).join(", ");
     }
-    return fullAddress
-  }
-  
-  const simplifiedAddress = getSimplifiedAddress(address)
+    return fullAddress;
+  };
+
+  const simplifiedAddress = getSimplifiedAddress(address);
 
   return (
     <div className="h-screen bg-white overflow-hidden flex flex-col">
@@ -227,8 +227,8 @@ export default function EditRestaurantAddress() {
         <button
           onClick={() => navigate(-1)}
           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
-          aria-label="Go back"
-        >
+          aria-label="Go back">
+          
           <ArrowLeft className="w-6 h-6 text-gray-900" />
         </button>
         <div className="flex-1 min-w-0">
@@ -251,8 +251,8 @@ export default function EditRestaurantAddress() {
           allowFullScreen
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
-          className="absolute inset-0"
-        />
+          className="absolute inset-0" />
+        
         
         {/* Custom Marker Tooltip Overlay */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
@@ -285,8 +285,8 @@ export default function EditRestaurantAddress() {
           <div className="pb-4">
             <button
               onClick={handleUpdateClick}
-              className="w-full bg-black text-white font-semibold py-4 text-base rounded-lg"
-            >
+              className="w-full bg-black text-white font-semibold py-4 text-base rounded-lg">
+              
               Update
             </button>
           </div>
@@ -298,14 +298,14 @@ export default function EditRestaurantAddress() {
         isOpen={showSelectOptionDialog}
         onClose={() => setShowSelectOptionDialog(false)}
         title="Select an option"
-        maxHeight="auto"
-      >
+        maxHeight="auto">
+        
         <div className=" space-y-0">
           {/* Option 1: Update outlet address */}
           <button
             onClick={() => setSelectedOption("update_address")}
-            className="w-full flex items-start justify-between py-4 border-b border-dashed border-gray-300"
-          >
+            className="w-full flex items-start justify-between py-4 border-b border-dashed border-gray-300">
+            
             <div className="flex-1 text-left">
               <p className="text-base font-semibold text-gray-900 mb-1">
                 Update outlet address (FSSAI required)
@@ -315,14 +315,14 @@ export default function EditRestaurantAddress() {
             <div className="ml-4 shrink-0">
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedOption === "update_address"
-                    ? "border-black bg-black"
-                    : "border-gray-300"
-                }`}
-              >
-                {selectedOption === "update_address" && (
-                  <div className="w-2 h-2 rounded-full bg-white"></div>
-                )}
+                selectedOption === "update_address" ?
+                "border-black bg-black" :
+                "border-gray-300"}`
+                }>
+                
+                {selectedOption === "update_address" &&
+                <div className="w-2 h-2 rounded-full bg-white"></div>
+                }
               </div>
             </div>
           </button>
@@ -330,8 +330,8 @@ export default function EditRestaurantAddress() {
           {/* Option 2: Minor correction */}
           <button
             onClick={() => setSelectedOption("minor_correction")}
-            className="w-full flex items-start justify-between py-4"
-          >
+            className="w-full flex items-start justify-between py-4">
+            
             <div className="flex-1 text-left">
               <p className="text-base font-semibold text-gray-900 mb-1">
                 Make a minor correction to the location pin
@@ -343,14 +343,14 @@ export default function EditRestaurantAddress() {
             <div className="ml-4 shrink-0">
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedOption === "minor_correction"
-                    ? "border-black bg-black"
-                    : "border-gray-300"
-                }`}
-              >
-                {selectedOption === "minor_correction" && (
-                  <div className="w-2 h-2 rounded-full bg-white"></div>
-                )}
+                selectedOption === "minor_correction" ?
+                "border-black bg-black" :
+                "border-gray-300"}`
+                }>
+                
+                {selectedOption === "minor_correction" &&
+                <div className="w-2 h-2 rounded-full bg-white"></div>
+                }
               </div>
             </div>
           </button>
@@ -358,12 +358,12 @@ export default function EditRestaurantAddress() {
           {/* Proceed Button */}
           <button
             onClick={handleProceedUpdate}
-            className="w-full bg-black text-white font-semibold py-4 rounded-lg mt-6"
-          >
+            className="w-full bg-black text-white font-semibold py-4 rounded-lg mt-6">
+            
             Proceed to update
           </button>
         </div>
       </BottomPopup>
-    </div>
-  )
+    </div>);
+
 }

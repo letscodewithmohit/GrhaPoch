@@ -110,7 +110,7 @@ deliveryBoyCommissionSchema.statics.findApplicableRule = async function (distanc
   }
 
   // Find unlimited rule (maxDistance === null)
-  const unlimitedRule = rules.find(r => r.maxDistance === null);
+  const unlimitedRule = rules.find((r) => r.maxDistance === null);
   if (unlimitedRule && distance > unlimitedRule.minDistance) {
     return unlimitedRule;
   }
@@ -183,18 +183,18 @@ deliveryBoyCommissionSchema.statics.calculateCommission = async function (distan
 
   const commission = basePayout + distanceCommission;
 
-  if (process.env.DEBUG_PRICING_LOGS === 'true') {
-    console.log(`📊 Commission calculation for ${distance.toFixed(2)} km:`, {
-      rule: applicableRule.name,
-      minDistance: applicableRule.minDistance,
-      maxDistance: applicableRule.maxDistance,
-      basePayout: basePayout,
-      commissionPerKm: applicableRule.commissionPerKm,
-      perKmApplied: distance >= applicableRule.minDistance,
-      distanceCommission: distanceCommission,
-      totalCommission: commission
-    });
-  }
+
+
+
+
+
+
+
+
+
+
+
+
 
   return {
     rule: applicableRule,

@@ -1,58 +1,58 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import Lenis from "lenis"
-import { ArrowLeft, Zap } from "lucide-react"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Lenis from "lenis";
+import { ArrowLeft, Zap } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 export default function RushHour() {
-  const navigate = useNavigate()
-  const [selectedTime, setSelectedTime] = useState("30")
+  const navigate = useNavigate();
+  const [selectedTime, setSelectedTime] = useState("30");
 
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+      smoothWheel: true
+    });
 
     function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf)
+    requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy()
-    }
-  }, [])
+      lenis.destroy();
+    };
+  }, []);
 
   const handleConfirm = () => {
     // Handle rush hour confirmation logic here
-    console.log("Rush hour confirmed for:", selectedTime, "minutes")
+
     // You can add API call or state management here
-    navigate(-1) // Go back after confirmation
-  }
+    navigate(-1); // Go back after confirmation
+  };
 
   const timeOptions = [
-    { value: "30", label: "30 minutes" },
-    { value: "60", label: "1 hour" },
-    { value: "90", label: "1 hour 30 minutes" },
-    { value: "120", label: "2 hours" },
-  ]
+  { value: "30", label: "30 minutes" },
+  { value: "60", label: "1 hour" },
+  { value: "90", label: "1 hour 30 minutes" },
+  { value: "120", label: "2 hours" }];
+
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Go back"
-          >
+            aria-label="Go back">
+            
             <ArrowLeft className="w-6 h-6 text-gray-900" />
           </button>
           <h1 className="text-lg font-bold text-gray-900">Rush in kitchen</h1>
@@ -76,17 +76,17 @@ export default function RushHour() {
           <h2 className="text-base font-bold text-gray-900 mb-4">How this helps you</h2>
           <div className="space-y-3">
             {[
-              "Get more time to prepare food",
-              "Show correct delivery time to customers",
-              "Avoid crowding of riders at your restaurant"
-            ].map((benefit, index) => (
-              <div key={index} className="flex items-center gap-3">
+            "Get more time to prepare food",
+            "Show correct delivery time to customers",
+            "Avoid crowding of riders at your restaurant"].
+            map((benefit, index) =>
+            <div key={index} className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
                   <span className="text-xs font-semibold text-gray-700">{index + 1}</span>
                 </div>
                 <p className="text-sm text-gray-900">{benefit}</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -96,17 +96,17 @@ export default function RushHour() {
             Increase food preparation time for the next
           </h2>
           <RadioGroup value={selectedTime} onValueChange={setSelectedTime} className="space-y-4">
-            {timeOptions.map((option) => (
-              <div key={option.value} className="flex items-center gap-3">
+            {timeOptions.map((option) =>
+            <div key={option.value} className="flex items-center gap-3">
                 <RadioGroupItem value={option.value} id={option.value} className="h-5 w-5" />
-                <Label 
-                  htmlFor={option.value} 
-                  className="text-sm text-gray-900 font-normal cursor-pointer flex-1"
-                >
+                <Label
+                htmlFor={option.value}
+                className="text-sm text-gray-900 font-normal cursor-pointer flex-1">
+                
                   {option.label}
                 </Label>
               </div>
-            ))}
+            )}
           </RadioGroup>
         </div>
       </div>
@@ -115,11 +115,11 @@ export default function RushHour() {
       <div className="px-4 pb-6 pt-4 bg-white border-t border-gray-200">
         <button
           onClick={handleConfirm}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-        >
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+          
           Confirm
         </button>
       </div>
-    </div>
-  )
+    </div>);
+
 }

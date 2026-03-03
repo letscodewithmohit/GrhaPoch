@@ -1,99 +1,99 @@
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { useNavigate } from "react-router-dom"
-import Lenis from "lenis"
-import { 
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import Lenis from "lenis";
+import {
   ArrowLeft,
   Search,
-  Image as ImageIcon
-} from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import BottomNavbar from "../components/BottomNavbar"
-import MenuOverlay from "../components/MenuOverlay"
+  Image as ImageIcon } from
+"lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import BottomNavbar from "../components/BottomNavbar";
+import MenuOverlay from "../components/MenuOverlay";
 
 export default function ReviewsPage() {
-  const navigate = useNavigate()
-  const [showMenu, setShowMenu] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [failedImages, setFailedImages] = useState(new Set())
+  const navigate = useNavigate();
+  const [showMenu, setShowMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [failedImages, setFailedImages] = useState(new Set());
 
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+      smoothWheel: true
+    });
 
     function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf)
+    requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy()
-    }
-  }, [])
+      lenis.destroy();
+    };
+  }, []);
 
   // Reviews data matching the image
   const reviews = [
-    {
-      id: 1,
-      orderId: "100113",
-      date: "01 Jun 2023",
-      time: "16:55 PM",
-      productName: "Meat Pizza",
-      productImage: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop",
-      reviewerName: "Purno Test",
-      phoneNumber: "+8801629889679",
-      hasReply: false
-    },
-    {
-      id: 2,
-      orderId: "100080",
-      date: "02 Jan 2023",
-      time: "21:35 PM",
-      productName: "Meat Pizza",
-      productImage: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop",
-      reviewerName: "Jane Doe",
-      phoneNumber: "+8801624343926",
-      hasReply: true
-    },
-    {
-      id: 3,
-      orderId: "100008",
-      date: "22 Aug 2021",
-      time: "03:46 AM",
-      productName: "Meat Pizza",
-      productImage: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop",
-      reviewerName: "John Smith",
-      phoneNumber: "+8801621234567",
-      hasReply: true
-    }
-  ]
+  {
+    id: 1,
+    orderId: "100113",
+    date: "01 Jun 2023",
+    time: "16:55 PM",
+    productName: "Meat Pizza",
+    productImage: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop",
+    reviewerName: "Purno Test",
+    phoneNumber: "+8801629889679",
+    hasReply: false
+  },
+  {
+    id: 2,
+    orderId: "100080",
+    date: "02 Jan 2023",
+    time: "21:35 PM",
+    productName: "Meat Pizza",
+    productImage: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop",
+    reviewerName: "Jane Doe",
+    phoneNumber: "+8801624343926",
+    hasReply: true
+  },
+  {
+    id: 3,
+    orderId: "100008",
+    date: "22 Aug 2021",
+    time: "03:46 AM",
+    productName: "Meat Pizza",
+    productImage: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop",
+    reviewerName: "John Smith",
+    phoneNumber: "+8801621234567",
+    hasReply: true
+  }];
+
 
   // Filter reviews based on search
-  const filteredReviews = reviews.filter(review => {
-    const searchLower = searchQuery.toLowerCase()
+  const filteredReviews = reviews.filter((review) => {
+    const searchLower = searchQuery.toLowerCase();
     return (
       review.orderId.toLowerCase().includes(searchLower) ||
       review.productName.toLowerCase().includes(searchLower) ||
-      review.reviewerName.toLowerCase().includes(searchLower)
-    )
-  })
+      review.reviewerName.toLowerCase().includes(searchLower));
+
+  });
 
   return (
     <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24 md:pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
-        <button 
+        <button
           onClick={() => navigate(-1)}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-        >
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+          
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Customer Reviews</h1>
@@ -107,21 +107,21 @@ export default function ReviewsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by order id or food name..."
-            className="w-full pl-4 pr-10 py-2.5 rounded-lg border-gray-200 focus:ring-2 focus:ring-[#ff8100]"
-          />
+            className="w-full pl-4 pr-10 py-2.5 rounded-lg border-gray-200 focus:ring-2 focus:ring-[#ff8100]" />
+          
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         </div>
       </div>
 
       {/* Reviews List */}
       <div className="px-4 py-4 space-y-4">
-        {filteredReviews.map((review, index) => (
-          <motion.div
-            key={review.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
-          >
+        {filteredReviews.map((review, index) =>
+        <motion.div
+          key={review.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.1 }}>
+          
             <Card className="bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <CardContent className="p-4 space-y-3">
                 {/* Order Details */}
@@ -138,20 +138,20 @@ export default function ReviewsPage() {
                 <div className="flex items-center gap-3">
                   {/* Product Image */}
                   <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-                    {failedImages.has(review.id) || !review.productImage ? (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    {failedImages.has(review.id) || !review.productImage ?
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
                         <ImageIcon className="w-6 h-6 text-gray-400" />
-                      </div>
-                    ) : (
-                      <img
-                        src={review.productImage}
-                        alt={review.productName}
-                        className="w-full h-full object-cover"
-                        onError={() => {
-                          setFailedImages(prev => new Set([...prev, review.id]))
-                        }}
-                      />
-                    )}
+                      </div> :
+
+                  <img
+                    src={review.productImage}
+                    alt={review.productName}
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      setFailedImages((prev) => new Set([...prev, review.id]));
+                    }} />
+
+                  }
                   </div>
 
                   {/* Product Name */}
@@ -161,20 +161,20 @@ export default function ReviewsPage() {
 
                   {/* Action Button */}
                   <Button
-                    onClick={() => {
-                      if (review.hasReply) {
-                        console.log("View reply for review:", review.id)
-                        // Navigate to view reply page if needed
-                      } else {
-                        navigate(`/restaurant/reviews/${review.id}/reply`)
-                      }
-                    }}
-                    className={`flex-shrink-0 px-4 py-2 text-sm font-medium rounded-lg ${
-                      review.hasReply
-                        ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                        : "bg-[#ff8100] hover:bg-[#e67300] text-white"
-                    }`}
-                  >
+                  onClick={() => {
+                    if (review.hasReply) {
+
+
+                    } else {
+                      navigate(`/restaurant/reviews/${review.id}/reply`);
+                    }
+                  }}
+                  className={`flex-shrink-0 px-4 py-2 text-sm font-medium rounded-lg ${
+                  review.hasReply ?
+                  "bg-blue-100 hover:bg-blue-200 text-blue-700" :
+                  "bg-[#ff8100] hover:bg-[#e67300] text-white"}`
+                  }>
+                  
                     {review.hasReply ? "View Reply" : "Give Reply"}
                   </Button>
                 </div>
@@ -193,14 +193,14 @@ export default function ReviewsPage() {
               </CardContent>
             </Card>
           </motion.div>
-        ))}
+        )}
 
         {/* Empty State */}
-        {filteredReviews.length === 0 && (
-          <div className="text-center py-12">
+        {filteredReviews.length === 0 &&
+        <div className="text-center py-12">
             <p className="text-gray-500 text-sm">No reviews found</p>
           </div>
-        )}
+        }
       </div>
 
       {/* Bottom Navigation Bar */}
@@ -208,7 +208,6 @@ export default function ReviewsPage() {
       
       {/* Menu Overlay */}
       <MenuOverlay showMenu={showMenu} setShowMenu={setShowMenu} />
-    </div>
-  )
-}
+    </div>);
 
+}

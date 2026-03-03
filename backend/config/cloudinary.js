@@ -6,9 +6,9 @@ function cleanEnv(value) {
   if (!value || typeof value !== 'string') return value;
   let v = value.trim();
   if (
-    (v.startsWith('"') && v.endsWith('"')) ||
-    (v.startsWith("'") && v.endsWith("'"))
-  ) {
+  v.startsWith('"') && v.endsWith('"') ||
+  v.startsWith("'") && v.endsWith("'"))
+  {
     v = v.slice(1, -1).trim();
   }
   return v;
@@ -28,21 +28,21 @@ async function initializeCloudinary() {
     const apiKey = cleanEnv(credentials.apiKey || process.env.CLOUDINARY_API_KEY);
     const apiSecret = cleanEnv(credentials.apiSecret || process.env.CLOUDINARY_API_SECRET);
 
-    console.log('🔧 Cloudinary initialization check:', {
-      hasCloudName: !!cloudName,
-      hasApiKey: !!apiKey,
-      hasApiSecret: !!apiSecret,
-      cloudNameLength: cloudName?.length || 0,
-      apiKeyLength: apiKey?.length || 0,
-      apiSecretLength: apiSecret?.length || 0
-    });
+
+
+
+
+
+
+
+
 
     if (!cloudName || !apiKey || !apiSecret) {
       const missing = [];
       if (!cloudName) missing.push('CLOUDINARY_CLOUD_NAME');
       if (!apiKey) missing.push('CLOUDINARY_API_KEY');
       if (!apiSecret) missing.push('CLOUDINARY_API_SECRET');
-      
+
       console.error(
         `❌ Cloudinary is not fully configured. Missing: ${missing.join(', ')}. Set these in ENV Setup or backend .env`
       );
@@ -56,7 +56,7 @@ async function initializeCloudinary() {
     });
 
     cloudinaryInitialized = true;
-    console.log('✅ Cloudinary initialized successfully');
+
   } catch (error) {
     console.error('❌ Error initializing Cloudinary:', {
       message: error.message,
@@ -90,5 +90,3 @@ export async function reinitializeCloudinary() {
 }
 
 export { cloudinary, initializeCloudinary };
-
-

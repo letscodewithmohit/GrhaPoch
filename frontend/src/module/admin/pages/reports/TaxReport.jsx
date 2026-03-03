@@ -1,49 +1,49 @@
-import { useState } from "react"
-import { Download, ChevronDown, RefreshCw, FileText, DollarSign, Settings, FileSpreadsheet, Code } from "lucide-react"
-import { taxReportDummy, taxStats } from "../../data/taxReportDummy"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils"
+import { useState } from "react";
+import { Download, ChevronDown, RefreshCw, FileText, DollarSign, Settings, FileSpreadsheet, Code } from "lucide-react";
+import { taxReportDummy, taxStats } from "../../data/taxReportDummy";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils";
 
 export default function TaxReport() {
   const [filters, setFilters] = useState({
     dateRangeType: "Select Date Range",
     calculateTax: "Select Calculate Tax",
-    taxRate: "Select Tax Rate",
-  })
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    taxRate: "Select Tax Rate"
+  });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleReset = () => {
     setFilters({
       dateRangeType: "Select Date Range",
       calculateTax: "Select Calculate Tax",
-      taxRate: "Select Tax Rate",
-    })
-  }
+      taxRate: "Select Tax Rate"
+    });
+  };
 
   const handleSubmit = () => {
-    // Handle form submission
-    console.log("Submitting tax report filters:", filters)
-  }
+
+
+  };
 
   const handleExport = (format) => {
     if (taxReportDummy.length === 0) {
-      alert("No data to export")
-      return
+      alert("No data to export");
+      return;
     }
     const headers = [
-      { key: "sl", label: "SI" },
-      { key: "incomeSource", label: "Income Source" },
-      { key: "totalIncome", label: "Total Income" },
-      { key: "totalTax", label: "Total Tax" },
-    ]
+    { key: "sl", label: "SI" },
+    { key: "incomeSource", label: "Income Source" },
+    { key: "totalIncome", label: "Total Income" },
+    { key: "totalTax", label: "Total Tax" }];
+
     switch (format) {
-      case "csv": exportReportsToCSV(taxReportDummy, headers, "tax_report"); break
-      case "excel": exportReportsToExcel(taxReportDummy, headers, "tax_report"); break
-      case "pdf": exportReportsToPDF(taxReportDummy, headers, "tax_report", "Tax Report"); break
-      case "json": exportReportsToJSON(taxReportDummy, "tax_report"); break
+      case "csv":exportReportsToCSV(taxReportDummy, headers, "tax_report");break;
+      case "excel":exportReportsToExcel(taxReportDummy, headers, "tax_report");break;
+      case "pdf":exportReportsToPDF(taxReportDummy, headers, "tax_report", "Tax Report");break;
+      case "json":exportReportsToJSON(taxReportDummy, "tax_report");break;
     }
-  }
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen overflow-x-hidden">
@@ -67,9 +67,9 @@ export default function TaxReport() {
               </label>
               <select
                 value={filters.dateRangeType}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateRangeType: e.target.value }))}
-                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateRangeType: e.target.value }))}
+                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
                 <option value="Select Date Range">Select Date Range</option>
                 <option value="Today">Today</option>
                 <option value="This Week">This Week</option>
@@ -86,9 +86,9 @@ export default function TaxReport() {
               </label>
               <select
                 value={filters.calculateTax}
-                onChange={(e) => setFilters(prev => ({ ...prev, calculateTax: e.target.value }))}
-                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+                onChange={(e) => setFilters((prev) => ({ ...prev, calculateTax: e.target.value }))}
+                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
                 <option value="Select Calculate Tax">Select Calculate Tax</option>
                 <option value="Percentage">Percentage</option>
                 <option value="Fixed Amount">Fixed Amount</option>
@@ -103,9 +103,9 @@ export default function TaxReport() {
               </label>
               <select
                 value={filters.taxRate}
-                onChange={(e) => setFilters(prev => ({ ...prev, taxRate: e.target.value }))}
-                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+                onChange={(e) => setFilters((prev) => ({ ...prev, taxRate: e.target.value }))}
+                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
                 <option value="Select Tax Rate">Select Tax Rate</option>
                 <option value="5%">5%</option>
                 <option value="10%">10%</option>
@@ -119,14 +119,14 @@ export default function TaxReport() {
           <div className="flex items-center justify-end gap-3">
             <button
               onClick={handleReset}
-              className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-            >
+              className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+              
               Reset
             </button>
             <button
               onClick={handleSubmit}
-              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all"
-            >
+              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all">
+              
               Submit
             </button>
           </div>
@@ -196,18 +196,18 @@ export default function TaxReport() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
+              <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
+                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all">
+                
                 <Settings className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Table */}
-          {taxReportDummy.length === 0 ? (
-            <div className="py-20 text-center">
+          {taxReportDummy.length === 0 ?
+          <div className="py-20 text-center">
               <div className="flex flex-col items-center justify-center">
                 <div className="w-20 h-20 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
                   <FileText className="w-12 h-12 text-purple-600" />
@@ -217,9 +217,9 @@ export default function TaxReport() {
                   To generate your tax report please select & input above field and submit for the result
                 </p>
               </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> :
+
+          <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
@@ -241,8 +241,8 @@ export default function TaxReport() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {taxReportDummy.map((report) => (
-                    <tr key={report.sl} className="hover:bg-slate-50 transition-colors">
+                  {taxReportDummy.map((report) =>
+                <tr key={report.sl} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{report.sl}</span>
                       </td>
@@ -261,11 +261,11 @@ export default function TaxReport() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                )}
                 </tbody>
               </table>
             </div>
-          )}
+          }
         </div>
       </div>
 
@@ -286,13 +286,13 @@ export default function TaxReport() {
           <div className="px-6 pb-6 flex items-center justify-end">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+              
               Close
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

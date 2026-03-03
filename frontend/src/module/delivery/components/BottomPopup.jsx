@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { X, ChevronDown } from "lucide-react"
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, ChevronDown } from "lucide-react";
 
 /**
  * BottomPopup Component
@@ -32,340 +32,339 @@ export default function BottomPopup({
   showBackdrop = true, // Show backdrop overlay
   backdropBlocksInteraction = true // Whether backdrop blocks pointer events
 }) {
-  const popupRef = useRef(null)
-  const handleRef = useRef(null)
-  const swipeStartY = useRef(0)
-  const isSwiping = useRef(false)
-  const [dragY, setDragY] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const popupRef = useRef(null);
+  const handleRef = useRef(null);
+  const swipeStartY = useRef(0);
+  const isSwiping = useRef(false);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Reset drag state when popup closes
   useEffect(() => {
     if (!isOpen) {
-      setDragY(0)
-      setIsDragging(false)
-      isSwiping.current = false
-      setIsCollapsed(false)
+      setDragY(0);
+      setIsDragging(false);
+      isSwiping.current = false;
+      setIsCollapsed(false);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Handle collapse toggle
   const handleCollapseToggle = (e) => {
     if (e) {
-      e.stopPropagation()
-      e.preventDefault()
+      e.stopPropagation();
+      e.preventDefault();
     }
-    setIsCollapsed(prev => {
-      const newState = !prev
-      console.log('🔄 Collapse toggle:', prev, '->', newState)
-      return newState
-    })
-  }
+    setIsCollapsed((prev) => {
+      const newState = !prev;
+
+      return newState;
+    });
+  };
 
   // Handle touch start for swipe detection
   const handleTouchStart = (e) => {
-    const target = e.target
-    const isHandle = handleRef.current?.contains(target)
-    
+    const target = e.target;
+    const isHandle = handleRef.current?.contains(target);
+
     // If clicking on handle, don't start swipe - handle will toggle collapse
     if (isHandle) {
-      return
+      return;
     }
-    
+
     // Check if touch is in handle area or top portion of popup
-    const rect = popupRef.current?.getBoundingClientRect()
-    if (!rect) return
-    
-    const touchY = e.touches[0].clientY
-    const handleArea = rect.top + 80 // Top 80px is swipeable area
-    
+    const rect = popupRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const touchY = e.touches[0].clientY;
+    const handleArea = rect.top + 80; // Top 80px is swipeable area
+
     // Allow swipe if touching top area (but not handle)
     if (touchY <= handleArea) {
-      e.stopPropagation()
-      swipeStartY.current = touchY
-      isSwiping.current = true
-      setIsDragging(true)
+      e.stopPropagation();
+      swipeStartY.current = touchY;
+      isSwiping.current = true;
+      setIsDragging(true);
     }
-  }
+  };
 
   // Handle touch move for swipe
   const handleTouchMove = (e) => {
-    if (!isSwiping.current || !isOpen) return
-    
-    const currentY = e.touches[0].clientY
-    const deltaY = currentY - swipeStartY.current
-    
+    if (!isSwiping.current || !isOpen) return;
+
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - swipeStartY.current;
+
     // Only allow downward swipe (positive deltaY)
     // Don't call preventDefault - CSS touch-action: none handles scrolling prevention
     if (deltaY > 0) {
       // e.preventDefault() // Removed to avoid passive listener error - CSS touch-action handles it
-      e.stopPropagation()
-      setDragY(deltaY)
+      e.stopPropagation();
+      setDragY(deltaY);
     }
-  }
+  };
 
   // Handle touch end - determine if should close
   const handleTouchEnd = (e) => {
     if (!isSwiping.current) {
-      isSwiping.current = false
-      setIsDragging(false)
-      return
+      isSwiping.current = false;
+      setIsDragging(false);
+      return;
     }
-    
-    e.stopPropagation()
-    
-    const deltaY = swipeStartY.current - e.changedTouches[0].clientY
-    const threshold = 100 // Minimum swipe distance to close
-    
+
+    e.stopPropagation();
+
+    const deltaY = swipeStartY.current - e.changedTouches[0].clientY;
+    const threshold = 100; // Minimum swipe distance to close
+
     // If swiped down enough, close the popup
     if (deltaY < -threshold) {
-      handleClose()
+      handleClose();
     } else {
       // Reset position with animation
-      setDragY(0)
-      setIsDragging(false)
+      setDragY(0);
+      setIsDragging(false);
     }
-    
-    isSwiping.current = false
-    swipeStartY.current = 0
-  }
+
+    isSwiping.current = false;
+    swipeStartY.current = 0;
+  };
 
   // Handle mouse events for desktop drag support
   const handleMouseDown = (e) => {
     // Don't allow swipe if disabled
-    if (disableSwipeToClose) return
-    
-    const target = e.target
-    const isHandle = handleRef.current?.contains(target)
-    
+    if (disableSwipeToClose) return;
+
+    const target = e.target;
+    const isHandle = handleRef.current?.contains(target);
+
     // If clicking on handle, don't start swipe - handle will toggle collapse
     if (isHandle) {
-      e.stopPropagation()
-      return
+      e.stopPropagation();
+      return;
     }
-    
-    const rect = popupRef.current?.getBoundingClientRect()
-    if (!rect) return
-    
-    const mouseY = e.clientY
-    const handleArea = rect.top + 80
-    
+
+    const rect = popupRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const mouseY = e.clientY;
+    const handleArea = rect.top + 80;
+
     if (mouseY <= handleArea) {
-      e.preventDefault()
-      e.stopPropagation()
-      swipeStartY.current = mouseY
-      isSwiping.current = true
-      setIsDragging(true)
+      e.preventDefault();
+      e.stopPropagation();
+      swipeStartY.current = mouseY;
+      isSwiping.current = true;
+      setIsDragging(true);
     }
-  }
+  };
 
   const handleMouseMove = (e) => {
     // Don't allow swipe if disabled
-    if (disableSwipeToClose || !isSwiping.current || !isOpen) return
-    
-    const currentY = e.clientY
-    const deltaY = currentY - swipeStartY.current
-    
+    if (disableSwipeToClose || !isSwiping.current || !isOpen) return;
+
+    const currentY = e.clientY;
+    const deltaY = currentY - swipeStartY.current;
+
     if (deltaY > 0) {
       // e.preventDefault() // Not needed for mouse events, but keeping for consistency
-      setDragY(deltaY)
+      setDragY(deltaY);
     }
-  }
+  };
 
   const handleMouseUp = (e) => {
     // Don't allow swipe if disabled
     if (disableSwipeToClose || !isSwiping.current) {
-      isSwiping.current = false
-      setIsDragging(false)
-      return
+      isSwiping.current = false;
+      setIsDragging(false);
+      return;
     }
-    
-    const deltaY = swipeStartY.current - e.clientY
-    const threshold = 100
-    
+
+    const deltaY = swipeStartY.current - e.clientY;
+    const threshold = 100;
+
     if (deltaY < -threshold) {
-      handleClose()
+      handleClose();
     } else {
-      setDragY(0)
-      setIsDragging(false)
+      setDragY(0);
+      setIsDragging(false);
     }
-    
-    isSwiping.current = false
-    swipeStartY.current = 0
-  }
+
+    isSwiping.current = false;
+    swipeStartY.current = 0;
+  };
 
   // Prevent body scroll when popup is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = ''
+      document.body.style.overflow = '';
     }
-    
+
     return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   // Handle backdrop click - close only when clicking the backdrop itself
   const handleBackdropClick = (e) => {
     if (closeOnBackdropClick && e.target === e.currentTarget) {
-      handleClose()
+      handleClose();
     }
-  }
+  };
 
   // Prevent clicks inside popup from closing it
   const handlePopupClick = (e) => {
     // Don't stop propagation if clicking on handle - let handle handle its own click
     if (handleRef.current && handleRef.current.contains(e.target)) {
-      return
+      return;
     }
-    e.stopPropagation()
-  }
+    e.stopPropagation();
+  };
 
   // Close handler
   const handleClose = () => {
-    setDragY(0)
-    setIsDragging(false)
-    isSwiping.current = false
+    setDragY(0);
+    setIsDragging(false);
+    isSwiping.current = false;
     if (onClose) {
-      onClose()
+      onClose();
     }
-  }
+  };
 
   return (
     <AnimatePresence>
-      {isOpen && (
-        <>
+      {isOpen &&
+      <>
           {/* Backdrop */}
-          {showBackdrop && backdropBlocksInteraction && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={handleBackdropClick}
-            className="fixed inset-0 bg-black/50 z-[100]"
-          />
-          )}
+          {showBackdrop && backdropBlocksInteraction &&
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={handleBackdropClick}
+          className="fixed inset-0 bg-black/50 z-[100]" />
+
+        }
 
           {/* Popup */}
           <motion.div
-            ref={popupRef}
-            initial={{ y: "100%" }}
-            animate={{ 
-              y: isDragging ? dragY : 0,
-              transition: isDragging ? { duration: 0 } : { 
-                type: "spring", 
-                damping: 30, 
-                stiffness: 300 
-              }
-            }}
-            exit={{ y: "100%" }}
-            transition={{ 
-              type: "spring", 
-              damping: 30, 
-              stiffness: 300 
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={(e) => {
-              // Don't stop propagation if clicking on handle
-              if (handleRef.current && handleRef.current.contains(e.target)) {
-                return
-              }
-              handlePopupClick(e)
-            }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[110] overflow-hidden flex flex-col"
-            style={{ 
-              maxHeight: isCollapsed ? "120px" : maxHeight,
-              touchAction: 'none'
-            }}
-          >
+          ref={popupRef}
+          initial={{ y: "100%" }}
+          animate={{
+            y: isDragging ? dragY : 0,
+            transition: isDragging ? { duration: 0 } : {
+              type: "spring",
+              damping: 30,
+              stiffness: 300
+            }
+          }}
+          exit={{ y: "100%" }}
+          transition={{
+            type: "spring",
+            damping: 30,
+            stiffness: 300
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onClick={(e) => {
+            // Don't stop propagation if clicking on handle
+            if (handleRef.current && handleRef.current.contains(e.target)) {
+              return;
+            }
+            handlePopupClick(e);
+          }}
+          className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[110] overflow-hidden flex flex-col"
+          style={{
+            maxHeight: isCollapsed ? "120px" : maxHeight,
+            touchAction: 'none'
+          }}>
+          
             {/* Top Drag Handle Bar - Always visible for dragging */}
-            {showHandle && (
-              <button
-                ref={handleRef}
-                type="button"
-                className="flex flex-col items-center pt-3 pb-2 cursor-pointer select-none bg-white sticky top-0 z-10 w-full border-0 outline-none p-0"
-                onClick={(e) => {
-                  console.log('🖱️ Handle clicked, current collapsed:', isCollapsed)
-                  e.stopPropagation()
-                  e.preventDefault()
-                  handleCollapseToggle(e)
-                }}
-                onTouchStart={(e) => {
-                  // Store touch start for click detection
-                  e.stopPropagation()
-                }}
-                onTouchEnd={(e) => {
-                  // Handle touch end for mobile collapse toggle
-                  console.log('👆 Handle touched, current collapsed:', isCollapsed)
-                  e.stopPropagation()
-                  e.preventDefault()
-                  handleCollapseToggle(e)
-                }}
-                onMouseDown={(e) => {
-                  // Prevent drag when clicking handle
-                  e.stopPropagation()
-                }}
-                style={{ 
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent',
-                  pointerEvents: 'auto',
-                  userSelect: 'none',
-                  background: 'transparent'
-                }}
-              >
-                <ChevronDown 
-                  className="w-6 h-6 text-gray-400 mb-1 pointer-events-none"
-                />
-                <div 
-                  className="w-12 h-1.5 bg-gray-300 rounded-full pointer-events-none"
-                />
+            {showHandle &&
+          <button
+            ref={handleRef}
+            type="button"
+            className="flex flex-col items-center pt-3 pb-2 cursor-pointer select-none bg-white sticky top-0 z-10 w-full border-0 outline-none p-0"
+            onClick={(e) => {
+
+              e.stopPropagation();
+              e.preventDefault();
+              handleCollapseToggle(e);
+            }}
+            onTouchStart={(e) => {
+              // Store touch start for click detection
+              e.stopPropagation();
+            }}
+            onTouchEnd={(e) => {
+              // Handle touch end for mobile collapse toggle
+
+              e.stopPropagation();
+              e.preventDefault();
+              handleCollapseToggle(e);
+            }}
+            onMouseDown={(e) => {
+              // Prevent drag when clicking handle
+              e.stopPropagation();
+            }}
+            style={{
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              pointerEvents: 'auto',
+              userSelect: 'none',
+              background: 'transparent'
+            }}>
+            
+                <ChevronDown
+              className="w-6 h-6 text-gray-400 mb-1 pointer-events-none" />
+            
+                <div
+              className="w-12 h-1.5 bg-gray-300 rounded-full pointer-events-none" />
+            
               </button>
-            )}
+          }
 
             {/* Header */}
-            {(title || showCloseButton) && (
-              <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
-                {title && (
-                  <h3 className="text-lg font-semibold text-gray-900">
+            {(title || showCloseButton) &&
+          <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
+                {title &&
+            <h3 className="text-lg font-semibold text-gray-900">
                     {title}
                   </h3>
-                )}
-                {showCloseButton && (
-                  <button
-                    onClick={handleClose}
-                    className="ml-auto p-2 rounded-full hover:bg-gray-100 transition-colors"
-                    aria-label="Close"
-                  >
+            }
+                {showCloseButton &&
+            <button
+              onClick={handleClose}
+              className="ml-auto p-2 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Close">
+              
                     <X className="w-5 h-5 text-gray-600" />
                   </button>
-                )}
+            }
               </div>
-            )}
+          }
 
             {/* Content */}
-            {!isCollapsed ? (
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+            {!isCollapsed ?
+          <div className="flex-1 overflow-y-auto px-4 py-4">
                 {children}
-              </div>
-            ) : (
-              <div className="px-4 py-4 pb-6">
+              </div> :
+
+          <div className="px-4 py-4 pb-6">
                 {collapsedContent}
               </div>
-            )}
+          }
           </motion.div>
         </>
-      )}
-    </AnimatePresence>
-  )
-}
+      }
+    </AnimatePresence>);
 
+}

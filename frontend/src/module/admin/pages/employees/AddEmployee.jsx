@@ -1,9 +1,9 @@
-import { useState } from "react"
-import { UserPlus, User, Eye, EyeOff, Upload, ChevronDown } from "lucide-react"
+import { useState } from "react";
+import { UserPlus, User, Eye, EyeOff, Upload, ChevronDown } from "lucide-react";
 
 export default function AddEmployee() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -14,24 +14,24 @@ export default function AddEmployee() {
     employeeImage: null,
     email: "",
     password: "",
-    confirmPassword: "",
-  })
+    confirmPassword: ""
+  });
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleFileUpload = (field, file) => {
     if (file) {
-      setFormData(prev => ({ ...prev, [field]: file }))
+      setFormData((prev) => ({ ...prev, [field]: file }));
     }
-  }
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log("Form submitted:", formData)
-    alert("Employee added successfully!")
-  }
+    e.preventDefault();
+
+    alert("Employee added successfully!");
+  };
 
   const handleReset = () => {
     setFormData({
@@ -44,9 +44,9 @@ export default function AddEmployee() {
       employeeImage: null,
       email: "",
       password: "",
-      confirmPassword: "",
-    })
-  }
+      confirmPassword: ""
+    });
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -83,8 +83,8 @@ export default function AddEmployee() {
                       value={formData.firstName}
                       onChange={(e) => handleInputChange("firstName", e.target.value)}
                       placeholder="Ex: John"
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                    
                   </div>
 
                   {/* Last Name */}
@@ -97,8 +97,8 @@ export default function AddEmployee() {
                       value={formData.lastName}
                       onChange={(e) => handleInputChange("lastName", e.target.value)}
                       placeholder="Ex: Doe"
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                    
                   </div>
                 </div>
 
@@ -112,8 +112,8 @@ export default function AddEmployee() {
                       <select
                         value={formData.zone}
                         onChange={(e) => handleInputChange("zone", e.target.value)}
-                        className="w-full px-4 py-2.5 pr-8 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none cursor-pointer"
-                      >
+                        className="w-full px-4 py-2.5 pr-8 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none cursor-pointer">
+                        
                         <option value="All">All</option>
                         <option value="Zone 1">Zone 1</option>
                         <option value="Zone 2">Zone 2</option>
@@ -132,8 +132,8 @@ export default function AddEmployee() {
                       <select
                         value={formData.role}
                         onChange={(e) => handleInputChange("role", e.target.value)}
-                        className="w-full px-4 py-2.5 pr-8 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none cursor-pointer"
-                      >
+                        className="w-full px-4 py-2.5 pr-8 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none cursor-pointer">
+                        
                         <option value="">Select Role</option>
                         <option value="manager">Manager</option>
                         <option value="customer-care">Customer Care Executive</option>
@@ -154,8 +154,8 @@ export default function AddEmployee() {
                       <select
                         value={formData.phoneCode}
                         onChange={(e) => handleInputChange("phoneCode", e.target.value)}
-                        className="px-4 py-2.5 pr-8 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none cursor-pointer"
-                      >
+                        className="px-4 py-2.5 pr-8 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none cursor-pointer">
+                        
                         <option value="+1">🇺🇸 +1</option>
                         <option value="+91">🇮🇳 +91</option>
                         <option value="+44">🇬🇧 +44</option>
@@ -168,8 +168,8 @@ export default function AddEmployee() {
                       value={formData.phone}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
                       placeholder="Phone number"
-                      className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
+                      className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                    
                   </div>
                 </div>
               </div>
@@ -185,8 +185,8 @@ export default function AddEmployee() {
                     accept="image/jpeg,image/jpg,image/png,image/gif"
                     onChange={(e) => handleFileUpload("employeeImage", e.target.files[0])}
                     className="hidden"
-                    id="employee-image-upload"
-                  />
+                    id="employee-image-upload" />
+                  
                   <label htmlFor="employee-image-upload" className="cursor-pointer">
                     <Upload className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                     <p className="text-sm font-medium text-slate-700 mb-1">Upload Image</p>
@@ -219,8 +219,8 @@ export default function AddEmployee() {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="Ex: ex@gmail.com"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                
               </div>
 
               {/* Password */}
@@ -234,13 +234,13 @@ export default function AddEmployee() {
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     placeholder="Password length 8+"
-                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
+                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                  
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -257,13 +257,13 @@ export default function AddEmployee() {
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                     placeholder="Password length 8+"
-                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
+                    className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                  
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -276,19 +276,19 @@ export default function AddEmployee() {
             <button
               type="button"
               onClick={handleReset}
-              className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-            >
+              className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+              
               Reset
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
-            >
+              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">
+              
               Submit
             </button>
           </div>
         </form>
       </div>
-    </div>
-  )
+    </div>);
+
 }

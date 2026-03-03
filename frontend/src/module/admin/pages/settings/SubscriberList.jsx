@@ -8,50 +8,50 @@ import leafIcon from "../../assets/Dashboard-icons/image14.png";
 import chefIcon from "../../assets/Dashboard-icons/image16.png";
 
 const statsCards = [
-  { id: 1, label: "Total Subscribed User", value: 3, bg: "bg-sky-50" },
-  { id: 2, label: "Active Subscriptions", value: 0, bg: "bg-emerald-50" },
-  { id: 3, label: "Expired Subscription", value: 3, bg: "bg-rose-50" },
-  { id: 4, label: "Expiring Soon", value: 0, bg: "bg-amber-50" },
-];
+{ id: 1, label: "Total Subscribed User", value: 3, bg: "bg-sky-50" },
+{ id: 2, label: "Active Subscriptions", value: 0, bg: "bg-emerald-50" },
+{ id: 3, label: "Expired Subscription", value: 3, bg: "bg-rose-50" },
+{ id: 4, label: "Expiring Soon", value: 0, bg: "bg-amber-50" }];
+
 
 const restaurantRows = [
-  {
-    id: 1,
-    name: "Tasty Lunch",
-    icon: leafIcon,
-    packageName: "Standard",
-    price: "$ 799.00",
-    expDate: "23 May 2023",
-    subscriptionUsed: 1,
-    isTrial: "No",
-    isCancel: "No",
-    status: "Expired",
-  },
-  {
-    id: 2,
-    name: "Cheese Burger",
-    icon: burgerIcon,
-    packageName: "Pro",
-    price: "$ 1,199.00",
-    expDate: "19 Oct 2025",
-    subscriptionUsed: 2,
-    isTrial: "No",
-    isCancel: "No",
-    status: "Expired",
-  },
-  {
-    id: 3,
-    name: "Cheesy Restaurant",
-    icon: chefIcon,
-    packageName: "Pro",
-    price: "$ 1,199.00",
-    expDate: "19 Oct 2025",
-    subscriptionUsed: 1,
-    isTrial: "No",
-    isCancel: "No",
-    status: "Expired",
-  },
-];
+{
+  id: 1,
+  name: "Tasty Lunch",
+  icon: leafIcon,
+  packageName: "Standard",
+  price: "$ 799.00",
+  expDate: "23 May 2023",
+  subscriptionUsed: 1,
+  isTrial: "No",
+  isCancel: "No",
+  status: "Expired"
+},
+{
+  id: 2,
+  name: "Cheese Burger",
+  icon: burgerIcon,
+  packageName: "Pro",
+  price: "$ 1,199.00",
+  expDate: "19 Oct 2025",
+  subscriptionUsed: 2,
+  isTrial: "No",
+  isCancel: "No",
+  status: "Expired"
+},
+{
+  id: 3,
+  name: "Cheesy Restaurant",
+  icon: chefIcon,
+  packageName: "Pro",
+  price: "$ 1,199.00",
+  expDate: "19 Oct 2025",
+  subscriptionUsed: 1,
+  isTrial: "No",
+  isCancel: "No",
+  status: "Expired"
+}];
+
 
 export default function SubscriberList() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,12 +67,12 @@ export default function SubscriberList() {
     isTrial: true,
     isCancel: true,
     status: true,
-    actions: true,
+    actions: true
   });
 
   const filteredRows = useMemo(() => {
     return restaurantRows.filter((row) =>
-      row.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+    row.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
     );
   }, [searchQuery]);
 
@@ -81,11 +81,11 @@ export default function SubscriberList() {
       alert("No data to export");
       return;
     }
-    console.log(`Exporting as ${format}`, filteredRows);
+
   };
 
   const toggleColumn = (columnKey) => {
-    setVisibleColumns(prev => ({ ...prev, [columnKey]: !prev[columnKey] }));
+    setVisibleColumns((prev) => ({ ...prev, [columnKey]: !prev[columnKey] }));
   };
 
   const resetColumns = () => {
@@ -99,7 +99,7 @@ export default function SubscriberList() {
       isTrial: true,
       isCancel: true,
       status: true,
-      actions: true,
+      actions: true
     });
   };
 
@@ -113,7 +113,7 @@ export default function SubscriberList() {
     isTrial: "Is Trial",
     isCancel: "Is Cancel",
     status: "Status",
-    actions: "Actions",
+    actions: "Actions"
   };
 
   return (
@@ -139,11 +139,11 @@ export default function SubscriberList() {
 
       {/* Top stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-        {statsCards.map((card) => (
-          <div
-            key={card.id}
-            className={`${card.bg} rounded-lg px-5 py-4 flex flex-col justify-between`}
-          >
+        {statsCards.map((card) =>
+        <div
+          key={card.id}
+          className={`${card.bg} rounded-lg px-5 py-4 flex flex-col justify-between`}>
+          
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-slate-600">
                 {card.label}
@@ -154,7 +154,7 @@ export default function SubscriberList() {
             </div>
             <p className="text-2xl font-bold text-slate-900">{card.value}</p>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Summary strip */}
@@ -228,8 +228,8 @@ export default function SubscriberList() {
                 placeholder="Ex: Search by name & pack"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+                className="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              
               <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             </div>
 
@@ -262,10 +262,10 @@ export default function SubscriberList() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <button 
+            <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-            >
+              className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all">
+              
               <Settings className="w-5 h-5" />
             </button>
           </div>
@@ -276,107 +276,107 @@ export default function SubscriberList() {
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                {visibleColumns.si && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                {visibleColumns.si &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>SI</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.restaurantInfo && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.restaurantInfo &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Restaurant Info</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.packageName && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.packageName &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Current Package Name</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.price && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.price &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Package Price</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.expDate && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.expDate &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Exp Date</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.subscriptionUsed && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.subscriptionUsed &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Total Subscription Used</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.isTrial && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.isTrial &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Is Trial</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.isCancel && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.isCancel &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Is Cancel</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.status && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                }
+                {visibleColumns.status &&
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <span>Status</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                     </div>
                   </th>
-                )}
-                {visibleColumns.actions && (
-                  <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
-                )}
+                }
+                {visibleColumns.actions &&
+                <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
+                }
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-100">
-              {filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="px-6 py-8 text-center text-slate-500">
+              {filteredRows.length === 0 ?
+              <tr>
+                  <td colSpan={Object.values(visibleColumns).filter((v) => v).length} className="px-6 py-8 text-center text-slate-500">
                     No subscribers found
                   </td>
-                </tr>
-              ) : (
-                filteredRows.map((row, index) => (
-                  <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                    {visibleColumns.si && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                </tr> :
+
+              filteredRows.map((row, index) =>
+              <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                    {visibleColumns.si &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{index + 1}</span>
                       </td>
-                    )}
-                    {visibleColumns.restaurantInfo && (
-                      <td className="px-6 py-4">
+                }
+                    {visibleColumns.restaurantInfo &&
+                <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center overflow-hidden border border-slate-200">
                             <img
-                              src={row.icon}
-                              alt={row.name}
-                              className="w-8 h-8 object-contain"
-                            />
+                        src={row.icon}
+                        alt={row.name}
+                        className="w-8 h-8 object-contain" />
+                      
                           </div>
                           <div className="flex flex-col gap-0.5">
                             <span className="text-sm font-semibold">
@@ -388,52 +388,52 @@ export default function SubscriberList() {
                           </div>
                         </div>
                       </td>
-                    )}
-                    {visibleColumns.packageName && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                }
+                    {visibleColumns.packageName &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{row.packageName}</span>
                       </td>
-                    )}
-                    {visibleColumns.price && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                }
+                    {visibleColumns.price &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{row.price}</span>
                       </td>
-                    )}
-                    {visibleColumns.expDate && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                }
+                    {visibleColumns.expDate &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{row.expDate}</span>
                       </td>
-                    )}
-                    {visibleColumns.subscriptionUsed && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                }
+                    {visibleColumns.subscriptionUsed &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{row.subscriptionUsed}</span>
                       </td>
-                    )}
-                    {visibleColumns.isTrial && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                }
+                    {visibleColumns.isTrial &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <StatusPill label={row.isTrial} variant="neutral" />
                       </td>
-                    )}
-                    {visibleColumns.isCancel && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                }
+                    {visibleColumns.isCancel &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <StatusPill label={row.isCancel} variant="neutral" />
                       </td>
-                    )}
-                    {visibleColumns.status && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                }
+                    {visibleColumns.status &&
+                <td className="px-6 py-4 whitespace-nowrap">
                         <StatusPill label={row.status} variant="danger" />
                       </td>
-                    )}
-                    {visibleColumns.actions && (
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                }
+                    {visibleColumns.actions &&
+                <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors" title="View">
                           <Eye className="w-4 h-4" />
                         </button>
                       </td>
-                    )}
+                }
                   </tr>
-                ))
-              )}
+              )
+              }
             </tbody>
           </table>
         </div>
@@ -455,44 +455,44 @@ export default function SubscriberList() {
                 Visible Columns
               </h3>
               <div className="space-y-2">
-                {Object.entries(columnsConfig).map(([key, label]) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                  >
+                {Object.entries(columnsConfig).map(([key, label]) =>
+                <label
+                  key={key}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                  
                     <input
-                      type="checkbox"
-                      checked={visibleColumns[key]}
-                      onChange={() => toggleColumn(key)}
-                      className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
-                    />
+                    type="checkbox"
+                    checked={visibleColumns[key]}
+                    onChange={() => toggleColumn(key)}
+                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+                  
                     <span className="text-sm text-slate-700">{label}</span>
-                    {visibleColumns[key] && (
-                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
-                    )}
+                    {visibleColumns[key] &&
+                  <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+                  }
                   </label>
-                ))}
+                )}
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
               <button
                 onClick={resetColumns}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Reset
               </button>
               <button
                 onClick={() => setIsSettingsOpen(false)}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+                
                 Apply
               </button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>);
+
 }
 
 function StatusPill({ label, variant }) {
@@ -500,13 +500,13 @@ function StatusPill({ label, variant }) {
     return (
       <span className="inline-flex items-center px-3 py-1 rounded-full bg-rose-50 text-rose-500 text-[11px] font-semibold">
         {label}
-      </span>
-    );
+      </span>);
+
   }
 
   return (
     <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-semibold">
       {label}
-    </span>
-  );
+    </span>);
+
 }

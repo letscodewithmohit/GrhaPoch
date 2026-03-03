@@ -1,69 +1,69 @@
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useNavigate } from "react-router-dom"
-import Lenis from "lenis"
-import { ArrowLeft, X, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import BottomNavbar from "../components/BottomNavbar"
-import MenuOverlay from "../components/MenuOverlay"
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import Lenis from "lenis";
+import { ArrowLeft, X, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import BottomNavbar from "../components/BottomNavbar";
+import MenuOverlay from "../components/MenuOverlay";
 
 export default function RestaurantConfigPage() {
-  const navigate = useNavigate()
-  const [showMenu, setShowMenu] = useState(false)
+  const navigate = useNavigate();
+  const [showMenu, setShowMenu] = useState(false);
 
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+      smoothWheel: true
+    });
 
     function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      lenis.raf(time);
+      requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf)
+    requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy()
-    }
-  }, [])
+      lenis.destroy();
+    };
+  }, []);
 
   // Order Setup
-  const [homeDelivery, setHomeDelivery] = useState(true)
-  const [takeAway, setTakeAway] = useState(true)
-  const [dineIn, setDineIn] = useState(true)
-  const [dineInMinTime, setDineInMinTime] = useState("0")
-  const [instanceOrder, setInstanceOrder] = useState(true)
-  const [scheduleOrder, setScheduleOrder] = useState(true)
-  const [subscriptionOrder, setSubscriptionOrder] = useState(false)
-  const [minOrderAmount, setMinOrderAmount] = useState("0.0")
+  const [homeDelivery, setHomeDelivery] = useState(true);
+  const [takeAway, setTakeAway] = useState(true);
+  const [dineIn, setDineIn] = useState(true);
+  const [dineInMinTime, setDineInMinTime] = useState("0");
+  const [instanceOrder, setInstanceOrder] = useState(true);
+  const [scheduleOrder, setScheduleOrder] = useState(true);
+  const [subscriptionOrder, setSubscriptionOrder] = useState(false);
+  const [minOrderAmount, setMinOrderAmount] = useState("0.0");
 
   // Restaurant Types & Tag
-  const [cuisines, setCuisines] = useState(["Italian", "Spanish"])
-  const [cuisineInput, setCuisineInput] = useState("")
-  const [characteristics, setCharacteristics] = useState(["Bengali", "Indian", "Pizza", "Pasta"])
-  const [characteristicInput, setCharacteristicInput] = useState("")
-  const [tags, setTags] = useState([])
-  const [tagInput, setTagInput] = useState("")
-  const [halalTagStatus, setHalalTagStatus] = useState(true)
+  const [cuisines, setCuisines] = useState(["Italian", "Spanish"]);
+  const [cuisineInput, setCuisineInput] = useState("");
+  const [characteristics, setCharacteristics] = useState(["Bengali", "Indian", "Pizza", "Pasta"]);
+  const [characteristicInput, setCharacteristicInput] = useState("");
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState("");
+  const [halalTagStatus, setHalalTagStatus] = useState(true);
 
   // Other Setup
-  const [foodType, setFoodType] = useState({ veg: true, nonVeg: true })
-  const [cutleryOnDelivery, setCutleryOnDelivery] = useState(true)
+  const [foodType, setFoodType] = useState({ veg: true, nonVeg: true });
+  const [cutleryOnDelivery, setCutleryOnDelivery] = useState(true);
 
   // GST
-  const [activeGST, setActiveGST] = useState(false)
-  const [gstAmount, setGstAmount] = useState("")
+  const [activeGST, setActiveGST] = useState(false);
+  const [gstAmount, setGstAmount] = useState("");
 
   // Extra Package Charge
-  const [activeExtraPackageCharge, setActiveExtraPackageCharge] = useState(true)
-  const [chargeType, setChargeType] = useState("optional")
-  const [extraPackagingAmount, setExtraPackagingAmount] = useState("2.0")
+  const [activeExtraPackageCharge, setActiveExtraPackageCharge] = useState(true);
+  const [chargeType, setChargeType] = useState("optional");
+  const [extraPackagingAmount, setExtraPackagingAmount] = useState("2.0");
 
   // Daily Schedule Time
   const [schedule, setSchedule] = useState({
@@ -74,81 +74,81 @@ export default function RestaurantConfigPage() {
     thursday: [{ start: "12:00 AM", end: "04:00 AM" }, { start: "05:00 AM", end: "11:59 PM" }],
     friday: [{ start: "12:00 AM", end: "11:59 PM" }],
     saturday: [{ start: "12:01 AM", end: "11:59 PM" }]
-  })
+  });
 
   const days = [
-    { key: "sunday", label: "Sunday" },
-    { key: "monday", label: "Monday" },
-    { key: "tuesday", label: "Tuesday" },
-    { key: "wednesday", label: "Wednesday" },
-    { key: "thursday", label: "Thursday" },
-    { key: "friday", label: "Friday" },
-    { key: "saturday", label: "Saturday" }
-  ]
+  { key: "sunday", label: "Sunday" },
+  { key: "monday", label: "Monday" },
+  { key: "tuesday", label: "Tuesday" },
+  { key: "wednesday", label: "Wednesday" },
+  { key: "thursday", label: "Thursday" },
+  { key: "friday", label: "Friday" },
+  { key: "saturday", label: "Saturday" }];
+
 
   const addCuisine = () => {
     if (cuisineInput.trim()) {
-      setCuisines([...cuisines, cuisineInput.trim()])
-      setCuisineInput("")
+      setCuisines([...cuisines, cuisineInput.trim()]);
+      setCuisineInput("");
     }
-  }
+  };
 
   const removeCuisine = (index) => {
-    setCuisines(cuisines.filter((_, i) => i !== index))
-  }
+    setCuisines(cuisines.filter((_, i) => i !== index));
+  };
 
   const addCharacteristic = () => {
     if (characteristicInput.trim()) {
-      setCharacteristics([...characteristics, characteristicInput.trim()])
-      setCharacteristicInput("")
+      setCharacteristics([...characteristics, characteristicInput.trim()]);
+      setCharacteristicInput("");
     }
-  }
+  };
 
   const removeCharacteristic = (index) => {
-    setCharacteristics(characteristics.filter((_, i) => i !== index))
-  }
+    setCharacteristics(characteristics.filter((_, i) => i !== index));
+  };
 
   const addTag = () => {
     if (tagInput.trim()) {
-      setTags([...tags, tagInput.trim()])
-      setTagInput("")
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
     }
-  }
+  };
 
   const removeTag = (index) => {
-    setTags(tags.filter((_, i) => i !== index))
-  }
+    setTags(tags.filter((_, i) => i !== index));
+  };
 
   const addTimeSlot = (day) => {
     setSchedule({
       ...schedule,
       [day]: [...schedule[day], { start: "12:00 AM", end: "11:59 PM" }]
-    })
-  }
+    });
+  };
 
   const removeTimeSlot = (day, index) => {
     setSchedule({
       ...schedule,
       [day]: schedule[day].filter((_, i) => i !== index)
-    })
-  }
+    });
+  };
 
-  const ToggleSwitch = ({ enabled, onChange }) => (
-    <motion.button
-      type="button"
-      whileTap={{ scale: 0.95 }}
-      onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#ff8100] focus:ring-offset-2 ${
-        enabled ? "bg-[#ff8100]" : "bg-gray-300"
-      }`}
-    >
+  const ToggleSwitch = ({ enabled, onChange }) =>
+  <motion.button
+    type="button"
+    whileTap={{ scale: 0.95 }}
+    onClick={() => onChange(!enabled)}
+    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#ff8100] focus:ring-offset-2 ${
+    enabled ? "bg-[#ff8100]" : "bg-gray-300"}`
+    }>
+    
       <motion.span
-        animate={{ x: enabled ? 24 : 4 }}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        className="inline-block h-4 w-4 rounded-full bg-white"
-      />
-    </motion.button>
-  )
+      animate={{ x: enabled ? 24 : 4 }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      className="inline-block h-4 w-4 rounded-full bg-white" />
+    
+    </motion.button>;
+
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-6">
@@ -162,8 +162,8 @@ export default function RestaurantConfigPage() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </motion.button>
           <h1 className="text-lg md:text-xl font-semibold text-gray-900">Restaurant Settings</h1>
@@ -175,8 +175,8 @@ export default function RestaurantConfigPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}>
+          
           <Card>
           <CardContent className="p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Order Setup</h2>
@@ -193,19 +193,19 @@ export default function RestaurantConfigPage() {
                 <span className="text-sm md:text-base text-gray-700">Dine In</span>
                 <ToggleSwitch enabled={dineIn} onChange={setDineIn} />
               </div>
-              {dineIn && (
+              {dineIn &&
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     value={dineInMinTime}
                     onChange={(e) => setDineInMinTime(e.target.value)}
-                    className="w-20"
-                  />
+                    className="w-20" />
+                  
                   <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option>Min</option>
                   </select>
                 </div>
-              )}
+                }
               <div className="flex items-center justify-between">
                 <span className="text-sm md:text-base text-gray-700">Instance Order</span>
                 <ToggleSwitch enabled={instanceOrder} onChange={setInstanceOrder} />
@@ -221,12 +221,12 @@ export default function RestaurantConfigPage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm md:text-base text-gray-700 flex-shrink-0">Minimum Order Amount (₹):</span>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={minOrderAmount}
-                  onChange={(e) => setMinOrderAmount(e.target.value)}
-                  className="flex-1"
-                />
+                    type="number"
+                    step="0.1"
+                    value={minOrderAmount}
+                    onChange={(e) => setMinOrderAmount(e.target.value)}
+                    className="flex-1" />
+                  
               </div>
             </div>
           </CardContent>
@@ -237,8 +237,8 @@ export default function RestaurantConfigPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
-        >
+          transition={{ duration: 0.4, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}>
+          
           <Card>
           <CardContent className="p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Restaurant Types & Tag</h2>
@@ -246,104 +246,104 @@ export default function RestaurantConfigPage() {
               <div>
                 <label className="block text-sm md:text-base text-gray-700 mb-2">Cuisines</label>
                 <Input
-                  type="text"
-                  value={cuisineInput}
-                  onChange={(e) => setCuisineInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && addCuisine()}
-                  placeholder="Add cuisine"
-                  className="mb-2"
-                />
+                    type="text"
+                    value={cuisineInput}
+                    onChange={(e) => setCuisineInput(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && addCuisine()}
+                    placeholder="Add cuisine"
+                    className="mb-2" />
+                  
                 <div className="flex flex-wrap gap-2">
-                  {cuisines.map((cuisine, index) => (
+                  {cuisines.map((cuisine, index) =>
                     <span
                       key={index}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                    >
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm">
+                      
                       {cuisine}
                       <motion.button
                         whileHover={{ scale: 1.2 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => removeCuisine(index)}
-                        className="hover:text-red-500"
-                      >
+                        className="hover:text-red-500">
+                        
                         <X className="w-4 h-4" />
                       </motion.button>
                     </span>
-                  ))}
+                    )}
                 </div>
               </div>
               <div>
                 <label className="block text-sm md:text-base text-gray-700 mb-2">Characteristics</label>
                 <div className="flex gap-2 mb-2">
                   <Input
-                    type="text"
-                    value={characteristicInput}
-                    onChange={(e) => setCharacteristicInput(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addCharacteristic()}
-                    placeholder="Add characteristic"
-                    className="flex-1"
-                  />
+                      type="text"
+                      value={characteristicInput}
+                      onChange={(e) => setCharacteristicInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && addCharacteristic()}
+                      placeholder="Add characteristic"
+                      className="flex-1" />
+                    
                   <Button
-                    onClick={addCharacteristic}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4"
-                  >
+                      onClick={addCharacteristic}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4">
+                      
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {characteristics.map((char, index) => (
+                  {characteristics.map((char, index) =>
                     <span
                       key={index}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                    >
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm">
+                      
                       {char}
                       <motion.button
                         whileHover={{ scale: 1.2 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => removeCharacteristic(index)}
-                        className="hover:text-red-500"
-                      >
+                        className="hover:text-red-500">
+                        
                         <X className="w-4 h-4" />
                       </motion.button>
                     </span>
-                  ))}
+                    )}
                 </div>
               </div>
               <div>
                 <label className="block text-sm md:text-base text-gray-700 mb-2">Tag</label>
                 <div className="flex gap-2 mb-2">
                   <Input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addTag()}
-                    placeholder="Add tag"
-                    className="flex-1"
-                  />
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && addTag()}
+                      placeholder="Add tag"
+                      className="flex-1" />
+                    
                   <Button
-                    onClick={addTag}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4"
-                  >
+                      onClick={addTag}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4">
+                      
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
+                  {tags.map((tag, index) =>
                     <span
                       key={index}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                    >
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm">
+                      
                       {tag}
                       <motion.button
                         whileHover={{ scale: 1.2 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => removeTag(index)}
-                        className="hover:text-red-500"
-                      >
+                        className="hover:text-red-500">
+                        
                         <X className="w-4 h-4" />
                       </motion.button>
                     </span>
-                  ))}
+                    )}
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -359,8 +359,8 @@ export default function RestaurantConfigPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
-        >
+          transition={{ duration: 0.4, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}>
+          
           <Card>
           <CardContent className="p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Other Setup</h2>
@@ -370,20 +370,20 @@ export default function RestaurantConfigPage() {
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
-                      type="checkbox"
-                      checked={foodType.veg}
-                      onChange={(e) => setFoodType({ ...foodType, veg: e.target.checked })}
-                      className="w-4 h-4 text-[#ff8100] border-gray-300 rounded focus:ring-[#ff8100]"
-                    />
+                        type="checkbox"
+                        checked={foodType.veg}
+                        onChange={(e) => setFoodType({ ...foodType, veg: e.target.checked })}
+                        className="w-4 h-4 text-[#ff8100] border-gray-300 rounded focus:ring-[#ff8100]" />
+                      
                     <span className="text-sm md:text-base text-gray-700">Veg</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
-                      type="checkbox"
-                      checked={foodType.nonVeg}
-                      onChange={(e) => setFoodType({ ...foodType, nonVeg: e.target.checked })}
-                      className="w-4 h-4 text-[#ff8100] border-gray-300 rounded focus:ring-[#ff8100]"
-                    />
+                        type="checkbox"
+                        checked={foodType.nonVeg}
+                        onChange={(e) => setFoodType({ ...foodType, nonVeg: e.target.checked })}
+                        className="w-4 h-4 text-[#ff8100] border-gray-300 rounded focus:ring-[#ff8100]" />
+                      
                     <span className="text-sm md:text-base text-gray-700">Non-Veg</span>
                   </label>
                 </div>
@@ -401,8 +401,8 @@ export default function RestaurantConfigPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3, ease: [0.4, 0, 0.2, 1] }}
-        >
+          transition={{ duration: 0.4, delay: 0.3, ease: [0.4, 0, 0.2, 1] }}>
+          
           <Card>
           <CardContent className="p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">GST</h2>
@@ -414,12 +414,12 @@ export default function RestaurantConfigPage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm md:text-base text-gray-700 flex-shrink-0">GST Amount (₹):</span>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={gstAmount}
-                  onChange={(e) => setGstAmount(e.target.value)}
-                  className="flex-1"
-                />
+                    type="number"
+                    step="0.1"
+                    value={gstAmount}
+                    onChange={(e) => setGstAmount(e.target.value)}
+                    className="flex-1" />
+                  
               </div>
             </div>
           </CardContent>
@@ -430,8 +430,8 @@ export default function RestaurantConfigPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
+          transition={{ duration: 0.4, delay: 0.4, ease: [0.4, 0, 0.2, 1] }}>
+          
           <Card>
           <CardContent className="p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Extra Package Charge</h2>
@@ -445,24 +445,24 @@ export default function RestaurantConfigPage() {
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
-                      type="radio"
-                      name="chargeType"
-                      value="optional"
-                      checked={chargeType === "optional"}
-                      onChange={(e) => setChargeType(e.target.value)}
-                      className="w-4 h-4 text-[#ff8100] border-gray-300 focus:ring-[#ff8100]"
-                    />
+                        type="radio"
+                        name="chargeType"
+                        value="optional"
+                        checked={chargeType === "optional"}
+                        onChange={(e) => setChargeType(e.target.value)}
+                        className="w-4 h-4 text-[#ff8100] border-gray-300 focus:ring-[#ff8100]" />
+                      
                     <span className="text-sm md:text-base text-gray-700">Optional</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
-                      type="radio"
-                      name="chargeType"
-                      value="mandatory"
-                      checked={chargeType === "mandatory"}
-                      onChange={(e) => setChargeType(e.target.value)}
-                      className="w-4 h-4 text-[#ff8100] border-gray-300 focus:ring-[#ff8100]"
-                    />
+                        type="radio"
+                        name="chargeType"
+                        value="mandatory"
+                        checked={chargeType === "mandatory"}
+                        onChange={(e) => setChargeType(e.target.value)}
+                        className="w-4 h-4 text-[#ff8100] border-gray-300 focus:ring-[#ff8100]" />
+                      
                     <span className="text-sm md:text-base text-gray-700">Mandatory</span>
                   </label>
                 </div>
@@ -470,12 +470,12 @@ export default function RestaurantConfigPage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm md:text-base text-gray-700 flex-shrink-0">Extra Packaging Amount (₹):</span>
                 <Input
-                  type="number"
-                  step="0.1"
-                  value={extraPackagingAmount}
-                  onChange={(e) => setExtraPackagingAmount(e.target.value)}
-                  className="flex-1"
-                />
+                    type="number"
+                    step="0.1"
+                    value={extraPackagingAmount}
+                    onChange={(e) => setExtraPackagingAmount(e.target.value)}
+                    className="flex-1" />
+                  
               </div>
             </div>
           </CardContent>
@@ -486,43 +486,43 @@ export default function RestaurantConfigPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.5, ease: [0.4, 0, 0.2, 1] }}
-        >
+          transition={{ duration: 0.4, delay: 0.5, ease: [0.4, 0, 0.2, 1] }}>
+          
           <Card>
           <CardContent className="p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Daily Schedule Time</h2>
             <div className="space-y-4">
-              {days.map((day) => (
+              {days.map((day) =>
                 <div key={day.key} className="space-y-2">
                   <label className="block text-sm md:text-base font-medium text-gray-700">{day.label}</label>
-                  {schedule[day.key].map((slot, index) => (
-                    <div key={index} className="flex items-center gap-2">
+                  {schedule[day.key].map((slot, index) =>
+                  <div key={index} className="flex items-center gap-2">
                       <Input
-                        type="text"
-                        value={`${slot.start} - ${slot.end}`}
-                        readOnly
-                        className="flex-1"
-                      />
+                      type="text"
+                      value={`${slot.start} - ${slot.end}`}
+                      readOnly
+                      className="flex-1" />
+                    
                       <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => removeTimeSlot(day.key, index)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      >
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => removeTimeSlot(day.key, index)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                      
                         <X className="w-4 h-4" />
                       </motion.button>
                     </div>
-                  ))}
+                  )}
                   <Button
                     onClick={() => addTimeSlot(day.key)}
                     className="bg-blue-500 hover:bg-blue-600 text-white"
-                    size="sm"
-                  >
+                    size="sm">
+                    
                     <Plus className="w-4 h-4 mr-1" />
                     Add Slot
                   </Button>
                 </div>
-              ))}
+                )}
             </div>
           </CardContent>
         </Card>
@@ -533,19 +533,19 @@ export default function RestaurantConfigPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.6, ease: [0.4, 0, 0.2, 1] }}
-          className="sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4 md:mx-0 md:border-t-0 md:p-0 md:mt-6"
-        >
+          className="sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4 md:mx-0 md:border-t-0 md:p-0 md:mt-6">
+          
           <motion.div
             whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
+            whileTap={{ scale: 0.98 }}>
+            
             <Button
               onClick={() => {
-                // Handle update logic here
-                console.log("Settings updated")
+
+
               }}
-              className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 md:py-4 rounded-lg text-base md:text-lg"
-            >
+              className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 md:py-4 rounded-lg text-base md:text-lg">
+              
               Update
             </Button>
           </motion.div>
@@ -557,7 +557,6 @@ export default function RestaurantConfigPage() {
       
       {/* Menu Overlay */}
       <MenuOverlay showMenu={showMenu} setShowMenu={setShowMenu} />
-    </div>
-  )
-}
+    </div>);
 
+}

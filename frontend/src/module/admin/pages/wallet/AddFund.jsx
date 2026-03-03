@@ -1,30 +1,30 @@
-import { useState } from "react"
-import { Wallet, Settings } from "lucide-react"
+import { useState } from "react";
+import { Wallet, Settings } from "lucide-react";
 
 export default function AddFund() {
   const [formData, setFormData] = useState({
     customer: "",
     amount: "",
-    reference: "",
-  })
+    reference: ""
+  });
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log("Form submitted:", formData)
-    alert("Fund added successfully!")
-  }
+    e.preventDefault();
+
+    alert("Fund added successfully!");
+  };
 
   const handleReset = () => {
     setFormData({
       customer: "",
       amount: "",
-      reference: "",
-    })
-  }
+      reference: ""
+    });
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -52,8 +52,8 @@ export default function AddFund() {
                 <select
                   value={formData.customer}
                   onChange={(e) => handleInputChange("customer", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                >
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                  
                   <option value="">Select Customer</option>
                   <option value="jane-doe">Jane Doe</option>
                   <option value="john-doe">John Doe</option>
@@ -69,8 +69,8 @@ export default function AddFund() {
                   value={formData.amount}
                   onChange={(e) => handleInputChange("amount", e.target.value)}
                   placeholder="Enter amount"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                
               </div>
 
               <div>
@@ -82,22 +82,22 @@ export default function AddFund() {
                   onChange={(e) => handleInputChange("reference", e.target.value)}
                   placeholder="Enter reference"
                   rows={4}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
-                />
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none" />
+                
               </div>
 
               <div className="flex items-center justify-end gap-4">
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-                >
+                  className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                  
                   Reset
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
-                >
+                  className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">
+                  
                   Submit
                 </button>
               </div>
@@ -105,6 +105,6 @@ export default function AddFund() {
           </form>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }

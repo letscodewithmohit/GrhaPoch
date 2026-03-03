@@ -69,7 +69,7 @@ export const releaseEscrow = async (orderId) => {
         throw new Error(`Escrow not in held status. Current status: ${settlement.escrowStatus}`);
       }
 
-      console.log(`ℹ️ Releasing escrow for COD order ${settlement.orderNumber} from ${settlement.escrowStatus} status`);
+
     }
 
     // Update escrow status
@@ -159,7 +159,7 @@ export const releaseEscrow = async (orderId) => {
  */
 const creditRestaurantWallet = async (restaurantId, orderId, netAmount, orderNumber, foodPrice = null, commission = null) => {
   try {
-    const RestaurantWallet = (await import('../../restaurant/models/RestaurantWallet.js')).default;
+    const RestaurantWallet = (await import('../models/RestaurantWallet.js')).default;
     const wallet = await RestaurantWallet.findOrCreateByRestaurantId(restaurantId);
 
     // Create description with breakdown
@@ -208,7 +208,7 @@ const creditRestaurantWallet = async (restaurantId, orderId, netAmount, orderNum
  */
 const creditDeliveryWallet = async (deliveryId, orderId, amount, orderNumber) => {
   try {
-    const DeliveryWallet = (await import('../../delivery/models/DeliveryWallet.js')).default;
+    const DeliveryWallet = (await import('../models/DeliveryWallet.js')).default;
     const wallet = await DeliveryWallet.findOrCreateByDeliveryId(deliveryId);
 
     const OrderSettlement = (await import('../models/OrderSettlement.js')).default;
@@ -220,9 +220,9 @@ const creditDeliveryWallet = async (deliveryId, orderId, amount, orderNumber) =>
       amount: amount,
       type: 'payment',
       status: 'Completed',
-      description: tip > 0
-        ? `Payment for order ${orderNumber} (Earning: ₹${baseEarning}, Tip: ₹${tip})`
-        : `Payment for order ${orderNumber}`,
+      description: tip > 0 ?
+      `Payment for order ${orderNumber} (Earning: ₹${baseEarning}, Tip: ₹${tip})` :
+      `Payment for order ${orderNumber}`,
       orderId: orderId,
       paymentCollected: false, // Will be updated when COD is collected
       metadata: { tip: tip }
@@ -271,7 +271,7 @@ const creditAdminWallet = async (orderId, adminEarning, orderNumber, restaurantI
     // This is the commission deducted from restaurant's food price
     if (adminEarning.commission > 0) {
       const foodPrice = settlement?.restaurantEarning?.foodPrice || 0;
-      const commissionPercent = foodPrice > 0 ? ((adminEarning.commission / foodPrice) * 100).toFixed(1) : '0';
+      const commissionPercent = foodPrice > 0 ? (adminEarning.commission / foodPrice * 100).toFixed(1) : '0';
       wallet.addTransaction({
         amount: adminEarning.commission,
         type: 'commission',
@@ -338,7 +338,7 @@ const creditAdminWallet = async (orderId, adminEarning, orderNumber, restaurantI
         description: `Payout to delivery partner for order ${orderNumber} (Distance: ${settlement?.deliveryPartnerEarning?.distance?.toFixed(2)} km)`,
         orderId: orderId
       });
-      console.log(`💸 Deducted ₹${partnerBaseEarning.toFixed(2)} from admin wallet for partner payout`);
+
     }
 
     await wallet.save();
@@ -368,4 +368,3 @@ const creditAdminWallet = async (orderId, adminEarning, orderNumber, restaurantI
     throw error;
   }
 };
-

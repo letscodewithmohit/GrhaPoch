@@ -1,25 +1,25 @@
-import { useState } from "react"
-import { Edit, Upload, Info } from "lucide-react"
+import { useState } from "react";
+import { Edit, Upload, Info } from "lucide-react";
 // Using placeholder for promotional banner
-const bannerPreview = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=400&fit=crop"
+const bannerPreview = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=400&fit=crop";
 
 export default function PromotionalBanner() {
-  const [activeLanguage, setActiveLanguage] = useState("default")
-  const [title, setTitle] = useState("Promotional")
+  const [activeLanguage, setActiveLanguage] = useState("default");
+  const [title, setTitle] = useState("Promotional");
 
   const languageTabs = [
-    { key: "default", label: "Default" },
-    { key: "en", label: "English(EN)" },
-    { key: "bn", label: "Bengali - বাংলা(BN)" },
-    { key: "ar", label: "Arabic - العربية (AR)" },
-    { key: "es", label: "Spanish - español(ES)" },
-  ]
+  { key: "default", label: "Default" },
+  { key: "en", label: "English(EN)" },
+  { key: "bn", label: "Bengali - বাংলা(BN)" },
+  { key: "ar", label: "Arabic - العربية (AR)" },
+  { key: "es", label: "Spanish - español(ES)" }];
+
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log("Banner saved:", { title })
-    alert("Promotional banner saved successfully!")
-  }
+    e.preventDefault();
+
+    alert("Promotional banner saved successfully!");
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -33,33 +33,33 @@ export default function PromotionalBanner() {
 
           {/* Language Tabs */}
           <div className="flex items-center gap-2 border-b border-slate-200 mb-6">
-            {languageTabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveLanguage(tab.key)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeLanguage === tab.key
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-600 hover:text-slate-900"
-                }`}
-              >
+            {languageTabs.map((tab) =>
+            <button
+              key={tab.key}
+              onClick={() => setActiveLanguage(tab.key)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeLanguage === tab.key ?
+              "border-blue-600 text-blue-600" :
+              "border-transparent text-slate-600 hover:text-slate-900"}`
+              }>
+              
                 {tab.label}
               </button>
-            ))}
+            )}
           </div>
 
           <form onSubmit={handleSubmit}>
             {/* Title Input */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Title ({activeLanguage === "default" ? "Default" : languageTabs.find(t => t.key === activeLanguage)?.label})
+                Title ({activeLanguage === "default" ? "Default" : languageTabs.find((t) => t.key === activeLanguage)?.label})
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              />
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+              
             </div>
 
             {/* Upload Banner Section */}
@@ -83,9 +83,9 @@ export default function PromotionalBanner() {
                       alt="Banner preview"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.style.display = "none"
-                      }}
-                    />
+                        e.target.style.display = "none";
+                      }} />
+                    
                   </div>
                 </div>
               </div>
@@ -110,14 +110,14 @@ export default function PromotionalBanner() {
             <div className="flex items-center justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
-              >
+                className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">
+                
                 Save
               </button>
             </div>
           </form>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }

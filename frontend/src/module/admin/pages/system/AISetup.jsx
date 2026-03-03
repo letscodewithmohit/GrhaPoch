@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Bot, Settings, Info, Store } from "lucide-react"
+import { useState } from "react";
+import { Bot, Settings, Info, Store } from "lucide-react";
 
 function ToggleSwitch({ enabled, onToggle }) {
   return (
@@ -7,45 +7,45 @@ function ToggleSwitch({ enabled, onToggle }) {
       type="button"
       onClick={onToggle}
       className={`inline-flex items-center w-11 h-6 rounded-full border transition-all ${
-        enabled
-          ? "bg-blue-600 border-blue-600 justify-end"
-          : "bg-slate-200 border-slate-300 justify-start"
-      }`}
-    >
+      enabled ?
+      "bg-blue-600 border-blue-600 justify-end" :
+      "bg-slate-200 border-slate-300 justify-start"}`
+      }>
+      
       <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
-    </button>
-  )
+    </button>);
+
 }
 
 export default function AISetup() {
-  const [activeTab, setActiveTab] = useState("ai-configuration")
-  const [isEnabled, setIsEnabled] = useState(true)
-  const [apiKey, setApiKey] = useState("")
-  const [organization, setOrganization] = useState("")
-  const [sectionWiseLimit, setSectionWiseLimit] = useState("60")
-  const [imageUploadLimit, setImageUploadLimit] = useState("20")
+  const [activeTab, setActiveTab] = useState("ai-configuration");
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [apiKey, setApiKey] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [sectionWiseLimit, setSectionWiseLimit] = useState("60");
+  const [imageUploadLimit, setImageUploadLimit] = useState("20");
 
   const handleReset = () => {
-    setApiKey("")
-    setOrganization("")
-  }
+    setApiKey("");
+    setOrganization("");
+  };
 
   const handleAIConfigSave = (e) => {
-    e.preventDefault()
-    console.log("Saving AI Configuration:", { apiKey, organization, isEnabled })
-    alert("AI Configuration saved successfully!")
-  }
+    e.preventDefault();
+
+    alert("AI Configuration saved successfully!");
+  };
 
   const handleAISettingsReset = () => {
-    setSectionWiseLimit("60")
-    setImageUploadLimit("20")
-  }
+    setSectionWiseLimit("60");
+    setImageUploadLimit("20");
+  };
 
   const handleAISettingsSave = (e) => {
-    e.preventDefault()
-    console.log("Saving AI Settings:", { sectionWiseLimit, imageUploadLimit })
-    alert("AI Settings saved successfully!")
-  }
+    e.preventDefault();
+
+    alert("AI Settings saved successfully!");
+  };
 
   return (
     <div className="p-2 lg:p-3 bg-slate-50 min-h-screen">
@@ -66,38 +66,38 @@ export default function AISetup() {
             <button
               onClick={() => setActiveTab("ai-configuration")}
               className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === "ai-configuration"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
+              activeTab === "ai-configuration" ?
+              "bg-blue-600 text-white" :
+              "text-slate-600 hover:bg-slate-100"}`
+              }>
+              
               AI Configuration
             </button>
             <button
               onClick={() => setActiveTab("ai-settings")}
               className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === "ai-settings"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
+              activeTab === "ai-settings" ?
+              "bg-blue-600 text-white" :
+              "text-slate-600 hover:bg-slate-100"}`
+              }>
+              
               AI Settings
             </button>
           </div>
         </div>
 
         {/* AI Configuration Content */}
-        {activeTab === "ai-configuration" && (
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+        {activeTab === "ai-configuration" &&
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-slate-600" />
                 <h2 className="text-sm font-semibold text-slate-900">OpenAI Configuration</h2>
               </div>
               <a
-                href="#"
-                className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-              >
+              href="#"
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+              
                 How it Works
                 <Info className="w-3 h-3" />
               </a>
@@ -108,9 +108,9 @@ export default function AISetup() {
               <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-lg">
                 <span className="text-xs font-medium text-slate-700">Turn OFF</span>
                 <ToggleSwitch
-                  enabled={isEnabled}
-                  onToggle={() => setIsEnabled(!isEnabled)}
-                />
+                enabled={isEnabled}
+                onToggle={() => setIsEnabled(!isEnabled)} />
+              
               </div>
 
               {/* API Key Input */}
@@ -119,12 +119,12 @@ export default function AISetup() {
                   OpenAI API Key
                 </label>
                 <input
-                  type="text"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Ex: sk-proj-K0LhsdcbHJ......."
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                type="text"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Ex: sk-proj-K0LhsdcbHJ......."
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              
               </div>
 
               {/* Organization Input */}
@@ -133,37 +133,37 @@ export default function AISetup() {
                   OpenAI Organization
                 </label>
                 <input
-                  type="text"
-                  value={organization}
-                  onChange={(e) => setOrganization(e.target.value)}
-                  placeholder="Ex: org-xxxxxxxxxxxx"
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                type="text"
+                value={organization}
+                onChange={(e) => setOrganization(e.target.value)}
+                placeholder="Ex: org-xxxxxxxxxxxx"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              
               </div>
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-2">
                 <button
-                  type="button"
-                  onClick={handleReset}
-                  className="px-4 py-2 text-xs font-medium bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-                >
+                type="button"
+                onClick={handleReset}
+                className="px-4 py-2 text-xs font-medium bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                
                   Reset
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
+                type="submit"
+                className="px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                
                   Save
                 </button>
               </div>
             </form>
           </div>
-        )}
+        }
 
         {/* AI Settings Content */}
-        {activeTab === "ai-settings" && (
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+        {activeTab === "ai-settings" &&
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
             <form onSubmit={handleAISettingsSave}>
               {/* Restaurant Limits Section */}
               <div className="mb-6">
@@ -182,11 +182,11 @@ export default function AISetup() {
                       Section Wise Data Generation Limit
                     </label>
                     <input
-                      type="number"
-                      value={sectionWiseLimit}
-                      onChange={(e) => setSectionWiseLimit(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    type="number"
+                    value={sectionWiseLimit}
+                    onChange={(e) => setSectionWiseLimit(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  
                   </div>
                 </div>
 
@@ -200,11 +200,11 @@ export default function AISetup() {
                       Image Upload Generation Limit
                     </label>
                     <input
-                      type="number"
-                      value={imageUploadLimit}
-                      onChange={(e) => setImageUploadLimit(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    type="number"
+                    value={imageUploadLimit}
+                    onChange={(e) => setImageUploadLimit(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  
                   </div>
                 </div>
               </div>
@@ -212,23 +212,23 @@ export default function AISetup() {
               {/* Action Buttons */}
               <div className="flex justify-end gap-2">
                 <button
-                  type="button"
-                  onClick={handleAISettingsReset}
-                  className="px-4 py-2 text-xs font-medium bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-                >
+                type="button"
+                onClick={handleAISettingsReset}
+                className="px-4 py-2 text-xs font-medium bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                
                   Reset
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
+                type="submit"
+                className="px-4 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                
                   Save Information
                 </button>
               </div>
             </form>
           </div>
-        )}
+        }
       </div>
-    </div>
-  )
+    </div>);
+
 }

@@ -7,7 +7,7 @@ import asyncHandler from '../middleware/asyncHandler.js';
 // Create/Activate offer
 export const createOffer = asyncHandler(async (req, res) => {
   const restaurantId = req.restaurant._id;
-  
+
   const {
     goalId,
     discountType,
@@ -23,7 +23,7 @@ export const createOffer = asyncHandler(async (req, res) => {
     discountCards = [],
     priceCards = [],
     discountConstruct = '',
-    freebieItems = [],
+    freebieItems = []
   } = req.body;
 
   // Validate required fields
@@ -39,8 +39,8 @@ export const createOffer = asyncHandler(async (req, res) => {
   // Validate each item has required fields
   if (items.length > 0) {
     for (const item of items) {
-      if (!item.itemId || !item.itemName || item.originalPrice === undefined || 
-          item.discountPercentage === undefined || !item.couponCode) {
+      if (!item.itemId || !item.itemName || item.originalPrice === undefined ||
+      item.discountPercentage === undefined || !item.couponCode) {
         return errorResponse(res, 400, 'Each item must have itemId, itemName, originalPrice, discountPercentage, and couponCode');
       }
     }
@@ -64,13 +64,13 @@ export const createOffer = asyncHandler(async (req, res) => {
     freebieItems,
     status: 'active', // Automatically activate
     startDate: startDate ? new Date(startDate) : new Date(),
-    endDate: endDate ? new Date(endDate) : null,
+    endDate: endDate ? new Date(endDate) : null
   };
 
   const offer = await Offer.create(offerData);
 
   return successResponse(res, 201, 'Offer created and activated successfully', {
-    offer,
+    offer
   });
 });
 
@@ -80,26 +80,26 @@ export const getOffers = asyncHandler(async (req, res) => {
   const { status, goalId, discountType } = req.query;
 
   const query = { restaurant: restaurantId };
-  
+
   if (status) {
     query.status = status;
   }
-  
+
   if (goalId) {
     query.goalId = goalId;
   }
-  
+
   if (discountType) {
     query.discountType = discountType;
   }
 
-  const offers = await Offer.find(query)
-    .sort({ createdAt: -1 })
-    .lean();
+  const offers = await Offer.find(query).
+  sort({ createdAt: -1 }).
+  lean();
 
   return successResponse(res, 200, 'Offers retrieved successfully', {
     offers,
-    total: offers.length,
+    total: offers.length
   });
 });
 
@@ -110,7 +110,7 @@ export const getOfferById = asyncHandler(async (req, res) => {
 
   const offer = await Offer.findOne({
     _id: id,
-    restaurant: restaurantId,
+    restaurant: restaurantId
   }).lean();
 
   if (!offer) {
@@ -118,7 +118,7 @@ export const getOfferById = asyncHandler(async (req, res) => {
   }
 
   return successResponse(res, 200, 'Offer retrieved successfully', {
-    offer,
+    offer
   });
 });
 
@@ -135,7 +135,7 @@ export const updateOfferStatus = asyncHandler(async (req, res) => {
   const offer = await Offer.findOneAndUpdate(
     {
       _id: id,
-      restaurant: restaurantId,
+      restaurant: restaurantId
     },
     { status },
     { new: true }
@@ -146,7 +146,7 @@ export const updateOfferStatus = asyncHandler(async (req, res) => {
   }
 
   return successResponse(res, 200, `Offer ${status} successfully`, {
-    offer,
+    offer
   });
 });
 
@@ -157,7 +157,7 @@ export const deleteOffer = asyncHandler(async (req, res) => {
 
   const offer = await Offer.findOneAndDelete({
     _id: id,
-    restaurant: restaurantId,
+    restaurant: restaurantId
   });
 
   if (!offer) {
@@ -172,28 +172,28 @@ export const getCouponsByItemId = asyncHandler(async (req, res) => {
   const restaurantId = req.restaurant._id;
   const { itemId } = req.params;
 
-  console.log(`[COUPONS] Request received for itemId: ${itemId}, restaurantId: ${restaurantId}`);
+
 
   if (!itemId) {
     return errorResponse(res, 400, 'Item ID is required');
   }
 
   const now = new Date();
-  console.log(`[COUPONS] Current date: ${now.toISOString()}`);
+
 
   // Debug: Check all offers for this restaurant
   const allRestaurantOffers = await Offer.find({
     restaurant: restaurantId,
-    status: 'active',
-  })
-    .select('items discountType minOrderValue startDate endDate status')
-    .lean();
-  
-  console.log(`[COUPONS] Total active offers for restaurant: ${allRestaurantOffers.length}`);
-  allRestaurantOffers.forEach(offer => {
-    console.log(`[COUPONS] Offer ${offer._id} has ${offer.items?.length || 0} items`);
+    status: 'active'
+  }).
+  select('items discountType minOrderValue startDate endDate status').
+  lean();
+
+
+  allRestaurantOffers.forEach((offer) => {
+
     offer.items?.forEach((item, idx) => {
-      console.log(`[COUPONS]   Item ${idx}: itemId=${item.itemId}, couponCode=${item.couponCode}`);
+
     });
   });
 
@@ -201,42 +201,42 @@ export const getCouponsByItemId = asyncHandler(async (req, res) => {
   const allOffers = await Offer.find({
     restaurant: restaurantId,
     status: 'active',
-    'items.itemId': itemId,
-  })
-    .select('items discountType minOrderValue startDate endDate status')
-    .lean();
+    'items.itemId': itemId
+  }).
+  select('items discountType minOrderValue startDate endDate status').
+  lean();
 
-  console.log(`[COUPONS] Found ${allOffers.length} active offers with itemId ${itemId}`);
+
 
   // Filter by date validity
-  const validOffers = allOffers.filter(offer => {
+  const validOffers = allOffers.filter((offer) => {
     const startDate = offer.startDate ? new Date(offer.startDate) : null;
     const endDate = offer.endDate ? new Date(offer.endDate) : null;
-    
+
     // Start date should be <= now (or null)
     const startValid = !startDate || startDate <= now;
-    
+
     // End date should be >= now (or null)
     // Add 1 day buffer to include offers that end today
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
     const endValid = !endDate || endDate >= endOfToday;
-    
-    console.log(`[COUPONS] Offer ${offer._id}:`);
-    console.log(`  startDate: ${startDate?.toISOString()}, now: ${now.toISOString()}, startValid: ${startValid}`);
-    console.log(`  endDate: ${endDate?.toISOString()}, endOfToday: ${endOfToday.toISOString()}, endValid: ${endValid}`);
-    
+
+
+
+
+
     return startValid && endValid;
   });
 
-  console.log(`[COUPONS] Found ${validOffers.length} valid offers after date filtering`);
+
 
   // Extract coupons for this specific item
   const coupons = [];
-  validOffers.forEach(offer => {
-    console.log(`[COUPONS] Processing offer ${offer._id} with ${offer.items?.length || 0} items`);
+  validOffers.forEach((offer) => {
+
     offer.items.forEach((item, idx) => {
-      console.log(`[COUPONS]   Item ${idx}: itemId="${item.itemId}", searching for="${itemId}", match=${item.itemId === itemId}`);
+
       if (item.itemId === itemId) {
         const coupon = {
           couponCode: item.couponCode,
@@ -246,20 +246,20 @@ export const getCouponsByItemId = asyncHandler(async (req, res) => {
           minOrderValue: offer.minOrderValue || 0,
           discountType: offer.discountType,
           startDate: offer.startDate,
-          endDate: offer.endDate,
+          endDate: offer.endDate
         };
-        console.log(`[COUPONS]   ✅ Adding coupon:`, coupon);
+
         coupons.push(coupon);
       }
     });
   });
 
-  console.log(`[COUPONS] ✅ Returning ${coupons.length} coupons for itemId ${itemId}`);
-  console.log(`[COUPONS] Coupons array:`, JSON.stringify(coupons, null, 2));
+
+
 
   return successResponse(res, 200, 'Coupons retrieved successfully', {
     coupons,
-    total: coupons.length,
+    total: coupons.length
   });
 });
 
@@ -267,43 +267,43 @@ export const getCouponsByItemId = asyncHandler(async (req, res) => {
 export const getCouponsByItemIdPublic = asyncHandler(async (req, res) => {
   const { itemId, restaurantId } = req.params;
 
-  console.log(`[COUPONS-PUBLIC] Request received for itemId: ${itemId}, restaurantId: ${restaurantId}`);
+
 
   if (!itemId || !restaurantId) {
     return errorResponse(res, 400, 'Item ID and Restaurant ID are required');
   }
 
   const now = new Date();
-  console.log(`[COUPONS-PUBLIC] Current date: ${now.toISOString()}`);
+
 
   // Find restaurant by ID, slug, or restaurantId to get the actual MongoDB _id
   let restaurantObjectId = null;
-  
+
   // Try to find restaurant first
   try {
     const restaurantQuery = {};
-    
+
     // Check if restaurantId is a valid MongoDB ObjectId
     if (mongoose.Types.ObjectId.isValid(restaurantId) && restaurantId.length === 24) {
       restaurantQuery._id = new mongoose.Types.ObjectId(restaurantId);
     } else {
       // Try restaurantId field or slug
       restaurantQuery.$or = [
-        { restaurantId: restaurantId },
-        { slug: restaurantId },
-      ];
+      { restaurantId: restaurantId },
+      { slug: restaurantId }];
+
     }
 
     const restaurant = await Restaurant.findOne(restaurantQuery).select('_id').lean();
 
     if (restaurant) {
       restaurantObjectId = restaurant._id;
-      console.log(`[COUPONS-PUBLIC] Found restaurant with _id: ${restaurantObjectId}`);
+
     } else {
-      console.log(`[COUPONS-PUBLIC] Restaurant not found for ID: ${restaurantId}`);
+
       return successResponse(res, 200, 'No coupons found', {
         coupons: [],
-        total: 0,
+        total: 0
       });
     }
   } catch (error) {
@@ -315,32 +315,32 @@ export const getCouponsByItemIdPublic = asyncHandler(async (req, res) => {
   const allOffers = await Offer.find({
     restaurant: restaurantObjectId,
     status: 'active',
-    'items.itemId': itemId,
-  })
-    .select('items discountType minOrderValue startDate endDate status')
-    .lean();
+    'items.itemId': itemId
+  }).
+  select('items discountType minOrderValue startDate endDate status').
+  lean();
 
-  console.log(`[COUPONS-PUBLIC] Found ${allOffers.length} active offers with itemId ${itemId} for restaurant ${restaurantId}`);
+
 
   // Filter by date validity
-  const validOffers = allOffers.filter(offer => {
+  const validOffers = allOffers.filter((offer) => {
     const startDate = offer.startDate ? new Date(offer.startDate) : null;
     const endDate = offer.endDate ? new Date(offer.endDate) : null;
-    
+
     const startValid = !startDate || startDate <= now;
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
     const endValid = !endDate || endDate >= endOfToday;
-    
+
     return startValid && endValid;
   });
 
-  console.log(`[COUPONS-PUBLIC] Found ${validOffers.length} valid offers after date filtering`);
+
 
   // Extract coupons for this specific item
   const coupons = [];
-  validOffers.forEach(offer => {
-    offer.items.forEach(item => {
+  validOffers.forEach((offer) => {
+    offer.items.forEach((item) => {
       if (item.itemId === itemId) {
         coupons.push({
           couponCode: item.couponCode,
@@ -350,49 +350,49 @@ export const getCouponsByItemIdPublic = asyncHandler(async (req, res) => {
           minOrderValue: offer.minOrderValue || 0,
           discountType: offer.discountType,
           startDate: offer.startDate,
-          endDate: offer.endDate,
+          endDate: offer.endDate
         });
       }
     });
   });
 
-  console.log(`[COUPONS-PUBLIC] Returning ${coupons.length} coupons for itemId ${itemId}`);
+
 
   return successResponse(res, 200, 'Coupons retrieved successfully', {
     coupons,
-    total: coupons.length,
+    total: coupons.length
   });
 });
 
 // Get all active offers with restaurant and dish details (PUBLIC - for user offers page)
 export const getPublicOffers = asyncHandler(async (req, res) => {
   try {
-    console.log('[PUBLIC-OFFERS] Request received');
+
     const now = new Date();
-    
+
     // Find all active offers
     const offers = await Offer.find({
-      status: 'active',
-    })
-      .populate('restaurant', 'name restaurantId slug profileImage rating estimatedDeliveryTime distance')
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    console.log(`[PUBLIC-OFFERS] Found ${offers.length} active offers`);
+      status: 'active'
+    }).
+    populate('restaurant', 'name restaurantId slug profileImage rating estimatedDeliveryTime distance').
+    sort({ createdAt: -1 }).
+    lean();
+
+
 
     // Filter by date validity and flatten to show dishes with offers
     const offerDishes = [];
-    
+
     offers.forEach((offer) => {
       // Check if offer is valid (date-wise)
       const startDate = offer.startDate ? new Date(offer.startDate) : null;
       const endDate = offer.endDate ? new Date(offer.endDate) : null;
-      
+
       const startValid = !startDate || startDate <= now;
       const endOfToday = new Date(now);
       endOfToday.setHours(23, 59, 59, 999);
       const endValid = !endDate || endDate >= endOfToday;
-      
+
       if (!startValid || !endValid) {
         return; // Skip expired or not yet started offers
       }
@@ -436,7 +436,7 @@ export const getPublicOffers = asyncHandler(async (req, res) => {
             offer: offerText,
             couponCode: item.couponCode,
             isVeg: item.isVeg || false,
-            minOrderValue: offer.minOrderValue || 0,
+            minOrderValue: offer.minOrderValue || 0
           });
         });
       }
@@ -451,12 +451,12 @@ export const getPublicOffers = asyncHandler(async (req, res) => {
       groupedByOffer[dish.offer].push(dish);
     });
 
-    console.log(`[PUBLIC-OFFERS] Returning ${offerDishes.length} offer dishes`);
-    
+
+
     return successResponse(res, 200, 'Offers retrieved successfully', {
       allOffers: offerDishes,
       groupedByOffer,
-      total: offerDishes.length,
+      total: offerDishes.length
     });
   } catch (error) {
     console.error('[PUBLIC-OFFERS] Error fetching public offers:', error);
@@ -464,4 +464,3 @@ export const getPublicOffers = asyncHandler(async (req, res) => {
     return errorResponse(res, 500, error.message || 'Failed to fetch offers');
   }
 });
-

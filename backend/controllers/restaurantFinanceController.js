@@ -49,9 +49,9 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
 
     const restaurantIdQuery = {
       $or: [
-        { restaurantId: { $in: restaurantIdVariations } },
-        { restaurantId: restaurantId }
-      ]
+      { restaurantId: { $in: restaurantIdVariations } },
+      { restaurantId: restaurantId }]
+
     };
 
     // Get commission setup for restaurant
@@ -65,14 +65,14 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       console.warn('⚠️ Could not fetch commission setup:', commissionError.message);
     }
 
-    const hasActiveSubscription = (
-      restaurant.businessModel === 'Subscription Base' &&
-      restaurant.subscription?.status === 'active' &&
-      (
-        !restaurant.subscription?.endDate ||
-        new Date(restaurant.subscription.endDate) > new Date()
-      )
-    );
+    const hasActiveSubscription =
+    restaurant.businessModel === 'Subscription Base' &&
+    restaurant.subscription?.status === 'active' && (
+
+    !restaurant.subscription?.endDate ||
+    new Date(restaurant.subscription.endDate) > new Date());
+
+
 
     // Helper function to calculate commission for an order
     const calculateCommissionForOrder = (order, orderAmount) => {
@@ -98,21 +98,21 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       if (!restaurantCommission || !restaurantCommission.status) {
         // Default 10% if no commission setup
         return {
-          commission: (orderAmount * 10) / 100,
+          commission: orderAmount * 10 / 100,
           type: 'percentage',
           value: 10
         };
       }
 
       // Find matching commission rule
-      const sortedRules = [...(restaurantCommission.commissionRules || [])]
-        .filter(rule => rule.isActive)
-        .sort((a, b) => {
-          if (b.priority !== a.priority) {
-            return b.priority - a.priority;
-          }
-          return a.minOrderAmount - b.minOrderAmount;
-        });
+      const sortedRules = [...(restaurantCommission.commissionRules || [])].
+      filter((rule) => rule.isActive).
+      sort((a, b) => {
+        if (b.priority !== a.priority) {
+          return b.priority - a.priority;
+        }
+        return a.minOrderAmount - b.minOrderAmount;
+      });
 
       let matchingRule = null;
       for (const rule of sortedRules) {
@@ -132,7 +132,7 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
         commissionType = matchingRule.type;
         commissionValue = matchingRule.value;
         if (matchingRule.type === 'percentage') {
-          commission = (orderAmount * matchingRule.value) / 100;
+          commission = orderAmount * matchingRule.value / 100;
         } else {
           commission = matchingRule.value;
         }
@@ -140,13 +140,13 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
         commissionType = restaurantCommission.defaultCommission.type || 'percentage';
         commissionValue = restaurantCommission.defaultCommission.value || 10;
         if (commissionType === 'percentage') {
-          commission = (orderAmount * commissionValue) / 100;
+          commission = orderAmount * commissionValue / 100;
         } else {
           commission = commissionValue;
         }
       } else {
         // Default 10%
-        commission = (orderAmount * 10) / 100;
+        commission = orderAmount * 10 / 100;
       }
 
       return {
@@ -162,18 +162,18 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
     let currentCycleOrders = await Order.find({
       status: 'delivered',
       $and: [
-        restaurantIdQuery,
-        {
-          $or: [
-            { deliveredAt: { $gte: currentCycleStart, $lte: currentCycleEnd } },
-            { 'tracking.delivered.timestamp': { $gte: currentCycleStart, $lte: currentCycleEnd } }
-          ]
-        }
-      ]
-    })
-      .populate('userId', 'name phone email')
-      .select('orderId userId items pricing payment status address createdAt deliveredAt tracking')
-      .lean();
+      restaurantIdQuery,
+      {
+        $or: [
+        { deliveredAt: { $gte: currentCycleStart, $lte: currentCycleEnd } },
+        { 'tracking.delivered.timestamp': { $gte: currentCycleStart, $lte: currentCycleEnd } }]
+
+      }]
+
+    }).
+    populate('userId', 'name phone email').
+    select('orderId userId items pricing payment status address createdAt deliveredAt tracking').
+    lean();
 
     // If no orders found with deliveredAt/tracking, check by createdAt as last resort
     if (currentCycleOrders.length === 0) {
@@ -181,17 +181,17 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
         ...restaurantIdQuery,
         status: 'delivered',
         createdAt: { $gte: currentCycleStart, $lte: currentCycleEnd }
-      })
-        .populate('userId', 'name phone email')
-        .select('orderId userId items pricing payment status address createdAt deliveredAt tracking')
-        .lean();
+      }).
+      populate('userId', 'name phone email').
+      select('orderId userId items pricing payment status address createdAt deliveredAt tracking').
+      lean();
     }
 
-    console.log(`📊 Finance API - Current cycle orders found: ${currentCycleOrders.length} for restaurant ${restaurantId}`);
-    console.log(`📅 Date range: ${currentCycleStart.toISOString()} to ${currentCycleEnd.toISOString()}`);
+
+
 
     // Get all unique user IDs from orders
-    const userIds = [...new Set(currentCycleOrders.map(order => {
+    const userIds = [...new Set(currentCycleOrders.map((order) => {
       if (!order.userId) return null;
       // If populated, use _id, otherwise use the value directly
       if (typeof order.userId === 'object' && order.userId._id) {
@@ -203,29 +203,29 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       }
     }).filter(Boolean))];
 
-    console.log(`📋 Found ${userIds.length} unique user IDs:`, userIds);
+
 
     // Fetch user data in bulk
     let usersMap = {};
     if (userIds.length > 0) {
       try {
-        const UserModel = (await import('../../auth/models/User.js')).default;
+        const UserModel = (await import('../models/User.js')).default;
         // Convert string IDs to ObjectIds for query
-        const objectIds = userIds.map(id => {
+        const objectIds = userIds.map((id) => {
           try {
             return mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
           } catch (e) {
             return id;
           }
         });
-        const users = await UserModel.find({ _id: { $in: objectIds } })
-          .select('name phone email')
-          .lean();
-        console.log(`👥 Fetched ${users.length} users from database`);
-        users.forEach(user => {
+        const users = await UserModel.find({ _id: { $in: objectIds } }).
+        select('name phone email').
+        lean();
+
+        users.forEach((user) => {
           usersMap[user._id.toString()] = user;
         });
-        console.log(`📝 Users map created with ${Object.keys(usersMap).length} entries`);
+
       } catch (error) {
         console.error('❌ Error fetching users:', error);
       }
@@ -245,7 +245,7 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       currentCycleCommission += commissionData.commission;
 
       // Get food names from order items
-      const foodNames = (order.items || []).map(item => item.name).join(', ') || 'N/A';
+      const foodNames = (order.items || []).map((item) => item.name).join(', ') || 'N/A';
 
       // Handle userId - can be ObjectId or populated object
       let customerName = 'N/A';
@@ -271,12 +271,12 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
             customerPhone = user.phone || 'N/A';
             customerEmail = user.email || 'N/A';
           } else {
-            // Debug: log if user not found
-            console.log(`⚠️ User not found in map for userId: ${userIdStr}, orderId: ${order.orderId}`);
+
+
           }
         }
       } else {
-        console.log(`⚠️ No userId found for order: ${order.orderId}`);
+
       }
 
       // Format payment method - fetch full order if payment not available
@@ -287,15 +287,15 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       } else {
         // Fetch full order to get payment method
         try {
-          const fullOrder = await Order.findOne({ orderId: order.orderId })
-            .select('payment status')
-            .lean();
+          const fullOrder = await Order.findOne({ orderId: order.orderId }).
+          select('payment status').
+          lean();
           if (fullOrder && fullOrder.payment && fullOrder.payment.method) {
             const method = fullOrder.payment.method;
             paymentMethod = method.charAt(0).toUpperCase() + method.slice(1);
           }
         } catch (err) {
-          console.log(`⚠️ Could not fetch payment for order ${order.orderId}:`, err.message);
+
         }
       }
 
@@ -307,15 +307,15 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       } else {
         // Fetch full order to get status
         try {
-          const fullOrder = await Order.findOne({ orderId: order.orderId })
-            .select('status')
-            .lean();
+          const fullOrder = await Order.findOne({ orderId: order.orderId }).
+          select('status').
+          lean();
           if (fullOrder && fullOrder.status) {
             const status = fullOrder.status;
             orderStatus = status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
           }
         } catch (err) {
-          console.log(`⚠️ Could not fetch status for order ${order.orderId}:`, err.message);
+
         }
       }
 
@@ -362,17 +362,17 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       let pastCycleOrders = await Order.find({
         status: 'delivered',
         $and: [
-          restaurantIdQuery,
-          {
-            $or: [
-              { deliveredAt: { $gte: start, $lte: end } },
-              { 'tracking.delivered.timestamp': { $gte: start, $lte: end } }
-            ]
-          }
-        ]
-      })
-        .populate('userId', 'name phone email')
-        .lean();
+        restaurantIdQuery,
+        {
+          $or: [
+          { deliveredAt: { $gte: start, $lte: end } },
+          { 'tracking.delivered.timestamp': { $gte: start, $lte: end } }]
+
+        }]
+
+      }).
+      populate('userId', 'name phone email').
+      lean();
 
       // If no orders found with deliveredAt/tracking, check by createdAt as last resort
       if (pastCycleOrders.length === 0) {
@@ -380,16 +380,16 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
           ...restaurantIdQuery,
           status: 'delivered',
           createdAt: { $gte: start, $lte: end }
-        })
-          .populate('userId', 'name phone email')
-          .select('orderId userId items pricing payment status address createdAt deliveredAt tracking')
-          .lean();
+        }).
+        populate('userId', 'name phone email').
+        select('orderId userId items pricing payment status address createdAt deliveredAt tracking').
+        lean();
       }
 
-      console.log(`📊 Finance API - Past cycle orders found: ${pastCycleOrders.length} for date range ${startDate} to ${endDate}`);
+
 
       // Get all unique user IDs from past cycle orders
-      const pastUserIds = [...new Set(pastCycleOrders.map(order => {
+      const pastUserIds = [...new Set(pastCycleOrders.map((order) => {
         if (!order.userId) return null;
         // Handle both populated and non-populated userId
         if (typeof order.userId === 'object' && order.userId._id) {
@@ -401,21 +401,21 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
         }
       }).filter(Boolean))];
 
-      console.log(`📋 Found ${pastUserIds.length} unique user IDs for past cycle:`, pastUserIds);
+
 
       // Fetch user data in bulk for past cycle
       let pastUsersMap = {};
       if (pastUserIds.length > 0) {
         try {
-          const UserModel = (await import('../../auth/models/User.js')).default;
-          const users = await UserModel.find({ _id: { $in: pastUserIds.map(id => new mongoose.Types.ObjectId(id)) } })
-            .select('name phone email')
-            .lean();
-          console.log(`👥 Fetched ${users.length} users for past cycle from database`);
-          users.forEach(user => {
+          const UserModel = (await import('../models/User.js')).default;
+          const users = await UserModel.find({ _id: { $in: pastUserIds.map((id) => new mongoose.Types.ObjectId(id)) } }).
+          select('name phone email').
+          lean();
+
+          users.forEach((user) => {
             pastUsersMap[user._id.toString()] = user;
           });
-          console.log(`📝 Past users map keys:`, Object.keys(pastUsersMap));
+
         } catch (error) {
           console.error('❌ Error fetching users for past cycle:', error);
         }
@@ -433,7 +433,7 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
         pastCycleCommission += commissionData.commission;
 
         // Get food names from order items
-        const foodNames = (order.items || []).map(item => item.name).join(', ') || 'N/A';
+        const foodNames = (order.items || []).map((item) => item.name).join(', ') || 'N/A';
 
         // Handle userId - can be ObjectId or populated object
         let customerName = 'N/A';
@@ -459,12 +459,12 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
               customerPhone = user.phone || 'N/A';
               customerEmail = user.email || 'N/A';
             } else {
-              // Debug: log if user not found
-              console.log(`⚠️ User not found in pastUsersMap for userId: ${userIdStr}, orderId: ${order.orderId}`);
+
+
             }
           }
         } else {
-          console.log(`⚠️ No userId found for order: ${order.orderId}`);
+
         }
 
         // Format payment method
@@ -473,7 +473,7 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
           const method = order.payment.method;
           paymentMethod = method.charAt(0).toUpperCase() + method.slice(1);
         } else {
-          console.log(`⚠️ No payment method found for past order: ${order.orderId}, payment object:`, order.payment);
+
         }
 
         // Format order status
@@ -482,7 +482,7 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
           const status = order.status;
           orderStatus = status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
         } else {
-          console.log(`⚠️ No status found for past order: ${order.orderId}`);
+
         }
 
         return {
@@ -533,13 +533,13 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
     // This ensures end-to-end withdrawal calculation works correctly
     const availablePayout = Math.max(0, Math.round((currentCyclePayout - totalWithdrawals) * 100) / 100);
 
-    console.log('💰 Finance Calculation:', {
-      currentCyclePayout,
-      totalWithdrawals,
-      availablePayout,
-      withdrawalsCount: allWithdrawals.length,
-      withdrawals: allWithdrawals.map(w => ({ id: w._id, amount: w.amount, status: w.status }))
-    });
+
+
+
+
+
+
+
 
     return successResponse(res, 200, 'Finance data retrieved successfully', {
       currentCycle: {

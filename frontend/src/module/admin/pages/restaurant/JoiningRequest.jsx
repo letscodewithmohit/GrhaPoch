@@ -1,138 +1,138 @@
-import { useState, useMemo, useEffect } from "react"
-import { 
+import { useState, useMemo, useEffect } from "react";
+import {
   Search, Filter, Eye, Check, X, UtensilsCrossed, ArrowUpDown, Loader2,
-  FileText, Image as ImageIcon, ExternalLink, CreditCard, Calendar, Star, Building2, User, Phone, Mail, MapPin, Clock
-} from "lucide-react"
-import { adminAPI, restaurantAPI } from "../../../../lib/api"
+  FileText, Image as ImageIcon, ExternalLink, CreditCard, Calendar, Star, Building2, User, Phone, Mail, MapPin, Clock } from
+"lucide-react";
+import { adminAPI, restaurantAPI } from "../../../../lib/api";
 
 export default function JoiningRequest() {
-  const [activeTab, setActiveTab] = useState("pending")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [pendingRequests, setPendingRequests] = useState([])
-  const [rejectedRequests, setRejectedRequests] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [processing, setProcessing] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState(null)
-  const [showRejectDialog, setShowRejectDialog] = useState(false)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [restaurantDetails, setRestaurantDetails] = useState(null)
-  const [loadingDetails, setLoadingDetails] = useState(false)
-  const [showFilterDialog, setShowFilterDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState("pending");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [rejectedRequests, setRejectedRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [restaurantDetails, setRestaurantDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [filters, setFilters] = useState({
     zone: "",
     businessModel: "",
     dateFrom: "",
     dateTo: ""
-  })
+  });
 
   // Fetch restaurant join requests
   useEffect(() => {
-    fetchRequests()
-  }, [activeTab])
+    fetchRequests();
+  }, [activeTab]);
 
   // Debounced search effect
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchRequests()
-    }, 500) // Wait 500ms after user stops typing
+      fetchRequests();
+    }, 500); // Wait 500ms after user stops typing
 
-    return () => clearTimeout(timer)
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery])
+  }, [searchQuery]);
 
   const fetchRequests = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const status = activeTab === "pending" ? "pending" : "rejected"
+      const status = activeTab === "pending" ? "pending" : "rejected";
       const response = await adminAPI.getRestaurantJoinRequests({
         status,
         search: searchQuery || undefined,
         page: 1,
         limit: 100
-      })
+      });
 
       if (response.data && response.data.success && response.data.data) {
-        const requests = response.data.data.requests || []
+        const requests = response.data.data.requests || [];
         if (activeTab === "pending") {
-          setPendingRequests(requests)
+          setPendingRequests(requests);
         } else {
-          setRejectedRequests(requests)
+          setRejectedRequests(requests);
         }
       } else {
         if (activeTab === "pending") {
-          setPendingRequests([])
+          setPendingRequests([]);
         } else {
-          setRejectedRequests([])
+          setRejectedRequests([]);
         }
       }
     } catch (err) {
-      console.error("Error fetching restaurant requests:", err)
-      setError(err.message || "Failed to fetch restaurant requests")
+      console.error("Error fetching restaurant requests:", err);
+      setError(err.message || "Failed to fetch restaurant requests");
       if (activeTab === "pending") {
-        setPendingRequests([])
+        setPendingRequests([]);
       } else {
-        setRejectedRequests([])
+        setRejectedRequests([]);
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const currentRequests = activeTab === "pending" ? pendingRequests : rejectedRequests
+  const currentRequests = activeTab === "pending" ? pendingRequests : rejectedRequests;
 
   // Get unique zones and business models for filter options
   const filterOptions = useMemo(() => {
-    const zones = [...new Set(currentRequests.map(r => r.zone).filter(Boolean))]
-    const businessModels = [...new Set(currentRequests.map(r => r.businessModel).filter(Boolean))]
-    return { zones, businessModels }
-  }, [currentRequests])
+    const zones = [...new Set(currentRequests.map((r) => r.zone).filter(Boolean))];
+    const businessModels = [...new Set(currentRequests.map((r) => r.businessModel).filter(Boolean))];
+    return { zones, businessModels };
+  }, [currentRequests]);
 
   const filteredRequests = useMemo(() => {
-    let filtered = currentRequests
+    let filtered = currentRequests;
 
     // Apply search filter
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(request =>
-        request.restaurantName?.toLowerCase().includes(query) ||
-        request.ownerName?.toLowerCase().includes(query) ||
-        request.ownerPhone?.includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((request) =>
+      request.restaurantName?.toLowerCase().includes(query) ||
+      request.ownerName?.toLowerCase().includes(query) ||
+      request.ownerPhone?.includes(query)
+      );
     }
 
     // Apply zone filter
     if (filters.zone) {
-      filtered = filtered.filter(request => request.zone === filters.zone)
+      filtered = filtered.filter((request) => request.zone === filters.zone);
     }
 
     // Apply business model filter
     if (filters.businessModel) {
-      filtered = filtered.filter(request => request.businessModel === filters.businessModel)
+      filtered = filtered.filter((request) => request.businessModel === filters.businessModel);
     }
 
     // Apply date range filter
     if (filters.dateFrom || filters.dateTo) {
-      filtered = filtered.filter(request => {
-        if (!request.createdAt) return false
-        const requestDate = new Date(request.createdAt).setHours(0, 0, 0, 0)
+      filtered = filtered.filter((request) => {
+        if (!request.createdAt) return false;
+        const requestDate = new Date(request.createdAt).setHours(0, 0, 0, 0);
         if (filters.dateFrom) {
-          const fromDate = new Date(filters.dateFrom).setHours(0, 0, 0, 0)
-          if (requestDate < fromDate) return false
+          const fromDate = new Date(filters.dateFrom).setHours(0, 0, 0, 0);
+          if (requestDate < fromDate) return false;
         }
         if (filters.dateTo) {
-          const toDate = new Date(filters.dateTo).setHours(23, 59, 59, 999)
-          if (requestDate > toDate) return false
+          const toDate = new Date(filters.dateTo).setHours(23, 59, 59, 999);
+          if (requestDate > toDate) return false;
         }
-        return true
-      })
+        return true;
+      });
     }
 
-    return filtered
-  }, [currentRequests, searchQuery, filters])
+    return filtered;
+  }, [currentRequests, searchQuery, filters]);
 
   const clearFilters = () => {
     setFilters({
@@ -140,135 +140,135 @@ export default function JoiningRequest() {
       businessModel: "",
       dateFrom: "",
       dateTo: ""
-    })
-  }
+    });
+  };
 
-  const hasActiveFilters = filters.zone || filters.businessModel || filters.dateFrom || filters.dateTo
+  const hasActiveFilters = filters.zone || filters.businessModel || filters.dateFrom || filters.dateTo;
 
   const handleApprove = async (request) => {
     if (window.confirm(`Are you sure you want to approve "${request.restaurantName}" restaurant request?`)) {
       try {
-        setProcessing(true)
-        await adminAPI.approveRestaurant(request._id)
-        
+        setProcessing(true);
+        await adminAPI.approveRestaurant(request._id);
+
         // Refresh the list
-        await fetchRequests()
-        
-        alert(`Successfully approved ${request.restaurantName}'s join request!`)
+        await fetchRequests();
+
+        alert(`Successfully approved ${request.restaurantName}'s join request!`);
       } catch (err) {
-        console.error("Error approving request:", err)
-        alert(err.response?.data?.message || "Failed to approve request. Please try again.")
+        console.error("Error approving request:", err);
+        alert(err.response?.data?.message || "Failed to approve request. Please try again.");
       } finally {
-        setProcessing(false)
+        setProcessing(false);
       }
     }
-  }
+  };
 
   const handleReject = (request) => {
-    setSelectedRequest(request)
-    setRejectionReason("")
-    setShowRejectDialog(true)
-  }
+    setSelectedRequest(request);
+    setRejectionReason("");
+    setShowRejectDialog(true);
+  };
 
   const confirmReject = async () => {
     if (!selectedRequest || !rejectionReason.trim()) {
-      alert("Please provide a rejection reason")
-      return
+      alert("Please provide a rejection reason");
+      return;
     }
 
     try {
-      setProcessing(true)
-      await adminAPI.rejectRestaurant(selectedRequest._id, rejectionReason)
-      
+      setProcessing(true);
+      await adminAPI.rejectRestaurant(selectedRequest._id, rejectionReason);
+
       // Refresh the list
-      await fetchRequests()
-      
-      setShowRejectDialog(false)
-      setSelectedRequest(null)
-      setRejectionReason("")
-      
-      alert(`Successfully rejected ${selectedRequest.restaurantName}'s join request!`)
+      await fetchRequests();
+
+      setShowRejectDialog(false);
+      setSelectedRequest(null);
+      setRejectionReason("");
+
+      alert(`Successfully rejected ${selectedRequest.restaurantName}'s join request!`);
     } catch (err) {
-      console.error("Error rejecting request:", err)
-      alert(err.response?.data?.message || "Failed to reject request. Please try again.")
+      console.error("Error rejecting request:", err);
+      alert(err.response?.data?.message || "Failed to reject request. Please try again.");
     } finally {
-      setProcessing(false)
+      setProcessing(false);
     }
-  }
+  };
 
   const formatPhone = (phone) => {
-    if (!phone) return "N/A"
-    return phone
-  }
+    if (!phone) return "N/A";
+    return phone;
+  };
 
   // Handle view restaurant details
   const handleViewDetails = async (request) => {
-    setSelectedRequest(request)
-    setShowDetailsModal(true)
-    setLoadingDetails(true)
-    setRestaurantDetails(null)
-    
+    setSelectedRequest(request);
+    setShowDetailsModal(true);
+    setLoadingDetails(true);
+    setRestaurantDetails(null);
+
     try {
       // First, use fullData if available (has all details from API)
       if (request.fullData) {
-        console.log("Using fullData from request:", request.fullData)
-        setRestaurantDetails(request.fullData)
-        setLoadingDetails(false)
-        return
+
+        setRestaurantDetails(request.fullData);
+        setLoadingDetails(false);
+        return;
       }
-      
+
       // Try to fetch full restaurant details from API
-      const restaurantId = request._id || request.id
-      let response = null
-      
+      const restaurantId = request._id || request.id;
+      let response = null;
+
       if (restaurantId) {
         try {
           // Try admin API first
           if (adminAPI.getRestaurantById) {
-            response = await adminAPI.getRestaurantById(restaurantId)
+            response = await adminAPI.getRestaurantById(restaurantId);
           }
         } catch (err) {
-          console.log("Admin API failed, trying restaurant API:", err)
+
         }
-        
+
         // Fallback to regular restaurant API
         if (!response || !response?.data?.success) {
           try {
-            response = await restaurantAPI.getRestaurantById(restaurantId)
+            response = await restaurantAPI.getRestaurantById(restaurantId);
           } catch (err) {
-            console.log("Restaurant API also failed:", err)
+
           }
         }
       }
-      
+
       // Check response structure
       if (response?.data?.success) {
-        const data = response.data.data
+        const data = response.data.data;
         if (data?.restaurant) {
-          setRestaurantDetails(data.restaurant)
+          setRestaurantDetails(data.restaurant);
         } else if (data) {
-          setRestaurantDetails(data)
+          setRestaurantDetails(data);
         } else {
-          setRestaurantDetails(request)
+          setRestaurantDetails(request);
         }
       } else {
         // Use the request data we already have
-        setRestaurantDetails(request)
+        setRestaurantDetails(request);
       }
     } catch (err) {
-      console.error("Error fetching restaurant details:", err)
+      console.error("Error fetching restaurant details:", err);
       // Use the request data we already have
-      setRestaurantDetails(request)
+      setRestaurantDetails(request);
     } finally {
-      setLoadingDetails(false)
+      setLoadingDetails(false);
     }
-  }
+  };
 
   const closeDetailsModal = () => {
-    setShowDetailsModal(false)
-    setSelectedRequest(null)
-    setRestaurantDetails(null)
-  }
+    setShowDetailsModal(false);
+    setSelectedRequest(null);
+    setRestaurantDetails(null);
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -286,21 +286,21 @@ export default function JoiningRequest() {
             <button
               onClick={() => setActiveTab("pending")}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "pending"
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-600 hover:text-slate-900"
-              }`}
-            >
+              activeTab === "pending" ?
+              "border-blue-600 text-blue-600" :
+              "border-transparent text-slate-600 hover:text-slate-900"}`
+              }>
+              
               Pending Requests
             </button>
             <button
               onClick={() => setActiveTab("rejected")}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "rejected"
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-600 hover:text-slate-900"
-              }`}
-            >
+              activeTab === "rejected" ?
+              "border-blue-600 text-blue-600" :
+              "border-transparent text-slate-600 hover:text-slate-900"}`
+              }>
+              
               Rejected Request
             </button>
           </div>
@@ -313,28 +313,28 @@ export default function JoiningRequest() {
                   placeholder="Ex: Search by restaurant na"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => setShowFilterDialog(true)}
                 className={`px-4 py-2.5 text-sm font-medium rounded-lg border transition-all flex items-center gap-2 ${
-                  hasActiveFilters 
-                    ? "border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100" 
-                    : "border-slate-300 bg-white hover:bg-slate-50 text-slate-700"
-                }`}
-              >
+                hasActiveFilters ?
+                "border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100" :
+                "border-slate-300 bg-white hover:bg-slate-50 text-slate-700"}`
+                }>
+                
                 <Filter className="w-4 h-4" />
                 Filter
-                {hasActiveFilters && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                {hasActiveFilters &&
+                <span className="ml-1 px-1.5 py-0.5 bg-blue-600 text-white text-xs rounded-full">
                     {[filters.zone, filters.businessModel, filters.dateFrom, filters.dateTo].filter(Boolean).length}
                   </span>
-                )}
+                }
               </button>
             </div>
           </div>
@@ -384,32 +384,32 @@ export default function JoiningRequest() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {loading ? (
-                  <tr>
+                {loading ?
+                <tr>
                     <td colSpan={7} className="px-6 py-20 text-center">
                       <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
                       <p className="text-lg font-semibold text-slate-700">Loading restaurant requests...</p>
                     </td>
-                  </tr>
-                ) : error ? (
-                  <tr>
+                  </tr> :
+                error ?
+                <tr>
                     <td colSpan={7} className="px-6 py-20 text-center">
                       <p className="text-lg font-semibold text-red-600 mb-1">Error: {error}</p>
                       <p className="text-sm text-slate-500">Failed to load restaurant requests. Please try again.</p>
                     </td>
-                  </tr>
-                ) : filteredRequests.length === 0 ? (
-                  <tr>
+                  </tr> :
+                filteredRequests.length === 0 ?
+                <tr>
                     <td colSpan={7} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No restaurant requests match your search</p>
                       </div>
                     </td>
-                  </tr>
-                ) : (
-                  filteredRequests.map((request) => (
-                    <tr key={request.sl} className="hover:bg-slate-50 transition-colors">
+                  </tr> :
+
+                filteredRequests.map((request) =>
+                <tr key={request.sl} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{request.sl}</span>
                       </td>
@@ -417,13 +417,13 @@ export default function JoiningRequest() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                             <img
-                              src={request.restaurantImage}
-                              alt={request.restaurantName}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = "https://via.placeholder.com/40"
-                              }}
-                            />
+                          src={request.restaurantImage}
+                          alt={request.restaurantName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = "https://via.placeholder.com/40";
+                          }} />
+                        
                           </div>
                           <span className="text-sm font-medium text-slate-900">{request.restaurantName}</span>
                         </div>
@@ -442,47 +442,47 @@ export default function JoiningRequest() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          request.status === "Pending"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
+                    request.status === "Pending" ?
+                    "bg-blue-100 text-blue-700" :
+                    "bg-red-100 text-red-700"}`
+                    }>
                           {request.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => handleViewDetails(request)}
-                            className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                            title="View Details"
-                          >
+                        onClick={() => handleViewDetails(request)}
+                        className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        title="View Details">
+                        
                             <Eye className="w-4 h-4" />
                           </button>
-                          {activeTab === "pending" && (
-                            <>
+                          {activeTab === "pending" &&
+                      <>
                               <button
-                                onClick={() => handleApprove(request)}
-                                disabled={processing}
-                                className="p-1.5 rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Approve"
-                              >
+                          onClick={() => handleApprove(request)}
+                          disabled={processing}
+                          className="p-1.5 rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Approve">
+                          
                                 <Check className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => handleReject(request)}
-                                disabled={processing}
-                                className="p-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Reject"
-                              >
+                          onClick={() => handleReject(request)}
+                          disabled={processing}
+                          className="p-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reject">
+                          
                                 <X className="w-4 h-4" />
                               </button>
                             </>
-                          )}
+                      }
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
+                )
+                }
               </tbody>
             </table>
           </div>
@@ -490,8 +490,8 @@ export default function JoiningRequest() {
       </div>
 
       {/* Filter Dialog */}
-      {showFilterDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowFilterDialog(false)}>
+      {showFilterDialog &&
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowFilterDialog(false)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -505,51 +505,51 @@ export default function JoiningRequest() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowFilterDialog(false)}
-                  className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
-                >
+                onClick={() => setShowFilterDialog(false)}
+                className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                
                   <X className="w-5 h-5 text-slate-600" />
                 </button>
               </div>
 
               <div className="space-y-4">
                 {/* Zone Filter */}
-                {filterOptions.zones.length > 0 && (
-                  <div>
+                {filterOptions.zones.length > 0 &&
+              <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Zone
                     </label>
                     <select
-                      value={filters.zone}
-                      onChange={(e) => setFilters({ ...filters, zone: e.target.value })}
-                      className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
+                  value={filters.zone}
+                  onChange={(e) => setFilters({ ...filters, zone: e.target.value })}
+                  className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  
                       <option value="">All Zones</option>
-                      {filterOptions.zones.map((zone) => (
-                        <option key={zone} value={zone}>{zone}</option>
-                      ))}
+                      {filterOptions.zones.map((zone) =>
+                  <option key={zone} value={zone}>{zone}</option>
+                  )}
                     </select>
                   </div>
-                )}
+              }
 
                 {/* Business Model Filter */}
-                {filterOptions.businessModels.length > 0 && (
-                  <div>
+                {filterOptions.businessModels.length > 0 &&
+              <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Business Model
                     </label>
                     <select
-                      value={filters.businessModel}
-                      onChange={(e) => setFilters({ ...filters, businessModel: e.target.value })}
-                      className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
+                  value={filters.businessModel}
+                  onChange={(e) => setFilters({ ...filters, businessModel: e.target.value })}
+                  className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  
                       <option value="">All Business Models</option>
-                      {filterOptions.businessModels.map((model) => (
-                        <option key={model} value={model}>{model}</option>
-                      ))}
+                      {filterOptions.businessModels.map((model) =>
+                  <option key={model} value={model}>{model}</option>
+                  )}
                     </select>
                   </div>
-                )}
+              }
 
                 {/* Date Range Filters */}
                 <div className="grid grid-cols-2 gap-3">
@@ -558,50 +558,50 @@ export default function JoiningRequest() {
                       From Date
                     </label>
                     <input
-                      type="date"
-                      value={filters.dateFrom}
-                      onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                      className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                    className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       To Date
                     </label>
                     <input
-                      type="date"
-                      value={filters.dateTo}
-                      onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                      min={filters.dateFrom}
-                      className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                    min={filters.dateFrom}
+                    className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 mt-6 pt-6 border-t border-slate-200">
                 <button
-                  onClick={clearFilters}
-                  disabled={!hasActiveFilters}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                onClick={clearFilters}
+                disabled={!hasActiveFilters}
+                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                
                   Clear All
                 </button>
                 <button
-                  onClick={() => setShowFilterDialog(false)}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                >
+                onClick={() => setShowFilterDialog(false)}
+                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+                
                   Apply Filters
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+      }
 
       {/* Reject Confirmation Dialog */}
-      {showRejectDialog && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowRejectDialog(false)}>
+      {showRejectDialog && selectedRequest &&
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowRejectDialog(false)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center gap-4 mb-4">
@@ -623,103 +623,103 @@ export default function JoiningRequest() {
                   Rejection Reason <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Enter reason for rejection..."
-                  className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                  rows={4}
-                />
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter reason for rejection..."
+                className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                rows={4} />
+              
               </div>
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => {
-                    setShowRejectDialog(false)
-                    setSelectedRequest(null)
-                    setRejectionReason("")
-                  }}
-                  disabled={processing}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                onClick={() => {
+                  setShowRejectDialog(false);
+                  setSelectedRequest(null);
+                  setRejectionReason("");
+                }}
+                disabled={processing}
+                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                
                   Cancel
                 </button>
                 <button
-                  onClick={confirmReject}
-                  disabled={processing || !rejectionReason.trim()}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {processing ? (
-                    <span className="flex items-center justify-center gap-2">
+                onClick={confirmReject}
+                disabled={processing || !rejectionReason.trim()}
+                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                
+                  {processing ?
+                <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Rejecting...
-                    </span>
-                  ) : (
-                    "Reject Request"
-                  )}
+                    </span> :
+
+                "Reject Request"
+                }
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+      }
 
       {/* Restaurant Details Modal */}
-      {showDetailsModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={closeDetailsModal}>
+      {showDetailsModal && selectedRequest &&
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={closeDetailsModal}>
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
               <h2 className="text-2xl font-bold text-slate-900">Restaurant Details - {selectedRequest.restaurantName || "N/A"}</h2>
               <button
-                onClick={closeDetailsModal}
-                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
-              >
+              onClick={closeDetailsModal}
+              className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+              
                 <X className="w-5 h-5 text-slate-600" />
               </button>
             </div>
 
             {/* Modal Content */}
             <div className="p-6">
-              {loadingDetails && (
-                <div className="flex items-center justify-center py-20">
+              {loadingDetails &&
+            <div className="flex items-center justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                   <span className="ml-3 text-slate-600">Loading details...</span>
                 </div>
-              )}
-              {!loadingDetails && (restaurantDetails || selectedRequest) && (
-                <div className="space-y-6">
+            }
+              {!loadingDetails && (restaurantDetails || selectedRequest) &&
+            <div className="space-y-6">
                   {/* Restaurant Basic Info */}
                   <div className="flex items-start gap-6 pb-6 border-b border-slate-200">
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
                       <img
-                        src={restaurantDetails?.profileImage?.url || restaurantDetails?.profileImageUrl?.url || selectedRequest?.restaurantImage || "https://via.placeholder.com/96"}
-                        alt={restaurantDetails?.name || selectedRequest?.restaurantName || "Restaurant"}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/96"
-                        }}
-                      />
+                    src={restaurantDetails?.profileImage?.url || restaurantDetails?.profileImageUrl?.url || selectedRequest?.restaurantImage || "https://via.placeholder.com/96"}
+                    alt={restaurantDetails?.name || selectedRequest?.restaurantName || "Restaurant"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/96";
+                    }} />
+                  
                     </div>
                     <div className="flex-1">
                       <h3 className="text-2xl font-bold text-slate-900 mb-2">
                         {restaurantDetails?.name || selectedRequest?.restaurantName || "N/A"}
                       </h3>
                       <div className="flex items-center gap-4 flex-wrap">
-                        {restaurantDetails?.rating && (
-                          <div className="flex items-center gap-1">
+                        {restaurantDetails?.rating &&
+                    <div className="flex items-center gap-1">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                             <span className="text-sm font-medium text-slate-700">
                               {restaurantDetails.rating.toFixed(1)} ({restaurantDetails.totalRatings || 0} reviews)
                             </span>
                           </div>
-                        )}
+                    }
                         <div className="flex items-center gap-1 text-slate-600">
                           <Building2 className="w-4 h-4" />
                           <span className="text-sm">{restaurantDetails?.restaurantId || restaurantDetails?._id || selectedRequest?._id || "N/A"}</span>
                         </div>
                         <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          restaurantDetails?.isActive !== false ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                        }`}>
+                    restaurantDetails?.isActive !== false ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`
+                    }>
                           {restaurantDetails?.isActive !== false ? "Active" : "Pending Approval"}
                         </div>
                       </div>
@@ -749,15 +749,15 @@ export default function JoiningRequest() {
                             </p>
                           </div>
                         </div>
-                        {(restaurantDetails?.ownerEmail || restaurantDetails?.email) && (
-                          <div className="flex items-center gap-3">
+                        {(restaurantDetails?.ownerEmail || restaurantDetails?.email) &&
+                    <div className="flex items-center gap-3">
                             <Mail className="w-5 h-5 text-slate-400" />
                             <div>
                               <p className="text-xs text-slate-500">Email</p>
                               <p className="text-sm font-medium text-slate-900">{restaurantDetails.ownerEmail || restaurantDetails.email}</p>
                             </div>
                           </div>
-                        )}
+                    }
                       </div>
                     </div>
 
@@ -765,8 +765,8 @@ export default function JoiningRequest() {
                     <div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Location & Contact</h4>
                       <div className="space-y-3">
-                        {(restaurantDetails?.location || restaurantDetails?.onboarding?.step1?.location) && (
-                          <div className="flex items-start gap-3">
+                        {(restaurantDetails?.location || restaurantDetails?.onboarding?.step1?.location) &&
+                    <div className="flex items-start gap-3">
                             <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
                             <div>
                               <p className="text-xs text-slate-500">Address</p>
@@ -781,16 +781,16 @@ export default function JoiningRequest() {
                               </p>
                             </div>
                           </div>
-                        )}
-                        {(restaurantDetails?.primaryContactNumber || restaurantDetails?.phone) && (
-                          <div className="flex items-center gap-3">
+                    }
+                        {(restaurantDetails?.primaryContactNumber || restaurantDetails?.phone) &&
+                    <div className="flex items-center gap-3">
                             <Phone className="w-5 h-5 text-slate-400" />
                             <div>
                               <p className="text-xs text-slate-500">Primary Contact</p>
                               <p className="text-sm font-medium text-slate-900">{restaurantDetails.primaryContactNumber || restaurantDetails.phone}</p>
                             </div>
                           </div>
-                        )}
+                    }
                       </div>
                     </div>
                   </div>
@@ -803,40 +803,40 @@ export default function JoiningRequest() {
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Cuisines</p>
                           <div className="flex flex-wrap gap-2">
-                            {restaurantDetails?.cuisines && Array.isArray(restaurantDetails.cuisines) && restaurantDetails.cuisines.length > 0 ? (
-                              restaurantDetails.cuisines.map((cuisine, idx) => (
-                                <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                            {restaurantDetails?.cuisines && Array.isArray(restaurantDetails.cuisines) && restaurantDetails.cuisines.length > 0 ?
+                        restaurantDetails.cuisines.map((cuisine, idx) =>
+                        <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
                                   {cuisine}
                                 </span>
-                              ))
-                            ) : (
-                              <span className="text-sm text-slate-700">N/A</span>
-                            )}
+                        ) :
+
+                        <span className="text-sm text-slate-700">N/A</span>
+                        }
                           </div>
                         </div>
-                        {restaurantDetails?.offer && (
-                          <div>
+                        {restaurantDetails?.offer &&
+                    <div>
                             <p className="text-xs text-slate-500 mb-1">Current Offer</p>
                             <p className="text-sm font-medium text-green-600">{restaurantDetails.offer}</p>
                           </div>
-                        )}
-                        {restaurantDetails?.featuredDish && (
-                          <div>
+                    }
+                        {restaurantDetails?.featuredDish &&
+                    <div>
                             <p className="text-xs text-slate-500 mb-1">Featured Dish</p>
                             <p className="text-sm font-medium text-slate-900">{restaurantDetails.featuredDish}</p>
-                            {restaurantDetails.featuredPrice && (
-                              <p className="text-xs text-green-600 mt-1">₹{restaurantDetails.featuredPrice}</p>
-                            )}
+                            {restaurantDetails.featuredPrice &&
+                      <p className="text-xs text-green-600 mt-1">₹{restaurantDetails.featuredPrice}</p>
+                      }
                           </div>
-                        )}
+                    }
                       </div>
                     </div>
 
                     <div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Timings & Status</h4>
                       <div className="space-y-3">
-                        {(restaurantDetails?.deliveryTimings || restaurantDetails?.onboarding?.step2?.deliveryTimings) && (
-                          <div className="flex items-center gap-3">
+                        {(restaurantDetails?.deliveryTimings || restaurantDetails?.onboarding?.step2?.deliveryTimings) &&
+                    <div className="flex items-center gap-3">
                             <Clock className="w-5 h-5 text-slate-400" />
                             <div>
                               <p className="text-xs text-slate-500">Delivery Timings</p>
@@ -845,30 +845,30 @@ export default function JoiningRequest() {
                               </p>
                             </div>
                           </div>
-                        )}
-                        {(restaurantDetails?.estimatedDeliveryTime || restaurantDetails?.onboarding?.step4?.estimatedDeliveryTime) && (
-                          <div>
+                    }
+                        {(restaurantDetails?.estimatedDeliveryTime || restaurantDetails?.onboarding?.step4?.estimatedDeliveryTime) &&
+                    <div>
                             <p className="text-xs text-slate-500 mb-1">Estimated Delivery Time</p>
                             <p className="text-sm font-medium text-slate-900">{restaurantDetails.estimatedDeliveryTime || restaurantDetails.onboarding?.step4?.estimatedDeliveryTime}</p>
                           </div>
-                        )}
-                        {restaurantDetails?.openDays && Array.isArray(restaurantDetails.openDays) && restaurantDetails.openDays.length > 0 && (
-                          <div>
+                    }
+                        {restaurantDetails?.openDays && Array.isArray(restaurantDetails.openDays) && restaurantDetails.openDays.length > 0 &&
+                    <div>
                             <p className="text-xs text-slate-500 mb-1">Open Days</p>
                             <div className="flex flex-wrap gap-2">
-                              {restaurantDetails.openDays.map((day, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium capitalize">
+                              {restaurantDetails.openDays.map((day, idx) =>
+                        <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium capitalize">
                                   {day}
                                 </span>
-                              ))}
+                        )}
                             </div>
                           </div>
-                        )}
+                    }
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Status</p>
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            restaurantDetails?.isActive !== false ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                          }`}>
+                      restaurantDetails?.isActive !== false ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`
+                      }>
                             {restaurantDetails?.isActive !== false ? "Active" : "Pending Approval"}
                           </span>
                         </div>
@@ -877,52 +877,52 @@ export default function JoiningRequest() {
                   </div>
 
                   {/* Registration Documents - PAN, GST, FSSAI, Bank */}
-                  {restaurantDetails?.onboarding?.step3 && (
-                    <div className="pt-6 border-t border-slate-200">
+                  {restaurantDetails?.onboarding?.step3 &&
+              <div className="pt-6 border-t border-slate-200">
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Registration Documents</h4>
                       <div className="space-y-6">
                         {/* PAN Details */}
-                        {restaurantDetails.onboarding.step3.pan && (
-                          <div className="bg-slate-50 rounded-lg p-4">
+                        {restaurantDetails.onboarding.step3.pan &&
+                  <div className="bg-slate-50 rounded-lg p-4">
                             <h5 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                               <FileText className="w-4 h-4" />
                               PAN Details
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              {restaurantDetails.onboarding.step3.pan.panNumber && (
-                                <div>
+                              {restaurantDetails.onboarding.step3.pan.panNumber &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">PAN Number</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.pan.panNumber}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.pan.nameOnPan && (
-                                <div>
+                      }
+                              {restaurantDetails.onboarding.step3.pan.nameOnPan &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">Name on PAN</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.pan.nameOnPan}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.pan.image?.url && (
-                                <div className="md:col-span-2">
+                      }
+                              {restaurantDetails.onboarding.step3.pan.image?.url &&
+                      <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">PAN Document</p>
                                   <a
-                                    href={restaurantDetails.onboarding.step3.pan.image.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
-                                  >
+                          href={restaurantDetails.onboarding.step3.pan.image.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                          
                                     <ImageIcon className="w-4 h-4" />
                                     <span>View PAN Document</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </div>
-                              )}
+                      }
                             </div>
                           </div>
-                        )}
+                  }
 
                         {/* GST Details */}
-                        {restaurantDetails.onboarding.step3.gst && (
-                          <div className="bg-slate-50 rounded-lg p-4">
+                        {restaurantDetails.onboarding.step3.gst &&
+                  <div className="bg-slate-50 rounded-lg p-4">
                             <h5 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                               <FileText className="w-4 h-4" />
                               GST Details
@@ -934,241 +934,241 @@ export default function JoiningRequest() {
                                   {restaurantDetails.onboarding.step3.gst.isRegistered ? "Yes" : "No"}
                                 </p>
                               </div>
-                              {restaurantDetails.onboarding.step3.gst.gstNumber && (
-                                <div>
+                              {restaurantDetails.onboarding.step3.gst.gstNumber &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">GST Number</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.gst.gstNumber}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.gst.legalName && (
-                                <div>
+                      }
+                              {restaurantDetails.onboarding.step3.gst.legalName &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">Legal Name</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.gst.legalName}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.gst.address && (
-                                <div className="md:col-span-2">
+                      }
+                              {restaurantDetails.onboarding.step3.gst.address &&
+                      <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-1">GST Address</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.gst.address}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.gst.image?.url && (
-                                <div className="md:col-span-2">
+                      }
+                              {restaurantDetails.onboarding.step3.gst.image?.url &&
+                      <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">GST Document</p>
                                   <a
-                                    href={restaurantDetails.onboarding.step3.gst.image.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
-                                  >
+                          href={restaurantDetails.onboarding.step3.gst.image.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                          
                                     <ImageIcon className="w-4 h-4" />
                                     <span>View GST Document</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </div>
-                              )}
+                      }
                             </div>
                           </div>
-                        )}
+                  }
 
                         {/* FSSAI Details */}
-                        {restaurantDetails.onboarding.step3.fssai && (
-                          <div className="bg-slate-50 rounded-lg p-4">
+                        {restaurantDetails.onboarding.step3.fssai &&
+                  <div className="bg-slate-50 rounded-lg p-4">
                             <h5 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                               <FileText className="w-4 h-4" />
                               FSSAI Details
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              {restaurantDetails.onboarding.step3.fssai.registrationNumber && (
-                                <div>
+                              {restaurantDetails.onboarding.step3.fssai.registrationNumber &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">FSSAI Registration Number</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.fssai.registrationNumber}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.fssai.expiryDate && (
-                                <div>
+                      }
+                              {restaurantDetails.onboarding.step3.fssai.expiryDate &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">FSSAI Expiry Date</p>
                                   <p className="font-medium text-slate-900">
                                     {new Date(restaurantDetails.onboarding.step3.fssai.expiryDate).toLocaleDateString('en-IN', {
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    })}
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
                                   </p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.fssai.image?.url && (
-                                <div className="md:col-span-2">
+                      }
+                              {restaurantDetails.onboarding.step3.fssai.image?.url &&
+                      <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">FSSAI Document</p>
                                   <a
-                                    href={restaurantDetails.onboarding.step3.fssai.image.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
-                                  >
+                          href={restaurantDetails.onboarding.step3.fssai.image.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                          
                                     <ImageIcon className="w-4 h-4" />
                                     <span>View FSSAI Document</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </div>
-                              )}
+                      }
                             </div>
                           </div>
-                        )}
+                  }
 
                         {/* Bank Details */}
-                        {restaurantDetails.onboarding.step3.bank && (
-                          <div className="bg-slate-50 rounded-lg p-4">
+                        {restaurantDetails.onboarding.step3.bank &&
+                  <div className="bg-slate-50 rounded-lg p-4">
                             <h5 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                               <CreditCard className="w-4 h-4" />
                               Bank Details
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              {restaurantDetails.onboarding.step3.bank.accountNumber && (
-                                <div>
+                              {restaurantDetails.onboarding.step3.bank.accountNumber &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">Account Number</p>
                                   <p className="font-medium text-slate-900">
                                     {restaurantDetails.onboarding.step3.bank.accountNumber}
                                   </p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.bank.ifscCode && (
-                                <div>
+                      }
+                              {restaurantDetails.onboarding.step3.bank.ifscCode &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">IFSC Code</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.bank.ifscCode}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.bank.accountHolderName && (
-                                <div>
+                      }
+                              {restaurantDetails.onboarding.step3.bank.accountHolderName &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">Account Holder Name</p>
                                   <p className="font-medium text-slate-900">{restaurantDetails.onboarding.step3.bank.accountHolderName}</p>
                                 </div>
-                              )}
-                              {restaurantDetails.onboarding.step3.bank.accountType && (
-                                <div>
+                      }
+                              {restaurantDetails.onboarding.step3.bank.accountType &&
+                      <div>
                                   <p className="text-xs text-slate-500 mb-1">Account Type</p>
                                   <p className="font-medium text-slate-900 capitalize">{restaurantDetails.onboarding.step3.bank.accountType}</p>
                                 </div>
-                              )}
+                      }
                             </div>
                           </div>
-                        )}
+                  }
                       </div>
                     </div>
-                  )}
+              }
 
                   {/* Menu Images */}
-                  {(restaurantDetails?.menuImages || restaurantDetails?.onboarding?.step2?.menuImageUrls) && (
-                    <div className="pt-6 border-t border-slate-200">
+                  {(restaurantDetails?.menuImages || restaurantDetails?.onboarding?.step2?.menuImageUrls) &&
+              <div className="pt-6 border-t border-slate-200">
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Menu Images</h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {(restaurantDetails.menuImages || restaurantDetails.onboarding?.step2?.menuImageUrls || []).map((menuImg, idx) => {
-                          const imgUrl = menuImg.url || menuImg
-                          return imgUrl ? (
-                            <a
-                              key={idx}
-                              href={imgUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-lg overflow-hidden border border-slate-200 hover:border-blue-500 transition-colors"
-                            >
+                    const imgUrl = menuImg.url || menuImg;
+                    return imgUrl ?
+                    <a
+                      key={idx}
+                      href={imgUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg overflow-hidden border border-slate-200 hover:border-blue-500 transition-colors">
+                      
                               <img
-                                src={imgUrl}
-                                alt={`Menu ${idx + 1}`}
-                                className="w-full h-32 object-cover"
-                                onError={(e) => {
-                                  e.target.src = "https://via.placeholder.com/200"
-                                }}
-                              />
-                            </a>
-                          ) : null
-                        })}
+                        src={imgUrl}
+                        alt={`Menu ${idx + 1}`}
+                        className="w-full h-32 object-cover"
+                        onError={(e) => {
+                          e.target.src = "https://via.placeholder.com/200";
+                        }} />
+                      
+                            </a> :
+                    null;
+                  })}
                       </div>
                     </div>
-                  )}
+              }
 
                   {/* Registration Information */}
-                  {(restaurantDetails?.createdAt || restaurantDetails?.restaurantId || restaurantDetails?.businessModel) && (
-                    <div className="pt-6 border-t border-slate-200">
+                  {(restaurantDetails?.createdAt || restaurantDetails?.restaurantId || restaurantDetails?.businessModel) &&
+              <div className="pt-6 border-t border-slate-200">
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Registration Information</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        {restaurantDetails.createdAt && (
-                          <div className="flex items-center gap-3">
+                        {restaurantDetails.createdAt &&
+                  <div className="flex items-center gap-3">
                             <Calendar className="w-5 h-5 text-slate-400" />
                             <div>
                               <p className="text-xs text-slate-500 mb-1">Registration Date & Time</p>
                               <p className="font-medium text-slate-900">
                                 {new Date(restaurantDetails.createdAt).toLocaleString('en-IN', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                               </p>
                             </div>
                           </div>
-                        )}
-                        {restaurantDetails.restaurantId && (
-                          <div>
+                  }
+                        {restaurantDetails.restaurantId &&
+                  <div>
                             <p className="text-xs text-slate-500 mb-1">Restaurant ID</p>
                             <p className="font-medium text-slate-900">{restaurantDetails.restaurantId}</p>
                           </div>
-                        )}
-                        {restaurantDetails.businessModel && (
-                          <div>
+                  }
+                        {restaurantDetails.businessModel &&
+                  <div>
                             <p className="text-xs text-slate-500 mb-1">Business Model</p>
                             <p className="font-medium text-slate-900">{restaurantDetails.businessModel}</p>
                           </div>
-                        )}
-                        {restaurantDetails.phoneVerified !== undefined && (
-                          <div>
+                  }
+                        {restaurantDetails.phoneVerified !== undefined &&
+                  <div>
                             <p className="text-xs text-slate-500 mb-1">Phone Verified</p>
                             <p className="font-medium text-slate-900">{restaurantDetails.phoneVerified ? "Yes" : "No"}</p>
                           </div>
-                        )}
-                        {restaurantDetails.signupMethod && (
-                          <div>
+                  }
+                        {restaurantDetails.signupMethod &&
+                  <div>
                             <p className="text-xs text-slate-500 mb-1">Signup Method</p>
                             <p className="font-medium text-slate-900 capitalize">{restaurantDetails.signupMethod}</p>
                           </div>
-                        )}
-                        {restaurantDetails.onboarding?.completedSteps !== undefined && (
-                          <div>
+                  }
+                        {restaurantDetails.onboarding?.completedSteps !== undefined &&
+                  <div>
                             <p className="text-xs text-slate-500 mb-1">Onboarding Steps Completed</p>
                             <p className="font-medium text-slate-900">{restaurantDetails.onboarding.completedSteps} / 4</p>
                           </div>
-                        )}
+                  }
                       </div>
                     </div>
-                  )}
+              }
 
                   {/* Rejection Reason (if rejected) */}
-                  {restaurantDetails?.rejectionReason && (
-                    <div className="pt-6 border-t border-slate-200">
+                  {restaurantDetails?.rejectionReason &&
+              <div className="pt-6 border-t border-slate-200">
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                         <h4 className="text-lg font-semibold text-red-900 mb-2">Rejection Reason</h4>
                         <p className="text-sm text-red-800">{restaurantDetails.rejectionReason}</p>
-                        {restaurantDetails.rejectedAt && (
-                          <p className="text-xs text-red-600 mt-2">
+                        {restaurantDetails.rejectedAt &&
+                  <p className="text-xs text-red-600 mt-2">
                             Rejected on: {new Date(restaurantDetails.rejectedAt).toLocaleString('en-IN')}
                           </p>
-                        )}
+                  }
                       </div>
                     </div>
-                  )}
+              }
                 </div>
-              )}
-              {!loadingDetails && !restaurantDetails && !selectedRequest && (
-                <div className="flex flex-col items-center justify-center py-20">
+            }
+              {!loadingDetails && !restaurantDetails && !selectedRequest &&
+            <div className="flex flex-col items-center justify-center py-20">
                   <p className="text-lg font-semibold text-slate-700 mb-2">No Details Available</p>
                   <p className="text-sm text-slate-500">Unable to load restaurant details</p>
                 </div>
-              )}
+            }
             </div>
           </div>
         </div>
-      )}
-    </div>
-  )
+      }
+    </div>);
+
 }

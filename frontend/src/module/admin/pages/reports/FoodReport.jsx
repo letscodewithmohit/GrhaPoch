@@ -1,106 +1,106 @@
-import { useState, useMemo } from "react"
-import { Search, Download, ChevronDown, Filter, UtensilsCrossed, Settings, ArrowUpDown, Star, BarChart3, FileText, FileSpreadsheet, Code } from "lucide-react"
-import { foodReportDummy, yearlySalesData } from "../../data/foodReportDummy"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils"
+import { useState, useMemo } from "react";
+import { Search, Download, ChevronDown, Filter, UtensilsCrossed, Settings, ArrowUpDown, Star, BarChart3, FileText, FileSpreadsheet, Code } from "lucide-react";
+import { foodReportDummy, yearlySalesData } from "../../data/foodReportDummy";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "../../components/reports/reportsExportUtils";
 
 export default function FoodReport() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [foods, setFoods] = useState(foodReportDummy)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [foods, setFoods] = useState(foodReportDummy);
   const [filters, setFilters] = useState({
     zone: "All Zones",
     restaurant: "All restaurants",
     category: "All Categories",
     type: "All types",
-    time: "All Time",
-  })
+    time: "All Time"
+  });
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const filteredFoods = useMemo(() => {
-    let result = [...foods]
-    
+    let result = [...foods];
+
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(food =>
-        food.name.toLowerCase().includes(query) ||
-        food.restaurant.toLowerCase().includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((food) =>
+      food.name.toLowerCase().includes(query) ||
+      food.restaurant.toLowerCase().includes(query)
+      );
     }
 
-    if (filters.zone !== "All Zones") {
-      // Filter by zone if needed
-    }
+
+
+
 
     if (filters.restaurant !== "All restaurants") {
-      result = result.filter(f => f.restaurant === filters.restaurant)
+      result = result.filter((f) => f.restaurant === filters.restaurant);
     }
 
-    if (filters.category !== "All Categories") {
-      // Filter by category if needed
-    }
 
-    if (filters.type !== "All types") {
-      // Filter by type if needed
-    }
 
-    return result
-  }, [foods, searchQuery, filters])
 
-  const totalFoods = filteredFoods.length
+
+
+
+
+
+    return result;
+  }, [foods, searchQuery, filters]);
+
+  const totalFoods = filteredFoods.length;
 
   const handleExport = (format) => {
     if (filteredFoods.length === 0) {
-      alert("No data to export")
-      return
+      alert("No data to export");
+      return;
     }
     const headers = [
-      { key: "sl", label: "SI" },
-      { key: "name", label: "Name" },
-      { key: "restaurant", label: "Restaurant" },
-      { key: "orderCount", label: "Order Count" },
-      { key: "price", label: "Price" },
-      { key: "totalAmountSold", label: "Total Amount Sold" },
-      { key: "totalDiscountGiven", label: "Total Discount Given" },
-      { key: "averageSaleValue", label: "Average Sale Value" },
-      { key: "averageRatings", label: "Average Ratings" },
-    ]
+    { key: "sl", label: "SI" },
+    { key: "name", label: "Name" },
+    { key: "restaurant", label: "Restaurant" },
+    { key: "orderCount", label: "Order Count" },
+    { key: "price", label: "Price" },
+    { key: "totalAmountSold", label: "Total Amount Sold" },
+    { key: "totalDiscountGiven", label: "Total Discount Given" },
+    { key: "averageSaleValue", label: "Average Sale Value" },
+    { key: "averageRatings", label: "Average Ratings" }];
+
     switch (format) {
-      case "csv": exportReportsToCSV(filteredFoods, headers, "food_report"); break
-      case "excel": exportReportsToExcel(filteredFoods, headers, "food_report"); break
-      case "pdf": exportReportsToPDF(filteredFoods, headers, "food_report", "Food Report"); break
-      case "json": exportReportsToJSON(filteredFoods, "food_report"); break
+      case "csv":exportReportsToCSV(filteredFoods, headers, "food_report");break;
+      case "excel":exportReportsToExcel(filteredFoods, headers, "food_report");break;
+      case "pdf":exportReportsToPDF(filteredFoods, headers, "food_report", "Food Report");break;
+      case "json":exportReportsToJSON(filteredFoods, "food_report");break;
     }
-  }
+  };
 
   const handleFilterApply = () => {
-    // Filters are already applied via useMemo
-  }
 
+    // Filters are already applied via useMemo
+  };
   const handleResetFilters = () => {
     setFilters({
       zone: "All Zones",
       restaurant: "All restaurants",
       category: "All Categories",
       type: "All types",
-      time: "All Time",
-    })
-  }
+      time: "All Time"
+    });
+  };
 
-  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.category !== "All Categories" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.category !== "All Categories" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0);
 
   const renderStars = (rating, reviews) => {
     if (rating === 0) {
-      return "★0"
+      return "★0";
     }
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 !== 0
-    return "★".repeat(fullStars) + (hasHalfStar ? "½" : "") + "☆".repeat(5 - Math.ceil(rating)) + ` (${reviews})`
-  }
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    return "★".repeat(fullStars) + (hasHalfStar ? "½" : "") + "☆".repeat(5 - Math.ceil(rating)) + ` (${reviews})`;
+  };
 
-  const maxChartValue = Math.max(...yearlySalesData.chartData.map(d => d.amount))
-  const chartHeight = 200
+  const maxChartValue = Math.max(...yearlySalesData.chartData.map((d) => d.amount));
+  const chartHeight = 200;
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -121,9 +121,9 @@ export default function FoodReport() {
                 </label>
                 <select
                   value={filters.zone}
-                  onChange={(e) => setFilters(prev => ({ ...prev, zone: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, zone: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Zones">All Zones</option>
                   <option value="Zone 1">Zone 1</option>
                   <option value="Zone 2">Zone 2</option>
@@ -138,9 +138,9 @@ export default function FoodReport() {
                 </label>
                 <select
                   value={filters.restaurant}
-                  onChange={(e) => setFilters(prev => ({ ...prev, restaurant: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, restaurant: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All restaurants">All restaurants</option>
                   <option value="Hungry Puppets">Hungry Puppets</option>
                   <option value="Café Monarch">Café Monarch</option>
@@ -155,9 +155,9 @@ export default function FoodReport() {
                 </label>
                 <select
                   value={filters.category}
-                  onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, category: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Categories">All Categories</option>
                   <option value="Pizza">Pizza</option>
                   <option value="Burger">Burger</option>
@@ -172,9 +172,9 @@ export default function FoodReport() {
                 </label>
                 <select
                   value={filters.type}
-                  onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All types">All types</option>
                   <option value="Veg">Veg</option>
                   <option value="Non-Veg">Non-Veg</option>
@@ -190,9 +190,9 @@ export default function FoodReport() {
                 </label>
                 <select
                   value={filters.time}
-                  onChange={(e) => setFilters(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  onChange={(e) => setFilters((prev) => ({ ...prev, time: e.target.value }))}
+                  className="w-full sm:w-48 px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  
                   <option value="All Time">All Time</option>
                   <option value="Today">Today</option>
                   <option value="This Week">This Week</option>
@@ -203,25 +203,25 @@ export default function FoodReport() {
               </div>
 
               <div className="flex items-end gap-2">
-                <button 
+                <button
                   onClick={handleResetFilters}
-                  className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-                >
+                  className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                  
                   Reset
                 </button>
-                <button 
+                <button
                   onClick={handleFilterApply}
                   className={`px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all flex items-center gap-2 relative ${
-                    activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""
-                  }`}
-                >
+                  activeFiltersCount > 0 ? "ring-2 ring-blue-300" : ""}`
+                  }>
+                  
                   <Filter className="w-4 h-4" />
                   Filter
-                  {activeFiltersCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
+                  {activeFiltersCount > 0 &&
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
                       {activeFiltersCount}
                     </span>
-                  )}
+                  }
                 </button>
               </div>
             </div>
@@ -265,39 +265,39 @@ export default function FoodReport() {
             <div className="relative">
               {/* Grid lines */}
               <div className="absolute inset-0 flex flex-col justify-between">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <div key={i} className="border-t border-slate-200"></div>
-                ))}
+                {[0, 1, 2, 3, 4].map((i) =>
+                <div key={i} className="border-t border-slate-200"></div>
+                )}
               </div>
               
               {/* Bars */}
               <div className="flex items-end justify-between gap-4 h-64 relative z-10">
                 {yearlySalesData.chartData.map((data) => {
-                  const height = (data.amount / maxChartValue) * 256 // 256px = 64 * 4 (for 64k max)
+                  const height = data.amount / maxChartValue * 256; // 256px = 64 * 4 (for 64k max)
                   return (
                     <div key={data.year} className="flex-1 flex flex-col items-center h-full">
                       <div className="w-full flex items-end justify-center h-full">
                         <div
                           className="w-5 bg-blue-400 rounded-t transition-all hover:bg-blue-500"
-                          style={{ 
-                            height: `${height}px`, 
+                          style={{
+                            height: `${height}px`,
                             minHeight: height > 0 ? '4px' : '0'
                           }}
-                          title={`${data.year}: $${data.amount.toLocaleString()}`}
-                        />
+                          title={`${data.year}: $${data.amount.toLocaleString()}`} />
+                        
                       </div>
-                    </div>
-                  )
+                    </div>);
+
                 })}
               </div>
               
               {/* X-axis labels */}
               <div className="flex justify-between gap-4 mt-2">
-                {yearlySalesData.chartData.map((data) => (
-                  <span key={data.year} className="flex-1 text-center text-xs text-slate-600">
+                {yearlySalesData.chartData.map((data) =>
+                <span key={data.year} className="flex-1 text-center text-xs text-slate-600">
                     {data.year}
                   </span>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -321,8 +321,8 @@ export default function FoodReport() {
                   placeholder="Search by food name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-4 pr-10 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="pl-4 pr-10 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
 
@@ -355,10 +355,10 @@ export default function FoodReport() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
+              <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
+                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all">
+                
                 <Settings className="w-5 h-5" />
               </button>
             </div>
@@ -426,18 +426,18 @@ export default function FoodReport() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {filteredFoods.length === 0 ? (
-                  <tr>
+                {filteredFoods.length === 0 ?
+                <tr>
                     <td colSpan={9} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No foods match your search</p>
                       </div>
                     </td>
-                  </tr>
-                ) : (
-                  filteredFoods.map((food) => (
-                    <tr key={food.sl} className="hover:bg-slate-50 transition-colors">
+                  </tr> :
+
+                filteredFoods.map((food) =>
+                <tr key={food.sl} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{food.sl}</span>
                       </td>
@@ -445,13 +445,13 @@ export default function FoodReport() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                             <img
-                              src={food.image}
-                              alt={food.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src = "https://via.placeholder.com/40"
-                              }}
-                            />
+                          src={food.image}
+                          alt={food.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = "https://via.placeholder.com/40";
+                          }} />
+                        
                           </div>
                           <span className="text-sm font-medium text-slate-900">{food.name}</span>
                         </div>
@@ -478,8 +478,8 @@ export default function FoodReport() {
                         <span className="text-sm text-slate-700">{renderStars(food.averageRatings, food.reviews)}</span>
                       </td>
                     </tr>
-                  ))
-                )}
+                )
+                }
               </tbody>
             </table>
           </div>
@@ -503,13 +503,13 @@ export default function FoodReport() {
           <div className="px-6 pb-6 flex items-center justify-end">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+              
               Close
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

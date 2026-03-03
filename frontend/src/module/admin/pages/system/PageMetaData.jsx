@@ -1,33 +1,33 @@
-import { useState, useMemo } from "react"
-import { Pencil, Settings, Search, Download, ChevronDown, FileText, FileSpreadsheet, Code, Check, Columns, ArrowUpDown } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { exportSEOPagesToCSV, exportSEOPagesToExcel, exportSEOPagesToPDF, exportSEOPagesToJSON } from "../../components/seo/seoExportUtils"
+import { useState, useMemo } from "react";
+import { Pencil, Settings, Search, Download, ChevronDown, FileText, FileSpreadsheet, Code, Check, Columns, ArrowUpDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { exportSEOPagesToCSV, exportSEOPagesToExcel, exportSEOPagesToPDF, exportSEOPagesToJSON } from "../../components/seo/seoExportUtils";
 
 const seoPages = [
-  { id: 1, name: "Restaurant list" },
-  { id: 2, name: "Category list" },
-  { id: 3, name: "Campaign" },
-  { id: 4, name: "Cuisine list" },
-  { id: 5, name: "Home page" },
-  { id: 6, name: "Contact us page" },
-  { id: 7, name: "About us page" },
-  { id: 8, name: "Restaurant join page" },
-  { id: 9, name: "Deliveryman join page" },
-  { id: 10, name: "Terms and conditions page" },
-  { id: 11, name: "Privacy policy page" },
-  { id: 12, name: "Refund policy page" },
-  { id: 13, name: "Cancellation policy page" },
-  { id: 14, name: "Shipping policy page" }
-]
+{ id: 1, name: "Restaurant list" },
+{ id: 2, name: "Category list" },
+{ id: 3, name: "Campaign" },
+{ id: 4, name: "Cuisine list" },
+{ id: 5, name: "Home page" },
+{ id: 6, name: "Contact us page" },
+{ id: 7, name: "About us page" },
+{ id: 8, name: "Restaurant join page" },
+{ id: 9, name: "Deliveryman join page" },
+{ id: 10, name: "Terms and conditions page" },
+{ id: 11, name: "Privacy policy page" },
+{ id: 12, name: "Refund policy page" },
+{ id: 13, name: "Cancellation policy page" },
+{ id: 14, name: "Shipping policy page" }];
+
 
 export default function PageMetaDataPageMetaData() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editingPage, setEditingPage] = useState(null)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingPage, setEditingPage] = useState(null);
   const [seoData, setSeoData] = useState({
     title: "",
     description: "",
@@ -37,28 +37,28 @@ export default function PageMetaDataPageMetaData() {
     ogTitle: "",
     ogDescription: "",
     ogImage: ""
-  })
+  });
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     pages: true,
-    actions: true,
-  })
+    actions: true
+  });
 
   const filteredPages = useMemo(() => {
     if (!searchQuery.trim()) {
-      return seoPages
+      return seoPages;
     }
-    
-    const query = searchQuery.toLowerCase().trim()
-    return seoPages.filter(page =>
-      page.name.toLowerCase().includes(query)
-    )
-  }, [searchQuery])
+
+    const query = searchQuery.toLowerCase().trim();
+    return seoPages.filter((page) =>
+    page.name.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
 
   const handleEdit = (pageId) => {
-    const page = seoPages.find(p => p.id === pageId)
+    const page = seoPages.find((p) => p.id === pageId);
     if (page) {
-      setEditingPage(page)
+      setEditingPage(page);
       // Load existing SEO data (in real app, this would come from API)
       setSeoData({
         title: page.name,
@@ -69,19 +69,19 @@ export default function PageMetaDataPageMetaData() {
         ogTitle: `${page.name} - GrhaPoch`,
         ogDescription: `Open Graph description for ${page.name}`,
         ogImage: ""
-      })
-      setIsEditDialogOpen(true)
+      });
+      setIsEditDialogOpen(true);
     }
-  }
+  };
 
   const handleSaveSEO = () => {
-    if (!editingPage) return
-    
+    if (!editingPage) return;
+
     // In real app, this would save to API
-    console.log("Saving SEO data for:", editingPage.name, seoData)
-    alert(`SEO data saved successfully for ${editingPage.name}!`)
-    setIsEditDialogOpen(false)
-    setEditingPage(null)
+
+    alert(`SEO data saved successfully for ${editingPage.name}!`);
+    setIsEditDialogOpen(false);
+    setEditingPage(null);
     setSeoData({
       title: "",
       description: "",
@@ -91,39 +91,39 @@ export default function PageMetaDataPageMetaData() {
       ogTitle: "",
       ogDescription: "",
       ogImage: ""
-    })
-  }
+    });
+  };
 
   const handleExport = (format) => {
     if (filteredPages.length === 0) {
-      alert("No data to export")
-      return
+      alert("No data to export");
+      return;
     }
     switch (format) {
-      case "csv": exportSEOPagesToCSV(filteredPages); break
-      case "excel": exportSEOPagesToExcel(filteredPages); break
-      case "pdf": exportSEOPagesToPDF(filteredPages); break
-      case "json": exportSEOPagesToJSON(filteredPages); break
+      case "csv":exportSEOPagesToCSV(filteredPages);break;
+      case "excel":exportSEOPagesToExcel(filteredPages);break;
+      case "pdf":exportSEOPagesToPDF(filteredPages);break;
+      case "json":exportSEOPagesToJSON(filteredPages);break;
     }
-  }
+  };
 
   const toggleColumn = (columnKey) => {
-    setVisibleColumns(prev => ({ ...prev, [columnKey]: !prev[columnKey] }))
-  }
+    setVisibleColumns((prev) => ({ ...prev, [columnKey]: !prev[columnKey] }));
+  };
 
   const resetColumns = () => {
     setVisibleColumns({
       si: true,
       pages: true,
-      actions: true,
-    })
-  }
+      actions: true
+    });
+  };
 
   const columnsConfig = {
     si: "Serial Number",
     pages: "Pages",
-    actions: "Actions",
-  }
+    actions: "Actions"
+  };
 
   return (
     <div className="p-2 lg:p-3 bg-slate-50 min-h-screen">
@@ -147,8 +147,8 @@ export default function PageMetaDataPageMetaData() {
                 placeholder="Search by page name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-7 pr-2 py-1.5 w-full text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+                className="pl-7 pr-2 py-1.5 w-full text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             </div>
             <DropdownMenu>
@@ -180,10 +180,10 @@ export default function PageMetaDataPageMetaData() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <button 
+            <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-            >
+              className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all">
+              
               <Settings className="w-4 h-4" />
             </button>
           </div>
@@ -205,62 +205,62 @@ export default function PageMetaDataPageMetaData() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {visibleColumns.si && (
-                    <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  {visibleColumns.si &&
+                  <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <span>SI</span>
                         <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                       </div>
                     </th>
-                  )}
-                  {visibleColumns.pages && (
-                    <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  }
+                  {visibleColumns.pages &&
+                  <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <span>Pages</span>
                         <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                       </div>
                     </th>
-                  )}
-                  {visibleColumns.actions && (
-                    <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
-                  )}
+                  }
+                  {visibleColumns.actions &&
+                  <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
+                  }
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
-                {filteredPages.length === 0 ? (
-                  <tr>
-                    <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="px-6 py-8 text-center">
+                {filteredPages.length === 0 ?
+                <tr>
+                    <td colSpan={Object.values(visibleColumns).filter((v) => v).length} className="px-6 py-8 text-center">
                       <p className="text-xs text-slate-500">No pages found</p>
                     </td>
-                  </tr>
-                ) : (
-                  filteredPages.map((page, index) => (
-                    <tr key={page.id} className="hover:bg-slate-50 transition-colors">
-                      {visibleColumns.si && (
-                        <td className="px-3 py-2.5">
+                  </tr> :
+
+                filteredPages.map((page, index) =>
+                <tr key={page.id} className="hover:bg-slate-50 transition-colors">
+                      {visibleColumns.si &&
+                  <td className="px-3 py-2.5">
                           <span className="text-xs text-slate-700">{index + 1}</span>
                         </td>
-                      )}
-                      {visibleColumns.pages && (
-                        <td className="px-3 py-2.5">
+                  }
+                      {visibleColumns.pages &&
+                  <td className="px-3 py-2.5">
                           <span className="text-xs text-slate-700">{page.name}</span>
                         </td>
-                      )}
-                      {visibleColumns.actions && (
-                        <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                  }
+                      {visibleColumns.actions &&
+                  <td className="px-3 py-2.5 whitespace-nowrap text-center">
                           <button
-                            type="button"
-                            onClick={() => handleEdit(page.id)}
-                            className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1 mx-auto"
-                          >
+                      type="button"
+                      onClick={() => handleEdit(page.id)}
+                      className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1 mx-auto">
+                      
                             <Pencil className="w-3 h-3" />
                             <span>Edit Content</span>
                           </button>
                         </td>
-                      )}
+                  }
                     </tr>
-                  ))
-                )}
+                )
+                }
               </tbody>
             </table>
           </div>
@@ -283,36 +283,36 @@ export default function PageMetaDataPageMetaData() {
                 Visible Columns
               </h3>
               <div className="space-y-2">
-                {Object.entries(columnsConfig).map(([key, label]) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                  >
+                {Object.entries(columnsConfig).map(([key, label]) =>
+                <label
+                  key={key}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                  
                     <input
-                      type="checkbox"
-                      checked={visibleColumns[key]}
-                      onChange={() => toggleColumn(key)}
-                      className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
-                    />
+                    type="checkbox"
+                    checked={visibleColumns[key]}
+                    onChange={() => toggleColumn(key)}
+                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+                  
                     <span className="text-xs text-slate-700">{label}</span>
-                    {visibleColumns[key] && (
-                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
-                    )}
+                    {visibleColumns[key] &&
+                  <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+                  }
                   </label>
-                ))}
+                )}
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
               <button
                 onClick={resetColumns}
-                className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Reset
               </button>
               <button
                 onClick={() => setIsSettingsOpen(false)}
-                className="px-4 py-2 text-xs font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-              >
+                className="px-4 py-2 text-xs font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+                
                 Apply
               </button>
             </div>
@@ -337,8 +337,8 @@ export default function PageMetaDataPageMetaData() {
                 value={seoData.title}
                 onChange={(e) => setSeoData({ ...seoData, title: e.target.value })}
                 placeholder="Enter page title"
-                className="w-full"
-              />
+                className="w-full" />
+              
             </div>
 
             <div className="space-y-2">
@@ -349,8 +349,8 @@ export default function PageMetaDataPageMetaData() {
                 onChange={(e) => setSeoData({ ...seoData, description: e.target.value })}
                 placeholder="Enter page description"
                 rows={3}
-                className="w-full"
-              />
+                className="w-full" />
+              
             </div>
 
             <div className="space-y-2">
@@ -360,8 +360,8 @@ export default function PageMetaDataPageMetaData() {
                 value={seoData.keywords}
                 onChange={(e) => setSeoData({ ...seoData, keywords: e.target.value })}
                 placeholder="Enter keywords (comma separated)"
-                className="w-full"
-              />
+                className="w-full" />
+              
             </div>
 
             <div className="border-t border-slate-200 pt-4">
@@ -374,8 +374,8 @@ export default function PageMetaDataPageMetaData() {
                     value={seoData.metaTitle}
                     onChange={(e) => setSeoData({ ...seoData, metaTitle: e.target.value })}
                     placeholder="Enter meta title"
-                    className="w-full"
-                  />
+                    className="w-full" />
+                  
                 </div>
 
                 <div className="space-y-2">
@@ -386,8 +386,8 @@ export default function PageMetaDataPageMetaData() {
                     onChange={(e) => setSeoData({ ...seoData, metaDescription: e.target.value })}
                     placeholder="Enter meta description"
                     rows={2}
-                    className="w-full"
-                  />
+                    className="w-full" />
+                  
                 </div>
               </div>
             </div>
@@ -402,8 +402,8 @@ export default function PageMetaDataPageMetaData() {
                     value={seoData.ogTitle}
                     onChange={(e) => setSeoData({ ...seoData, ogTitle: e.target.value })}
                     placeholder="Enter OG title"
-                    className="w-full"
-                  />
+                    className="w-full" />
+                  
                 </div>
 
                 <div className="space-y-2">
@@ -414,8 +414,8 @@ export default function PageMetaDataPageMetaData() {
                     onChange={(e) => setSeoData({ ...seoData, ogDescription: e.target.value })}
                     placeholder="Enter OG description"
                     rows={2}
-                    className="w-full"
-                  />
+                    className="w-full" />
+                  
                 </div>
 
                 <div className="space-y-2">
@@ -425,8 +425,8 @@ export default function PageMetaDataPageMetaData() {
                     value={seoData.ogImage}
                     onChange={(e) => setSeoData({ ...seoData, ogImage: e.target.value })}
                     placeholder="Enter OG image URL"
-                    className="w-full"
-                  />
+                    className="w-full" />
+                  
                 </div>
               </div>
             </div>
@@ -434,23 +434,23 @@ export default function PageMetaDataPageMetaData() {
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
               <button
                 onClick={() => {
-                  setIsEditDialogOpen(false)
-                  setEditingPage(null)
+                  setIsEditDialogOpen(false);
+                  setEditingPage(null);
                 }}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Cancel
               </button>
               <button
                 onClick={handleSaveSEO}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all">
+                
                 Save Changes
               </button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

@@ -7,9 +7,9 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
  * POST /api/delivery/support-tickets
  */
 export const createSupportTicket = asyncHandler(async (req, res) => {
-  console.log('Creating support ticket, request body:', req.body);
-  console.log('Delivery partner:', req.delivery ? { _id: req.delivery._id, name: req.delivery.name, phone: req.delivery.phone } : 'Not found');
-  
+
+
+
   const { subject, description, category, priority } = req.body;
   const delivery = req.delivery; // From authenticate middleware
 
@@ -37,8 +37,8 @@ export const createSupportTicket = asyncHandler(async (req, res) => {
   }
 
   // Normalize category and priority
-  const normalizedCategory = (category && category.trim()) ? category.trim() : 'other';
-  const normalizedPriority = (priority && priority.trim()) ? priority.trim() : 'medium';
+  const normalizedCategory = category && category.trim() ? category.trim() : 'other';
+  const normalizedPriority = priority && priority.trim() ? priority.trim() : 'medium';
 
   try {
     const ticket = await DeliverySupportTicket.create({
@@ -52,7 +52,7 @@ export const createSupportTicket = asyncHandler(async (req, res) => {
       status: 'open'
     });
 
-    console.log('Ticket created successfully:', ticket.ticketId);
+
     return successResponse(res, 201, 'Support ticket created successfully', ticket);
   } catch (error) {
     console.error('Error creating support ticket:', error);
@@ -62,16 +62,16 @@ export const createSupportTicket = asyncHandler(async (req, res) => {
       code: error.code,
       errors: error.errors
     });
-    
+
     // Handle specific MongoDB errors
     if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message).join(', ');
+      const errors = Object.values(error.errors).map((err) => err.message).join(', ');
       return errorResponse(res, 400, `Validation error: ${errors}`);
     }
-    
+
     if (error.code === 11000) {
       // Duplicate key error (likely ticketId) - retry once
-      console.log('Duplicate ticketId detected, retrying...');
+
       try {
         const ticket = await DeliverySupportTicket.create({
           deliveryId: delivery._id,
@@ -83,14 +83,14 @@ export const createSupportTicket = asyncHandler(async (req, res) => {
           priority: normalizedPriority,
           status: 'open'
         });
-        console.log('Retry successful, ticket created:', ticket.ticketId);
+
         return successResponse(res, 201, 'Support ticket created successfully', ticket);
       } catch (retryError) {
         console.error('Retry failed:', retryError);
         return errorResponse(res, 500, 'Failed to create ticket. Please try again.');
       }
     }
-    
+
     // Re-throw to be handled by asyncHandler
     throw error;
   }
@@ -115,11 +115,11 @@ export const getDeliveryTickets = asyncHandler(async (req, res) => {
 
     const total = await DeliverySupportTicket.countDocuments(query);
 
-    const tickets = await DeliverySupportTicket.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    const tickets = await DeliverySupportTicket.find(query).
+    sort({ createdAt: -1 }).
+    skip(skip).
+    limit(limitNum).
+    lean();
 
     return successResponse(res, 200, 'Tickets retrieved successfully', {
       tickets,
@@ -182,12 +182,12 @@ export const getAllTickets = asyncHandler(async (req, res) => {
     }
     if (search) {
       query.$or = [
-        { subject: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { ticketId: { $regex: search, $options: 'i' } },
-        { deliveryName: { $regex: search, $options: 'i' } },
-        { deliveryPhone: { $regex: search, $options: 'i' } }
-      ];
+      { subject: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+      { ticketId: { $regex: search, $options: 'i' } },
+      { deliveryName: { $regex: search, $options: 'i' } },
+      { deliveryPhone: { $regex: search, $options: 'i' } }];
+
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -195,16 +195,16 @@ export const getAllTickets = asyncHandler(async (req, res) => {
 
     const total = await DeliverySupportTicket.countDocuments(query);
 
-    const tickets = await DeliverySupportTicket.find(query)
-      .populate('deliveryId', 'name phone deliveryId')
-      .populate('respondedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    const tickets = await DeliverySupportTicket.find(query).
+    populate('deliveryId', 'name phone deliveryId').
+    populate('respondedBy', 'name email').
+    sort({ createdAt: -1 }).
+    skip(skip).
+    limit(limitNum).
+    lean();
 
     // Add deliveryId from populated deliveryId field
-    tickets.forEach(ticket => {
+    tickets.forEach((ticket) => {
       if (ticket.deliveryId && typeof ticket.deliveryId === 'object') {
         ticket.deliveryBoyId = ticket.deliveryId.deliveryId || ticket.deliveryId._id?.toString().slice(-6) || 'N/A';
       }
@@ -233,10 +233,10 @@ export const getTicketByIdAdmin = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
-    const ticket = await DeliverySupportTicket.findById(id)
-      .populate('deliveryId', 'name phone deliveryId')
-      .populate('respondedBy', 'name email')
-      .lean();
+    const ticket = await DeliverySupportTicket.findById(id).
+    populate('deliveryId', 'name phone deliveryId').
+    populate('respondedBy', 'name email').
+    lean();
 
     if (!ticket) {
       return errorResponse(res, 404, 'Ticket not found');
@@ -287,10 +287,10 @@ export const updateTicket = asyncHandler(async (req, res) => {
       id,
       { $set: updateData },
       { new: true, runValidators: true }
-    )
-      .populate('deliveryId', 'name phone deliveryId')
-      .populate('respondedBy', 'name email')
-      .lean();
+    ).
+    populate('deliveryId', 'name phone deliveryId').
+    populate('respondedBy', 'name email').
+    lean();
 
     return successResponse(res, 200, 'Ticket updated successfully', updatedTicket);
   } catch (error) {
@@ -323,4 +323,3 @@ export const getTicketStats = asyncHandler(async (req, res) => {
     return errorResponse(res, 500, 'Failed to fetch statistics');
   }
 });
-

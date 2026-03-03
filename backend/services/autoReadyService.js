@@ -13,9 +13,9 @@ export async function processAutoReadyOrders() {
       status: 'preparing',
       'tracking.preparing.timestamp': { $exists: true },
       estimatedDeliveryTime: { $exists: true, $gt: 0 }
-    })
-      .populate('deliveryPartnerId', 'name phone')
-      .lean();
+    }).
+    populate('deliveryPartnerId', 'name phone').
+    lean();
 
     if (preparingOrders.length === 0) {
       return { processed: 0, message: 'No preparing orders to check' };
@@ -52,23 +52,23 @@ export async function processAutoReadyOrders() {
               }
             },
             { new: true }
-          )
-            .populate('restaurantId', 'name location address phone')
-            .populate('userId', 'name phone')
-            .populate('deliveryPartnerId', 'name phone')
-            .lean();
+          ).
+          populate('restaurantId', 'name location address phone').
+          populate('userId', 'name phone').
+          populate('deliveryPartnerId', 'name phone').
+          lean();
 
           if (updatedOrder) {
             readyOrders.push(updatedOrder);
             processedCount++;
 
-            console.log(`✅ Order ${order.orderId} automatically marked as ready (ETA elapsed: ${elapsedMinutes} mins >= ${estimatedTime} mins)`);
+
 
             // Notify delivery boy if order is assigned
             if (updatedOrder.deliveryPartnerId) {
               try {
                 await notifyDeliveryBoyOrderReady(updatedOrder, updatedOrder.deliveryPartnerId._id || updatedOrder.deliveryPartnerId);
-                console.log(`📢 Notified delivery boy ${updatedOrder.deliveryPartnerId._id || updatedOrder.deliveryPartnerId} about order ${order.orderId} being ready`);
+
               } catch (notifError) {
                 console.error(`❌ Error notifying delivery boy about order ${order.orderId}:`, notifError);
               }
@@ -82,13 +82,12 @@ export async function processAutoReadyOrders() {
 
     return {
       processed: processedCount,
-      message: processedCount > 0 
-        ? `Marked ${processedCount} order(s) as ready automatically`
-        : 'No orders ready yet'
+      message: processedCount > 0 ?
+      `Marked ${processedCount} order(s) as ready automatically` :
+      'No orders ready yet'
     };
   } catch (error) {
     console.error('❌ Error processing auto-ready orders:', error);
     return { processed: 0, message: `Error: ${error.message}` };
   }
 }
-

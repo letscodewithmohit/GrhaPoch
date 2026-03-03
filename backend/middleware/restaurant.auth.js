@@ -32,7 +32,7 @@ export const authenticate = async (req, res, next) => {
       console.error('❌ Restaurant not found in database:', {
         userId: decoded.userId,
         role: decoded.role,
-        email: decoded.email,
+        email: decoded.email
       });
       return errorResponse(res, 401, 'Restaurant not found');
     }
@@ -54,63 +54,63 @@ export const authenticate = async (req, res, next) => {
     // - baseUrl: /auth (if mounted)
     // /owner/me is directly under /api/restaurant, so reqPath would be /owner/me
     const isProfileRoute = requestPath.includes('/auth/me') || requestPath.includes('/auth/reverify') ||
-      requestPath.includes('/owner/me') ||
-      reqPath === '/me' || reqPath === '/reverify' || reqPath === '/owner/me' ||
-      (baseUrl.includes('/auth') && (reqPath === '/me' || reqPath === '/reverify'));
+    requestPath.includes('/owner/me') ||
+    reqPath === '/me' || reqPath === '/reverify' || reqPath === '/owner/me' ||
+    baseUrl.includes('/auth') && (reqPath === '/me' || reqPath === '/reverify');
 
     // Check for menu routes - restaurants need to access menu even when inactive
     // They might need to set up menu during onboarding or after approval
     // Routes: /api/restaurant/menu, /api/restaurant/menu/section, /api/restaurant/menu/item/schedule, etc.
     const isMenuRoute = requestPath.includes('/menu') ||
-      reqPath === '/menu' ||
-      reqPath.startsWith('/menu/') ||
-      baseUrl.includes('/menu');
+    reqPath === '/menu' ||
+    reqPath.startsWith('/menu/') ||
+    baseUrl.includes('/menu');
 
     // Check for inventory routes - restaurants need to manage inventory even when inactive
     const isInventoryRoute = requestPath.includes('/inventory') ||
-      reqPath === '/inventory' ||
-      reqPath.startsWith('/inventory/');
+    reqPath === '/inventory' ||
+    reqPath.startsWith('/inventory/');
 
     // Check for subscription routes - restaurants need to pay to activate account
     const isSubscriptionRoute = requestPath.includes('/subscription') ||
-      reqPath === '/subscription' ||
-      reqPath.startsWith('/subscription/');
+    reqPath === '/subscription' ||
+    reqPath.startsWith('/subscription/');
 
     // Check for dining table routes
     const isDiningTableRoute = requestPath.includes('/dining-tables') ||
-      reqPath === '/dining-tables' ||
-      reqPath.startsWith('/dining-tables/');
+    reqPath === '/dining-tables' ||
+    reqPath.startsWith('/dining-tables/');
 
     // Check for dining settings routes
     const isDiningSettingsRoute = requestPath.includes('/dining-settings') ||
-      reqPath === '/dining-settings' ||
-      reqPath.startsWith('/dining-settings/');
+    reqPath === '/dining-settings' ||
+    reqPath.startsWith('/dining-settings/');
 
     // Check for dining activation routes
     const isDiningActivationRoute = requestPath.includes('/dining-activation') ||
-      reqPath === '/dining-activation' ||
-      reqPath.startsWith('/dining-activation/');
+    reqPath === '/dining-activation' ||
+    reqPath.startsWith('/dining-activation/');
 
     // Debug logging for inactive restaurants
-    if (!restaurant.isActive) {
-      console.log('🔍 Inactive restaurant route check:', {
-        restaurantId: restaurant._id,
-        restaurantName: restaurant.name,
-        isActive: restaurant.isActive,
-        requestPath,
-        reqPath,
-        baseUrl,
-        isOnboardingRoute,
-        isProfileRoute,
-        isMenuRoute,
-        isInventoryRoute,
-        isSubscriptionRoute,
-        isDiningTableRoute,
-        isDiningSettingsRoute,
-        isDiningActivationRoute,
-        willAllow: isOnboardingRoute || isProfileRoute || isMenuRoute || isInventoryRoute || isSubscriptionRoute || isDiningTableRoute || isDiningSettingsRoute || isDiningActivationRoute
-      });
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Allow essential routes even if inactive
     if (!restaurant.isActive && !isOnboardingRoute && !isProfileRoute && !isMenuRoute && !isInventoryRoute && !isSubscriptionRoute && !isDiningTableRoute && !isDiningSettingsRoute && !isDiningActivationRoute) {
@@ -146,4 +146,3 @@ export const authenticate = async (req, res, next) => {
 };
 
 export default { authenticate };
-

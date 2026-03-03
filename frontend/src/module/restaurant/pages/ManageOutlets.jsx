@@ -1,55 +1,55 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Info } from "lucide-react"
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Info } from "lucide-react";
 
 export default function ManageOutlets() {
-  const navigate = useNavigate()
-  const [showToast, setShowToast] = useState(false)
+  const navigate = useNavigate();
+  const [showToast, setShowToast] = useState(false);
 
   const options = [
-    "Timings",
-    "Contacts",
-    "FSSAI Food License",
-    "Bank account details",
-    "Profile picture",
-    "Name, address, location",
-    "Ratings, reviews",
-    "Delivery area changes",
-  ]
+  "Timings",
+  "Contacts",
+  "FSSAI Food License",
+  "Bank account details",
+  "Profile picture",
+  "Name, address, location",
+  "Ratings, reviews",
+  "Delivery area changes"];
+
 
   const handleOptionClick = (option) => {
     // Navigate based on option selected
     switch (option) {
       case "Timings":
-        navigate("/restaurant/outlet-timings")
-        break
+        navigate("/restaurant/outlet-timings");
+        break;
       case "Contacts":
-        navigate("/restaurant/contact-details")
-        break
+        navigate("/restaurant/contact-details");
+        break;
       case "FSSAI Food License":
-        navigate("/restaurant/fssai")
-        break
+        navigate("/restaurant/fssai");
+        break;
       case "Bank account details":
-        navigate("/restaurant/update-bank-details")
-        break
+        navigate("/restaurant/update-bank-details");
+        break;
       case "Profile picture":
-        navigate("/restaurant/outlet-info")
-        break
+        navigate("/restaurant/outlet-info");
+        break;
       case "Name, address, location":
-        navigate("/restaurant/outlet-info")
-        break
+        navigate("/restaurant/outlet-info");
+        break;
       case "Ratings, reviews":
-        navigate("/restaurant/ratings-reviews")
-        break
+        navigate("/restaurant/ratings-reviews");
+        break;
       case "Delivery area changes":
-        setShowToast(true)
-        setTimeout(() => setShowToast(false), 5000)
-        break
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 5000);
+        break;
       default:
-        console.log(`${option} clicked`)
+
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -58,8 +58,8 @@ export default function ManageOutlets() {
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-full hover:bg-gray-100"
-          aria-label="Back"
-        >
+          aria-label="Back">
+          
           <ArrowLeft className="w-5 h-5 text-gray-900" />
         </button>
         <h1 className="text-lg font-bold text-gray-900">Restaurant</h1>
@@ -75,41 +75,41 @@ export default function ManageOutlets() {
           
           {/* Options List */}
           <div className="divide-y divide-gray-200 ">
-            {options.map((option, idx) => (
-              <button
-                key={option}
-                onClick={() => handleOptionClick(option)}
-                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
-              >
+            {options.map((option, idx) =>
+            <button
+              key={option}
+              onClick={() => handleOptionClick(option)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors">
+              
                 <span className="text-sm font-semibold text-gray-900">{option}</span>
                 <span className="text-gray-500">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
+                  <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2">
+                  
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </span>
               </button>
-            ))}
+            )}
           </div>
         </div>
       </div>
 
       {/* Toast Notification */}
       <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 w-full max-w-md"
-          >
+        {showToast &&
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 w-full max-w-md">
+          
             <div className="bg-white border border-gray-200 px-4 py-4 rounded-lg shadow-2xl">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
@@ -124,9 +124,8 @@ export default function ManageOutlets() {
               </div>
             </div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
-    </div>
-  )
-}
+    </div>);
 
+}

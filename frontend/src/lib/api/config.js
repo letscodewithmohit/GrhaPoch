@@ -72,9 +72,9 @@ try {
     new URL(fixedUrl);
     console.warn('⚠️ Consider using fixed URL:', fixedUrl);
   } catch (e) {
+
     // Still invalid, keep original
-  }
-}
+  }}
 
 // Validate API base URL
 if (API_BASE_URL.includes('5173')) {
@@ -84,11 +84,11 @@ if (API_BASE_URL.includes('5173')) {
 }
 
 // Log API base URL in both development and production for debugging
-console.log('🌐 API Base URL:', API_BASE_URL);
-console.log('🌐 Backend URL:', API_BASE_URL.replace('/api', ''));
-console.log('🌐 Frontend URL:', window.location.origin);
-console.log('🌐 Environment:', import.meta.env.MODE);
-console.log('🌐 VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL || 'Not set (using default)');
+
+
+
+
+
 
 // Warn if API_BASE_URL is localhost in production
 if (import.meta.env.MODE === 'production' && API_BASE_URL.includes('localhost')) {
@@ -108,7 +108,7 @@ export const API_ENDPOINTS = {
     FIREBASE_GOOGLE_LOGIN: '/auth/firebase/google-login',
     REFRESH_TOKEN: '/auth/refresh-token',
     LOGOUT: '/auth/logout',
-    ME: '/auth/me',
+    ME: '/auth/me'
   },
   // User endpoints
   USER: {
@@ -121,16 +121,16 @@ export const API_ENDPOINTS = {
     COMPLAINTS: '/user/complaints',
     COMPLAINT_BY_ID: '/user/complaints/:id',
     DONATION_CREATE: '/user/donation/create',
-    DONATION_VERIFY: '/user/donation/verify',
+    DONATION_VERIFY: '/user/donation/verify'
   },
   // Location endpoints
   LOCATION: {
     REVERSE_GEOCODE: '/location/reverse',
-    NEARBY: '/location/nearby',
+    NEARBY: '/location/nearby'
   },
   // Zone endpoints
   ZONE: {
-    DETECT: '/zones/detect', // Public endpoint for zone detection
+    DETECT: '/zones/detect' // Public endpoint for zone detection
   },
   // Restaurant endpoints
   RESTAURANT: {
@@ -144,7 +144,7 @@ export const API_ENDPOINTS = {
       LOGOUT: '/restaurant/auth/logout',
       ME: '/restaurant/auth/me',
       REVERIFY: '/restaurant/auth/reverify',
-      RESET_PASSWORD: '/restaurant/auth/reset-password',
+      RESET_PASSWORD: '/restaurant/auth/reset-password'
     },
     PROFILE: '/restaurant/profile',
     DELIVERY_STATUS: '/restaurant/delivery-status',
@@ -199,15 +199,15 @@ export const API_ENDPOINTS = {
       REQUEST: '/restaurant/dining-activation/request',
       ENABLE_FREE: '/restaurant/dining-activation/enable-free',
       CREATE_ORDER: '/restaurant/dining-activation/create-order',
-      VERIFY_PAYMENT: '/restaurant/dining-activation/verify-payment',
+      VERIFY_PAYMENT: '/restaurant/dining-activation/verify-payment'
     },
     SUBSCRIPTION: {
       CREATE_ORDER: '/restaurant/subscription/create-order',
       VERIFY_PAYMENT: '/restaurant/subscription/verify-payment',
       STATUS: '/restaurant/subscription/status',
-      PLANS: '/restaurant/subscription/plans',
+      PLANS: '/restaurant/subscription/plans'
 
-    },
+    }
   },
   // Delivery endpoints
   DELIVERY: {
@@ -216,11 +216,11 @@ export const API_ENDPOINTS = {
       VERIFY_OTP: '/delivery/auth/verify-otp',
       REFRESH_TOKEN: '/delivery/auth/refresh-token',
       LOGOUT: '/delivery/auth/logout',
-      ME: '/delivery/auth/me',
+      ME: '/delivery/auth/me'
     },
     SIGNUP: {
       DETAILS: '/delivery/signup/details',
-      DOCUMENTS: '/delivery/signup/documents',
+      DOCUMENTS: '/delivery/signup/documents'
     },
     DASHBOARD: '/delivery/dashboard',
     WALLET: '/delivery/wallet',
@@ -249,7 +249,7 @@ export const API_ENDPOINTS = {
     REVERIFY: '/delivery/reverify',
     EMERGENCY_HELP: '/delivery/emergency-help',
     SUPPORT_TICKETS: '/delivery/support-tickets',
-    SUPPORT_TICKET_BY_ID: '/delivery/support-tickets/:id',
+    SUPPORT_TICKET_BY_ID: '/delivery/support-tickets/:id'
   },
   // Admin endpoints
   ADMIN: {
@@ -258,7 +258,7 @@ export const API_ENDPOINTS = {
       SIGNUP_OTP: '/admin/auth/signup/otp',
       LOGIN: '/admin/auth/login',
       LOGOUT: '/admin/auth/logout',
-      ME: '/admin/auth/me',
+      ME: '/admin/auth/me'
     },
     PROFILE: '/admin/profile',
     CHANGE_PASSWORD: '/admin/settings/change-password',
@@ -379,7 +379,7 @@ export const API_ENDPOINTS = {
     OFFERS: '/admin/offers',
     ZONES: '/admin/zones',
     ZONE_BY_ID: '/admin/zones/:id',
-    ZONE_STATUS: '/admin/zones/:id/status',
+    ZONE_STATUS: '/admin/zones/:id/status'
   },
   // Order endpoints
   ORDER: {
@@ -389,23 +389,23 @@ export const API_ENDPOINTS = {
     UPDATE_STATUS: '/order/:id/status',
     VERIFY_PAYMENT: '/order/verify-payment',
     CALCULATE: '/order/calculate',
-    CANCEL: '/order/:id/cancel',
+    CANCEL: '/order/:id/cancel'
   },
   // Payment endpoints
   PAYMENT: {
     METHODS: '/payment/methods',
     PROCESS: '/payment/process',
-    WALLET: '/payment/wallet',
+    WALLET: '/payment/wallet'
   },
   // Menu endpoints
   MENU: {
     CATEGORIES: '/menu/categories',
     ITEMS: '/menu/items',
-    SEARCH: '/menu/search',
+    SEARCH: '/menu/search'
   },
   // Upload / media endpoints
   UPLOAD: {
-    MEDIA: '/upload/media',
+    MEDIA: '/upload/media'
   },
   // Hero Banner endpoints
   HERO_BANNER: {
@@ -416,7 +416,7 @@ export const API_ENDPOINTS = {
     UPDATE_ORDER: '/hero-banners/:id/order',
     TOGGLE_STATUS: '/hero-banners/:id/status',
     TOP_10_PUBLIC: '/hero-banners/top-10/public',
-    GOURMET_PUBLIC: '/hero-banners/gourmet/public',
+    GOURMET_PUBLIC: '/hero-banners/gourmet/public'
   },
   // Dining endpoints
   DINING: {
@@ -427,12 +427,11 @@ export const API_ENDPOINTS = {
     BANK_OFFERS: '/dining/bank-offers',
     MUST_TRIES: '/dining/must-tries',
     OFFER_BANNERS: '/dining/offer-banners',
-    STORIES: '/dining/stories',
-  },
+    STORIES: '/dining/stories'
+  }
 };
 
 export default {
   API_BASE_URL,
-  API_ENDPOINTS,
+  API_ENDPOINTS
 };
-
