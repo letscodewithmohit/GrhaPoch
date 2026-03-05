@@ -124,6 +124,8 @@ export const activateSubscriptionTx = async ({
 
   const now = new Date(paymentDate || Date.now());
   const { startDate, endDate, isRenewing } = buildSubscriptionDates({ restaurant, plan, now });
+  const requiresAdminApproval = !restaurant.isActive;
+  const nextSubscriptionStatus = requiresAdminApproval ? 'pending_approval' : 'active';
 
   if (isRenewing) {
     appendRenewedHistory({ restaurant, now });
@@ -132,14 +134,15 @@ export const activateSubscriptionTx = async ({
   restaurant.subscription = {
     planId: plan._id.toString(),
     planName: plan.name,
-    status: 'active',
+    status: nextSubscriptionStatus,
     startDate,
     endDate,
     paymentId: razorpayPaymentId || '',
     orderId: razorpayOrderId
   };
   restaurant.businessModel = 'Subscription Base';
-  restaurant.isActive = true;
+  // Keep newly registered restaurants inactive until admin approval.
+  restaurant.isActive = requiresAdminApproval ? false : true;
   await restaurant.save({ session });
 
   await RestaurantCommission.updateOne(
@@ -471,7 +474,13 @@ export const verifyPaymentAndActivate = async (req, res) => {
       await session.endSession();
     }
 
-    return successResponse(res, 200, 'Subscription activated successfully', {
+    const activatedSubscription = activationResult?.subscription || restaurant.subscription;
+    const pendingApproval = activatedSubscription?.status === 'pending_approval';
+    const successMessage = pendingApproval ?
+    'Subscription payment verified. Waiting for admin approval.' :
+    'Subscription activated successfully';
+
+    return successResponse(res, 200, successMessage, {
       subscription: activationResult?.subscription || restaurant.subscription
     });
   } catch (error) {

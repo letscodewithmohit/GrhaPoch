@@ -155,9 +155,9 @@ export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddre
 
 
   // 2. Dynamic distance-based calculation
-  const distance = distanceInKm ?? calculateDistance(restaurant, deliveryAddress);
+  const distance = distanceInKm ?? await calculateDeliveryDistance(restaurant, deliveryAddress);
 
-  if (distance !== null) {
+  if (distance !== null && Number.isFinite(distance)) {
     try {
       const commissionResult = await DeliveryBoyCommission.calculateCommission(distance);
       if (commissionResult && commissionResult.commission > 0) {
@@ -242,10 +242,18 @@ export const calculatePlatformFee = async (distanceInKm = null) => {
 /**
  * Calculate GST (Goods and Services Tax)
  * GST is calculated on subtotal after discounts
- * NOTE: Currently set to 0 as per client request
  */
 export const calculateGST = async (subtotal, discount = 0) => {
-  return 0; // GST for now Zero
+  try {
+    const feeSettings = await getFeeSettings();
+    const gstRate = Number(feeSettings?.gstRate) || 0;
+    const taxableAmount = Math.max(0, Number(subtotal || 0) - Number(discount || 0));
+    const gstAmount = (taxableAmount * gstRate) / 100;
+    return Math.round(gstAmount * 100) / 100;
+  } catch (error) {
+    console.error('Error calculating GST:', error);
+    return 0;
+  }
 };
 
 /**

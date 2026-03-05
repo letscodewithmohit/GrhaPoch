@@ -1805,16 +1805,6 @@ export const orderAPI = {
     return apiClient.patch(API_ENDPOINTS.ORDER.CANCEL.replace(':id', orderId), { reason });
   },
 
-  // Add tip to order
-  addOrderTip: (orderId, tip) => {
-    return apiClient.patch(`/order/${orderId}/tip`, { tip });
-  },
-  initiateTipPayment: (orderId, tip) => {
-    return apiClient.post(`/order/${orderId}/tip/initiate`, { tip });
-  },
-  verifyTipPayment: (paymentData) => {
-    return apiClient.post(`/order/tip/verify`, paymentData);
-  },
 };
 
 // Export dining API helper functions

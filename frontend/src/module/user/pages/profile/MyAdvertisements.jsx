@@ -101,6 +101,30 @@ const buildFilterCountsFromAdvertisements = (advertisements) => {
   return base
 }
 
+const normalizeSubmitError = (message) => {
+  const text = String(message || "").toLowerCase()
+  if (text.includes("overlap")) return "Dates overlap. Choose different dates."
+  if (text.includes("2mb") || text.includes("file size")) return "Banner file size must be 2MB or less."
+  if (text.includes("dimensions")) return "Banner dimensions too small. Minimum 1200x500 required."
+  if (text.includes("aspect ratio") || text.includes("2.4:1")) {
+    return "Banner aspect ratio must be around 2.4:1 (for example 1200x500)."
+  }
+  if (text.includes("only image") || text.includes("image banner")) return "Only JPG/PNG image banner is allowed."
+  return message || "Failed to submit advertisement request"
+}
+
+const isBannerRelatedError = (message) => {
+  const text = String(message || "").toLowerCase()
+  return (
+    text.includes("banner") ||
+    text.includes("image") ||
+    text.includes("aspect ratio") ||
+    text.includes("dimensions") ||
+    text.includes("2mb") ||
+    text.includes("file size")
+  )
+}
+
 export default function MyAdvertisements() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -131,6 +155,10 @@ export default function MyAdvertisements() {
     if (!Number.isFinite(selectedDays) || selectedDays <= 0) return 0
     return Number((selectedDays * pricePerDay).toFixed(2))
   }, [selectedDays, pricePerDay])
+  const bannerErrorMessage = useMemo(
+    () => (isBannerRelatedError(errorMessage) ? errorMessage : ""),
+    [errorMessage]
+  )
 
   const overlappingBookedRanges = useMemo(() => {
     return bookedRanges.filter((range) =>
@@ -149,7 +177,6 @@ export default function MyAdvertisements() {
         userAdvertisementAPI.getUserAdvertisementPricing(),
         userAdvertisementAPI.getMyAdvertisements({ status: "all" }),
         userAdvertisementAPI.getMyAdvertisementBookedDates({
-          position: "home_top",
           startDate: tomorrow,
           endDate: toDateInputValue(rangeEndDate),
         }),
@@ -303,7 +330,7 @@ export default function MyAdvertisements() {
       setFormOpen(false)
       await loadData()
     } catch (error) {
-      setErrorMessage(error?.response?.data?.message || "Failed to submit advertisement request")
+      setErrorMessage(normalizeSubmitError(error?.response?.data?.message))
     } finally {
       setCreating(false)
     }
@@ -393,6 +420,9 @@ export default function MyAdvertisements() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Banner Image</label>
+                <p className="text-[11px] text-gray-500 mb-2">
+                  Accepted: JPG/PNG | Ratio: 2.4:1 | Min: 1200x500 | Max size: 2MB
+                </p>
                 <label className="border-2 border-dashed border-gray-300 rounded-lg p-3 block cursor-pointer hover:border-gray-500">
                   <input type="file" accept="image/*" onChange={handleBannerChange} className="hidden" />
                   {bannerPreview ? (
@@ -404,6 +434,7 @@ export default function MyAdvertisements() {
                     </div>
                   )}
                 </label>
+                {bannerErrorMessage && <p className="text-xs text-red-600 mt-2">{bannerErrorMessage}</p>}
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <p className="text-xs font-semibold text-amber-900">Booked Dates (Cannot Select)</p>

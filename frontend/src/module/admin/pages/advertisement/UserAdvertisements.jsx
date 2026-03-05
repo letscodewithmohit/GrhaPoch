@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Search, CheckCircle2, XCircle, Eye } from "lucide-react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { userAdvertisementAPI } from "@/lib/api"
 
 const ITEMS_PER_PAGE = 10
+const AUTO_REFRESH_INTERVAL_MS = 30000
 
 const parseTabFromSearch = (search) => {
   const allowed = new Set(["pending", "active", "rejected", "history", "list"])
@@ -83,21 +84,35 @@ export default function UserAdvertisements() {
   const [rejectTargetId, setRejectTargetId] = useState("")
   const [isRejecting, setIsRejecting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const rowsFetchPromiseRef = useRef(null)
 
-  const loadRows = async () => {
-    setLoading(true)
-    try {
-      const response = await userAdvertisementAPI.getAdminUserAdvertisements({ status: "all" })
-      const list = response?.data?.data?.advertisements || []
-      setRows(list.map(mapRow))
-      setErrorMessage("")
-    } catch (error) {
-      setRows([])
-      setErrorMessage(error?.response?.data?.message || "Failed to load user advertisements")
-    } finally {
-      setLoading(false)
+  const loadRows = useCallback(async ({ silent = false } = {}) => {
+    if (rowsFetchPromiseRef.current) {
+      return rowsFetchPromiseRef.current
     }
-  }
+
+    if (!silent) setLoading(true)
+
+    const task = (async () => {
+      try {
+        const response = await userAdvertisementAPI.getAdminUserAdvertisements({ status: "all" })
+        const list = response?.data?.data?.advertisements || []
+        setRows(list.map(mapRow))
+        setErrorMessage("")
+      } catch (error) {
+        if (!silent) {
+          setRows([])
+          setErrorMessage(error?.response?.data?.message || "Failed to load user advertisements")
+        }
+      } finally {
+        if (!silent) setLoading(false)
+        rowsFetchPromiseRef.current = null
+      }
+    })()
+
+    rowsFetchPromiseRef.current = task
+    return task
+  }, [])
 
   const loadPricing = async () => {
     setPriceLoading(true)
@@ -115,7 +130,27 @@ export default function UserAdvertisements() {
   useEffect(() => {
     loadRows()
     loadPricing()
-  }, [])
+  }, [loadRows])
+
+  useEffect(() => {
+    const runAutoRefresh = () => {
+      if (document.visibilityState !== "visible") return
+      loadRows({ silent: true })
+    }
+
+    const intervalId = setInterval(runAutoRefresh, AUTO_REFRESH_INTERVAL_MS)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        runAutoRefresh()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      clearInterval(intervalId)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [loadRows])
 
   useEffect(() => {
     setActiveTab(parseTabFromSearch(location.search))

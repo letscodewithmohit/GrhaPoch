@@ -402,8 +402,12 @@ export const createOrder = async (req, res) => {
         canonicalDistanceKm = serverPricing.distance;
       }
     } catch (pricingValidationError) {
-      // Log but don't block — pricing service failure shouldn't block orders
-      logger.error('❌ Server-side pricing validation failed (non-blocking):', pricingValidationError.message);
+      logger.error('❌ Server-side pricing validation failed:', pricingValidationError.message);
+      return res.status(503).json({
+        success: false,
+        message: 'Unable to validate order pricing right now. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? pricingValidationError.message : undefined
+      });
     }
     // ─────────────────────────────────────────────────────────────────────────
 

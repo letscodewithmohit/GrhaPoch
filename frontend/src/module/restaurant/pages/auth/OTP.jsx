@@ -250,9 +250,16 @@ export default function RestaurantOTP() {
         sessionStorage.removeItem("restaurantAuthData");
 
         setTimeout(async () => {
-
-          // Onboarding redirect disabled as requested
-          navigate("/restaurant", { replace: true });
+          try {
+            const incompleteStep = await checkOnboardingStatus();
+            if (incompleteStep) {
+              navigate(`/restaurant/onboarding?step=${incompleteStep}`, { replace: true });
+            } else {
+              navigate("/restaurant", { replace: true });
+            }
+          } catch {
+            navigate("/restaurant", { replace: true });
+          }
         }, 500);
       }
     } catch (err) {

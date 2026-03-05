@@ -55,6 +55,9 @@ export const getRestaurantCommissions = asyncHandler(async (req, res) => {
     // Add serial numbers
     const commissionsWithSl = commissions.map((commission, index) => ({
       ...commission,
+      // Backward-compatible fallback for legacy commission docs
+      restaurantName: commission.restaurantName || commission.restaurant?.name || '',
+      restaurantId: commission.restaurantId || commission.restaurant?.restaurantId || '',
       sl: skip + index + 1
     }));
 

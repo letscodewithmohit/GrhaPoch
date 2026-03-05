@@ -213,7 +213,17 @@ restaurantCommissionSchema.statics.calculateCommissionForOrder = async function 
   const Restaurant = mongoose.model('Restaurant');
   const restaurant = await Restaurant.findById(restaurantId).select('businessModel subscription');
 
-  if (restaurant && restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
+  const now = new Date();
+  const hasActiveSubscription =
+    restaurant &&
+    restaurant.businessModel === 'Subscription Base' &&
+    restaurant.subscription?.status === 'active' &&
+    (
+      !restaurant.subscription?.endDate ||
+      new Date(restaurant.subscription.endDate) > now
+    );
+
+  if (hasActiveSubscription) {
     return {
       commission: 0,
       type: 'percentage',

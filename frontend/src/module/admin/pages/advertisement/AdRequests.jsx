@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Search, CheckCircle2, XCircle, Eye } from "lucide-react"
 import { campaignAPI } from "@/lib/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useLocation, useNavigate } from "react-router-dom"
 
 const ITEMS_PER_PAGE = 10
+const AUTO_REFRESH_INTERVAL_MS = 30000
 
 const formatDate = (value) => {
   if (!value) return "-"
@@ -66,21 +67,35 @@ export default function AdRequests() {
   const [rejectTargetId, setRejectTargetId] = useState("")
   const [isRejecting, setIsRejecting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const requestsFetchPromiseRef = useRef(null)
 
-  const loadRequests = async () => {
-    setLoading(true)
-    try {
-      const response = await campaignAPI.getAdminAdvertisements({ status: "all" })
-      const list = response?.data?.data?.advertisements || []
-      setRequests(list.map(mapRow))
-      setErrorMessage("")
-    } catch (error) {
-      setRequests([])
-      setErrorMessage(error?.response?.data?.message || "Failed to load advertisement requests")
-    } finally {
-      setLoading(false)
+  const loadRequests = useCallback(async ({ silent = false } = {}) => {
+    if (requestsFetchPromiseRef.current) {
+      return requestsFetchPromiseRef.current
     }
-  }
+
+    if (!silent) setLoading(true)
+
+    const task = (async () => {
+      try {
+        const response = await campaignAPI.getAdminAdvertisements({ status: "all" })
+        const list = response?.data?.data?.advertisements || []
+        setRequests(list.map(mapRow))
+        setErrorMessage("")
+      } catch (error) {
+        if (!silent) {
+          setRequests([])
+          setErrorMessage(error?.response?.data?.message || "Failed to load advertisement requests")
+        }
+      } finally {
+        if (!silent) setLoading(false)
+        requestsFetchPromiseRef.current = null
+      }
+    })()
+
+    requestsFetchPromiseRef.current = task
+    return task
+  }, [])
 
   const loadPricing = async () => {
     setPriceLoading(true)
@@ -98,7 +113,27 @@ export default function AdRequests() {
   useEffect(() => {
     loadRequests()
     loadPricing()
-  }, [])
+  }, [loadRequests])
+
+  useEffect(() => {
+    const runAutoRefresh = () => {
+      if (document.visibilityState !== "visible") return
+      loadRequests({ silent: true })
+    }
+
+    const intervalId = setInterval(runAutoRefresh, AUTO_REFRESH_INTERVAL_MS)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        runAutoRefresh()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      clearInterval(intervalId)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [loadRequests])
 
   useEffect(() => {
     setActiveTab(parseTabFromSearch(location.search))

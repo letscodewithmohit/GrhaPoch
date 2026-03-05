@@ -12,6 +12,7 @@ import {
   cancelMyPendingUserAdvertisement,
   createUserAdvertisementPaymentOrder,
   verifyUserAdvertisementPayment,
+  handleUserAdvertisementPaymentWebhook,
   listAdminUserAdvertisements,
   getAdminUserAdvertisementById,
   getAdminUserAdvertisementPricing,
@@ -33,6 +34,7 @@ const ensureUserRole = (req, res, next) => {
   next();
 };
 
+router.post('/webhook', handleUserAdvertisementPaymentWebhook);
 router.get('/public/active', listPublicActiveUserAdvertisements);
 
 router.use('/me', authenticate, ensureUserRole);

@@ -60,6 +60,24 @@ export default function SubscriptionManagement() {
     const [expiryWarningDays, setExpiryWarningDays] = useState(5)
     const [savingSettings, setSavingSettings] = useState(false)
 
+    const buildEffectiveFeatures = (durationMonths) => {
+        const normalizedMonths = Math.max(Number(durationMonths) || 1, 1)
+        return [
+            `Plan validity: ${normalizedMonths} month${normalizedMonths > 1 ? 's' : ''}`,
+            '0% commission on orders while subscription is active',
+            'Dining activation payment waiver eligibility after dining request approval'
+        ]
+    }
+
+    const getDefaultEffectiveFeatures = (plan) => {
+        const durationMonths = Math.max(Number(plan?.durationMonths) || 1, 1)
+        return [
+            `Plan validity: ${durationMonths} month${durationMonths > 1 ? 's' : ''}`,
+            '0% commission on orders while subscription is active',
+            'Dining activation payment waiver eligibility after dining request approval'
+        ]
+    }
+
     // Fetch Initial Data
     useEffect(() => {
         fetchData()
@@ -152,7 +170,7 @@ export default function SubscriptionManagement() {
             durationMonths: plan.durationMonths,
             price: plan.price,
             description: plan.description || "",
-            features: plan.features && plan.features.length > 0 ? plan.features : [""],
+            features: buildEffectiveFeatures(plan.durationMonths),
             isPopular: plan.isPopular || false,
             isActive: plan.isActive
         })
@@ -166,7 +184,7 @@ export default function SubscriptionManagement() {
             durationMonths: "",
             price: "",
             description: "",
-            features: [""],
+            features: buildEffectiveFeatures(""),
             isPopular: false,
             isActive: true
         })
@@ -179,11 +197,7 @@ export default function SubscriptionManagement() {
             return
         }
 
-        const features = planForm.features.filter(f => f.trim() !== "")
-        if (features.length === 0) {
-            toast.error("Please add at least one feature")
-            return
-        }
+        const features = buildEffectiveFeatures(planForm.durationMonths)
 
         setSavingPlan(true)
         try {
@@ -396,7 +410,15 @@ export default function SubscriptionManagement() {
                             </Card>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {plans.map((plan) => (
+                                {plans.map((plan) => {
+                                    const sourceFeatures = Array.isArray(plan.effectiveFeatures) && plan.effectiveFeatures.length > 0
+                                        ? plan.effectiveFeatures
+                                        : getDefaultEffectiveFeatures(plan);
+                                    const planFeatures = sourceFeatures
+                                        .map((feature) => (typeof feature === 'string' ? feature.trim() : ''))
+                                        .filter(Boolean);
+
+                                    return (
                                     <Card
                                         key={plan._id}
                                         className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 ${plan.isPopular ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-indigo-100' : 'border-slate-200'
@@ -441,18 +463,24 @@ export default function SubscriptionManagement() {
                                                 <div className="h-px bg-slate-100 my-4" />
 
                                                 <div className="space-y-3 pt-2">
-                                                    {plan.features.slice(0, 4).map((feature, idx) => (
-                                                        <div key={idx} className="flex items-start gap-3">
-                                                            <div className="mt-1 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                                                <Check className="w-2.5 h-2.5 text-green-600" />
-                                                            </div>
-                                                            <span className="text-sm text-slate-600 leading-tight">{feature}</span>
-                                                        </div>
-                                                    ))}
-                                                    {plan.features.length > 4 && (
-                                                        <div className="text-xs text-slate-400 font-medium pl-7">
-                                                            + {plan.features.length - 4} more features
-                                                        </div>
+                                                    {planFeatures.length > 0 ? (
+                                                        <>
+                                                            {planFeatures.slice(0, 4).map((feature, idx) => (
+                                                                <div key={idx} className="flex items-start gap-3">
+                                                                    <div className="mt-1 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                                                        <Check className="w-2.5 h-2.5 text-green-600" />
+                                                                    </div>
+                                                                    <span className="text-sm text-slate-600 leading-tight">{feature}</span>
+                                                                </div>
+                                                            ))}
+                                                            {planFeatures.length > 4 && (
+                                                                <div className="text-xs text-slate-400 font-medium pl-7">
+                                                                    + {planFeatures.length - 4} more features
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-xs text-slate-400">No features configured</div>
                                                     )}
                                                 </div>
                                             </div>
@@ -488,7 +516,8 @@ export default function SubscriptionManagement() {
                                             </div>
                                         </CardContent>
                                     </Card>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -760,7 +789,14 @@ export default function SubscriptionManagement() {
                                     type="number"
                                     placeholder="1"
                                     value={planForm.durationMonths}
-                                    onChange={(e) => setPlanForm({ ...planForm, durationMonths: e.target.value })}
+                                    onChange={(e) => {
+                                        const nextDuration = e.target.value
+                                        setPlanForm({
+                                            ...planForm,
+                                            durationMonths: nextDuration,
+                                            features: buildEffectiveFeatures(nextDuration)
+                                        })
+                                    }}
                                     className="h-10 bg-white border-slate-200"
                                 />
                             </div>
@@ -791,43 +827,19 @@ export default function SubscriptionManagement() {
 
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Plan Features</Label>
-                                <span className="text-xs text-slate-400">{planForm.features.length} features added</span>
+                                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Effective Features</Label>
+                                <span className="text-xs text-slate-400">Auto-generated from current subscription rules</span>
                             </div>
 
-                            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                {planForm.features.map((feature, index) => (
+                            <div className="space-y-2">
+                                {buildEffectiveFeatures(planForm.durationMonths).map((feature, index) => (
                                     <div key={index} className="flex gap-2 group">
-                                        <div className="relative flex-1">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-slate-300 group-focus-within:bg-indigo-500 transition-colors"></div>
-                                            <Input
-                                                value={feature}
-                                                onChange={(e) => handleFeatureChange(index, e.target.value)}
-                                                placeholder={`Detailed feature description ${index + 1}`}
-                                                className="pl-7 border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/10"
-                                            />
+                                        <div className="relative flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                            <div className="text-sm text-slate-700">{feature}</div>
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleRemoveFeature(index)}
-                                            disabled={planForm.features.length === 1}
-                                            className="text-slate-400 hover:text-red-500 hover:bg-red-50"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </Button>
                                     </div>
                                 ))}
                             </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleAddFeature}
-                                className="w-full border-dashed border-2 border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 transition-all py-4"
-                            >
-                                <Plus className="w-4 h-4 mr-2" /> Add Another Feature
-                            </Button>
                         </div>
                     </div>
 

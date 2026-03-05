@@ -1,12 +1,13 @@
 import mongoose from 'mongoose';
 import Advertisement from '../models/Advertisement.js';
-import UserAdvertisement from '../models/UserAdvertisement.js';
 import AdvertisementSetting from '../models/AdvertisementSetting.js';
+import RazorpayWebhookEvent from '../models/RazorpayWebhookEvent.js';
 import asyncHandler from '../middleware/asyncHandler.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinaryService.js';
 import { createOrder, verifyPayment, fetchPayment } from '../services/razorpayService.js';
-import { getRazorpayCredentials } from '../utils/envService.js';
+import { getEnvVar, getRazorpayCredentials } from '../utils/envService.js';
+import crypto from 'crypto';
 
 const ALLOWED_CATEGORIES = new Set([
   'Video Promotion',
@@ -19,9 +20,41 @@ const DEFAULT_ADVERTISEMENT_PRICE_PER_DAY = Number(process.env.ADVERTISEMENT_PRI
 const ADVERTISEMENT_SETTING_KEY = 'restaurant_banner_pricing';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_BANNER_STATUSES = ['pending', 'payment_pending', 'active', 'approved', 'paused'];
-const OPEN_USER_ADVERTISEMENT_STATUSES = ['pending', 'approved', 'payment_pending', 'active'];
+const ADVERTISEMENT_WEBHOOK_EVENTS = new Set(['payment.captured', 'order.paid', 'payment.failed']);
+const BANNER_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+const BANNER_MIN_WIDTH = 1200;
+const BANNER_MIN_HEIGHT = 500;
+const BANNER_ASPECT_RATIO_TARGET = 2.4;
+const BANNER_ASPECT_RATIO_TOLERANCE = 0.15;
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
+
+const isBannerAspectRatioValid = (width, height) => {
+  if (!width || !height) return false;
+  const ratio = Number(width) / Number(height);
+  const minRatio = BANNER_ASPECT_RATIO_TARGET * (1 - BANNER_ASPECT_RATIO_TOLERANCE);
+  const maxRatio = BANNER_ASPECT_RATIO_TARGET * (1 + BANNER_ASPECT_RATIO_TOLERANCE);
+  return ratio >= minRatio && ratio <= maxRatio;
+};
+
+const getAdvertisementWebhookSecret = async () => {
+  const secretFromEnvStore = await getEnvVar('RAZORPAY_WEBHOOK_SECRET', '');
+  return String(secretFromEnvStore || process.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
+};
+
+const isWebhookSignatureValid = ({ rawBody, signature, secret }) => {
+  if (!rawBody || !signature || !secret) return false;
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+  const signatureBuffer = Buffer.from(String(signature));
+  const expectedBuffer = Buffer.from(expectedSignature);
+  return (
+    signatureBuffer.length === expectedBuffer.length &&
+    crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+  );
+};
 
 const parseDate = (value) => {
   if (!value) return null;
@@ -250,6 +283,14 @@ const uploadBanner = async (file) => {
     throw new Error('Banner image is required');
   }
 
+  if (!String(file.mimetype || '').startsWith('image/')) {
+    throw new Error('Only image banner is allowed');
+  }
+
+  if (Number(file.size || 0) > BANNER_MAX_FILE_SIZE_BYTES) {
+    throw new Error('Banner file size must be 2MB or less');
+  }
+
   const uploaded = await uploadToCloudinary(file.buffer, {
     folder: 'appzeto/advertisements/banners',
     resource_type: 'image'
@@ -257,6 +298,16 @@ const uploadBanner = async (file) => {
 
   const width = Number(uploaded.width || 0);
   const height = Number(uploaded.height || 0);
+
+  if (width < BANNER_MIN_WIDTH || height < BANNER_MIN_HEIGHT) {
+    await safeDeleteCloudinary(uploaded.public_id);
+    throw new Error(`Banner dimensions too small. Minimum ${BANNER_MIN_WIDTH}x${BANNER_MIN_HEIGHT} required`);
+  }
+
+  if (!isBannerAspectRatioValid(width, height)) {
+    await safeDeleteCloudinary(uploaded.public_id);
+    throw new Error('Banner aspect ratio must be around 2.4:1 (for example 1200x500)');
+  }
 
   return {
     url: uploaded.secure_url,
@@ -329,6 +380,7 @@ const hasOverlappingActiveAd = async ({ restaurantId, startDate, endDate, exclud
     restaurant: restaurantId,
     adType: 'restaurant_banner',
     status: 'active',
+    paymentStatus: 'paid',
     isDeleted: false,
     startDate: { $lte: endDate },
     endDate: { $gte: startDate }
@@ -346,7 +398,8 @@ const hasOverlappingBannerDateRange = async ({ restaurantId, startDate, endDate,
   const query = {
     restaurant: restaurantId,
     adType: 'restaurant_banner',
-    status: { $in: OPEN_BANNER_STATUSES },
+    status: 'active',
+    paymentStatus: 'paid',
     isDeleted: false,
     startDate: { $type: 'date', $lte: endDate },
     endDate: { $type: 'date', $gte: startDate }
@@ -360,32 +413,6 @@ const hasOverlappingBannerDateRange = async ({ restaurantId, startDate, endDate,
   return overlapping;
 };
 
-const hasOverlappingUserBannerDateRange = async ({ startDate, endDate }) => {
-  if (!startDate || !endDate) return null;
-  return UserAdvertisement.findOne({
-    isDeleted: false,
-    status: { $in: OPEN_USER_ADVERTISEMENT_STATUSES },
-    startDate: { $type: 'date', $lte: endDate },
-    endDate: { $type: 'date', $gte: startDate }
-  })
-    .sort({ startDate: 1, createdAt: 1 })
-    .select('_id adId title startDate endDate status paymentStatus position');
-};
-
-const toCrossModuleConflictPayload = (ad, source) => {
-  if (!ad) return null;
-  return {
-    source,
-    id: ad._id,
-    adId: ad.adId || '',
-    title: ad.title || '',
-    startDate: ad.startDate || null,
-    endDate: ad.endDate || null,
-    status: ad.status || '',
-    paymentStatus: ad.paymentStatus || ''
-  };
-};
-
 const toBookedDateRangePayload = (ad, source) => {
   return {
     source,
@@ -397,6 +424,170 @@ const toBookedDateRangePayload = (ad, source) => {
     status: ad.status || '',
     paymentStatus: ad.paymentStatus || '',
     position: source === 'user_advertisement' ? (ad.position || '') : ''
+  };
+};
+
+const extractAdvertisementWebhookContext = (payload = {}) => {
+  const paymentEntity = payload?.payload?.payment?.entity || null;
+  const orderEntity = payload?.payload?.order?.entity || null;
+  const notes = paymentEntity?.notes || orderEntity?.notes || {};
+
+  const orderId = String(paymentEntity?.order_id || orderEntity?.id || '').trim();
+  const paymentId = String(paymentEntity?.id || '').trim();
+  const advertisementId = String(notes?.advertisementId || '').trim();
+  const adId = String(notes?.adId || '').trim();
+  const restaurantId = String(notes?.restaurantId || '').trim();
+  const paymentDate = paymentEntity?.created_at
+    ? new Date(Number(paymentEntity.created_at) * 1000)
+    : new Date();
+  const failureMessage = String(
+    paymentEntity?.error_description ||
+    paymentEntity?.description ||
+    orderEntity?.status ||
+    'Payment failed'
+  ).trim();
+
+  return {
+    orderId,
+    paymentId,
+    notes,
+    advertisementId,
+    adId,
+    restaurantId,
+    paymentDate,
+    failureMessage
+  };
+};
+
+const resolveAdvertisementFromWebhook = async (context = {}) => {
+  let advertisement = null;
+
+  if (context.orderId) {
+    advertisement = await Advertisement.findOne({
+      isDeleted: false,
+      'razorpay.orderId': context.orderId
+    });
+  }
+
+  if (!advertisement && context.advertisementId && isValidObjectId(context.advertisementId)) {
+    advertisement = await Advertisement.findOne({
+      _id: context.advertisementId,
+      isDeleted: false
+    });
+  }
+
+  if (!advertisement && context.adId) {
+    advertisement = await Advertisement.findOne({
+      adId: context.adId,
+      isDeleted: false
+    });
+  }
+
+  if (!advertisement) return null;
+
+  if (context.restaurantId && String(advertisement.restaurant || '') !== String(context.restaurantId)) {
+    return null;
+  }
+
+  if (!isBannerAdvertisement(advertisement)) {
+    return null;
+  }
+
+  return advertisement;
+};
+
+const applyAdvertisementWebhookSuccess = async ({ advertisement, context, eventType }) => {
+  if (!advertisement) {
+    return { status: 'ignored', message: 'Advertisement not found for webhook context' };
+  }
+
+  await ensureStatusFreshness(advertisement);
+
+  if (advertisement.paymentStatus === 'paid') {
+    return { status: 'processed', message: 'Advertisement payment already verified' };
+  }
+
+  if (!['approved', 'payment_pending', 'active'].includes(advertisement.status)) {
+    return { status: 'ignored', message: 'Advertisement is not ready for payment' };
+  }
+
+  if (context.orderId && advertisement.razorpay?.orderId && String(advertisement.razorpay.orderId) !== context.orderId) {
+    return { status: 'ignored', message: 'Webhook order ID does not match advertisement order ID' };
+  }
+
+  const rawStartDate = parseDate(advertisement.startDate);
+  const rawEndDate = parseDate(advertisement.endDate || advertisement.validityDate);
+  if (!rawStartDate || !rawEndDate) {
+    return { status: 'ignored', message: 'Advertisement date range is missing' };
+  }
+
+  const { startDate, endDate } = normalizeDateRange({
+    startDate: rawStartDate,
+    endDate: rawEndDate
+  });
+
+  if (startDate > endDate) {
+    return { status: 'ignored', message: 'Advertisement date range is invalid' };
+  }
+
+  if (endDate < startOfToday()) {
+    advertisement.status = 'expired';
+    await advertisement.save();
+    return { status: 'ignored', message: 'Advertisement range has already expired' };
+  }
+
+  const hasOverlap = await hasOverlappingActiveAd({
+    restaurantId: advertisement.restaurant,
+    startDate,
+    endDate,
+    excludeId: advertisement._id
+  });
+
+  if (hasOverlap) {
+    return { status: 'ignored', message: 'Overlapping active advertisement exists for this date range' };
+  }
+
+  advertisement.paymentStatus = 'paid';
+  advertisement.status = 'active';
+  advertisement.startDate = startDate;
+  advertisement.endDate = endDate;
+  advertisement.durationDays = calculateDurationDays({ startDate, endDate });
+  advertisement.validityDate = endDate;
+  advertisement.razorpay = {
+    orderId: context.orderId || advertisement.razorpay?.orderId || '',
+    paymentId: context.paymentId || advertisement.razorpay?.paymentId || '',
+    signature: advertisement.razorpay?.signature || '',
+    paidAt: context.paymentDate || new Date()
+  };
+  await advertisement.save();
+
+  return {
+    status: 'processed',
+    message: `Advertisement payment reconciled via webhook (${eventType})`
+  };
+};
+
+const applyAdvertisementWebhookFailure = async ({ advertisement, context }) => {
+  if (!advertisement) {
+    return { status: 'ignored', message: 'Advertisement not found for failed payment webhook' };
+  }
+
+  if (advertisement.paymentStatus === 'paid') {
+    return { status: 'ignored', message: 'Advertisement already paid; ignoring failed payment webhook' };
+  }
+
+  if (context.orderId && advertisement.razorpay?.orderId && String(advertisement.razorpay.orderId) !== context.orderId) {
+    return { status: 'ignored', message: 'Failed webhook order does not match advertisement order' };
+  }
+
+  if (advertisement.status === 'approved') {
+    advertisement.status = 'payment_pending';
+    await advertisement.save();
+  }
+
+  return {
+    status: 'processed',
+    message: context.failureMessage || 'Advertisement payment failed'
   };
 };
 
@@ -468,34 +659,22 @@ export const getRestaurantBannerBookedDates = asyncHandler(async (req, res) => {
   }
 
   const { startDate, endDate } = bookingWindow;
-  const [restaurantAds, userAds] = await Promise.all([
-    Advertisement.find({
-      restaurant: req.restaurant._id,
-      adType: 'restaurant_banner',
-      status: { $in: OPEN_BANNER_STATUSES },
-      isDeleted: false,
-      startDate: { $type: 'date', $lte: endDate },
-      endDate: { $type: 'date', $gte: startDate }
-    })
-      .sort({ startDate: 1, createdAt: 1 })
-      .select('_id adId title startDate endDate validityDate status paymentStatus'),
-    UserAdvertisement.find({
-      isDeleted: false,
-      status: { $in: OPEN_USER_ADVERTISEMENT_STATUSES },
-      startDate: { $type: 'date', $lte: endDate },
-      endDate: { $type: 'date', $gte: startDate }
-    })
-      .sort({ startDate: 1, createdAt: 1 })
-      .select('_id adId title startDate endDate status paymentStatus position')
-  ]);
+  const restaurantAds = await Advertisement.find({
+    restaurant: req.restaurant._id,
+    adType: 'restaurant_banner',
+    status: 'active',
+    paymentStatus: 'paid',
+    isDeleted: false,
+    startDate: { $type: 'date', $lte: endDate },
+    endDate: { $type: 'date', $gte: startDate }
+  })
+    .sort({ startDate: 1, createdAt: 1 })
+    .select('_id adId title startDate endDate validityDate status paymentStatus');
 
   return successResponse(res, 200, 'Booked advertisement date ranges fetched successfully', {
     startDate,
     endDate,
-    bookedRanges: [
-      ...restaurantAds.map((ad) => toBookedDateRangePayload(ad, 'restaurant_advertisement')),
-      ...userAds.map((ad) => toBookedDateRangePayload(ad, 'user_advertisement'))
-    ]
+    bookedRanges: restaurantAds.map((ad) => toBookedDateRangePayload(ad, 'restaurant_advertisement'))
   });
 });
 
@@ -690,16 +869,6 @@ export const createRestaurantBannerAdvertisement = asyncHandler(async (req, res)
     );
   }
 
-  const overlappingUserBanner = await hasOverlappingUserBannerDateRange({ startDate, endDate });
-  if (overlappingUserBanner) {
-    return errorResponse(
-      res,
-      409,
-      'Dates overlap with an existing user advertisement. Choose different dates.',
-      { conflict: toCrossModuleConflictPayload(overlappingUserBanner, 'user_advertisement') }
-    );
-  }
-
   let uploadedBanner;
   try {
     uploadedBanner = await uploadBanner(req.file);
@@ -868,19 +1037,6 @@ export const updateRestaurantAdvertisement = asyncHandler(async (req, res) => {
         409,
         'Dates overlap with an existing banner. Choose different dates.',
         { advertisement: toAdvertisementPayload(overlappingBanner) }
-      );
-    }
-
-    const overlappingUserBanner = await hasOverlappingUserBannerDateRange({
-      startDate: normalizedRange.startDate,
-      endDate: normalizedRange.endDate
-    });
-    if (overlappingUserBanner) {
-      return errorResponse(
-        res,
-        409,
-        'Dates overlap with an existing user advertisement. Choose different dates.',
-        { conflict: toCrossModuleConflictPayload(overlappingUserBanner, 'user_advertisement') }
       );
     }
 
@@ -1235,16 +1391,6 @@ export const verifyAdvertisementPayment = asyncHandler(async (req, res) => {
     return errorResponse(res, 409, 'An active advertisement already exists for overlapping dates');
   }
 
-  const overlappingUserBanner = await hasOverlappingUserBannerDateRange({ startDate, endDate });
-  if (overlappingUserBanner) {
-    return errorResponse(
-      res,
-      409,
-      'Dates overlap with an existing user advertisement. Choose different dates.',
-      { conflict: toCrossModuleConflictPayload(overlappingUserBanner, 'user_advertisement') }
-    );
-  }
-
   advertisement.paymentStatus = 'paid';
   advertisement.status = 'active';
   advertisement.startDate = startDate;
@@ -1264,6 +1410,101 @@ export const verifyAdvertisementPayment = asyncHandler(async (req, res) => {
     advertisement: toAdvertisementPayload(advertisement)
   });
 });
+
+export const handleAdvertisementPaymentWebhook = async (req, res) => {
+  const rawBody = req.rawBody || JSON.stringify(req.body || {});
+  const signature = String(req.headers['x-razorpay-signature'] || '');
+  const eventType = String(req.body?.event || '');
+  const incomingEventId = String(req.headers['x-razorpay-event-id'] || '').trim();
+  const context = extractAdvertisementWebhookContext(req.body || {});
+  const fallbackEventId = [
+    eventType || 'unknown',
+    context.orderId || 'na',
+    context.paymentId || 'na',
+    req.body?.created_at || Date.now()
+  ].join(':');
+  const eventId = `campaign_ad:${incomingEventId || fallbackEventId}`;
+
+  let webhookEvent = null;
+  try {
+    webhookEvent = await RazorpayWebhookEvent.findOne({ eventId });
+    if (webhookEvent && ['processed', 'ignored'].includes(webhookEvent.status)) {
+      return successResponse(res, 200, 'Webhook already processed');
+    }
+
+    if (!webhookEvent) {
+      webhookEvent = await RazorpayWebhookEvent.create({
+        eventId,
+        eventType: eventType || 'unknown',
+        status: 'processing',
+        attempts: 1,
+        payload: req.body || null
+      });
+    } else {
+      webhookEvent.status = 'processing';
+      webhookEvent.attempts = Number(webhookEvent.attempts || 0) + 1;
+      webhookEvent.errorMessage = '';
+      webhookEvent.payload = req.body || null;
+      await webhookEvent.save();
+    }
+
+    const webhookSecret = await getAdvertisementWebhookSecret();
+    if (!webhookSecret) {
+      webhookEvent.status = 'failed';
+      webhookEvent.errorMessage = 'Webhook secret not configured';
+      await webhookEvent.save();
+      return errorResponse(res, 500, 'Webhook secret is not configured');
+    }
+
+    const validSignature = isWebhookSignatureValid({
+      rawBody,
+      signature,
+      secret: webhookSecret
+    });
+
+    if (!validSignature) {
+      webhookEvent.status = 'failed';
+      webhookEvent.errorMessage = 'Invalid webhook signature';
+      await webhookEvent.save();
+      return errorResponse(res, 400, 'Invalid webhook signature');
+    }
+
+    if (!ADVERTISEMENT_WEBHOOK_EVENTS.has(eventType)) {
+      webhookEvent.status = 'ignored';
+      webhookEvent.processedAt = new Date();
+      await webhookEvent.save();
+      return successResponse(res, 200, 'Webhook ignored (unsupported event)');
+    }
+
+    if (!context.orderId && !context.advertisementId && !context.adId) {
+      webhookEvent.status = 'ignored';
+      webhookEvent.errorMessage = 'Missing advertisement reference in webhook payload';
+      webhookEvent.processedAt = new Date();
+      await webhookEvent.save();
+      return successResponse(res, 200, 'Webhook ignored (missing advertisement reference)');
+    }
+
+    const advertisement = await resolveAdvertisementFromWebhook(context);
+
+    const result = eventType === 'payment.failed'
+      ? await applyAdvertisementWebhookFailure({ advertisement, context })
+      : await applyAdvertisementWebhookSuccess({ advertisement, context, eventType });
+
+    webhookEvent.status = ['processed', 'ignored'].includes(result.status) ? result.status : 'processed';
+    webhookEvent.errorMessage = result.status === 'ignored' ? String(result.message || '') : '';
+    webhookEvent.processedAt = new Date();
+    await webhookEvent.save();
+
+    return successResponse(res, 200, result.message || 'Advertisement webhook processed successfully');
+  } catch (error) {
+    if (webhookEvent) {
+      webhookEvent.status = 'failed';
+      webhookEvent.errorMessage = error.message || 'Webhook processing failed';
+      await webhookEvent.save();
+    }
+    return errorResponse(res, 500, 'Failed to process advertisement webhook');
+  }
+};
 
 export const listAdminAdvertisements = asyncHandler(async (req, res) => {
   const { status = 'all', category, restaurantId, q } = req.query;
@@ -1476,18 +1717,6 @@ export const setAdvertisementStatusByAdmin = asyncHandler(async (req, res) => {
       return errorResponse(res, 409, 'An active advertisement already exists for overlapping dates');
     }
 
-    const overlappingUserBanner = await hasOverlappingUserBannerDateRange({
-      startDate: advertisement.startDate,
-      endDate: advertisement.endDate
-    });
-    if (overlappingUserBanner) {
-      return errorResponse(
-        res,
-        409,
-        'Dates overlap with an existing user advertisement. Choose different dates.',
-        { conflict: toCrossModuleConflictPayload(overlappingUserBanner, 'user_advertisement') }
-      );
-    }
   }
 
   await advertisement.save();

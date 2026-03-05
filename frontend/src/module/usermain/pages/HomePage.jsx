@@ -23,7 +23,7 @@ import {
   ChevronRight } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
-import { campaignAPI } from "@/lib/api";
+import { campaignAPI, userAdvertisementAPI } from "@/lib/api";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ export default function HomePage() {
     return saved ? JSON.parse(saved) : [];
   });
   const [toast, setToast] = useState({ show: false, message: '' });
-  const [activeRestaurantAds, setActiveRestaurantAds] = useState([]);
+  const [activeSponsoredAds, setActiveSponsoredAds] = useState([]);
 
   // Function to extract location parts for display
   // Main location: First 2 parts only (e.g., "Mama Loca, G-2")
@@ -313,18 +313,52 @@ export default function HomePage() {
   { id: 5, title: "Sushi Delight", image: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=1200&h=600&fit=crop", discount: "12% OFF", rating: "4.6/5" }];
 
 
+  const getAdWebsiteTarget = (ad) => {
+    const rawUrl = String(ad?.websiteUrl || "").trim();
+    if (!rawUrl) return null;
+    const withProtocol = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    try {
+      const parsed = new URL(withProtocol);
+      if (!["http:", "https:"].includes(parsed.protocol)) return null;
+      if (!parsed.hostname) return null;
+      return parsed.toString();
+    } catch {
+      return null;
+    }
+  };
+
+  const handleSponsoredAdClick = (ad) => {
+    const externalTarget = getAdWebsiteTarget(ad);
+    if (!externalTarget) return;
+    window.open(externalTarget, "_blank", "noopener,noreferrer");
+  };
+
   useEffect(() => {
     let mounted = true;
     const loadActiveAds = async () => {
       try {
-        const response = await campaignAPI.getActiveAdvertisementsPublic();
-        const ads = response?.data?.data?.advertisements || [];
+        const [campaignAdsResult, userAdsResult] = await Promise.allSettled([
+        campaignAPI.getActiveAdvertisementsPublic(),
+        userAdvertisementAPI.getPublicActiveUserAdvertisements()]
+        );
+        const campaignAds =
+        campaignAdsResult.status === "fulfilled" ?
+        campaignAdsResult.value?.data?.data?.advertisements || [] :
+        [];
+        const userAds =
+        userAdsResult.status === "fulfilled" ?
+        userAdsResult.value?.data?.data?.advertisements || [] :
+        [];
+        const mergedAds = [...campaignAds, ...userAds].filter((ad) => {
+          const banner = String(ad?.bannerImage || "").trim();
+          return banner.length > 0;
+        });
         if (mounted) {
-          setActiveRestaurantAds(ads);
+          setActiveSponsoredAds(mergedAds);
         }
       } catch {
         if (mounted) {
-          setActiveRestaurantAds([]);
+          setActiveSponsoredAds([]);
         }
       }
     };
@@ -338,18 +372,18 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (activeRestaurantAds.length <= 1) return;
+    if (activeSponsoredAds.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentAdSlide((prev) => (prev + 1) % activeRestaurantAds.length);
+      setCurrentAdSlide((prev) => (prev + 1) % activeSponsoredAds.length);
     }, 4500);
     return () => clearInterval(interval);
-  }, [activeRestaurantAds.length]);
+  }, [activeSponsoredAds.length]);
 
   useEffect(() => {
-    if (currentAdSlide >= activeRestaurantAds.length) {
+    if (currentAdSlide >= activeSponsoredAds.length) {
       setCurrentAdSlide(0);
     }
-  }, [activeRestaurantAds.length, currentAdSlide]);
+  }, [activeSponsoredAds.length, currentAdSlide]);
 
   // Auto-slide effect
   useEffect(() => {
@@ -649,10 +683,28 @@ export default function HomePage() {
         </div>
       </div>
 
-      {activeRestaurantAds.length > 0 &&
+      {activeSponsoredAds.length > 0 &&
       <div className="px-4 mb-6">
           <h3 className="text-sm font-bold text-gray-900 mb-2">Sponsored Ads</h3>
-          <div className="relative rounded-xl overflow-hidden h-32 md:h-40 bg-white shadow-sm border border-gray-200">
+          <div
+          className={`relative rounded-xl overflow-hidden h-32 md:h-40 bg-white shadow-sm border border-gray-200 ${getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "cursor-pointer" : "cursor-default"}`}
+          onClick={() => {
+            const activeAd = activeSponsoredAds[currentAdSlide];
+            if (getAdWebsiteTarget(activeAd)) {
+              handleSponsoredAdClick(activeAd);
+            }
+          }}
+          onKeyDown={(event) => {
+            const activeAd = activeSponsoredAds[currentAdSlide];
+            if (!getAdWebsiteTarget(activeAd)) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleSponsoredAdClick(activeAd);
+            }
+          }}
+          role={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "button" : undefined}
+          tabIndex={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? 0 : undefined}
+          aria-label={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "Open sponsored advertisement" : undefined}>
             <AnimatePresence mode="wait">
               <motion.div
               key={currentAdSlide}
@@ -663,21 +715,21 @@ export default function HomePage() {
               className="absolute inset-0">
 
                 <img
-                src={activeRestaurantAds[currentAdSlide]?.bannerImage}
-                alt={activeRestaurantAds[currentAdSlide]?.title || activeRestaurantAds[currentAdSlide]?.restaurant?.name || "Restaurant Advertisement"}
+                src={activeSponsoredAds[currentAdSlide]?.bannerImage}
+                alt={activeSponsoredAds[currentAdSlide]?.title || activeSponsoredAds[currentAdSlide]?.restaurant?.name || "Advertisement"}
                 className="w-full h-full object-cover" />
 
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
                 <div className="absolute left-3 bottom-3 text-white">
                   <p className="text-[10px] uppercase tracking-wide opacity-80">Sponsored</p>
-                  <p className="text-sm font-semibold">{activeRestaurantAds[currentAdSlide]?.title || activeRestaurantAds[currentAdSlide]?.restaurant?.name || "Restaurant Ad"}</p>
+                  <p className="text-sm font-semibold">{activeSponsoredAds[currentAdSlide]?.title || activeSponsoredAds[currentAdSlide]?.restaurant?.name || "Sponsored Ad"}</p>
                 </div>
               </motion.div>
             </AnimatePresence>
 
-            {activeRestaurantAds.length > 1 &&
+            {activeSponsoredAds.length > 1 &&
           <div className="absolute bottom-2 right-2 flex items-center gap-1.5 z-10">
-                {activeRestaurantAds.map((_, index) =>
+                {activeSponsoredAds.map((_, index) =>
             <button
               key={index}
               onClick={() => setCurrentAdSlide(index)}

@@ -1,27 +1,41 @@
 import { useEffect, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import Lenis from "lenis"
-import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import BottomNavbar from "../components/BottomNavbar"
 import MenuOverlay from "../components/MenuOverlay"
-import { formatCurrency, usdToInr } from "../utils/currency"
 import { restaurantAPI } from "@/lib/api"
 
 export default function BusinessPlanPage() {
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
-  const [showPlans, setShowPlans] = useState(false)
-  const [selectedPlanId, setSelectedPlanId] = useState("basic")
 
   const [loading, setLoading] = useState(true)
   const [planData, setPlanData] = useState({
+    type: "commission",
     title: "Loading...",
     rate: "",
-    description: "Please wait while we fetch your plan details."
+    description: "Please wait while we fetch your plan details.",
+    features: []
   })
+
+  const normalizeFeatures = (features) => {
+    if (!Array.isArray(features)) return []
+    return features
+      .map((feature) => (typeof feature === "string" ? feature.trim() : ""))
+      .filter(Boolean)
+  }
+
+  const getDefaultEffectiveFeatures = (plan) => {
+    const durationMonths = Math.max(Number(plan?.durationMonths) || 1, 1)
+    return [
+      `Plan validity: ${durationMonths} month${durationMonths > 1 ? "s" : ""}`,
+      "0% commission on orders while subscription is active",
+      "Dining activation payment waiver eligibility after dining request approval"
+    ]
+  }
 
   // Fetch real plan data
   useEffect(() => {
@@ -33,31 +47,49 @@ export default function BusinessPlanPage() {
 
         if (restaurant) {
           if (restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
-            // Subscription Plan
-            const planName = restaurant.subscriptionPlanName || restaurant.subscription?.planName || "Subscription";
+            const planName = restaurant.subscriptionPlanName || restaurant.subscription?.planName || "Subscription"
+            let selectedPlan = null
+
+            if (restaurant.subscription?.planId) {
+              try {
+                const plansRes = await restaurantAPI.getSubscriptionPlans()
+                const plans = plansRes?.data?.data || []
+                selectedPlan = plans.find((plan) => plan?._id?.toString() === restaurant.subscription.planId?.toString()) || null
+              } catch (planError) {
+                console.error("Error fetching subscription plans:", planError)
+              }
+            }
+
+            const endDateText = restaurant.subscription?.endDate
+              ? ` valid until ${new Date(restaurant.subscription.endDate).toLocaleDateString()}.`
+              : "."
+
             setPlanData({
+              type: "subscription",
               title: `${planName} Plan`,
               rate: "Active",
-              description: `You are currently on the ${planName} plan valid until ${new Date(restaurant.subscription.endDate).toLocaleDateString()}. Enjoy 0% commission on all orders.`
+              description: selectedPlan?.description?.trim() || `You are currently on the ${planName} plan${endDateText}`,
+              features: normalizeFeatures(selectedPlan?.effectiveFeatures?.length ? selectedPlan.effectiveFeatures : getDefaultEffectiveFeatures(selectedPlan))
             })
           } else {
-            // Commission Plan (default)
-            // We'd ideally fetch the commission rate from settings or restaurant object if available
-            // For now assuming standard or fetching from admin settings if possible, but let's stick to restaurant data
-            const commissionRate = restaurant.commissionRate || 10;
+            const commissionRate = restaurant.commissionRate || 10
             setPlanData({
+              type: "commission",
               title: "Standard Commission Plan",
               rate: `${commissionRate}%`,
-              description: `You are on the Pay-As-You-Go model. A standard ${commissionRate}% commission is applied to your orders. Upgrade to a Subscription for 0% commission.`
+              description: `You are on the Pay-As-You-Go model. A standard ${commissionRate}% commission is applied to your orders.`,
+              features: [`${commissionRate}% commission on each order`]
             })
           }
         }
       } catch (error) {
         console.error("Error fetching plan details:", error)
         setPlanData({
+          type: "commission",
           title: "Commission Base Plan",
           rate: "10.0 %",
-          description: "Restaurant will pay 10.0% commission to GrhaPoch from each order. You will get access of all the features and options in restaurant panel , app and interaction with user."
+          description: "Restaurant will pay 10.0% commission to GrhaPoch from each order.",
+          features: ["10.0% commission on each order"]
         })
       } finally {
         setLoading(false)
@@ -122,6 +154,15 @@ export default function BusinessPlanPage() {
                 <p className="text-sm leading-relaxed text-gray-600 max-w-xs mx-auto">
                   {planData.description}
                 </p>
+                {planData.features.length > 0 && (
+                  <ul className="mt-5 space-y-2 text-left max-w-xs mx-auto">
+                    {planData.features.map((feature, idx) => (
+                      <li key={`${feature}-${idx}`} className="text-xs text-gray-600 leading-relaxed">
+                        - {feature}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </>
             )}
           </CardContent>
@@ -145,7 +186,7 @@ export default function BusinessPlanPage() {
             navigate("/restaurant/subscription-plans")
           }}
         >
-          {planData.title === "Subscription Plan" ? "Renew / Change Plan" : "Upgrade to Subscription"}
+          {planData.type === "subscription" ? "Renew / Change Plan" : "Upgrade to Subscription"}
         </Button>
       </div>
 
@@ -157,5 +198,3 @@ export default function BusinessPlanPage() {
     </div>
   )
 }
-
-

@@ -34,8 +34,6 @@ import { useLocation as useUserLocation } from "../../hooks/useLocation";
 import DeliveryTrackingMap from "../../components/DeliveryTrackingMap";
 import { orderAPI, restaurantAPI } from "@/lib/api";
 import circleIcon from "@/assets/circleicon.png";
-import { initRazorpayPayment } from "@/lib/utils/razorpay";
-import { getRazorpayKeyId } from "@/lib/utils/razorpayKey";
 const AnimatedCheckmark = ({ delay = 0 }) =>
 <motion.svg
   width="80"
@@ -223,12 +221,6 @@ export default function OrderTracking() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
-
-  // Tip states
-  const [selectedTip, setSelectedTip] = useState(0);
-  const [isTipping, setIsTipping] = useState(false);
-  const [tipAdded, setTipAdded] = useState(false);
-  const tipAmounts = [10, 20, 30, 50];
 
   const defaultAddress = getDefaultAddress();
 
@@ -447,8 +439,6 @@ export default function OrderTracking() {
           };
 
           setOrder(transformedOrder);
-          setTipAdded((apiOrder.pricing?.tip || 0) > 0);
-
           // Update orderStatus based on API order status
           if (apiOrder.status === 'cancelled') {
             setOrderStatus('cancelled');
@@ -592,84 +582,6 @@ export default function OrderTracking() {
       toast.error(error.response?.data?.message || 'Failed to cancel order');
     } finally {
       setIsCancelling(false);
-    }
-  };
-
-  // Replace handleAddTip
-  const handleAddTip = async (amount) => {
-    try {
-      setIsTipping(true);
-
-      // 1. Initiate tip payment to get Razorpay order ID
-      const response = await orderAPI.initiateTipPayment(orderId, amount);
-      if (!response.data?.success) {
-        throw new Error(response.data?.message || 'Failed to initiate tip');
-      }
-
-      const { razorpayOrder, tipAmount, razorpayKeyId } = response.data.data;
-
-      // 2. Open Razorpay checkout
-      const razorpayKey = razorpayKeyId || (await getRazorpayKeyId());
-      await initRazorpayPayment({
-        key: razorpayKey || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YourKeyHere', // Use fetched key, env var or fallback
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        order_id: razorpayOrder.id,
-        name: 'Grha Poch',
-        description: 'Tip for Delivery Partner',
-        prefill: {
-          name: order.userName || '',
-          contact: order.userPhone || '',
-          email: ''
-        },
-        handler: async (paymentResponse) => {
-          try {
-            // 3. Verify payment on success
-            const verifyResponse = await orderAPI.verifyTipPayment({
-              orderId,
-              razorpayOrderId: paymentResponse.razorpay_order_id,
-              razorpayPaymentId: paymentResponse.razorpay_payment_id,
-              razorpaySignature: paymentResponse.razorpay_signature,
-              tip: tipAmount
-            });
-
-            if (verifyResponse.data?.success) {
-              setSelectedTip(amount);
-              setTipAdded(true);
-              toast.success("Tip added successfully!");
-              // Update local state immediately for better UX
-              setOrder((prev) => ({
-                ...prev,
-                pricing: {
-                  ...prev.pricing,
-                  tip: (prev.pricing?.tip || 0) + tipAmount,
-                  total: (prev.pricing?.total || 0) + tipAmount
-                }
-              }));
-              // Refresh full order data
-              handleRefresh();
-            } else {
-              toast.error(verifyResponse.data?.message || 'Payment verification failed');
-            }
-          } catch (verifyError) {
-            console.error('Error verifying tip payment:', verifyError);
-            toast.error('Failed to verify tip payment');
-          }
-        },
-        onError: (error) => {
-          console.error('Razorpay payment error:', error);
-          toast.error('Payment failed');
-          setIsTipping(false);
-        },
-        onClose: () => {
-          setIsTipping(false);
-        }
-      });
-
-    } catch (error) {
-      console.error("Error adding tip:", error);
-      toast.error(error.message || "Failed to add tip");
-      setIsTipping(false);
     }
   };
 

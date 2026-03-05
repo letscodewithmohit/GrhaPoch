@@ -25,6 +25,7 @@ import {
   createRestaurantBannerAdvertisement,
   createAdvertisementPaymentOrder,
   verifyAdvertisementPayment,
+  handleAdvertisementPaymentWebhook,
   listPublicActiveAdvertisements
 } from '../controllers/advertisementController.js';
 
@@ -35,6 +36,7 @@ const advertisementUploadFields = uploadMiddleware.fields([
   { name: 'video', maxCount: 1 }
 ]);
 
+router.post('/webhook', handleAdvertisementPaymentWebhook);
 router.get('/active', listPublicActiveAdvertisements);
 router.get('/restaurant/advertisements', authenticateRestaurant, listRestaurantAdvertisements);
 router.get('/restaurant/advertisements/pricing', authenticateRestaurant, getAdvertisementPricing);

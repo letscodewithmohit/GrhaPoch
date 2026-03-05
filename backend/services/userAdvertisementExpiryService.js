@@ -13,8 +13,7 @@ export async function processUserAdvertisementExpiries() {
     const result = await UserAdvertisement.updateMany(
       {
         isDeleted: false,
-        status: 'active',
-        isActive: true,
+        status: { $in: ['approved', 'payment_pending', 'active'] },
         endDate: { $lt: today }
       },
       {

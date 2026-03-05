@@ -8,6 +8,7 @@ import OrderSettlement from '../models/OrderSettlement.js';
 import SubscriptionPayment from '../models/SubscriptionPayment.js';
 import AdminWallet from '../models/AdminWallet.js';
 import Advertisement from '../models/Advertisement.js';
+import UserAdvertisement from '../models/UserAdvertisement.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { normalizePhoneNumber } from '../utils/phoneUtils.js';
@@ -96,9 +97,11 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     const subscriptionStats = await SubscriptionPayment.aggregate([
     {
       $facet: {
-        total: [{ $group: { _id: null, amount: { $sum: '$amount' } } }],
+        total: [
+        { $match: { status: 'success' } },
+        { $group: { _id: null, amount: { $sum: '$amount' } } }],
         last30Days: [
-        { $match: { paymentDate: { $gte: last30Days } } },
+        { $match: { status: 'success', paymentDate: { $gte: last30Days } } },
         { $group: { _id: null, amount: { $sum: '$amount' } } }]
 
       }
@@ -110,41 +113,80 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
 
 
-    // Get advertisement revenue stats (paid restaurant banner advertisements)
-    const advertisementRevenueStats = await Advertisement.aggregate([
-    {
-      $match: {
-        adType: 'restaurant_banner',
-        paymentStatus: 'paid',
-        isDeleted: false,
-        price: { $gt: 0 }
-      }
-    },
-    {
-      $addFields: {
-        paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] }
-      }
-    },
-    {
-      $group: {
-        _id: null,
-        total: { $sum: '$price' },
-        last30Days: {
-          $sum: {
-            $cond: [
-            { $gte: ['$paidAt', last30Days] },
-            '$price',
-            0]
-
+    // Get advertisement revenue stats (restaurant + user advertisements)
+    const [restaurantAdvertisementRevenueStats, userAdvertisementRevenueStats] = await Promise.all([
+      Advertisement.aggregate([
+        {
+          $match: {
+            adType: 'restaurant_banner',
+            paymentStatus: 'paid',
+            isDeleted: false,
+            price: { $gt: 0 }
+          }
+        },
+        {
+          $addFields: {
+            paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$price' },
+            last30Days: {
+              $sum: {
+                $cond: [
+                  { $gte: ['$paidAt', last30Days] },
+                  '$price',
+                  0
+                ]
+              }
+            }
           }
         }
-      }
-    }]
-    );
+      ]),
+      UserAdvertisement.aggregate([
+        {
+          $match: {
+            paymentStatus: 'paid',
+            isDeleted: false,
+            totalAmount: { $gt: 0 }
+          }
+        },
+        {
+          $addFields: {
+            paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$totalAmount' },
+            last30Days: {
+              $sum: {
+                $cond: [
+                  { $gte: ['$paidAt', last30Days] },
+                  '$totalAmount',
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ])
+    ]);
 
-    const advertisementRevenueData = advertisementRevenueStats[0] || {
+    const restaurantAdvertisementRevenueData = restaurantAdvertisementRevenueStats[0] || {
       total: 0,
       last30Days: 0
+    };
+    const userAdvertisementRevenueData = userAdvertisementRevenueStats[0] || {
+      total: 0,
+      last30Days: 0
+    };
+    const advertisementRevenueData = {
+      total: (restaurantAdvertisementRevenueData.total || 0) + (userAdvertisementRevenueData.total || 0),
+      last30Days: (restaurantAdvertisementRevenueData.last30Days || 0) + (userAdvertisementRevenueData.last30Days || 0)
     };
 
     // Get all settlements for delivered orders only (to match with revenue calculation)
@@ -465,11 +507,25 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       advertisementRevenue: {
         total: advertisementRevenueData.total,
         last30Days: advertisementRevenueData.last30Days,
+        restaurantTotal: restaurantAdvertisementRevenueData.total || 0,
+        restaurantLast30Days: restaurantAdvertisementRevenueData.last30Days || 0,
+        userTotal: userAdvertisementRevenueData.total || 0,
+        userLast30Days: userAdvertisementRevenueData.last30Days || 0,
+        currency: 'INR'
+      },
+      restaurantAdvertisementRevenue: {
+        total: restaurantAdvertisementRevenueData.total || 0,
+        last30Days: restaurantAdvertisementRevenueData.last30Days || 0,
+        currency: 'INR'
+      },
+      userAdvertisementRevenue: {
+        total: userAdvertisementRevenueData.total || 0,
+        last30Days: userAdvertisementRevenueData.last30Days || 0,
         currency: 'INR'
       },
       totalAdminEarnings: {
-        total: totalCommission + totalPlatformFee + totalDeliveryFee + totalGST + totalSubscriptionRevenue + advertisementRevenueData.total,
-        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryFee + last30DaysGST + last30DaysSubscriptionRevenue + advertisementRevenueData.last30Days,
+        total: totalCommission + totalPlatformFee + totalDeliveryFee + totalGST + totalSubscriptionRevenue + advertisementRevenueData.total + (revenueData.totalDonations || 0),
+        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryFee + last30DaysGST + last30DaysSubscriptionRevenue + advertisementRevenueData.last30Days + (revenueData.last30DaysDonations || 0),
         currency: 'INR'
       },
       orders: {
@@ -1482,6 +1538,9 @@ export const approveRestaurant = asyncHandler(async (req, res) => {
 
     // Activate restaurant and set default dish limit
     restaurant.isActive = true;
+    if (restaurant.subscription?.status === 'pending_approval') {
+      restaurant.subscription.status = 'active';
+    }
     restaurant.approvedAt = new Date();
     restaurant.approvedBy = adminId;
     restaurant.rejectionReason = undefined; // Clear any previous rejection

@@ -21,6 +21,24 @@ const DEFAULT_ICON = Crown;
 const DEFAULT_GRADIENT = 'from-slate-700 to-slate-900';
 const HISTORY_ITEMS_PER_PAGE = 5;
 
+const getDefaultEffectiveFeatures = (plan) => {
+    const durationMonths = Math.max(Number(plan?.durationMonths) || 1, 1);
+    return [
+        `Plan validity: ${durationMonths} month${durationMonths > 1 ? 's' : ''}`,
+        '0% commission on orders while subscription is active',
+        'Dining activation payment waiver eligibility after dining request approval',
+    ];
+};
+
+const getPlanFeatureList = (plan) => {
+    const source = Array.isArray(plan?.effectiveFeatures) && plan.effectiveFeatures.length > 0
+        ? plan.effectiveFeatures
+        : getDefaultEffectiveFeatures(plan);
+    return source
+        .map((feature) => (typeof feature === 'string' ? feature.trim() : ''))
+        .filter(Boolean);
+};
+
 export default function SubscriptionPage() {
     const navigate = useNavigate();
     const [plans, setPlans] = useState([]);
@@ -286,6 +304,7 @@ export default function SubscriptionPage() {
                                 const isActive = status === 'active';
                                 const isDisabled = submittingPlanId !== null || (isCurrentPlan && isPending);
                                 const isPopular = plan.isPopular;
+                                const featureList = getPlanFeatureList(plan);
 
                                 return (
                                     <motion.div
@@ -334,21 +353,19 @@ export default function SubscriptionPage() {
 
                                             {/* Features list */}
                                             <div className="space-y-4 mb-8">
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Everything Included</p>
-                                                <div className="flex items-start gap-3 text-slate-600 group/item">
-                                                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-indigo-500 group-hover/item:text-white transition-colors">
-                                                        <Check className="w-3 h-3 text-indigo-600 group-hover/item:text-white" />
-                                                    </div>
-                                                    <span className="font-bold text-slate-900">Unlimited Menu Items</span>
-                                                </div>
-                                                {plan.features.map((feature, idx) => (
-                                                    <div key={idx} className="flex items-start gap-3 text-slate-600 group/item">
-                                                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-green-500 group-hover/item:text-white transition-colors">
-                                                            <Check className="w-3 h-3 text-green-600 group-hover/item:text-white" />
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Plan Features</p>
+                                                {featureList.length > 0 ? (
+                                                    featureList.map((feature, idx) => (
+                                                        <div key={idx} className="flex items-start gap-3 text-slate-600 group/item">
+                                                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-green-500 group-hover/item:text-white transition-colors">
+                                                                <Check className="w-3 h-3 text-green-600 group-hover/item:text-white" />
+                                                            </div>
+                                                            <span className="font-medium">{feature}</span>
                                                         </div>
-                                                        <span className="font-medium">{feature}</span>
-                                                    </div>
-                                                ))}
+                                                    ))
+                                                ) : (
+                                                    <p className="text-sm text-slate-400">Features will be updated soon.</p>
+                                                )}
                                             </div>
                                         </div>
 

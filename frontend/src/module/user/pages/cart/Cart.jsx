@@ -663,10 +663,10 @@ export default function Cart() {
         const response = await adminAPI.getPublicFeeSettings();
         if (response.data.success && response.data.data.feeSettings) {
           setFeeSettings({
-            deliveryFee: response.data.data.feeSettings.deliveryFee || 25,
-            freeDeliveryThreshold: response.data.data.feeSettings.freeDeliveryThreshold || 149,
-            platformFee: response.data.data.feeSettings.platformFee || 5,
-            gstRate: response.data.data.feeSettings.gstRate || 5
+            deliveryFee: response.data.data.feeSettings.deliveryFee ?? 25,
+            freeDeliveryThreshold: response.data.data.feeSettings.freeDeliveryThreshold ?? 149,
+            platformFee: response.data.data.feeSettings.platformFee ?? 5,
+            gstRate: response.data.data.feeSettings.gstRate ?? 5
           });
         }
       } catch (error) {
@@ -715,10 +715,13 @@ export default function Cart() {
 
   // Use backend pricing if available, otherwise fallback to database settings
   const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
-  const deliveryFee = pricing?.deliveryFee ?? (subtotal >= feeSettings.freeDeliveryThreshold || appliedCoupon?.freeDelivery ? 0 : feeSettings.deliveryFee);
+  const deliveryFee = pricing?.deliveryFee ?? (appliedCoupon?.freeDelivery ? 0 : feeSettings.deliveryFee);
   const platformFee = pricing?.platformFee || feeSettings.platformFee;
-  const gstCharges = 0; // GST for now Zero
   const discount = pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0);
+  const fallbackGstRate = Number(feeSettings?.gstRate) || 0;
+  const fallbackTaxableAmount = Math.max(0, Number(subtotal) - Number(discount));
+  const fallbackGstCharges = Math.round((fallbackTaxableAmount * fallbackGstRate / 100) * 100) / 100;
+  const gstCharges = pricing?.tax ?? fallbackGstCharges;
   const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + safeTipAmount + safeDonationAmount;
   const total = pricing?.total || totalBeforeDiscount - discount;
   const savings = pricing?.savings || discount + (subtotal > 500 ? 32 : 0);
@@ -1919,8 +1922,8 @@ export default function Cart() {
                     </div>
                     <div className="flex justify-between text-sm md:text-base">
                       <span className="text-gray-600 dark:text-gray-400">Delivery Fee {pricing?.distanceStr && <span className="text-[10px] opacity-70">(For {pricing.distanceStr})</span>}</span>
-                      <span className={deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
-                        {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+                      <span className={loadingPricing && !pricing ? "text-gray-500 dark:text-gray-400" : deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
+                        {loadingPricing && !pricing ? "Calculating..." : deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm md:text-base">
@@ -1972,8 +1975,8 @@ export default function Cart() {
                     </div>
                     <div className="flex justify-between text-sm md:text-base">
                       <span className="text-gray-600 dark:text-gray-400">Delivery Fee {pricing?.distanceStr && <span className="text-[10px] opacity-70">(For {pricing.distanceStr})</span>}</span>
-                      <span className={deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
-                        {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+                      <span className={loadingPricing && !pricing ? "text-gray-500 dark:text-gray-400" : deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
+                        {loadingPricing && !pricing ? "Calculating..." : deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm md:text-base">
@@ -2584,3 +2587,4 @@ export default function Cart() {
     </div>);
 
 }
+

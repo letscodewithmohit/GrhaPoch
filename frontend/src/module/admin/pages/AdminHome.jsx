@@ -119,7 +119,18 @@ export default function AdminHome() {
   const tipsTotal = dashboardData?.tips?.total || 0;
   const donationsTotal = dashboardData?.donations?.total || 0;
   const subscriptionTotal = dashboardData?.subscription?.total || 0;
-  const advertisementTotal = dashboardData?.advertisementRevenue?.total || 0;
+  const advertisementRevenueData = dashboardData?.advertisementRevenue || {};
+  const restaurantAdvertisementTotal =
+  dashboardData?.restaurantAdvertisementRevenue?.total ??
+  advertisementRevenueData?.restaurantTotal ??
+  0;
+  const userAdvertisementTotal =
+  dashboardData?.userAdvertisementRevenue?.total ??
+  advertisementRevenueData?.userTotal ??
+  0;
+  const advertisementTotal =
+  Number(advertisementRevenueData?.total ??
+  (restaurantAdvertisementTotal + userAdvertisementTotal)) || 0;
   // Total revenue = Commission + Platform Fee + Delivery Fee + GST + Subscription + Advertisement + Donation
   const totalAdminEarnings = commissionTotal + platformFeeTotal + deliveryFeeTotal + gstTotal + subscriptionTotal + advertisementTotal + donationsTotal;
 
@@ -256,16 +267,30 @@ export default function AdminHome() {
               accent="bg-teal-100/30" />
             
             <MetricCard
-              title="Advertisement Revenue"
+              title="Restaurant Ad Revenue"
+              value={`\u20B9${restaurantAdvertisementTotal.toLocaleString("en-IN")}`}
+              helper="Paid restaurant banners"
+              icon={<Store className="h-5 w-5 text-violet-600" />}
+              accent="bg-violet-100/30" />
+            
+            <MetricCard
+              title="User Ad Revenue"
+              value={`\u20B9${userAdvertisementTotal.toLocaleString("en-IN")}`}
+              helper="Paid user advertisements"
+              icon={<UserCircle className="h-5 w-5 text-fuchsia-600" />}
+              accent="bg-fuchsia-100/30" />
+            
+            <MetricCard
+              title="Total Ad Revenue"
               value={`\u20B9${advertisementTotal.toLocaleString("en-IN")}`}
-              helper="Paid banner advertisements"
+              helper="Restaurant + user advertisements"
               icon={<Activity className="h-5 w-5 text-violet-600" />}
               accent="bg-violet-100/30" />
             
             <MetricCard
               title="Total revenue"
               value={`₹${totalAdminEarnings.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              helper={`Com ${commissionTotal.toFixed(0)} + Plat ${platformFeeTotal.toFixed(0)} + Del ${deliveryFeeTotal.toFixed(0)} + Sub ${subscriptionTotal.toFixed(0)} + Ad ${advertisementTotal.toFixed(0)} + Don ${donationsTotal.toFixed(0)}`}
+              helper={`Com ${commissionTotal.toFixed(0)} + Plat ${platformFeeTotal.toFixed(0)} + Del ${deliveryFeeTotal.toFixed(0)} + GST ${gstTotal.toFixed(0)} + Sub ${subscriptionTotal.toFixed(0)} + Ad(Rest ${restaurantAdvertisementTotal.toFixed(0)} + User ${userAdvertisementTotal.toFixed(0)}) + Don ${donationsTotal.toFixed(0)}`}
               icon={<DollarSign className="h-5 w-5 text-green-600" />}
               accent="bg-green-200/40" />
             

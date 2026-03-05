@@ -39,7 +39,31 @@ const normalizeSubmitError = (message) => {
   if (text.includes("overlap")) {
     return "Dates overlap. Choose different dates."
   }
+  if (text.includes("2mb") || text.includes("file size")) {
+    return "Banner file size must be 2MB or less."
+  }
+  if (text.includes("dimensions")) {
+    return "Banner dimensions too small. Minimum 1200x500 required."
+  }
+  if (text.includes("aspect ratio") || text.includes("2.4:1")) {
+    return "Banner aspect ratio must be around 2.4:1 (for example 1200x500)."
+  }
+  if (text.includes("only image") || text.includes("image banner")) {
+    return "Only JPG/PNG image banner is allowed."
+  }
   return message || "Failed to submit advertisement"
+}
+
+const isBannerRelatedError = (message) => {
+  const text = String(message || "").toLowerCase()
+  return (
+    text.includes("banner") ||
+    text.includes("image") ||
+    text.includes("aspect ratio") ||
+    text.includes("dimensions") ||
+    text.includes("2mb") ||
+    text.includes("file size")
+  )
 }
 
 const formatDateLabel = (value) => {
@@ -148,6 +172,10 @@ export default function NewAdvertisementPage() {
 
   const totalDays = useMemo(() => getDaysInclusive(startDate, endDate), [startDate, endDate])
   const totalPrice = useMemo(() => Number((totalDays * pricePerDay).toFixed(2)), [totalDays, pricePerDay])
+  const bannerErrorMessage = useMemo(
+    () => (isBannerRelatedError(errorMessage) ? errorMessage : ""),
+    [errorMessage]
+  )
   const overlappingBookedRanges = useMemo(() => {
     return bookedRanges.filter((range) =>
       doDateRangesOverlap(startDate, endDate, range?.startDate, range?.endDate)
@@ -264,7 +292,10 @@ export default function NewAdvertisementPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Banner Image (Any size - testing mode)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Banner Image</label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Accepted: JPG/PNG | Ratio: 2.4:1 | Min: 1200x500 | Max size: 2MB
+                    </p>
                     <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 block cursor-pointer hover:border-gray-900">
                       <input type="file" accept="image/*" onChange={handleBannerChange} className="hidden" />
                       {bannerPreview ? (
@@ -276,6 +307,7 @@ export default function NewAdvertisementPage() {
                         </div>
                       )}
                     </label>
+                    {bannerErrorMessage && <p className="text-xs text-red-600 mt-2">{bannerErrorMessage}</p>}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -343,7 +375,11 @@ export default function NewAdvertisementPage() {
                     </div>
                   </div>
 
-                  <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full bg-black hover:bg-gray-800">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="w-full bg-black text-white hover:bg-gray-800 disabled:text-white"
+                  >
                     {isSubmitting ? "Submitting..." : "Submit Advertisement"}
                   </Button>
                 </>

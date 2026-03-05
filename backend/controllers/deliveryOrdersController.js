@@ -2122,8 +2122,12 @@ export const completeDelivery = asyncHandler(async (req, res) => {
     let restaurantWalletTransaction = null;
     let adminCommissionRecord = null;
     try {
-      // Get order total amount (subtotal, excluding delivery fee and tax for commission calculation)
-      const orderTotal = order.pricing?.subtotal || order.pricing?.total || 0;
+      // Use canonical food amount (subtotal - discount) for restaurant commission.
+      // This keeps payout aligned with order-time settlement math.
+      const orderTotal = Math.max(
+        0,
+        Number(order.pricing?.subtotal || 0) - Number(order.pricing?.discount || 0)
+      );
 
       // Find restaurant by restaurantId (can be string or ObjectId)
       let restaurant = null;
@@ -2136,14 +2140,36 @@ export const completeDelivery = asyncHandler(async (req, res) => {
       if (!restaurant) {
         console.warn(`⚠️ Restaurant not found for order ${orderIdForLog}, skipping commission calculation`);
       } else {
-        // Calculate restaurant commission
-        const commissionResult = await RestaurantCommission.calculateCommissionForOrder(
-          restaurant._id,
-          orderTotal
-        );
+        // Commission priority:
+        // 1) Settlement snapshot (single source of truth)
+        // 2) Order-time commission snapshot
+        // 3) Live commission rule fallback (legacy safety)
+        let commissionAmount = 0;
+        let restaurantEarning = orderTotal;
+        let commissionPercentage = 0;
 
-        const commissionAmount = commissionResult.commission || 0;
-        const restaurantEarning = orderTotal - commissionAmount;
+        if (settlement?.restaurantEarning) {
+          commissionAmount = Number(settlement.restaurantEarning.commission || 0);
+          restaurantEarning = Number(
+            settlement.restaurantEarning.netEarning ?? (orderTotal - commissionAmount)
+          );
+          commissionPercentage = Number(settlement.restaurantEarning.commissionPercentage || 0);
+        } else if (order.pricing?.commission && order.pricing.commission.amount !== undefined) {
+          commissionAmount = Number(order.pricing.commission.amount) || 0;
+          restaurantEarning = Math.max(0, orderTotal - commissionAmount);
+          commissionPercentage = order.pricing.commission.type === 'percentage' ?
+            Number(order.pricing.commission.rate || 0) :
+            0;
+        } else {
+          const commissionResult = await RestaurantCommission.calculateCommissionForOrder(
+            restaurant._id,
+            orderTotal,
+            order.items || []
+          );
+          commissionAmount = Number(commissionResult.commission || 0);
+          restaurantEarning = Math.max(0, orderTotal - commissionAmount);
+          commissionPercentage = Number(commissionResult.value || 0);
+        }
 
 
 
@@ -2199,7 +2225,7 @@ export const completeDelivery = asyncHandler(async (req, res) => {
               orderId: orderMongoId || order._id,
               orderAmount: orderTotal,
               commissionAmount: commissionAmount,
-              commissionPercentage: commissionResult.value,
+              commissionPercentage,
               restaurantId: restaurant._id,
               restaurantName: restaurant.name || order.restaurantName,
               restaurantEarning: restaurantEarning,
