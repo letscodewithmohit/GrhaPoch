@@ -1013,8 +1013,8 @@ export const adminAPI = {
   },
 
   // Subscription Plan Management
-  getSubscriptionPlans: () => {
-    return apiClient.get(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLANS);
+  getSubscriptionPlans: (params = {}) => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLANS, { params });
   },
   getActiveSubscriptionPlans: () => {
     return apiClient.get(API_ENDPOINTS.ADMIN.SUBSCRIPTION_PLANS_ACTIVE);

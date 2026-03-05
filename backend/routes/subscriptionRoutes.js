@@ -13,8 +13,9 @@ const router = express.Router();
 // Razorpay webhook for subscription payments (no auth)
 router.post('/webhook', handleSubscriptionWebhook);
 
-// Create Razorpay order
+// Create Razorpay subscription (legacy path retained for compatibility)
 router.post('/create-order', authenticate, createSubscriptionOrder);
+router.post('/create-subscription', authenticate, createSubscriptionOrder);
 
 // Verify payment and activate subscription
 router.post('/verify-payment', authenticate, verifyPaymentAndActivate);

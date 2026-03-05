@@ -29,6 +29,16 @@ const subscriptionPaymentSchema = new mongoose.Schema({
         type: String,
         default: 'INR'
     },
+    razorpaySubscriptionId: {
+        type: String,
+        default: null,
+        sparse: true
+    },
+    razorpayInvoiceId: {
+        type: String,
+        default: null,
+        sparse: true
+    },
     razorpayPaymentId: {
         type: String,
         default: null,
@@ -36,7 +46,7 @@ const subscriptionPaymentSchema = new mongoose.Schema({
     },
     razorpayOrderId: {
         type: String,
-        required: true
+        default: null
     },
     status: {
         type: String,
@@ -65,8 +75,8 @@ const subscriptionPaymentSchema = new mongoose.Schema({
     },
     source: {
         type: String,
-        enum: ['create_order', 'verify_api', 'webhook', 'reconcile'],
-        default: 'create_order'
+        enum: ['create_order', 'create_subscription', 'verify_api', 'webhook', 'reconcile'],
+        default: 'create_subscription'
     },
     lastError: {
         type: String,
@@ -79,6 +89,7 @@ const subscriptionPaymentSchema = new mongoose.Schema({
 // Indexes
 subscriptionPaymentSchema.index({ createdAt: -1 });
 subscriptionPaymentSchema.index({ razorpayPaymentId: 1 }, { unique: true, sparse: true });
+subscriptionPaymentSchema.index({ razorpaySubscriptionId: 1 }, { unique: true, sparse: true });
 subscriptionPaymentSchema.index({ razorpayOrderId: 1 });
 subscriptionPaymentSchema.index({ status: 1, createdAt: -1 });
 

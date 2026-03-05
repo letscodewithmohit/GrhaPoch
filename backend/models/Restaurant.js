@@ -338,6 +338,14 @@ const restaurantSchema = new mongoose.Schema(
         type: String,
         default: null
       },
+      subscriptionId: {
+        type: String,
+        default: ''
+      },
+      invoiceId: {
+        type: String,
+        default: ''
+      },
       status: {
         type: String,
         enum: ['active', 'expired', 'pending_approval', 'inactive', 'rejected'],
@@ -356,6 +364,8 @@ const restaurantSchema = new mongoose.Schema(
       {
         planId: { type: String },
         planName: { type: String },
+        subscriptionId: { type: String },
+        invoiceId: { type: String },
         status: {
           type: String,
           enum: ['active', 'expired', 'cancelled', 'renewed'],

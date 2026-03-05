@@ -165,7 +165,7 @@ export default function SubscriptionPage() {
         try {
             // 1. Create Order on Backend
             const orderRes = await restaurantAPI.createSubscriptionOrder(plan.id);
-            const { orderId, amount, currency, keyId } = orderRes.data.data;
+            const { subscriptionId, amount, currency, keyId } = orderRes.data.data;
 
             // 2. Open Razorpay Checkout
             const options = {
@@ -175,14 +175,14 @@ export default function SubscriptionPage() {
                 name: "GrhaPoch Partner",
                 description: `${plan.name} Subscription`,
                 image: "/logo.png",
-                order_id: orderId,
+                subscription_id: subscriptionId,
                 handler: async function (response) {
                     // 3. Verify Payment on Backend
                     try {
                         const verifyRes = await restaurantAPI.verifyPayment({
-                            razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,
+                            razorpay_subscription_id: response.razorpay_subscription_id,
                             planId: plan.id
                         });
 

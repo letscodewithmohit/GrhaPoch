@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+﻿import { useState, useEffect } from "react"
 import { Search, Crown, Check, Edit2, Trash2, X, AlertCircle, Loader2, Sparkles, TrendingUp, Eye, Phone, Mail, Calendar, CreditCard, User, Building2, MapPin, Download, FileText, FileSpreadsheet, ChevronDown, History, RefreshCw } from "lucide-react"
 import { exportSubscriptionsToExcel, exportSubscriptionsToPDF } from "../../components/subscription/subscriptionExportUtils"
 import { adminAPI } from "../../../../lib/api"
@@ -42,6 +42,11 @@ export default function SubscriptionManagement() {
         isActive: true
     })
     const [savingPlan, setSavingPlan] = useState(false)
+    const [confirmState, setConfirmState] = useState({
+        open: false,
+        plan: null,
+        action: ''
+    })
 
     // View Details Modal State
     const [viewDetailsOpen, setViewDetailsOpen] = useState(false)
@@ -88,7 +93,7 @@ export default function SubscriptionManagement() {
         setLoading(true)
         try {
             // Always fetch plans to ensure we have mapping data
-            const plansRes = await adminAPI.getSubscriptionPlans()
+            const plansRes = await adminAPI.getSubscriptionPlans({ all: 'true' })
             if (plansRes.data?.success) {
                 setPlans(plansRes.data.data)
             }
@@ -147,6 +152,7 @@ export default function SubscriptionManagement() {
         if (!planId) return null;
         return plans.find(p => p._id === planId);
     }
+    const isOldVersionPlan = (plan) => !!plan?.replacedByPlanId
 
     // Plan Management Functions
     const handleAddFeature = () => {
@@ -209,6 +215,32 @@ export default function SubscriptionManagement() {
             toast.error(error.response?.data?.message || "Failed to save plan")
         } finally {
             setSavingPlan(false)
+        }
+    }
+
+    const handleTogglePlanStatus = async (plan) => {
+        if (!plan?._id) return
+        const actionLabel = plan.isActive ? 'hide' : 'show'
+        setConfirmState({
+            open: true,
+            plan,
+            action: actionLabel
+        })
+    }
+
+    const handleConfirmToggle = async () => {
+        const plan = confirmState.plan
+        if (!plan?._id) return
+        const actionLabel = plan.isActive ? 'deactivate' : 'activate'
+
+        try {
+            await adminAPI.toggleSubscriptionPlanStatus(plan._id)
+            toast.success(`Plan ${actionLabel}d successfully`)
+            setConfirmState({ open: false, plan: null, action: '' })
+            fetchData()
+        } catch (error) {
+            console.error("Error toggling plan status:", error)
+            toast.error(error.response?.data?.message || `Failed to ${actionLabel} plan`)
         }
     }
 
@@ -343,7 +375,7 @@ export default function SubscriptionManagement() {
                 {/* Content Area */}
                 {activeTab === "plans" ? (
                     <div className="space-y-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <h2 className="text-lg font-semibold text-slate-800">Available Plans</h2>
                         </div>
 
@@ -365,98 +397,115 @@ export default function SubscriptionManagement() {
                             </Card>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {plans.map((plan) => {
-                                    const sourceFeatures = Array.isArray(plan.effectiveFeatures) && plan.effectiveFeatures.length > 0
-                                        ? plan.effectiveFeatures
-                                        : getDefaultEffectiveFeatures(plan);
-                                    const planFeatures = sourceFeatures
-                                        .map((feature) => (typeof feature === 'string' ? feature.trim() : ''))
-                                        .filter(Boolean);
+                                {plans
+                                    .filter((plan) => !isOldVersionPlan(plan))
+                                    .map((plan) => {
+                                                        const sourceFeatures = Array.isArray(plan.effectiveFeatures) && plan.effectiveFeatures.length > 0
+                                                            ? plan.effectiveFeatures
+                                                            : getDefaultEffectiveFeatures(plan);
+                                                        const planFeatures = sourceFeatures
+                                                            .map((feature) => (typeof feature === 'string' ? feature.trim() : ''))
+                                                            .filter(Boolean);
+                                                        const isOldVersion = isOldVersionPlan(plan);
 
-                                    return (
-                                    <Card
-                                        key={plan._id}
-                                        className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 ${plan.isPopular ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-indigo-100' : 'border-slate-200'
-                                            }`}
-                                    >
-                                        {plan.isPopular && (
-                                            <div className="absolute top-0 right-0">
-                                                <div className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm">
-                                                    MOST POPULAR
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <CardContent className="p-0">
-                                            <div className="p-6 space-y-4">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
-                                                        <p className="text-slate-500 text-sm font-medium">
-                                                            {plan.durationMonths} {plan.durationMonths === 1 ? 'Month' : 'Months'} Duration
-                                                        </p>
-                                                    </div>
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={`border-0 font-medium ${plan.isActive ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-slate-100 text-slate-600"}`}
-                                                    >
-                                                        {plan.isActive ? 'Active' : 'Draft'}
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className="text-3xl font-bold text-slate-900">₹{plan.price.toLocaleString()}</span>
-                                                    <span className="text-slate-500 text-sm font-medium">/period</span>
-                                                </div>
-                                                <div className="text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-200">
-                                                    Razorpay Plan: {plan.razorpayPlanId || 'Not configured'}
-                                                </div>
-
-                                                {plan.description && (
-                                                    <p className="text-sm text-slate-600 line-clamp-2 min-h-[2.5em]">
-                                                        {plan.description}
-                                                    </p>
-                                                )}
-
-                                                <div className="h-px bg-slate-100 my-4" />
-
-                                                <div className="space-y-3 pt-2">
-                                                    {planFeatures.length > 0 ? (
-                                                        <>
-                                                            {planFeatures.slice(0, 4).map((feature, idx) => (
-                                                                <div key={idx} className="flex items-start gap-3">
-                                                                    <div className="mt-1 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                                                        <Check className="w-2.5 h-2.5 text-green-600" />
+                                                        return (
+                                                            <Card
+                                                                key={plan._id}
+                                                                className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 ${plan.isPopular ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-indigo-100' : 'border-slate-200'}`}
+                                                            >
+                                                                {plan.isPopular && (
+                                                                    <div className="absolute top-0 right-0">
+                                                                        <div className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm">
+                                                                            MOST POPULAR
+                                                                        </div>
                                                                     </div>
-                                                                    <span className="text-sm text-slate-600 leading-tight">{feature}</span>
-                                                                </div>
-                                                            ))}
-                                                            {planFeatures.length > 4 && (
-                                                                <div className="text-xs text-slate-400 font-medium pl-7">
-                                                                    + {planFeatures.length - 4} more features
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    ) : (
-                                                        <div className="text-xs text-slate-400">No features configured</div>
-                                                    )}
-                                                </div>
-                                            </div>
+                                                                )}
 
-                                            <div className="bg-slate-50/50 p-4 border-t border-slate-100 grid grid-cols-1 gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="w-full text-slate-600 hover:text-slate-900 border-slate-200"
-                                                    onClick={() => handleEditPlan(plan)}
-                                                >
-                                                    <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    );
-                                })}
+                                                                <CardContent className="p-0">
+                                                                    <div className="p-6 space-y-4">
+                                                                        <div className="flex justify-between items-start">
+                                                                            <div>
+                                                                                <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
+                                                                                <p className="text-slate-500 text-sm font-medium">
+                                                                                    {plan.durationMonths} {plan.durationMonths === 1 ? 'Month' : 'Months'} Duration
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="flex flex-col items-end gap-1">
+                                                                                <Badge
+                                                                                    variant="outline"
+                                                                                    className={`border-0 font-medium ${plan.isActive ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-slate-100 text-slate-600"}`}
+                                                                                >
+                                                                                    {plan.isActive ? 'Active' : 'Inactive'}
+                                                                                </Badge>
+                                                                                {!plan.isActive && !isOldVersion && (
+                                                                                    <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px]">
+                                                                                        Hidden by Admin
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="flex items-baseline gap-1">
+                                                                            <span className="text-3xl font-bold text-slate-900">₹{plan.price.toLocaleString()}</span>
+                                                                            <span className="text-slate-500 text-sm font-medium">/period</span>
+                                                                        </div>
+                                                                        <div className="text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-200">
+                                                                            Razorpay Plan: {plan.razorpayPlanId || 'Not configured'}
+                                                                        </div>
+
+                                                                        {plan.description && (
+                                                                            <p className="text-sm text-slate-600 line-clamp-2 min-h-[2.5em]">
+                                                                                {plan.description}
+                                                                            </p>
+                                                                        )}
+
+                                                                        <div className="h-px bg-slate-100 my-4" />
+
+                                                                        <div className="space-y-3 pt-2">
+                                                                            {planFeatures.length > 0 ? (
+                                                                                <>
+                                                                                    {planFeatures.slice(0, 4).map((feature, idx) => (
+                                                                                        <div key={idx} className="flex items-start gap-3">
+                                                                                            <div className="mt-1 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                                                                                <Check className="w-2.5 h-2.5 text-green-600" />
+                                                                                            </div>
+                                                                                            <span className="text-sm text-slate-600 leading-tight">{feature}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                    {planFeatures.length > 4 && (
+                                                                                        <div className="text-xs text-slate-400 font-medium pl-7">
+                                                                                            + {planFeatures.length - 4} more features
+                                                                                        </div>
+                                                                                    )}
+                                                                                </>
+                                                                            ) : (
+                                                                                <div className="text-xs text-slate-400">No features configured</div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="bg-slate-50/50 p-4 border-t border-slate-100 grid grid-cols-1 gap-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="w-full text-slate-600 hover:text-slate-900 border-slate-200"
+                                                                            onClick={() => handleEditPlan(plan)}
+                                                                        >
+                                                                            <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant={plan.isActive ? "outline" : "default"}
+                                                                            size="sm"
+                                                                            className={`w-full ${plan.isActive ? 'text-rose-600 border-rose-200 hover:text-rose-700' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
+                                                                            onClick={() => handleTogglePlanStatus(plan)}
+                                                                        >
+                                                                            {plan.isActive ? 'Hide from restaurants' : 'Show to restaurants'}
+                                                                        </Button>
+                                                                    </div>
+                                                                </CardContent>
+                                                            </Card>
+                                                        );
+                                    })}
                             </div>
                         )}
                     </div>
@@ -705,7 +754,7 @@ export default function SubscriptionManagement() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="price" className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Price (₹)</Label>
+                            <Label htmlFor="price" className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Price (₹)</Label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
                                     <Input
@@ -947,7 +996,7 @@ export default function SubscriptionManagement() {
                                             </div>
                                             <p className="text-xs text-slate-400 mt-0.5">
                                                 {entry.startDate ? new Date(entry.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
-                                                {' → '}
+                                                {' â†’ '}
                                                 {entry.endDate ? new Date(entry.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                                             </p>
                                         </div>
@@ -1030,6 +1079,37 @@ export default function SubscriptionManagement() {
                     </div>
                 </DialogContent>
             </Dialog>
+            <Dialog
+                open={confirmState.open}
+                onOpenChange={(open) => setConfirmState((prev) => ({ ...prev, open }))}
+            >
+                <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden">
+                    <DialogHeader className="px-6 py-4 border-b border-slate-100">
+                        <DialogTitle className="text-lg font-semibold text-slate-900">Confirm Action</DialogTitle>
+                        <DialogDescription className="text-sm text-slate-500">
+                            {confirmState.plan?.isActive
+                                ? `Hide ${confirmState.plan?.name} plan from restaurants?`
+                                : `Show ${confirmState.plan?.name} plan to restaurants? Only one active version per plan key is allowed.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setConfirmState({ open: false, plan: null, action: '' })}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleConfirmToggle}
+                            className={confirmState.plan?.isActive ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}
+                        >
+                            {confirmState.plan?.isActive ? 'Hide' : 'Show'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
+
+
