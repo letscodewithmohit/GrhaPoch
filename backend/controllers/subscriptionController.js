@@ -11,6 +11,7 @@ import mongoose from 'mongoose';
 import SubscriptionPayment from '../models/SubscriptionPayment.js';
 import RazorpayWebhookEvent from '../models/RazorpayWebhookEvent.js';
 import { getEnvVar, getRazorpayCredentials } from '../utils/envService.js';
+import { getFixedPlanByDoc } from '../constants/subscriptionPlans.js';
 
 const SUBSCRIPTION_WEBHOOK_EVENTS = new Set(['payment.captured', 'order.paid', 'payment.failed']);
 
@@ -78,6 +79,10 @@ export const activateSubscriptionTx = async ({
   const plan = await SubscriptionPlan.findById(planId).session(session);
   if (!plan) {
     throw new Error('Subscription plan not found');
+  }
+  const fixedPlan = getFixedPlanByDoc(plan);
+  if (!fixedPlan) {
+    throw new Error('Only fixed subscription plans are allowed');
   }
 
   const restaurant = await Restaurant.findById(restaurantId).session(session);
@@ -167,6 +172,7 @@ export const activateSubscriptionTx = async ({
         restaurantId: restaurant._id,
         planId: plan._id,
         planName: plan.name,
+        razorpayPlanId: plan.razorpayPlanId || fixedPlan?.razorpayPlanId || '',
         amount: plan.price,
         currency: 'INR',
         razorpayPaymentId: razorpayPaymentId || null,
@@ -262,6 +268,14 @@ export const createSubscriptionOrder = async (req, res) => {
     if (!plan || !plan.isActive) {
       return errorResponse(res, 404, 'Subscription plan not found or inactive');
     }
+    const fixedPlan = getFixedPlanByDoc(plan);
+    if (!fixedPlan) {
+      return errorResponse(res, 400, 'Only fixed plans (Basic, Growth, Premium) are allowed');
+    }
+    const planRazorpayId = plan.razorpayPlanId || fixedPlan?.razorpayPlanId || '';
+    if (!planRazorpayId) {
+      return errorResponse(res, 400, `Razorpay plan ID is missing for ${plan.name}`);
+    }
 
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
@@ -305,6 +319,7 @@ export const createSubscriptionOrder = async (req, res) => {
       notes: {
         restaurantId: restaurantId.toString(),
         planId: planId,
+        razorpayPlanId: planRazorpayId,
         restaurantName: restaurant.name,
         type: 'subscription'
       }
@@ -323,6 +338,7 @@ export const createSubscriptionOrder = async (req, res) => {
           restaurantId: restaurant._id,
           planId: plan._id,
           planName: plan.name,
+          razorpayPlanId: planRazorpayId,
           amount: plan.price,
           currency: 'INR',
           razorpayOrderId: order.id,
@@ -340,6 +356,7 @@ export const createSubscriptionOrder = async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
+      razorpayPlanId: planRazorpayId,
       keyId
     });
   } catch (error) {
@@ -413,6 +430,9 @@ export const verifyPaymentAndActivate = async (req, res) => {
     const plan = await SubscriptionPlan.findById(planId);
     if (!plan) {
       return errorResponse(res, 404, 'Subscription plan not found');
+    }
+    if (!getFixedPlanByDoc(plan)) {
+      return errorResponse(res, 400, 'Only fixed plans (Basic, Growth, Premium) are allowed');
     }
 
     // Payment verified, activate subscription
@@ -878,6 +898,9 @@ export const updateSubscriptionStatus = async (req, res) => {
     let plan = null;
     if (planId) {
       plan = await SubscriptionPlan.findById(planId);
+      if (plan && !getFixedPlanByDoc(plan)) {
+        return errorResponse(res, 400, 'Only fixed plans (Basic, Growth, Premium) are allowed');
+      }
     }
 
     const effectivePlanId = plan ? planId : restaurant.subscription.planId;
@@ -895,6 +918,9 @@ export const updateSubscriptionStatus = async (req, res) => {
       // If we have a plan object (either fetched now or we should fetch it if it's existing planId)
       if (!plan && effectivePlanId) {
         plan = await SubscriptionPlan.findById(effectivePlanId);
+        if (plan && !getFixedPlanByDoc(plan)) {
+          return errorResponse(res, 400, 'Only fixed plans (Basic, Growth, Premium) are allowed');
+        }
       }
 
       const now = new Date();

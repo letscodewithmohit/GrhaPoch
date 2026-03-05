@@ -448,6 +448,16 @@ export async function assignOrderToDeliveryBoy(order, restaurantLat, restaurantL
 
     // Check if order is COD
     const isCod = order.payment?.method === 'cash' || order.payment?.method === 'cod';
+    const paymentStatus = String(order.payment?.status || '').trim().toLowerCase();
+    const isPaymentCaptured = paymentStatus === 'completed' || paymentStatus === 'captured' || paymentStatus === 'paid';
+
+    // Safety guard: non-COD orders must be paid before rider assignment.
+    if (!isCod && !isPaymentCaptured) {
+      console.warn(
+        `⚠️ Skipping assignment for unpaid non-COD order ${order.orderId || order._id}. paymentStatus=${paymentStatus || 'unknown'}`
+      );
+      return null;
+    }
 
     // Find nearest delivery boy (with zone-based filtering and cash limit)
     const nearestDeliveryBoy = await findNearestDeliveryBoy(restaurantLat, restaurantLng, orderRestaurantId, 50, [], isCod);

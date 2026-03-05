@@ -1,5 +1,11 @@
 
 import SubscriptionPlan from '../models/SubscriptionPlan.js';
+import {
+    FIXED_SUBSCRIPTION_PLAN_KEYS,
+    FIXED_SUBSCRIPTION_PLAN_NAMES,
+    getFixedPlanByDoc,
+    sortPlansByFixedOrder
+} from '../constants/subscriptionPlans.js';
 
 const getEffectiveSubscriptionFeatures = (plan = {}) => {
     const durationMonths = Math.max(Number(plan?.durationMonths) || 1, 1);
@@ -21,8 +27,15 @@ const withEffectiveFeatures = (planDoc) => {
 // Get all subscription plans
 export const getSubscriptionPlans = async (req, res) => {
     try {
-        const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: plans.map(withEffectiveFeatures) });
+        const plans = await SubscriptionPlan.find({
+            $or: [
+                { planKey: { $in: FIXED_SUBSCRIPTION_PLAN_KEYS } },
+                { name: { $in: FIXED_SUBSCRIPTION_PLAN_NAMES } }
+            ]
+        }).lean();
+
+        const sortedPlans = sortPlansByFixedOrder(plans);
+        res.status(200).json({ success: true, data: sortedPlans.map(withEffectiveFeatures) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -31,8 +44,20 @@ export const getSubscriptionPlans = async (req, res) => {
 // Get active subscription plans (for public/restaurant use)
 export const getActiveSubscriptionPlans = async (req, res) => {
     try {
-        const plans = await SubscriptionPlan.find({ isActive: true }).sort({ price: 1 });
-        res.status(200).json({ success: true, data: plans.map(withEffectiveFeatures) });
+        const plans = await SubscriptionPlan.find({
+            $and: [
+                {
+                    $or: [
+                        { planKey: { $in: FIXED_SUBSCRIPTION_PLAN_KEYS } },
+                        { name: { $in: FIXED_SUBSCRIPTION_PLAN_NAMES } }
+                    ]
+                },
+                { isActive: true }
+            ]
+        }).lean();
+
+        const sortedPlans = sortPlansByFixedOrder(plans);
+        res.status(200).json({ success: true, data: sortedPlans.map(withEffectiveFeatures) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -41,22 +66,10 @@ export const getActiveSubscriptionPlans = async (req, res) => {
 // Create a new subscription plan
 export const createSubscriptionPlan = async (req, res) => {
     try {
-        const { name, durationMonths, price, description, features, isPopular } = req.body;
-        const normalizedFeatures = Array.isArray(features)
-            ? features.map((feature) => (typeof feature === 'string' ? feature.trim() : '')).filter(Boolean)
-            : [];
-
-        const newPlan = new SubscriptionPlan({
-            name,
-            durationMonths,
-            price,
-            description,
-            features: normalizedFeatures,
-            isPopular,
+        return res.status(403).json({
+            success: false,
+            message: 'Create plan is disabled. Only Basic, Growth, and Premium plans are allowed.'
         });
-
-        const savedPlan = await newPlan.save();
-        res.status(201).json({ success: true, data: withEffectiveFeatures(savedPlan), message: 'Subscription plan created successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -66,18 +79,55 @@ export const createSubscriptionPlan = async (req, res) => {
 export const updateSubscriptionPlan = async (req, res) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
-        if (Object.prototype.hasOwnProperty.call(updates, 'features')) {
-            updates.features = Array.isArray(updates.features)
-                ? updates.features.map((feature) => (typeof feature === 'string' ? feature.trim() : '')).filter(Boolean)
-                : [];
-        }
-
-        const updatedPlan = await SubscriptionPlan.findByIdAndUpdate(id, updates, { new: true });
-
-        if (!updatedPlan) {
+        const existingPlan = await SubscriptionPlan.findById(id);
+        if (!existingPlan) {
             return res.status(404).json({ success: false, message: 'Subscription plan not found' });
         }
+
+        const fixedPlan = getFixedPlanByDoc(existingPlan);
+        if (!fixedPlan) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only the fixed 3 plans can be updated.'
+            });
+        }
+
+        const updates = {};
+        if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
+            const nextName = String(req.body.name || '').trim();
+            if (!nextName) {
+                return res.status(400).json({ success: false, message: 'Plan name cannot be empty' });
+            }
+            updates.name = nextName;
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'durationMonths')) {
+            const durationMonths = Number(req.body.durationMonths);
+            if (!Number.isFinite(durationMonths) || durationMonths < 1) {
+                return res.status(400).json({ success: false, message: 'durationMonths must be at least 1' });
+            }
+            updates.durationMonths = durationMonths;
+            updates.features = getEffectiveSubscriptionFeatures({ durationMonths });
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'price')) {
+            const price = Number(req.body.price);
+            if (!Number.isFinite(price) || price < 0) {
+                return res.status(400).json({ success: false, message: 'price must be >= 0' });
+            }
+            updates.price = price;
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'description')) {
+            updates.description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'isPopular')) {
+            updates.isPopular = !!req.body.isPopular;
+        }
+
+        // Keep fixed plans always active and preserve stable mapping.
+        updates.isActive = true;
+        updates.planKey = fixedPlan.key;
+        updates.razorpayPlanId = fixedPlan.razorpayPlanId;
+
+        const updatedPlan = await SubscriptionPlan.findByIdAndUpdate(id, updates, { new: true });
 
         res.status(200).json({ success: true, data: withEffectiveFeatures(updatedPlan), message: 'Subscription plan updated successfully' });
     } catch (error) {
@@ -88,14 +138,10 @@ export const updateSubscriptionPlan = async (req, res) => {
 // Delete a subscription plan
 export const deleteSubscriptionPlan = async (req, res) => {
     try {
-        const { id } = req.params;
-        const deletedPlan = await SubscriptionPlan.findByIdAndDelete(id);
-
-        if (!deletedPlan) {
-            return res.status(404).json({ success: false, message: 'Subscription plan not found' });
-        }
-
-        res.status(200).json({ success: true, message: 'Subscription plan deleted successfully' });
+        return res.status(403).json({
+            success: false,
+            message: 'Delete plan is disabled. Fixed 3 plans must remain available.'
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -104,17 +150,10 @@ export const deleteSubscriptionPlan = async (req, res) => {
 // Toggle subscription plan status
 export const toggleSubscriptionPlanStatus = async (req, res) => {
     try {
-        const { id } = req.params;
-        const plan = await SubscriptionPlan.findById(id);
-
-        if (!plan) {
-            return res.status(404).json({ success: false, message: 'Subscription plan not found' });
-        }
-
-        plan.isActive = !plan.isActive;
-        await plan.save();
-
-        res.status(200).json({ success: true, data: plan, message: 'Subscription plan status updated successfully' });
+        return res.status(403).json({
+            success: false,
+            message: 'Plan status toggle is disabled. Fixed 3 plans stay active.'
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import AnimatedPage from "../../components/AnimatedPage"
 import { userAdvertisementAPI } from "@/lib/api"
+import { optimizeBannerForUpload } from "@/lib/utils/bannerUpload"
 
 const ITEMS_PER_PAGE = 6
 
@@ -145,6 +146,8 @@ export default function MyAdvertisements() {
   const [endDate, setEndDate] = useState(() => getTomorrowInputDate())
   const [bannerFile, setBannerFile] = useState(null)
   const [bannerPreview, setBannerPreview] = useState("")
+  const [bannerOptimizationMessage, setBannerOptimizationMessage] = useState("")
+  const [isOptimizingBanner, setIsOptimizingBanner] = useState(false)
 
   const selectedDays = useMemo(
     () => getRangeDays(startDate, endDate),
@@ -260,21 +263,29 @@ export default function MyAdvertisements() {
     setBannerFile(null)
     if (bannerPreview) URL.revokeObjectURL(bannerPreview)
     setBannerPreview("")
+    setBannerOptimizationMessage("")
   }
 
-  const handleBannerChange = (event) => {
+  const handleBannerChange = async (event) => {
     const file = event.target.files?.[0]
+    const inputElement = event.target
     if (!file) return
 
-    if (!file.type.startsWith("image/")) {
-      setErrorMessage("Only image banner is allowed")
-      return
-    }
-
-    if (bannerPreview) URL.revokeObjectURL(bannerPreview)
-    setBannerFile(file)
-    setBannerPreview(URL.createObjectURL(file))
+    setIsOptimizingBanner(true)
     setErrorMessage("")
+    setBannerOptimizationMessage("")
+    try {
+      const optimized = await optimizeBannerForUpload(file)
+      if (bannerPreview) URL.revokeObjectURL(bannerPreview)
+      setBannerFile(optimized.file)
+      setBannerPreview(optimized.previewUrl)
+      setBannerOptimizationMessage(optimized.summary)
+    } catch (error) {
+      setErrorMessage(error?.message || "Failed to process banner image")
+      if (inputElement) inputElement.value = ""
+    } finally {
+      setIsOptimizingBanner(false)
+    }
   }
 
   const handleCreate = async () => {
@@ -286,6 +297,10 @@ export default function MyAdvertisements() {
 
     if (!bannerFile) {
       setErrorMessage("Banner image is required")
+      return
+    }
+    if (isOptimizingBanner) {
+      setErrorMessage("Please wait, banner optimization is in progress")
       return
     }
     if (!title.trim()) {
@@ -421,19 +436,24 @@ export default function MyAdvertisements() {
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Banner Image</label>
                 <p className="text-[11px] text-gray-500 mb-2">
-                  Accepted: JPG/PNG | Ratio: 2.4:1 | Min: 1200x500 | Max size: 2MB
+                  Accepted: JPG/PNG | Auto-optimized to 1200x500 (2.4:1) | Max size: 2MB
                 </p>
                 <label className="border-2 border-dashed border-gray-300 rounded-lg p-3 block cursor-pointer hover:border-gray-500">
                   <input type="file" accept="image/*" onChange={handleBannerChange} className="hidden" />
                   {bannerPreview ? (
-                    <img src={bannerPreview} alt="Banner preview" className="w-full h-36 object-cover rounded-md" />
+                    <div className="w-full rounded-md overflow-hidden border border-gray-200 bg-gray-50 aspect-[12/5]">
+                      <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+                    </div>
                   ) : (
                     <div className="text-center py-4">
                       <Upload className="h-6 w-6 text-gray-500 mx-auto mb-1" />
-                      <p className="text-xs text-gray-600">Click to upload banner</p>
+                      <p className="text-xs text-gray-600">
+                        {isOptimizingBanner ? "Optimizing banner..." : "Click to upload banner"}
+                      </p>
                     </div>
                   )}
                 </label>
+                {bannerOptimizationMessage && <p className="text-xs text-emerald-700 mt-2">{bannerOptimizationMessage}</p>}
                 {bannerErrorMessage && <p className="text-xs text-red-600 mt-2">{bannerErrorMessage}</p>}
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -469,8 +489,8 @@ export default function MyAdvertisements() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button onClick={handleCreate} disabled={creating} className="bg-black hover:bg-gray-800 text-white">
-                  {creating ? "Submitting..." : "Submit Request"}
+                <Button onClick={handleCreate} disabled={creating || isOptimizingBanner} className="bg-black hover:bg-gray-800 text-white">
+                  {isOptimizingBanner ? "Optimizing Banner..." : creating ? "Submitting..." : "Submit Request"}
                 </Button>
                 <Button
                   variant="outline"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Search, Crown, Check, Plus, Edit2, Trash2, X, AlertCircle, Loader2, Sparkles, TrendingUp, Eye, Phone, Mail, Calendar, CreditCard, User, Building2, MapPin, Download, FileText, FileSpreadsheet, ChevronDown, History, RefreshCw } from "lucide-react"
+import { Search, Crown, Check, Edit2, Trash2, X, AlertCircle, Loader2, Sparkles, TrendingUp, Eye, Phone, Mail, Calendar, CreditCard, User, Building2, MapPin, Download, FileText, FileSpreadsheet, ChevronDown, History, RefreshCw } from "lucide-react"
 import { exportSubscriptionsToExcel, exportSubscriptionsToPDF } from "../../components/subscription/subscriptionExportUtils"
 import { adminAPI } from "../../../../lib/api"
 import { toast } from "sonner"
@@ -35,6 +35,7 @@ export default function SubscriptionManagement() {
         name: "",
         durationMonths: "",
         price: "",
+        razorpayPlanId: "",
         description: "",
         features: [""],
         isPopular: false,
@@ -169,6 +170,7 @@ export default function SubscriptionManagement() {
             name: plan.name,
             durationMonths: plan.durationMonths,
             price: plan.price,
+            razorpayPlanId: plan.razorpayPlanId || "",
             description: plan.description || "",
             features: buildEffectiveFeatures(plan.durationMonths),
             isPopular: plan.isPopular || false,
@@ -177,74 +179,36 @@ export default function SubscriptionManagement() {
         setIsPlanModalOpen(true)
     }
 
-    const handleCreatePlan = () => {
-        setEditingPlan(null)
-        setPlanForm({
-            name: "",
-            durationMonths: "",
-            price: "",
-            description: "",
-            features: buildEffectiveFeatures(""),
-            isPopular: false,
-            isActive: true
-        })
-        setIsPlanModalOpen(true)
-    }
-
     const handleSavePlan = async () => {
+        if (!editingPlan?._id) {
+            toast.error("New plan creation is disabled")
+            return
+        }
         if (!planForm.name || !planForm.durationMonths || !planForm.price) {
             toast.error("Please fill in all required fields")
             return
         }
 
-        const features = buildEffectiveFeatures(planForm.durationMonths)
-
         setSavingPlan(true)
         try {
             const payload = {
-                ...planForm,
+                name: planForm.name.trim(),
                 durationMonths: Number(planForm.durationMonths),
                 price: Number(planForm.price),
-                features
+                description: planForm.description,
+                isPopular: !!planForm.isPopular
             }
 
-            if (editingPlan) {
-                await adminAPI.updateSubscriptionPlan(editingPlan._id, payload)
-                toast.success("Plan updated successfully")
-            } else {
-                await adminAPI.createSubscriptionPlan(payload)
-                toast.success("Plan created successfully")
-            }
+            await adminAPI.updateSubscriptionPlan(editingPlan._id, payload)
+            toast.success("Plan updated successfully")
             setIsPlanModalOpen(false)
+            setEditingPlan(null)
             fetchData()
         } catch (error) {
             console.error("Error saving plan:", error)
             toast.error(error.response?.data?.message || "Failed to save plan")
         } finally {
             setSavingPlan(false)
-        }
-    }
-
-    const handleDeletePlan = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this plan?")) return
-        try {
-            await adminAPI.deleteSubscriptionPlan(id)
-            toast.success("Plan deleted successfully")
-            fetchData()
-        } catch (error) {
-            console.error("Error deleting plan:", error)
-            toast.error("Failed to delete plan")
-        }
-    }
-
-    const handleTogglePlanStatus = async (id) => {
-        try {
-            await adminAPI.toggleSubscriptionPlanStatus(id)
-            toast.success("Plan status updated")
-            fetchData()
-        } catch (error) {
-            console.error("Error toggling status:", error)
-            toast.error("Failed to update status")
         }
     }
 
@@ -381,12 +345,6 @@ export default function SubscriptionManagement() {
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h2 className="text-lg font-semibold text-slate-800">Available Plans</h2>
-                            <Button
-                                onClick={handleCreatePlan}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5"
-                            >
-                                <Plus className="w-4 h-4 mr-2" /> Create Plan
-                            </Button>
                         </div>
 
                         {loading ? (
@@ -401,11 +359,8 @@ export default function SubscriptionManagement() {
                                     </div>
                                     <h3 className="text-xl font-medium text-slate-900">No active plans</h3>
                                     <p className="text-slate-500 max-w-sm mx-auto">
-                                        Start by creating flexible subscription tiers for your restaurant partners.
+                                        Fixed plans are managed by system configuration.
                                     </p>
-                                    <Button onClick={handleCreatePlan} variant="outline" className="mt-4">
-                                        Create First Plan
-                                    </Button>
                                 </div>
                             </Card>
                         ) : (
@@ -453,6 +408,9 @@ export default function SubscriptionManagement() {
                                                     <span className="text-3xl font-bold text-slate-900">₹{plan.price.toLocaleString()}</span>
                                                     <span className="text-slate-500 text-sm font-medium">/period</span>
                                                 </div>
+                                                <div className="text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-200">
+                                                    Razorpay Plan: {plan.razorpayPlanId || 'Not configured'}
+                                                </div>
 
                                                 {plan.description && (
                                                     <p className="text-sm text-slate-600 line-clamp-2 min-h-[2.5em]">
@@ -485,7 +443,7 @@ export default function SubscriptionManagement() {
                                                 </div>
                                             </div>
 
-                                            <div className="bg-slate-50/50 p-4 border-t border-slate-100 grid grid-cols-3 gap-2">
+                                            <div className="bg-slate-50/50 p-4 border-t border-slate-100 grid grid-cols-1 gap-2">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -493,25 +451,6 @@ export default function SubscriptionManagement() {
                                                     onClick={() => handleEditPlan(plan)}
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className={`w-full border-slate-200 ${plan.isActive
-                                                        ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'
-                                                        : 'text-green-600 hover:text-green-700 hover:bg-green-50'
-                                                        }`}
-                                                    onClick={() => handleTogglePlanStatus(plan._id)}
-                                                >
-                                                    {plan.isActive ? 'Suspend' : 'Activate'}
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-slate-200"
-                                                    onClick={() => handleDeletePlan(plan._id)}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
                                                 </Button>
                                             </div>
                                         </CardContent>
@@ -744,10 +683,10 @@ export default function SubscriptionManagement() {
                             </div>
                             <div>
                                 <DialogTitle className="text-lg font-bold text-slate-900">
-                                    {editingPlan ? 'Edit Subscription Plan' : 'Create New Plan'}
+                                    Edit Subscription Plan
                                 </DialogTitle>
                                 <DialogDescription className="text-slate-500 text-sm mt-0.5">
-                                    Configure the details and features for this pricing tier.
+                                    Only existing fixed plans can be edited.
                                 </DialogDescription>
                             </div>
                         </div>
@@ -815,6 +754,16 @@ export default function SubscriptionManagement() {
                         </div>
 
                         <div className="space-y-2">
+                            <Label htmlFor="razorpayPlanId" className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Razorpay Plan ID</Label>
+                            <Input
+                                id="razorpayPlanId"
+                                value={planForm.razorpayPlanId}
+                                disabled
+                                className="h-10 border-slate-200 bg-slate-50 font-mono"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
                             <Label htmlFor="description" className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Description</Label>
                             <Textarea
                                 id="description"
@@ -853,11 +802,11 @@ export default function SubscriptionManagement() {
                         </Button>
                         <Button
                             onClick={handleSavePlan}
-                            disabled={savingPlan}
+                            disabled={savingPlan || !editingPlan}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 px-6"
                         >
                             {savingPlan ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                            {editingPlan ? 'Save Changes' : 'Create Plan'}
+                            Save Changes
                         </Button>
                     </div>
                 </DialogContent>

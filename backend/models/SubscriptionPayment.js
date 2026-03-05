@@ -15,6 +15,11 @@ const subscriptionPaymentSchema = new mongoose.Schema({
     planName: {
         type: String
     },
+    razorpayPlanId: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     amount: {
         type: Number,
         required: true,

@@ -8,6 +8,27 @@ import { assignOrderToDeliveryBoy, findNearestDeliveryBoys, findNearestDeliveryB
 import { notifyDeliveryBoyNewOrder, notifyMultipleDeliveryBoys } from '../services/deliveryNotificationService.js';
 import mongoose from 'mongoose';
 
+const toNormalizedString = (value) => String(value || '').trim().toLowerCase();
+
+const isCashOnDeliveryOrder = (order) => {
+  const paymentMethod = toNormalizedString(order?.payment?.method);
+  return (
+    paymentMethod === 'cash' ||
+    paymentMethod === 'cod' ||
+    paymentMethod === 'cash_on_delivery' ||
+    paymentMethod === 'cash on delivery'
+  );
+};
+
+const isPaymentCapturedForProcessing = (order) => {
+  if (isCashOnDeliveryOrder(order)) return true;
+  const paymentStatus = toNormalizedString(order?.payment?.status);
+  return paymentStatus === 'completed' || paymentStatus === 'captured' || paymentStatus === 'paid';
+};
+
+const PAYMENT_CAPTURE_REQUIRED_MESSAGE =
+  'Online payment is not completed yet. Please wait for bill/payment capture before accepting this order.';
+
 /**
  * Get all orders for restaurant
  * GET /api/restaurant/orders
@@ -240,6 +261,10 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
     if (!order) {
       return errorResponse(res, 404, 'Order not found');
+    }
+
+    if (!isPaymentCapturedForProcessing(order)) {
+      return errorResponse(res, 400, PAYMENT_CAPTURE_REQUIRED_MESSAGE);
     }
 
     // Allow accepting orders with status 'pending' or 'confirmed'
@@ -558,6 +583,10 @@ export const markOrderPreparing = asyncHandler(async (req, res) => {
 
     if (!order) {
       return errorResponse(res, 404, 'Order not found');
+    }
+
+    if (!isPaymentCapturedForProcessing(order)) {
+      return errorResponse(res, 400, PAYMENT_CAPTURE_REQUIRED_MESSAGE);
     }
 
     // Allow marking as preparing if status is 'confirmed', 'pending', or already 'preparing' (for retry scenarios)
