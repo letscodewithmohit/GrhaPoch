@@ -36,9 +36,28 @@ const countryCodes = [
 
 export default function DeliverySignIn() {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    phone: "",
-    countryCode: "+91",
+  const [formData, setFormData] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem("deliveryAuthData")
+      if (stored) {
+        const data = JSON.parse(stored)
+        if (data && data.phone && data.method === "phone") {
+          const parts = data.phone.split(" ")
+          if (parts.length >= 2) {
+            return {
+              countryCode: parts[0],
+              phone: parts.slice(1).join("").replace(/\D/g, "")
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore error
+    }
+    return {
+      phone: "",
+      countryCode: "+91",
+    }
   })
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)

@@ -47,7 +47,7 @@ export default function ProfileDetails() {
         }
       } catch (error) {
         console.error("Error fetching profile:", error)
-        
+
         // More detailed error handling
         if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
           toast.error("Cannot connect to server. Please check if backend is running.")
@@ -102,25 +102,25 @@ export default function ProfileDetails() {
               </p>
             </div>
             <div className="divide-y divide-gray-200">
-            <div className="p-2 px-3 flex items-center justify-between">
+              <div className="p-2 px-3 flex items-center justify-between">
                 <p className="text-sm text-gray-900">Zone</p>
                 <p className="text-base text-gray-900">
                   {profile?.availability?.zones?.length > 0 ? "Assigned" : "Not assigned"}
                 </p>
               </div>
-            <div className="p-2 px-3 flex items-center justify-between">
+              <div className="p-2 px-3 flex items-center justify-between">
                 <p className="text-sm text-gray-900">City</p>
                 <p className="text-base text-gray-900">
                   {profile?.location?.city || "N/A"}
                 </p>
               </div>
-            <div className="p-2 px-3 flex items-center justify-between">
+              <div className="p-2 px-3 flex items-center justify-between">
                 <p className="text-sm text-gray-900">Vehicle type</p>
                 <p className="text-base text-gray-900 capitalize">
                   {profile?.vehicle?.type || "N/A"}
                 </p>
               </div>
-            <div className="p-2 px-3 flex items-center justify-between">
+              <div className="p-2 px-3 flex items-center justify-between">
                 <p className="text-sm text-gray-900">Vehicle number</p>
                 {vehicleNumber ? (
                   <div className="flex items-center gap-2">
@@ -317,7 +317,7 @@ export default function ProfileDetails() {
               <div className="w-full align-center flex content-center justify-between">
                 <p className="text-sm text-gray-900 mb-1">Account Number</p>
                 <p className="text-base text-gray-900">
-                  {profile?.documents?.bankDetails?.accountNumber 
+                  {profile?.documents?.bankDetails?.accountNumber
                     ? `****${profile.documents.bankDetails.accountNumber.slice(-4)}`
                     : "-"}
                 </p>
@@ -365,7 +365,7 @@ export default function ProfileDetails() {
             <input
               type="text"
               value={vehicleInput}
-              onChange={(e) => setVehicleInput(e.target.value)}
+              onChange={(e) => setVehicleInput(e.target.value.toUpperCase())}
               placeholder="Enter vehicle number"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               autoFocus
@@ -418,12 +418,12 @@ export default function ProfileDetails() {
             >
               <X className="w-5 h-5 text-gray-600" />
             </button>
-            
+
             {/* Document Title */}
             <div className="p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">{selectedDocument.name}</h3>
             </div>
-            
+
             {/* Document Image */}
             <div className="p-4">
               <img
@@ -462,9 +462,8 @@ export default function ProfileDetails() {
                 setBankDetailsErrors(prev => ({ ...prev, accountHolderName: "" }))
               }}
               placeholder="Enter account holder name"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                bankDetailsErrors.accountHolderName ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${bankDetailsErrors.accountHolderName ? "border-red-500" : "border-gray-300"
+                }`}
             />
             {bankDetailsErrors.accountHolderName && (
               <p className="text-red-500 text-xs mt-1">{bankDetailsErrors.accountHolderName}</p>
@@ -486,9 +485,8 @@ export default function ProfileDetails() {
               }}
               placeholder="Enter account number"
               maxLength={18}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                bankDetailsErrors.accountNumber ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${bankDetailsErrors.accountNumber ? "border-red-500" : "border-gray-300"
+                }`}
             />
             {bankDetailsErrors.accountNumber && (
               <p className="text-red-500 text-xs mt-1">{bankDetailsErrors.accountNumber}</p>
@@ -510,9 +508,8 @@ export default function ProfileDetails() {
               }}
               placeholder="Enter IFSC code"
               maxLength={11}
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                bankDetailsErrors.ifscCode ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${bankDetailsErrors.ifscCode ? "border-red-500" : "border-gray-300"
+                }`}
             />
             {bankDetailsErrors.ifscCode && (
               <p className="text-red-500 text-xs mt-1">{bankDetailsErrors.ifscCode}</p>
@@ -532,9 +529,8 @@ export default function ProfileDetails() {
                 setBankDetailsErrors(prev => ({ ...prev, bankName: "" }))
               }}
               placeholder="Enter bank name"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                bankDetailsErrors.bankName ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${bankDetailsErrors.bankName ? "border-red-500" : "border-gray-300"
+                }`}
             />
             {bankDetailsErrors.bankName && (
               <p className="text-red-500 text-xs mt-1">{bankDetailsErrors.bankName}</p>
@@ -597,11 +593,10 @@ export default function ProfileDetails() {
               }
             }}
             disabled={isUpdatingBankDetails}
-            className={`w-full py-3 rounded-lg font-medium text-white transition-colors ${
-              isUpdatingBankDetails
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-[#00B761] hover:bg-[#00A055]"
-            }`}
+            className={`w-full py-3 rounded-lg font-medium text-white transition-colors ${isUpdatingBankDetails
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-[#00B761] hover:bg-[#00A055]"
+              }`}
           >
             {isUpdatingBankDetails ? "Updating..." : "Save Bank Details"}
           </button>
