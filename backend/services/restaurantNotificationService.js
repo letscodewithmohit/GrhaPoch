@@ -52,8 +52,8 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
     if (!restaurant) {
       restaurant = await Restaurant.findOne({
         $or: [
-        { restaurantId: restaurantId },
-        { _id: restaurantId }]
+          { restaurantId: restaurantId },
+          { _id: restaurantId }]
 
       }).lean();
     }
@@ -74,7 +74,7 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
       try {
         const paymentRecord = await Payment.findOne({ orderId: order._id }).select('method').lean();
         if (paymentRecord?.method === 'cash') resolvedPaymentMethod = 'cash';
-      } catch (e) {/* ignore */}
+      } catch (e) {/* ignore */ }
     }
 
     // Prepare order notification data
@@ -112,11 +112,11 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
 
     // Try multiple room formats to ensure we find the restaurant
     const roomVariations = [
-    `restaurant:${normalizedRestaurantId}`,
-    `restaurant:${restaurantId}`,
-    ...(mongoose.Types.ObjectId.isValid(normalizedRestaurantId) ?
-    [`restaurant:${new mongoose.Types.ObjectId(normalizedRestaurantId).toString()}`] :
-    [])];
+      `restaurant:${normalizedRestaurantId}`,
+      `restaurant:${restaurantId}`,
+      ...(mongoose.Types.ObjectId.isValid(normalizedRestaurantId) ?
+        [`restaurant:${new mongoose.Types.ObjectId(normalizedRestaurantId).toString()}`] :
+        [])];
 
 
     // Get all connected sockets in the restaurant room
@@ -200,6 +200,18 @@ export async function notifyRestaurantNewOrder(order, restaurantId, paymentMetho
         error: 'Restaurant not connected to Socket.IO',
         message: `Restaurant ${normalizedRestaurantId} (${order.restaurantName}) is not connected. Order notification not sent.`
       };
+    }
+
+    // FCM Notification
+    try {
+      const { notifyRestaurantFCM } = await import('./fcmNotificationService.js');
+      await notifyRestaurantFCM(restaurantId, '🛍️ New Order Received!', `You have a new order #${order.orderId}. Open the app to accept it.`, {
+        orderId: order.orderId,
+        orderMongoId: order._id.toString(),
+        type: 'NEW_ORDER'
+      });
+    } catch (fcmError) {
+      console.error('Error sending Restaurant FCM notification:', fcmError);
     }
 
     return {

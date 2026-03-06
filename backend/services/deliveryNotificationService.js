@@ -30,11 +30,11 @@ async function checkDeliveryPartnerConnection(deliveryPartnerId) {
     const normalizedId = deliveryPartnerId?.toString() || deliveryPartnerId;
 
     const roomVariations = [
-    `delivery:${normalizedId}`,
-    `delivery:${deliveryPartnerId}`,
-    ...(mongoose.Types.ObjectId.isValid(normalizedId) ?
-    [`delivery:${new mongoose.Types.ObjectId(normalizedId).toString()}`] :
-    [])];
+      `delivery:${normalizedId}`,
+      `delivery:${deliveryPartnerId}`,
+      ...(mongoose.Types.ObjectId.isValid(normalizedId) ?
+        [`delivery:${new mongoose.Types.ObjectId(normalizedId).toString()}`] :
+        [])];
 
 
     for (const room of roomVariations) {
@@ -79,14 +79,14 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
       // Need to populate
       const OrderModel = await import('../models/Order.js');
       orderWithUser = await OrderModel.default.findById(order._id).
-      populate('userId', 'name phone').
-      lean();
+        populate('userId', 'name phone').
+        lean();
     }
 
     // Get delivery partner details
     const deliveryPartner = await Delivery.findById(deliveryPartnerId).
-    select('name phone availability.currentLocation availability.isOnline status isActive').
-    lean();
+      select('name phone availability.currentLocation availability.isOnline status isActive').
+      lean();
 
     if (!deliveryPartner) {
       console.error(`❌ Delivery partner not found: ${deliveryPartnerId}`);
@@ -103,8 +103,8 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
     }
 
     if (!deliveryPartner.availability?.currentLocation?.coordinates ||
-    deliveryPartner.availability.currentLocation.coordinates[0] === 0 &&
-    deliveryPartner.availability.currentLocation.coordinates[1] === 0) {
+      deliveryPartner.availability.currentLocation.coordinates[0] === 0 &&
+      deliveryPartner.availability.currentLocation.coordinates[1] === 0) {
       console.warn(`⚠️ Delivery partner ${deliveryPartnerId} (${deliveryPartner.name}) has no valid location.`);
     }
 
@@ -136,8 +136,8 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
     if (!restaurant) {
       restaurant = await Restaurant.findOne({
         $or: [
-        { restaurantId: order.restaurantId },
-        { _id: order.restaurantId }]
+          { restaurantId: order.restaurantId },
+          { _id: order.restaurantId }]
 
       }).lean();
     }
@@ -209,11 +209,11 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
 
     // Try multiple room formats to ensure we find the delivery partner
     const roomVariations = [
-    `delivery:${normalizedDeliveryPartnerId}`,
-    `delivery:${deliveryPartnerId}`,
-    ...(mongoose.Types.ObjectId.isValid(normalizedDeliveryPartnerId) ?
-    [`delivery:${new mongoose.Types.ObjectId(normalizedDeliveryPartnerId).toString()}`] :
-    [])];
+      `delivery:${normalizedDeliveryPartnerId}`,
+      `delivery:${deliveryPartnerId}`,
+      ...(mongoose.Types.ObjectId.isValid(normalizedDeliveryPartnerId) ?
+        [`delivery:${new mongoose.Types.ObjectId(normalizedDeliveryPartnerId).toString()}`] :
+        [])];
 
 
     // Get all connected sockets in the delivery partner room
@@ -312,6 +312,18 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
       console.error(`❌ Failed to send notification - no sockets found and broadcast failed`);
     }
 
+    // FCM Notification
+    try {
+      const { notifyDeliveryFCM } = await import('./fcmNotificationService.js');
+      await notifyDeliveryFCM(deliveryPartnerId, '🛍️ New Order Assigned!', `Order #${order.orderId} is assigned to you. Head to ${order.restaurantName} for pickup.`, {
+        orderId: order.orderId,
+        orderMongoId: order._id.toString(),
+        type: 'NEW_ORDER_ASSIGNED'
+      });
+    } catch (fcmError) {
+      console.error('Error sending Delivery FCM notification:', fcmError);
+    }
+
     return {
       success: true,
       deliveryPartnerId,
@@ -353,8 +365,8 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
     } else if (order.userId) {
       const OrderModel = await import('../models/Order.js');
       orderWithUser = await OrderModel.default.findById(order._id).
-      populate('userId', 'name phone').
-      lean();
+        populate('userId', 'name phone').
+        lean();
     }
 
     // Get restaurant details for complete address
@@ -365,22 +377,22 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       // If restaurantId is populated, use it directly
       if (typeof orderWithUser.restaurantId === 'object') {
         restaurantAddress = orderWithUser.restaurantId.address ||
-        orderWithUser.restaurantId.location?.formattedAddress ||
-        orderWithUser.restaurantId.location?.address ||
-        'Restaurant address';
+          orderWithUser.restaurantId.location?.formattedAddress ||
+          orderWithUser.restaurantId.location?.address ||
+          'Restaurant address';
         restaurantLocation = orderWithUser.restaurantId.location;
       } else {
         // If restaurantId is just an ID, fetch restaurant details
         try {
           const RestaurantModel = await import('../models/Restaurant.js');
           const restaurant = await RestaurantModel.default.findById(orderWithUser.restaurantId).
-          select('name address location').
-          lean();
+            select('name address location').
+            lean();
           if (restaurant) {
             restaurantAddress = restaurant.address ||
-            restaurant.location?.formattedAddress ||
-            restaurant.location?.address ||
-            'Restaurant address';
+              restaurant.location?.formattedAddress ||
+              restaurant.location?.address ||
+              'Restaurant address';
             restaurantLocation = restaurant.location;
           }
         } catch (e) {
@@ -405,15 +417,15 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
 
       // Validate coordinates
       if (restaurantLat && restaurantLng && customerLat && customerLng &&
-      !isNaN(restaurantLat) && !isNaN(restaurantLng) &&
-      !isNaN(customerLat) && !isNaN(customerLng)) {
+        !isNaN(restaurantLat) && !isNaN(restaurantLng) &&
+        !isNaN(customerLat) && !isNaN(customerLng)) {
         // Calculate distance using Haversine formula
         const R = 6371; // Earth radius in km
         const dLat = (customerLat - restaurantLat) * Math.PI / 180;
         const dLng = (customerLng - restaurantLng) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(restaurantLat * Math.PI / 180) * Math.cos(customerLat * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+          Math.cos(restaurantLat * Math.PI / 180) * Math.cos(customerLat * Math.PI / 180) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         deliveryDistance = R * c;
 
@@ -446,8 +458,8 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       if (earnedValue <= 0 && deliveryFeeFromOrder > 0) {
 
         estimatedEarnings = typeof estimatedEarnings === 'object' ?
-        { ...estimatedEarnings, totalEarning: deliveryFeeFromOrder } :
-        deliveryFeeFromOrder;
+          { ...estimatedEarnings, totalEarning: deliveryFeeFromOrder } :
+          deliveryFeeFromOrder;
       }
 
 
@@ -524,11 +536,11 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       try {
         const normalizedId = deliveryPartnerId?.toString() || deliveryPartnerId;
         const roomVariations = [
-        `delivery:${normalizedId}`,
-        `delivery:${deliveryPartnerId}`,
-        ...(mongoose.Types.ObjectId.isValid(normalizedId) ?
-        [`delivery:${new mongoose.Types.ObjectId(normalizedId).toString()}`] :
-        [])];
+          `delivery:${normalizedId}`,
+          `delivery:${deliveryPartnerId}`,
+          ...(mongoose.Types.ObjectId.isValid(normalizedId) ?
+            [`delivery:${new mongoose.Types.ObjectId(normalizedId).toString()}`] :
+            [])];
 
 
         let notificationSent = false;
@@ -562,6 +574,18 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       }
     }
 
+
+    // FCM Notification
+    try {
+      const { notifyMultipleDeliveryFCM } = await import('./fcmNotificationService.js');
+      await notifyMultipleDeliveryFCM(deliveryPartnerIds, '🔔 New Delivery Opportunity', `Order #${order.orderId} is available for pickup at ${order.restaurantName}. First come first serve!`, {
+        orderId: order.orderId || order._id,
+        orderMongoId: order._id?.toString(),
+        type: 'NEW_ORDER_AVAILABLE'
+      });
+    } catch (fcmError) {
+      console.error('Error sending Multiple Delivery FCM notification:', fcmError);
+    }
 
     return { success: true, notified: notifiedCount };
   } catch (error) {
@@ -604,11 +628,11 @@ export async function notifyDeliveryBoyOrderReady(order, deliveryPartnerId) {
 
     // Try to find delivery partner's room
     const roomVariations = [
-    `delivery:${normalizedDeliveryPartnerId}`,
-    `delivery:${deliveryPartnerId}`,
-    ...(mongoose.Types.ObjectId.isValid(normalizedDeliveryPartnerId) ?
-    [`delivery:${new mongoose.Types.ObjectId(normalizedDeliveryPartnerId).toString()}`] :
-    [])];
+      `delivery:${normalizedDeliveryPartnerId}`,
+      `delivery:${deliveryPartnerId}`,
+      ...(mongoose.Types.ObjectId.isValid(normalizedDeliveryPartnerId) ?
+        [`delivery:${new mongoose.Types.ObjectId(normalizedDeliveryPartnerId).toString()}`] :
+        [])];
 
 
     let notificationSent = false;
@@ -636,6 +660,18 @@ export async function notifyDeliveryBoyOrderReady(order, deliveryPartnerId) {
       notificationSent = true;
     }
 
+    // FCM Notification
+    try {
+      const { notifyDeliveryFCM } = await import('./fcmNotificationService.js');
+      await notifyDeliveryFCM(normalizedDeliveryPartnerId, '📦 Order Ready for Pickup', `Order #${order.orderId} is ready at ${order.restaurantName}. Please head there for pickup.`, {
+        orderId: order.orderId || order._id,
+        orderMongoId: order._id?.toString(),
+        type: 'ORDER_READY'
+      });
+    } catch (fcmError) {
+      console.error('Error sending Delivery FCM notification for ready:', fcmError);
+    }
+
     return {
       success: notificationSent,
       deliveryPartnerId: normalizedDeliveryPartnerId,
@@ -655,9 +691,9 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a =
-  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in kilometers
 }

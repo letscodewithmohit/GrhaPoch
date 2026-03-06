@@ -392,6 +392,16 @@ const restaurantSchema = new mongoose.Schema(
       }
     ],
 
+    // FCM push notification tokens
+    fcmTokensWeb: {
+      type: [String],
+      default: []
+    },
+    fcmTokensMobile: {
+      type: [String],
+      default: []
+    }
+
   },
   {
     timestamps: true,

@@ -12,8 +12,8 @@ import { calculateRoute } from './routeCalculationService.js';
 const getFeeSettings = async () => {
   try {
     const feeSettings = await FeeSettings.findOne({ isActive: true }).
-    sort({ createdAt: -1 }).
-    lean();
+      sort({ createdAt: -1 }).
+      lean();
 
     if (feeSettings) {
       return feeSettings;
@@ -104,9 +104,9 @@ export const calculateDistance = (point1, point2) => {
   const dLng = (lng2 - lng1) * Math.PI / 180;
 
   const a =
-  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
@@ -208,9 +208,9 @@ export const calculatePlatformFee = async (distanceInKm = null) => {
 
   // If distance is provided and platform fee ranges are configured, use range-based calculation
   if (distanceInKm !== null && distanceInKm !== undefined &&
-  feeSettings.platformFeeRanges &&
-  Array.isArray(feeSettings.platformFeeRanges) &&
-  feeSettings.platformFeeRanges.length > 0) {
+    feeSettings.platformFeeRanges &&
+    Array.isArray(feeSettings.platformFeeRanges) &&
+    feeSettings.platformFeeRanges.length > 0) {
 
     // Sort ranges by min value to ensure proper checking
     const sortedRanges = [...feeSettings.platformFeeRanges].sort((a, b) => a.min - b.min);
@@ -290,7 +290,6 @@ export const calculateOrderPricing = async ({
   restaurantId,
   deliveryAddress = null,
   couponCode = null,
-  deliveryFleet = 'standard',
   tip = 0,
   donation = 0
 }) => {
@@ -317,8 +316,8 @@ export const calculateOrderPricing = async ({
       if (!restaurant) {
         restaurant = await Restaurant.findOne({
           $or: [
-          { restaurantId: restaurantId },
-          { slug: restaurantId }]
+            { restaurantId: restaurantId },
+            { slug: restaurantId }]
 
         }).lean();
       }
@@ -346,8 +345,8 @@ export const calculateOrderPricing = async ({
             'items.couponCode': couponCode,
             startDate: { $lte: now },
             $or: [
-            { endDate: { $gte: now } },
-            { endDate: null }]
+              { endDate: { $gte: now } },
+              { endDate: null }]
 
           }).lean();
 

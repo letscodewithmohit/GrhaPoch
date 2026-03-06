@@ -146,6 +146,13 @@ export function clearModuleAuth(module) {
   localStorage.removeItem(`${module}_user`);
   // Also clear any sessionStorage data
   sessionStorage.removeItem(`${module}AuthData`);
+
+  // Remove FCM token from backend on logout (fire-and-forget)
+  if (module === 'user' || module === 'delivery' || module === 'restaurant') {
+    import('../pushNotificationService.js')
+      .then(({ removeFCMToken }) => removeFCMToken(module))
+      .catch(() => { }); // non-critical
+  }
 }
 
 /**
@@ -223,6 +230,13 @@ export function setAuthData(module, token, user) {
       throw new Error(`Authentication flag storage failed for module: ${module}`);
     }
 
+    // Register FCM push notification token after successful login
+    // Fire-and-forget: never block the login flow
+    if (module === 'user' || module === 'delivery' || module === 'restaurant') {
+      import('../pushNotificationService.js')
+        .then(({ registerFCMToken }) => registerFCMToken(module, true))
+        .catch((err) => console.warn('[FCM] Post-login token registration failed (non-critical):', err.message));
+    }
 
   } catch (error) {
     // If quota exceeded, try to clear some space
