@@ -6,6 +6,7 @@ import './index.css';
 import App from './App.jsx';
 import { getGoogleMapsApiKey } from './lib/utils/googleMapsApiKey.js';
 import { loadBusinessSettings } from './lib/utils/businessSettings.js';
+import { initializePushNotifications } from './lib/pushNotificationService.js';
 
 // Load business settings on app start (favicon, title)
 // Silently handle errors - this is not critical for app functionality
@@ -13,6 +14,9 @@ loadBusinessSettings().catch(() => {
 
   // Silently fail - settings will load when admin is authenticated
 });
+
+// Register FCM service worker silently on load (token registration happens after login)
+initializePushNotifications();
 // Global flag to track Google Maps loading state
 window.__googleMapsLoading = window.__googleMapsLoading || false;
 window.__googleMapsLoaded = window.__googleMapsLoaded || false;
@@ -93,26 +97,24 @@ console.error = (...args) => {
 
   // Suppress browser extension errors
   if (
-  typeof args[0] === 'string' && (
-  args[0].includes('chrome-extension://') ||
-  args[0].includes('_$initialUrl') ||
-  args[0].includes('_$onReInit') ||
-  args[0].includes('_$bindListeners')))
-  {
+    typeof args[0] === 'string' && (
+      args[0].includes('chrome-extension://') ||
+      args[0].includes('_$initialUrl') ||
+      args[0].includes('_$onReInit') ||
+      args[0].includes('_$bindListeners'))) {
     return; // Suppress browser extension errors
   }
 
 
   // Suppress geolocation errors (non-critical, will retry or use fallback)
   if (
-  errorStr.includes('Timeout expired') ||
-  errorStr.includes('GeolocationPositionError') ||
-  errorStr.includes('Geolocation error') ||
-  errorStr.includes('User denied Geolocation') ||
-  errorStr.includes('permission denied') ||
-  errorStr.includes('code: 3') && errorStr.includes('location') ||
-  errorStr.includes('code: 1') && errorStr.includes('location'))
-  {
+    errorStr.includes('Timeout expired') ||
+    errorStr.includes('GeolocationPositionError') ||
+    errorStr.includes('Geolocation error') ||
+    errorStr.includes('User denied Geolocation') ||
+    errorStr.includes('permission denied') ||
+    errorStr.includes('code: 3') && errorStr.includes('location') ||
+    errorStr.includes('code: 1') && errorStr.includes('location')) {
     return; // Silently ignore geolocation errors (permission denied, timeout, etc.)
   }
 
@@ -140,17 +142,16 @@ console.error = (...args) => {
 
   // Check error string for network error patterns (for string-based error messages)
   if (
-  errorStr.includes('🌐 Network Error') ||
-  errorStr.includes('Network Error - Backend server may not be running') ||
-  errorStr.includes('ERR_NETWORK') && errorStr.includes('AxiosError') ||
-  errorStr.includes('💡 API Base URL:') ||
-  errorStr.includes('💡 Backend URL:') ||
-  errorStr.includes('💡 Start backend with:') ||
-  errorStr.includes('💡 Check backend health:') ||
-  errorStr.includes('💡 Make sure backend server is running:') ||
-  errorStr.includes('❌ Backend not accessible at:') ||
-  errorStr.includes('💡 Start backend:'))
-  {
+    errorStr.includes('🌐 Network Error') ||
+    errorStr.includes('Network Error - Backend server may not be running') ||
+    errorStr.includes('ERR_NETWORK') && errorStr.includes('AxiosError') ||
+    errorStr.includes('💡 API Base URL:') ||
+    errorStr.includes('💡 Backend URL:') ||
+    errorStr.includes('💡 Start backend with:') ||
+    errorStr.includes('💡 Check backend health:') ||
+    errorStr.includes('💡 Make sure backend server is running:') ||
+    errorStr.includes('❌ Backend not accessible at:') ||
+    errorStr.includes('💡 Start backend:')) {
     // Only show first occurrence, subsequent ones are suppressed
     // The axios interceptor already handles throttling
     return;
@@ -158,29 +159,26 @@ console.error = (...args) => {
 
   // Suppress timeout errors (handled by axios interceptor)
   if (
-  errorStr.includes('timeout of') ||
-  errorStr.includes('ECONNABORTED') ||
-  errorStr.includes('AxiosError') && errorStr.includes('timeout'))
-  {
+    errorStr.includes('timeout of') ||
+    errorStr.includes('ECONNABORTED') ||
+    errorStr.includes('AxiosError') && errorStr.includes('timeout')) {
     // Timeout errors are handled by axios interceptor with proper error handling
     return;
   }
 
   // Suppress OTP verification errors (handled by UI error messages)
   if (
-  errorStr.includes('OTP Verification Error:') ||
-  errorStr.includes('AxiosError') && errorStr.includes('Request failed with status code 403') && errorStr.includes('verify-otp'))
-  {
+    errorStr.includes('OTP Verification Error:') ||
+    errorStr.includes('AxiosError') && errorStr.includes('Request failed with status code 403') && errorStr.includes('verify-otp')) {
     // OTP errors are already displayed to users via UI error messages
     return;
   }
 
   // Suppress Restaurant Socket transport errors (handled by useRestaurantNotifications with throttled message)
   if (
-  errorStr.includes('Restaurant Socket connection error') ||
-  errorStr.includes('xhr poll error') ||
-  typeof args[0] === 'object' && args[0]?.type === 'TransportError' && args[0]?.message?.includes('xhr poll error'))
-  {
+    errorStr.includes('Restaurant Socket connection error') ||
+    errorStr.includes('xhr poll error') ||
+    typeof args[0] === 'object' && args[0]?.type === 'TransportError' && args[0]?.message?.includes('xhr poll error')) {
     return;
   }
 
@@ -201,13 +199,12 @@ window.addEventListener('unhandledrejection', (event) => {
 
   // Suppress geolocation errors (permission denied, timeout, etc.)
   if (
-  errorMsg.includes('Timeout expired') ||
-  errorMsg.includes('User denied Geolocation') ||
-  errorMsg.includes('permission denied') ||
-  errorName === 'GeolocationPositionError' ||
-  error?.code === 3 && errorMsg.includes('timeout') ||
-  error?.code === 1 && (errorMsg.includes('location') || errorMsg.includes('geolocation')))
-  {
+    errorMsg.includes('Timeout expired') ||
+    errorMsg.includes('User denied Geolocation') ||
+    errorMsg.includes('permission denied') ||
+    errorName === 'GeolocationPositionError' ||
+    error?.code === 3 && errorMsg.includes('timeout') ||
+    error?.code === 1 && (errorMsg.includes('location') || errorMsg.includes('geolocation'))) {
     event.preventDefault(); // Prevent error from showing in console
     return;
   }
@@ -215,9 +212,8 @@ window.addEventListener('unhandledrejection', (event) => {
   // Suppress refund processing errors that are already handled by the component
   // These errors are logged with console.error in the component's catch block
   if (
-  errorStr.includes('Error processing refund') ||
-  errorName === 'AxiosError' && errorMsg.includes('refund'))
-  {
+    errorStr.includes('Error processing refund') ||
+    errorName === 'AxiosError' && errorMsg.includes('refund')) {
     // Error is already handled by the component, just prevent unhandled rejection
     event.preventDefault();
     return;

@@ -206,11 +206,7 @@ const orderSchema = new mongoose.Schema({
       timestamp: { type: Date }
     }
   },
-  deliveryFleet: {
-    type: String,
-    enum: ['standard', 'fast', 'pure_veg'],
-    default: 'standard'
-  },
+
   note: {
     type: String
   },

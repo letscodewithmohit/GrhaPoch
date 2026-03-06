@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Truck, Leaf, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, PlusCircle, Navigation, Locate } from "lucide-react";
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, PlusCircle, Navigation, Locate } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 
@@ -22,8 +22,9 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetDescription } from
-"@/components/ui/sheet";
+  SheetDescription
+} from
+  "@/components/ui/sheet";
 
 
 // Removed hardcoded suggested items - now fetching approved addons from backend
@@ -85,8 +86,8 @@ const normalizePresetAmounts = (values, fallback = []) => {
 
   const normalized = [...new Set(
     values.
-    map((value) => Math.round(Number(value))).
-    filter((value) => Number.isFinite(value) && value > 0)
+      map((value) => Math.round(Number(value))).
+      filter((value) => Number.isFinite(value) && value > 0)
   )].sort((a, b) => a - b);
 
   return normalized.length > 0 ? normalized : fallback;
@@ -119,7 +120,7 @@ export default function Cart() {
           <button
             onClick={() => navigate('/')}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-            
+
             Go to Home
           </button>
         </div>
@@ -140,8 +141,6 @@ export default function Cart() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("razorpay"); // razorpay | cash | wallet
   const [walletBalance, setWalletBalance] = useState(0);
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
-  const [deliveryFleet, setDeliveryFleet] = useState("standard");
-  const [showFleetOptions, setShowFleetOptions] = useState(false);
   const [note, setNote] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [sendCutlery, setSendCutlery] = useState(true);
@@ -190,8 +189,8 @@ export default function Cart() {
   const defaultAddress = useMemo(() => {
     // If we have a location with a specific label (Home/Office/Other) or a non-placeholder formattedAddress, use it
     const hasValidLocation = currentLocation?.formattedAddress &&
-    currentLocation.formattedAddress !== "Select location" &&
-    currentLocation.formattedAddress !== "Detecting location...";
+      currentLocation.formattedAddress !== "Select location" &&
+      currentLocation.formattedAddress !== "Detecting location...";
 
     if (hasValidLocation) {
       return {
@@ -219,8 +218,8 @@ export default function Cart() {
   // Priority: restaurantData > cart[0].restaurantId
   // DO NOT use cart[0].restaurant as slug fallback - it creates wrong slugs
   const restaurantId = cart.length > 0 ?
-  restaurantData?._id || restaurantData?.restaurantId || cart[0]?.restaurantId || null :
-  null;
+    restaurantData?._id || restaurantData?.restaurantId || cart[0]?.restaurantId || null :
+    null;
 
   // Stable restaurant ID for addons fetch (memoized to prevent dependency array issues)
   // Prefer restaurantData IDs (more reliable) over slug from cart
@@ -299,14 +298,14 @@ export default function Cart() {
 
             // Check if restaurantId matches
             const restaurantIdMatches =
-            fetchedRestaurantId === cartRestaurantId ||
-            data._id?.toString() === cartRestaurantId ||
-            data.restaurantId === cartRestaurantId;
+              fetchedRestaurantId === cartRestaurantId ||
+              data._id?.toString() === cartRestaurantId ||
+              data.restaurantId === cartRestaurantId;
 
             // Check if restaurant name matches (if available in cart)
             const restaurantNameMatches =
-            !cartRestaurantName ||
-            fetchedRestaurantName?.toLowerCase().trim() === cartRestaurantName.toLowerCase().trim();
+              !cartRestaurantName ||
+              fetchedRestaurantName?.toLowerCase().trim() === cartRestaurantName.toLowerCase().trim();
 
             if (!restaurantIdMatches) {
               console.error('❌ CRITICAL: Fetched restaurant ID does not match cart restaurantId!', {
@@ -356,15 +355,15 @@ export default function Cart() {
 
           // Try exact match first
           let matchingRestaurant = restaurants.find((r) =>
-          r.name?.toLowerCase().trim() === cart[0].restaurant?.toLowerCase().trim()
+            r.name?.toLowerCase().trim() === cart[0].restaurant?.toLowerCase().trim()
           );
 
           // If no exact match, try partial match
           if (!matchingRestaurant) {
 
             matchingRestaurant = restaurants.find((r) =>
-            r.name?.toLowerCase().includes(cart[0].restaurant?.toLowerCase().trim()) ||
-            cart[0].restaurant?.toLowerCase().trim().includes(r.name?.toLowerCase())
+              r.name?.toLowerCase().includes(cart[0].restaurant?.toLowerCase().trim()) ||
+              cart[0].restaurant?.toLowerCase().trim().includes(r.name?.toLowerCase())
             );
           }
 
@@ -606,7 +605,6 @@ export default function Cart() {
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: defaultAddress,
           couponCode: appliedCoupon?.code || couponCode || null,
-          deliveryFleet: deliveryFleet || 'standard',
           tip: safeTipAmount,
           donation: safeDonationAmount
         });
@@ -635,7 +633,7 @@ export default function Cart() {
     };
 
     calculatePricing();
-  }, [cart, defaultAddress, appliedCoupon, couponCode, deliveryFleet, restaurantId, tipAmount, donationAmount]);
+  }, [cart, defaultAddress, appliedCoupon, couponCode, restaurantId, tipAmount, donationAmount]);
 
   // Fetch wallet balance
   useEffect(() => {
@@ -753,8 +751,8 @@ export default function Cart() {
         state: address.state,
         area: address.additionalDetails || "",
         formattedAddress: address.additionalDetails ?
-        `${address.additionalDetails}, ${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}` :
-        `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
+          `${address.additionalDetails}, ${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}` :
+          `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
       });
 
       // Update the location in localStorage
@@ -767,8 +765,8 @@ export default function Cart() {
         latitude,
         longitude,
         formattedAddress: address.additionalDetails ?
-        `${address.additionalDetails}, ${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}` :
-        `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`,
+          `${address.additionalDetails}, ${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}` :
+          `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`,
         label: address.label || "Address"
       };
       setManualLocation(locationData);
@@ -814,7 +812,6 @@ export default function Cart() {
             restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
             deliveryAddress: defaultAddress,
             couponCode: coupon.code,
-            deliveryFleet: deliveryFleet || 'standard',
             tip: safeTipAmount,
             donation: safeDonationAmount
           });
@@ -852,7 +849,6 @@ export default function Cart() {
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: defaultAddress,
           couponCode: null,
-          deliveryFleet: deliveryFleet || 'standard',
           tip: safeTipAmount,
           donation: safeDonationAmount
         });
@@ -987,14 +983,14 @@ export default function Cart() {
 
       // CRITICAL: Validate that ALL cart items belong to the SAME restaurant
       const cartRestaurantIds = cart.
-      map((item) => item.restaurantId).
-      filter(Boolean).
-      map((id) => String(id).trim()); // Normalize to string and trim
+        map((item) => item.restaurantId).
+        filter(Boolean).
+        map((id) => String(id).trim()); // Normalize to string and trim
 
       const cartRestaurantNames = cart.
-      map((item) => item.restaurant).
-      filter(Boolean).
-      map((name) => name.trim().toLowerCase()); // Normalize names
+        map((item) => item.restaurant).
+        filter(Boolean).
+        map((name) => name.trim().toLowerCase()); // Normalize names
 
       // Get unique values (after normalization)
       const uniqueRestaurantIds = [...new Set(cartRestaurantIds)];
@@ -1054,9 +1050,9 @@ export default function Cart() {
 
         // Check if cart restaurantId matches restaurantData
         const restaurantIdMatches =
-        cartRestaurantId === finalRestaurantId ||
-        cartRestaurantId === restaurantData?._id?.toString() ||
-        cartRestaurantId === restaurantData?.restaurantId;
+          cartRestaurantId === finalRestaurantId ||
+          cartRestaurantId === restaurantData?._id?.toString() ||
+          cartRestaurantId === restaurantData?.restaurantId;
 
         if (!restaurantIdMatches) {
           console.error('❌ CRITICAL ERROR: Cart restaurantId does not match restaurantData!', {
@@ -1101,8 +1097,8 @@ export default function Cart() {
       // FINAL VALIDATION: Double-check restaurantId before sending to backend
       const cartRestaurantId = cart[0]?.restaurantId;
       if (cartRestaurantId && cartRestaurantId !== finalRestaurantId &&
-      cartRestaurantId !== restaurantData?._id?.toString() &&
-      cartRestaurantId !== restaurantData?.restaurantId) {
+        cartRestaurantId !== restaurantData?._id?.toString() &&
+        cartRestaurantId !== restaurantData?.restaurantId) {
         console.error('❌ CRITICAL: Final validation failed - restaurantId mismatch!', {
           cartRestaurantId: cartRestaurantId,
           finalRestaurantId: finalRestaurantId,
@@ -1122,7 +1118,6 @@ export default function Cart() {
         restaurantId: finalRestaurantId,
         restaurantName: finalRestaurantName,
         pricing: orderPricing,
-        deliveryFleet: deliveryFleet || 'standard',
         note: note || "",
         sendCutlery: sendCutlery !== false,
         paymentMethod: selectedPaymentMethod,
@@ -1285,13 +1280,13 @@ export default function Cart() {
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
         const backendUrl = API_BASE_URL.replace('/api', '');
         errorMessage = `Network Error: Cannot connect to backend server.\n\n` +
-        `Expected backend URL: ${backendUrl}\n\n` +
-        `Please check:\n` +
-        `1. Backend server is running\n` +
-        `2. Backend is accessible at ${backendUrl}\n` +
-        `3. Check browser console (F12) for more details\n\n` +
-        `If backend is not running, start it with:\n` +
-        `cd appzetofood/backend && npm start`;
+          `Expected backend URL: ${backendUrl}\n\n` +
+          `Please check:\n` +
+          `1. Backend server is running\n` +
+          `2. Backend is accessible at ${backendUrl}\n` +
+          `3. Check browser console (F12) for more details\n\n` +
+          `If backend is not running, start it with:\n` +
+          `cd appzetofood/backend && npm start`;
 
         console.error("🔴 Network Error Details:", {
           code: error.code,
@@ -1309,17 +1304,17 @@ export default function Cart() {
         // Try to test backend connectivity
         try {
           fetch(backendUrl + '/health', { method: 'GET', signal: AbortSignal.timeout(5000) }).
-          then((response) => {
-            if (response.ok) {
+            then((response) => {
+              if (response.ok) {
 
-            } else {
-              console.warn("⚠️ Backend health check returned:", response.status);
-            }
-          }).
-          catch((fetchError) => {
-            console.error("❌ Backend health check failed:", fetchError.message);
-            console.error("💡 Make sure backend server is running at:", backendUrl);
-          });
+              } else {
+                console.warn("⚠️ Backend health check returned:", response.status);
+              }
+            }).
+            catch((fetchError) => {
+              console.error("❌ Backend health check failed:", fetchError.message);
+              console.error("💡 Make sure backend server is running at:", backendUrl);
+            });
         } catch (fetchTestError) {
           console.error("❌ Could not test backend connectivity:", fetchTestError.message);
         }
@@ -1396,9 +1391,6 @@ export default function Cart() {
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
-              <Share2 className="h-4 w-4 md:h-5 md:w-5" />
-            </Button>
           </div>
         </div>
       </div>
@@ -1407,7 +1399,7 @@ export default function Cart() {
       <div className="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-32">
         {/* Savings Banner */}
         {savings > 0 &&
-        <div className="bg-blue-100 dark:bg-blue-900/20 px-4 md:px-6 py-2 md:py-3 flex-shrink-0">
+          <div className="bg-blue-100 dark:bg-blue-900/20 px-4 md:px-6 py-2 md:py-3 flex-shrink-0">
             <div className="max-w-7xl mx-auto">
               <p className="text-sm md:text-base font-medium text-blue-800 dark:text-blue-200">
                 🎉 You saved ₹{savings} on this order
@@ -1424,7 +1416,7 @@ export default function Cart() {
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
                 <div className="space-y-3 md:space-y-4">
                   {cart.map((item) =>
-                  <div key={item.id} className="flex items-start gap-3 md:gap-4">
+                    <div key={item.id} className="flex items-start gap-3 md:gap-4">
                       {/* Veg/Non-veg indicator */}
                       <div className={`w-4 h-4 md:w-5 md:h-5 border-2 ${item.isVeg !== false ? 'border-green-600' : 'border-red-600'} flex items-center justify-center mt-1 flex-shrink-0`}>
                         <div className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full ${item.isVeg !== false ? 'bg-green-600' : 'bg-red-600'}`} />
@@ -1441,18 +1433,18 @@ export default function Cart() {
                         {/* Quantity controls */}
                         <div className="flex items-center border border-red-600 dark:border-red-500 rounded">
                           <button
-                          className="px-2 md:px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}>
-                          
+                            className="px-2 md:px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+
                             <Minus className="h-3 w-3 md:h-4 md:w-4" />
                           </button>
                           <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-red-600 dark:text-red-400 min-w-[20px] md:min-w-[24px] text-center">
                             {item.quantity}
                           </span>
                           <button
-                          className="px-2 md:px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}>
-                          
+                            className="px-2 md:px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+
                             <Plus className="h-3 w-3 md:h-4 md:w-4" />
                           </button>
                         </div>
@@ -1469,7 +1461,7 @@ export default function Cart() {
                 <button
                   onClick={() => navigate(-1)}
                   className="flex items-center gap-2 mt-4 md:mt-6 text-red-600 dark:text-red-400">
-                  
+
                   <Plus className="h-4 w-4 md:h-5 md:w-5" />
                   <span className="text-sm md:text-base font-medium">Add more items</span>
                 </button>
@@ -1481,14 +1473,14 @@ export default function Cart() {
                 <button
                   onClick={() => setShowNoteInput(!showNoteInput)}
                   className="flex-1 flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 border border-gray-200 dark:border-gray-700 rounded-lg md:rounded-xl text-sm md:text-base text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
-                  
+
                   <FileText className="h-4 w-4 md:h-5 md:w-5" />
                   <span className="truncate">{note || "Add a note for the restaurant"}</span>
                 </button>
                 <button
                   onClick={() => setSendCutlery(!sendCutlery)}
                   className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 border rounded-lg md:rounded-xl text-sm md:text-base ${sendCutlery ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300' : 'border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20'}`}>
-                  
+
                   <Utensils className="h-4 w-4 md:h-5 md:w-5" />
                   <span className="whitespace-nowrap">{sendCutlery ? "Don't send cutlery" : "No cutlery"}</span>
                 </button>
@@ -1496,19 +1488,19 @@ export default function Cart() {
 
               {/* Note Input */}
               {showNoteInput &&
-              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
+                <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
                   <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add cooking instructions, allergies, etc."
-                  className="w-full border border-gray-200 dark:border-gray-700 rounded-lg md:rounded-xl p-3 md:p-4 text-sm md:text-base resize-none h-20 md:h-24 focus:outline-none focus:border-red-600 dark:focus:border-red-500 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100" />
-                
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Add cooking instructions, allergies, etc."
+                    className="w-full border border-gray-200 dark:border-gray-700 rounded-lg md:rounded-xl p-3 md:p-4 text-sm md:text-base resize-none h-20 md:h-24 focus:outline-none focus:border-red-600 dark:focus:border-red-500 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100" />
+
                 </div>
               }
 
               {/* Complete your meal section - Approved Addons */}
               {addons.length > 0 &&
-              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
+                <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
                   <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
                     <div className="w-6 h-6 md:w-8 md:h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
                       <span className="text-xs md:text-base">🍽️</span>
@@ -1516,84 +1508,84 @@ export default function Cart() {
                     <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Complete your meal with</span>
                   </div>
                   {loadingAddons ?
-                <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
+                    <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
                       {[1, 2, 3].map((i) =>
-                  <div key={i} className="flex-shrink-0 w-28 md:w-36 animate-pulse">
+                        <div key={i} className="flex-shrink-0 w-28 md:w-36 animate-pulse">
                           <div className="w-full h-28 md:h-36 bg-gray-200 dark:bg-gray-700 rounded-lg md:rounded-xl" />
                           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mt-2" />
                           <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mt-1 w-2/3" />
                         </div>
-                  )}
+                      )}
                     </div> :
 
-                <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
+                    <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
                       {addons.map((addon) =>
-                  <div key={addon.id} className="flex-shrink-0 w-28 md:w-36">
+                        <div key={addon.id} className="flex-shrink-0 w-28 md:w-36">
                           <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg md:rounded-xl overflow-hidden">
                             <img
-                        src={addon.image || addon.images && addon.images[0] || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"}
-                        alt={addon.name}
-                        className="w-full h-28 md:h-36 object-cover rounded-lg md:rounded-xl"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop";
-                        }} />
-                      
+                              src={addon.image || addon.images && addon.images[0] || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"}
+                              alt={addon.name}
+                              className="w-full h-28 md:h-36 object-cover rounded-lg md:rounded-xl"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop";
+                              }} />
+
                             <div className="absolute top-1 md:top-2 left-1 md:left-2">
                               <div className="w-3.5 h-3.5 md:w-4 md:h-4 bg-white border border-green-600 flex items-center justify-center rounded">
                                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-600" />
                               </div>
                             </div>
                             <button
-                        onClick={() => {
-                          // Use restaurant info from existing cart items to ensure format consistency
-                          const cartRestaurantId = cart[0]?.restaurantId || restaurantId;
-                          const cartRestaurantName = cart[0]?.restaurant || restaurantName;
+                              onClick={() => {
+                                // Use restaurant info from existing cart items to ensure format consistency
+                                const cartRestaurantId = cart[0]?.restaurantId || restaurantId;
+                                const cartRestaurantName = cart[0]?.restaurant || restaurantName;
 
-                          if (!cartRestaurantId || !cartRestaurantName) {
-                            console.error('❌ Cannot add addon: Missing restaurant information', {
-                              cartRestaurantId,
-                              cartRestaurantName,
-                              restaurantId,
-                              restaurantName,
-                              cartItem: cart[0]
-                            });
-                            toast.error('Restaurant information is missing. Please refresh the page.');
-                            return;
-                          }
+                                if (!cartRestaurantId || !cartRestaurantName) {
+                                  console.error('❌ Cannot add addon: Missing restaurant information', {
+                                    cartRestaurantId,
+                                    cartRestaurantName,
+                                    restaurantId,
+                                    restaurantName,
+                                    cartItem: cart[0]
+                                  });
+                                  toast.error('Restaurant information is missing. Please refresh the page.');
+                                  return;
+                                }
 
-                          addToCart({
-                            id: addon.id,
-                            name: addon.name,
-                            price: addon.price,
-                            image: addon.image || addon.images && addon.images[0] || "",
-                            description: addon.description || "",
-                            isVeg: true,
-                            restaurant: cartRestaurantName,
-                            restaurantId: cartRestaurantId
-                          });
-                        }}
-                        className="absolute bottom-1 md:bottom-2 right-1 md:right-2 w-6 h-6 md:w-7 md:h-7 bg-white border border-red-600 rounded flex items-center justify-center shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                        
+                                addToCart({
+                                  id: addon.id,
+                                  name: addon.name,
+                                  price: addon.price,
+                                  image: addon.image || addon.images && addon.images[0] || "",
+                                  description: addon.description || "",
+                                  isVeg: true,
+                                  restaurant: cartRestaurantName,
+                                  restaurantId: cartRestaurantId
+                                });
+                              }}
+                              className="absolute bottom-1 md:bottom-2 right-1 md:right-2 w-6 h-6 md:w-7 md:h-7 bg-white border border-red-600 rounded flex items-center justify-center shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+
                               <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-600" />
                             </button>
                           </div>
                           <p className="text-xs md:text-sm font-medium text-gray-800 dark:text-gray-200 mt-1.5 md:mt-2 line-clamp-2 leading-tight">{addon.name}</p>
                           {addon.description &&
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{addon.description}</p>
-                    }
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{addon.description}</p>
+                          }
                           <p className="text-xs md:text-sm text-gray-800 dark:text-gray-200 font-semibold mt-0.5">₹{addon.price}</p>
                         </div>
-                  )}
+                      )}
                     </div>
-                }
+                  }
                 </div>
               }
 
               {/* Coupon Section */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
                 {appliedCoupon ?
-                <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg md:rounded-xl p-3 md:p-4">
+                  <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg md:rounded-xl p-3 md:p-4">
                     <div className="flex items-center gap-2 md:gap-3">
                       <Tag className="h-4 w-4 md:h-5 md:w-5 text-red-600 dark:text-red-400" />
                       <div>
@@ -1603,65 +1595,64 @@ export default function Cart() {
                     </div>
                     <button onClick={handleRemoveCoupon} className="text-gray-500 dark:text-gray-400 text-xs md:text-sm font-medium">Remove</button>
                   </div> :
-                loadingCoupons ?
-                <div className="flex items-center gap-2 md:gap-3">
-                    <Percent className="h-4 w-4 md:h-5 md:w-5 text-gray-600 dark:text-gray-400" />
-                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">Loading coupons...</p>
-                  </div> :
-                availableCoupons.length > 0 ?
-                <div>
-                    <div className="flex items-center justify-between">
+                  loadingCoupons ?
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <Percent className="h-4 w-4 md:h-5 md:w-5 text-gray-600 dark:text-gray-400" />
+                      <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">Loading coupons...</p>
+                    </div> :
+                    availableCoupons.length > 0 ?
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <Percent className="h-4 w-4 md:h-5 md:w-5 text-gray-600 dark:text-gray-400" />
+                            <div>
+                              <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200">
+                                Save ₹{availableCoupons[0].discount} with '{availableCoupons[0].code}'
+                              </p>
+                              {availableCoupons.length > 1 &&
+                                <button onClick={() => setShowCoupons(!showCoupons)} className="text-xs md:text-sm text-blue-600 dark:text-blue-400 font-medium">
+                                  View all coupons →
+                                </button>
+                              }
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 md:h-8 text-xs md:text-sm border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={() => handleApplyCoupon(availableCoupons[0])}
+                            disabled={subtotal < availableCoupons[0].minOrder}>
+
+                            {subtotal < availableCoupons[0].minOrder ? `Min ₹${availableCoupons[0].minOrder}` : 'APPLY'}
+                          </Button>
+                        </div>
+                      </div> :
+
                       <div className="flex items-center gap-2 md:gap-3">
                         <Percent className="h-4 w-4 md:h-5 md:w-5 text-gray-600 dark:text-gray-400" />
-                        <div>
-                          <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200">
-                            Save ₹{availableCoupons[0].discount} with '{availableCoupons[0].code}'
-                          </p>
-                          {availableCoupons.length > 1 &&
-                        <button onClick={() => setShowCoupons(!showCoupons)} className="text-xs md:text-sm text-blue-600 dark:text-blue-400 font-medium">
-                              View all coupons →
-                            </button>
-                        }
-                        </div>
+                        <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">No coupons available</p>
                       </div>
-                      <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 md:h-8 text-xs md:text-sm border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={() => handleApplyCoupon(availableCoupons[0])}
-                      disabled={subtotal < availableCoupons[0].minOrder}>
-                      
-                        {subtotal < availableCoupons[0].minOrder ? `Min ₹${availableCoupons[0].minOrder}` : 'APPLY'}
-                      </Button>
-                    </div>
-                  </div> :
-
-                <div className="flex items-center gap-2 md:gap-3">
-                    <Percent className="h-4 w-4 md:h-5 md:w-5 text-gray-600 dark:text-gray-400" />
-                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">No coupons available</p>
-                  </div>
                 }
 
                 {/* Coupons List */}
                 {showCoupons && !appliedCoupon && availableCoupons.length > 0 &&
-                <div className="mt-3 md:mt-4 space-y-2 md:space-y-3 border-t dark:border-gray-700 pt-3 md:pt-4">
+                  <div className="mt-3 md:mt-4 space-y-2 md:space-y-3 border-t dark:border-gray-700 pt-3 md:pt-4">
                     {availableCoupons.map((coupon) =>
-                  <div key={coupon.code} className="flex items-center justify-between py-2 md:py-3 border-b border-dashed dark:border-gray-700 last:border-0">
+                      <div key={coupon.code} className="flex items-center justify-between py-2 md:py-3 border-b border-dashed dark:border-gray-700 last:border-0">
                         <div>
                           <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200">{coupon.code}</p>
                           <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{coupon.description}</p>
                         </div>
                         <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 md:h-7 text-xs md:text-sm border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={() => handleApplyCoupon(coupon)}
-                      disabled={subtotal < coupon.minOrder}>
-                      
+                          size="sm"
+                          variant="outline"
+                          className="h-6 md:h-7 text-xs md:text-sm border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          onClick={() => handleApplyCoupon(coupon)}
+                          disabled={subtotal < coupon.minOrder}>
                           {subtotal < coupon.minOrder ? `Min ₹${coupon.minOrder}` : 'APPLY'}
                         </Button>
                       </div>
-                  )}
+                    )}
                   </div>
                 }
               </div>
@@ -1674,49 +1665,6 @@ export default function Cart() {
                     <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">Delivery in <span className="font-semibold">{restaurantData?.estimatedDeliveryTime || "10-15 mins"}</span></p>
                   </div>
                 </div>
-              </div>
-
-              {/* Delivery Fleet Type */}
-              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
-                <button
-                  onClick={() => setShowFleetOptions(!showFleetOptions)}
-                  className="flex items-center justify-between w-full">
-                  
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <Truck className="h-4 w-4 md:h-5 md:w-5 text-gray-500 dark:text-gray-400" />
-                    <span className="text-sm md:text-base text-gray-800 dark:text-gray-200">Choose delivery fleet type</span>
-                  </div>
-                  {showFleetOptions ? <ChevronUp className="h-4 w-4 md:h-5 md:w-5 text-gray-400" /> : <ChevronDown className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />}
-                </button>
-
-                {showFleetOptions &&
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-3 md:mt-4">
-                    <button
-                    onClick={() => setDeliveryFleet("standard")}
-                    className={`p-3 md:p-4 rounded-lg md:rounded-xl border-2 text-left transition-colors ${deliveryFleet === "standard" ? "border-red-600 dark:border-red-500 bg-red-50 dark:bg-red-900/20" : "border-gray-200 dark:border-gray-700"}`}>
-                    
-                      <div className="flex items-center justify-between mb-1 md:mb-2">
-                        <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Standard Fleet</span>
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
-                          <Truck className="h-4 w-4 md:h-5 md:w-5 text-orange-600 dark:text-orange-400" />
-                        </div>
-                      </div>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">Our standard food delivery experience</p>
-                    </button>
-                    <button
-                    onClick={() => setDeliveryFleet("veg")}
-                    className={`p-3 md:p-4 rounded-lg md:rounded-xl border-2 text-left transition-colors ${deliveryFleet === "veg" ? "border-red-600 dark:border-red-500 bg-red-50 dark:bg-red-900/20" : "border-gray-200 dark:border-gray-700"}`}>
-                    
-                      <div className="flex items-center justify-between mb-1 md:mb-2">
-                        <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Special Veg-only Fleet</span>
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                          <Leaf className="h-4 w-4 md:h-5 md:w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                      </div>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">Fleet delivering only from Pure Veg restaurants</p>
-                    </button>
-                  </div>
-                }
               </div>
 
               {/* Delivery Address */}
@@ -1736,7 +1684,7 @@ export default function Cart() {
                       <button
                         onClick={openLocationSelector}
                         className="text-xs font-bold text-red-600 dark:text-red-400 hover:text-red-700 uppercase tracking-tight flex-shrink-0">
-                        
+
                         Change
                       </button>
                     </div>
@@ -1746,7 +1694,7 @@ export default function Cart() {
                         // Check for both 'Work' and 'Office' labels
                         const backendLabel = label === "Work" ? "Office" : label;
                         const addressExists = addresses.some((addr) =>
-                        addr.label === label || label === "Work" && addr.label === "Office"
+                          addr.label === label || label === "Work" && addr.label === "Office"
                         );
                         return (
                           <button
@@ -1759,10 +1707,10 @@ export default function Cart() {
                             }}
                             disabled={!addressExists}
                             className={`text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 rounded-md border transition-colors ${addressExists ?
-                            'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 bg-white dark:bg-[#1a1a1a]' :
-                            'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'}`
+                              'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 bg-white dark:bg-[#1a1a1a]' :
+                              'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'}`
                             }>
-                            
+
                             {label}
                           </button>);
 
@@ -1797,42 +1745,42 @@ export default function Cart() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">100% of the tip goes to your delivery partner</p>
                     <div className="flex flex-wrap gap-2 md:gap-3">
                       {tipOptions.map((amount) =>
-                      <button
-                        key={amount}
-                        onClick={() => {
-                          setTipAmount(tipAmount === amount ? 0 : amount);
-                          setShowCustomTip(false);
-                        }}
-                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${tipAmount === amount ?
-                        "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400" :
-                        "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
-                        }>
-                        
+                        <button
+                          key={amount}
+                          onClick={() => {
+                            setTipAmount(tipAmount === amount ? 0 : amount);
+                            setShowCustomTip(false);
+                          }}
+                          className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${tipAmount === amount ?
+                            "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400" :
+                            "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
+                          }>
+
                           {"\u20B9"}{amount}
                         </button>
                       )}
                       <button
                         onClick={() => setShowCustomTip(!showCustomTip)}
                         className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${showCustomTip ?
-                        "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400" :
-                        "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
+                          "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400" :
+                          "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
                         }>
-                        
+
                         Custom
                       </button>
                     </div>
                     {showCustomTip &&
-                    <div className="mt-3 relative">
+                      <div className="mt-3 relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{"\u20B9"}</span>
                         <input
-                        type="number"
-                        min="0"
-                        max="5000"
-                        placeholder="Enter tip amount"
-                        className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                        value={tipAmount || ""}
-                        onChange={(e) => setTipAmount(sanitizeAdditionalAmount(e.target.value))} />
-                      
+                          type="number"
+                          min="0"
+                          max="5000"
+                          placeholder="Enter tip amount"
+                          className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                          value={tipAmount || ""}
+                          onChange={(e) => setTipAmount(sanitizeAdditionalAmount(e.target.value))} />
+
                       </div>
                     }
                   </div>
@@ -1849,170 +1797,102 @@ export default function Cart() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Help us feed the needy. 100% of your donation goes to charity.</p>
                     <div className="flex flex-wrap gap-2 md:gap-3">
                       {donationOptions.map((amount) =>
-                      <button
-                        key={amount}
-                        onClick={() => {
-                          setDonationAmount(donationAmount === amount ? 0 : amount);
-                          setShowCustomDonation(false);
-                        }}
-                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${donationAmount === amount ?
-                        "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400" :
-                        "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
-                        }>
-                        
+                        <button
+                          key={amount}
+                          onClick={() => {
+                            setDonationAmount(donationAmount === amount ? 0 : amount);
+                            setShowCustomDonation(false);
+                          }}
+                          className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${donationAmount === amount ?
+                            "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400" :
+                            "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
+                          }>
+
                           ₹{amount}
                         </button>
                       )}
                       <button
                         onClick={() => setShowCustomDonation(!showCustomDonation)}
                         className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${showCustomDonation ?
-                        "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400" :
-                        "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
+                          "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400" :
+                          "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
                         }>
-                        
+
                         Custom
                       </button>
                     </div>
                     {showCustomDonation &&
-                    <div className="mt-3 relative">
+                      <div className="mt-3 relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{"\u20B9"}</span>
                         <input
-                        type="number"
-                        min="0"
-                        max="5000"
-                        placeholder="Enter donation amount"
-                        className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        value={donationAmount || ""}
-                        onChange={(e) => setDonationAmount(sanitizeAdditionalAmount(e.target.value))} />
-                      
+                          type="number"
+                          min="0"
+                          max="5000"
+                          placeholder="Enter donation amount"
+                          className="w-full pl-7 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          value={donationAmount || ""}
+                          onChange={(e) => setDonationAmount(sanitizeAdditionalAmount(e.target.value))} />
+
                       </div>
                     }
                   </div>
                 </div>
               </div>
 
-              {/* Bill Details */}
-              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
-                <button
-                  onClick={() => setShowBillDetails(!showBillDetails)}
-                  className="flex items-center justify-between w-full">
-                  
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <FileText className="h-4 w-4 md:h-5 md:w-5 text-gray-500 dark:text-gray-400" />
-                    <div className="text-left">
-                      <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                        <span className="text-sm md:text-base text-gray-800 dark:text-gray-200">Total Bill</span>
-                        <span className="text-sm md:text-base text-gray-400 dark:text-gray-500 line-through">₹{totalBeforeDiscount.toFixed(0)}</span>
-                        <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">₹{total.toFixed(0)}</span>
-                        {savings > 0 &&
-                        <span className="text-xs md:text-sm bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1.5 md:px-2 py-0.5 rounded font-medium">You saved ₹{savings}</span>
-                        }
-                      </div>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">Incl. taxes and charges</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
-                </button>
-
-                {showBillDetails &&
-                <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-dashed dark:border-gray-700 space-y-2 md:space-y-3">
-                    <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Item Total</span>
-                      <span className="text-gray-800 dark:text-gray-200">₹{subtotal.toFixed(0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee {pricing?.distanceStr && <span className="text-[10px] opacity-70">(For {pricing.distanceStr})</span>}</span>
-                      <span className={loadingPricing && !pricing ? "text-gray-500 dark:text-gray-400" : deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
-                        {loadingPricing && !pricing ? "Calculating..." : deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
-                      <span className="text-gray-800 dark:text-gray-200">₹{platformFee}</span>
-                    </div>
-                    <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
-                      <span className="text-gray-800 dark:text-gray-200">₹{gstCharges}</span>
-                    </div>
-                    {tipAmount > 0 &&
+              {/* Order Summary */}
+              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-lg md:rounded-xl">
+                <h3 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 md:mb-4">Order Summary</h3>
+                <div className="space-y-2 md:space-y-3">
                   <div className="flex justify-between text-sm md:text-base">
-                        <span className="text-gray-600 dark:text-gray-400">Delivery Tip</span>
-                        <span className="text-gray-800 dark:text-gray-200">₹{tipAmount}</span>
-                      </div>
-                  }
-                    {donationAmount > 0 &&
-                  <div className="flex justify-between text-sm md:text-base">
-                        <span className="text-gray-600 dark:text-gray-400">Donation (Usai Foundation)</span>
-                        <span className="text-gray-800 dark:text-gray-200">₹{donationAmount}</span>
-                      </div>
-                  }
-                    {discount > 0 &&
-                  <div className="flex justify-between text-sm md:text-base text-red-600 dark:text-red-400">
-                        <span>Coupon Discount</span>
-                        <span>-₹{discount}</span>
-                      </div>
-                  }
-                    <div className="flex justify-between text-sm md:text-base font-semibold pt-2 md:pt-3 border-t dark:border-gray-700">
-                      <span>To Pay</span>
-                      <span>₹{total.toFixed(0)}</span>
-                    </div>
+                    <span className="text-gray-600 dark:text-gray-400">Item Total</span>
+                    <span className="text-gray-800 dark:text-gray-200">₹{subtotal.toFixed(0)}</span>
                   </div>
-                }
-              </div>
-
-            </div>
-
-            {/* Right Column - Order Summary (Desktop) */}
-            <div className="lg:col-span-1">
-              <div className="lg:sticky lg:top-24 space-y-4 md:space-y-6">
-                {/* Bill Summary Card */}
-                <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 md:mb-4">Order Summary</h3>
-                  <div className="space-y-2 md:space-y-3">
+                  <div className="flex justify-between text-sm md:text-base">
+                    <span className="text-gray-600 dark:text-gray-400">Delivery Fee {pricing?.distanceStr && <span className="text-[10px] opacity-70">(For {pricing.distanceStr})</span>}</span>
+                    <span className={loadingPricing && !pricing ? "text-gray-500 dark:text-gray-400" : deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
+                      {loadingPricing && !pricing ? "Calculating..." : deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm md:text-base">
+                    <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
+                    <span className="text-gray-800 dark:text-gray-200">₹{platformFee}</span>
+                  </div>
+                  <div className="flex justify-between text-sm md:text-base">
+                    <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
+                    <span className="text-gray-800 dark:text-gray-200">₹{gstCharges}</span>
+                  </div>
+                  {tipAmount > 0 &&
                     <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Item Total</span>
-                      <span className="text-gray-800 dark:text-gray-200">₹{subtotal.toFixed(0)}</span>
+                      <span className="text-gray-600 dark:text-gray-400">Delivery Tip</span>
+                      <span className="text-gray-800 dark:text-gray-200">₹{tipAmount}</span>
                     </div>
+                  }
+                  {donationAmount > 0 &&
                     <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee {pricing?.distanceStr && <span className="text-[10px] opacity-70">(For {pricing.distanceStr})</span>}</span>
-                      <span className={loadingPricing && !pricing ? "text-gray-500 dark:text-gray-400" : deliveryFee === 0 ? "text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"}>
-                        {loadingPricing && !pricing ? "Calculating..." : deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">Donation (Usai Foundation)</span>
+                      <span className="text-gray-800 dark:text-gray-200">₹{donationAmount}</span>
                     </div>
-                    <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
-                      <span className="text-gray-800 dark:text-gray-200">₹{platformFee}</span>
-                    </div>
-                    <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-gray-600 dark:text-gray-400">GST</span>
-                      <span className="text-gray-800 dark:text-gray-200">₹{gstCharges}</span>
-                    </div>
-                    {tipAmount > 0 &&
-                    <div className="flex justify-between text-sm md:text-base">
-                        <span className="text-gray-600 dark:text-gray-400">Tip</span>
-                        <span className="text-gray-800 dark:text-gray-200">₹{tipAmount}</span>
-                      </div>
-                    }
-                    {donationAmount > 0 &&
-                    <div className="flex justify-between text-sm md:text-base">
-                        <span className="text-gray-600 dark:text-gray-400">Donation</span>
-                        <span className="text-gray-800 dark:text-gray-200">₹{donationAmount}</span>
-                      </div>
-                    }
-                    {discount > 0 &&
+                  }
+                  {discount > 0 &&
                     <div className="flex justify-between text-sm md:text-base text-red-600 dark:text-red-400">
-                        <span>Discount</span>
-                        <span>-₹{discount}</span>
-                      </div>
-                    }
-                    <div className="flex justify-between text-base md:text-lg font-bold pt-3 md:pt-4 border-t dark:border-gray-700">
-                      <span>Total</span>
-                      <span className="text-green-600 dark:text-green-400">₹{total.toFixed(0)}</span>
+                      <span>Coupon Discount</span>
+                      <span>-₹{discount}</span>
                     </div>
+                  }
+                  {savings > 0 &&
+                    <div className="flex justify-end">
+                      <span className="text-xs md:text-sm bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">You saved ₹{savings}</span>
+                    </div>
+                  }
+                  <div className="flex justify-between text-base md:text-lg font-bold pt-3 md:pt-4 border-t dark:border-gray-700">
+                    <span>Total</span>
+                    <span className="text-green-600 dark:text-green-400">₹{total.toFixed(0)}</span>
                   </div>
                 </div>
               </div>
+
             </div>
+
           </div>
         </div>
       </div>
@@ -2032,10 +1912,10 @@ export default function Cart() {
                     </p>
                     <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200">
                       {selectedPaymentMethod === "razorpay" ?
-                      "Razorpay" :
-                      selectedPaymentMethod === "wallet" ?
-                      "Wallet" :
-                      "Cash on Delivery"}
+                        "Razorpay" :
+                        selectedPaymentMethod === "wallet" ?
+                          "Wallet" :
+                          "Cash on Delivery"}
                     </p>
                   </div>
                 </div>
@@ -2045,7 +1925,7 @@ export default function Cart() {
                     value={selectedPaymentMethod}
                     onChange={(e) => setSelectedPaymentMethod(e.target.value)}
                     className="appearance-none bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-lg px-3 py-2 pr-9 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-500/40">
-                    
+
                     <option value="razorpay">Razorpay</option>
                     <option value="wallet">Wallet {walletBalance > 0 ? `(₹${walletBalance.toFixed(0)})` : ''}</option>
                     <option value="cash">COD</option>
@@ -2059,23 +1939,23 @@ export default function Cart() {
                 onClick={handlePlaceOrder}
                 disabled={isPlacingOrder || selectedPaymentMethod === "wallet" && walletBalance < total}
                 className="w-full bg-green-700 hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-700 text-white px-6 md:px-10 h-14 md:h-16 rounded-lg md:rounded-xl text-base md:text-lg font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                
+
                 {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet") &&
-                <div className="text-left mr-3 md:mr-4">
+                  <div className="text-left mr-3 md:mr-4">
                     <p className="text-sm md:text-base opacity-90">₹{total.toFixed(0)}</p>
                     <p className="text-xs md:text-sm opacity-75">TOTAL</p>
                   </div>
                 }
                 <span className="font-bold text-base md:text-lg">
                   {isPlacingOrder ?
-                  "Processing..." :
-                  selectedPaymentMethod === "razorpay" ?
-                  "Select Payment" :
-                  selectedPaymentMethod === "wallet" ?
-                  walletBalance >= total ?
-                  "Place Order" :
-                  "Insufficient Balance" :
-                  "Place Order"}
+                    "Processing..." :
+                    selectedPaymentMethod === "razorpay" ?
+                      "Select Payment" :
+                      selectedPaymentMethod === "wallet" ?
+                        walletBalance >= total ?
+                          "Place Order" :
+                          "Insufficient Balance" :
+                        "Place Order"}
                 </span>
                 <ChevronRight className="h-5 w-5 md:h-6 md:w-6 ml-2" />
               </Button>
@@ -2086,204 +1966,204 @@ export default function Cart() {
 
       {/* Placing Order Modal */}
       {
-      showPlacingOrder &&
-      <div className="fixed inset-0 z-[60] h-screen w-screen overflow-hidden">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+        showPlacingOrder &&
+        <div className="fixed inset-0 z-[60] h-screen w-screen overflow-hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-            {/* Modal Sheet */}
-            <div
-          className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
-          style={{ animation: 'slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-          
-              <div className="px-6 py-8">
-                {/* Title */}
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Placing your order</h2>
+          {/* Modal Sheet */}
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
+            style={{ animation: 'slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
 
-                {/* Payment Info */}
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-white shadow-sm">
-                    <CreditCard className="w-6 h-6 text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {selectedPaymentMethod === "razorpay" ?
-                  `Pay ₹${total.toFixed(2)} online (Razorpay)` :
-                  selectedPaymentMethod === "wallet" ?
-                  `Pay ₹${total.toFixed(2)} from Wallet` :
-                  `Pay on delivery (COD)`}
-                    </p>
-                  </div>
+            <div className="px-6 py-8">
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Placing your order</h2>
+
+              {/* Payment Info */}
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-white shadow-sm">
+                  <CreditCard className="w-6 h-6 text-gray-600" />
                 </div>
-
-                {/* Delivery Address */}
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
-                    <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path d="M9 22V12h6v10" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-gray-900">Delivering to {getLocationDisplayName(defaultAddress)}</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {defaultAddress ? formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address" : "Add address"}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {defaultAddress ? formatFullAddress(defaultAddress) || "Address" : "Address"}
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {selectedPaymentMethod === "razorpay" ?
+                      `Pay ₹${total.toFixed(2)} online (Razorpay)` :
+                      selectedPaymentMethod === "wallet" ?
+                        `Pay ₹${total.toFixed(2)} from Wallet` :
+                        `Pay on delivery (COD)`}
+                  </p>
                 </div>
-
-                {/* Progress Bar */}
-                <div className="relative mb-6">
-                  <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                  className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-100 ease-linear"
-                  style={{
-                    width: `${orderProgress}%`,
-                    boxShadow: '0 0 10px rgba(34, 197, 94, 0.5)'
-                  }} />
-                
-                  </div>
-                  {/* Animated shimmer effect */}
-                  <div
-                className="absolute inset-0 h-2.5 rounded-full overflow-hidden pointer-events-none"
-                style={{
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                  animation: 'shimmer 1.5s infinite',
-                  width: `${orderProgress}%`
-                }} />
-              
-                </div>
-
-                {/* Cancel Button */}
-                <button
-              onClick={() => {
-                setShowPlacingOrder(false);
-                setIsPlacingOrder(false);
-              }}
-              className="w-full text-right">
-              
-                  <span className="text-green-600 font-semibold text-base hover:text-green-700 transition-colors">
-                    CANCEL
-                  </span>
-                </button>
               </div>
+
+              {/* Delivery Address */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
+                  <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path d="M9 22V12h6v10" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">Delivering to {getLocationDisplayName(defaultAddress)}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {defaultAddress ? formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address" : "Add address"}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {defaultAddress ? formatFullAddress(defaultAddress) || "Address" : "Address"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="relative mb-6">
+                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-100 ease-linear"
+                    style={{
+                      width: `${orderProgress}%`,
+                      boxShadow: '0 0 10px rgba(34, 197, 94, 0.5)'
+                    }} />
+
+                </div>
+                {/* Animated shimmer effect */}
+                <div
+                  className="absolute inset-0 h-2.5 rounded-full overflow-hidden pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                    animation: 'shimmer 1.5s infinite',
+                    width: `${orderProgress}%`
+                  }} />
+
+              </div>
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => {
+                  setShowPlacingOrder(false);
+                  setIsPlacingOrder(false);
+                }}
+                className="w-full text-right">
+
+                <span className="text-green-600 font-semibold text-base hover:text-green-700 transition-colors">
+                  CANCEL
+                </span>
+              </button>
             </div>
           </div>
+        </div>
 
       }
 
       {/* Order Success Celebration Page */}
       {
-      showOrderSuccess &&
-      <div
-        className="fixed inset-0 z-[70] bg-white flex flex-col items-center justify-center h-screen w-screen overflow-hidden"
-        style={{ animation: 'fadeIn 0.3s ease-out' }}>
-        
-            {/* Confetti Background */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              {/* Animated confetti pieces */}
-              {[...Array(50)].map((_, i) =>
-          <div
-            key={i}
-            className="absolute w-3 h-3 rounded-sm"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `-10%`,
-              backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
-              animation: `confettiFall ${2 + Math.random() * 2}s linear ${Math.random() * 2}s infinite`,
-              transform: `rotate(${Math.random() * 360}deg)`
-            }} />
+        showOrderSuccess &&
+        <div
+          className="fixed inset-0 z-[70] bg-white flex flex-col items-center justify-center h-screen w-screen overflow-hidden"
+          style={{ animation: 'fadeIn 0.3s ease-out' }}>
 
-          )}
-            </div>
-
-            {/* Success Content */}
-            <div className="relative z-10 flex flex-col items-center px-6">
-              {/* Success Tick Circle */}
+          {/* Confetti Background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Animated confetti pieces */}
+            {[...Array(50)].map((_, i) =>
               <div
-            className="relative mb-8"
-            style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both' }}>
-            
-                {/* Outer ring animation */}
-                <div
-              className="absolute inset-0 w-32 h-32 rounded-full border-4 border-green-500"
-              style={{
-                animation: 'ringPulse 1.5s ease-out infinite',
-                opacity: 0.3
-              }} />
-            
-                {/* Main circle */}
-                <div className="w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-2xl">
-                  <svg
-                className="w-16 h-16 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ animation: 'checkDraw 0.5s ease-out 0.5s both' }}>
-                
-                    <path d="M5 12l5 5L19 7" className="check-path" />
-                  </svg>
-                </div>
-                {/* Sparkles */}
-                {[...Array(6)].map((_, i) =>
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-yellow-400 rounded-full"
-              style={{
-                top: '50%',
-                left: '50%',
-                animation: `sparkle 0.6s ease-out ${0.3 + i * 0.1}s both`,
-                transform: `rotate(${i * 60}deg) translateY(-80px)`
-              }} />
+                key={i}
+                className="absolute w-3 h-3 rounded-sm"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `-10%`,
+                  backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
+                  animation: `confettiFall ${2 + Math.random() * 2}s linear ${Math.random() * 2}s infinite`,
+                  transform: `rotate(${Math.random() * 360}deg)`
+                }} />
 
             )}
-              </div>
-
-              {/* Location Info */}
-              <div
-            className="text-center"
-            style={{ animation: 'slideUp 0.5s ease-out 0.6s both' }}>
-            
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="w-5 h-5 text-red-500">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                    </svg>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    {getLocationDisplayName(defaultAddress)}
-                  </h2>
-                </div>
-                <p className="text-gray-500 text-base">
-                  {defaultAddress ? formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Delivery Address" : "Delivery Address"}
-                </p>
-              </div>
-
-              {/* Order Placed Message */}
-              <div
-            className="mt-12 text-center"
-            style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}>
-            
-                <h3 className="text-3xl font-bold text-green-600 mb-2">Order Placed!</h3>
-                <p className="text-gray-600">Your delicious food is on its way</p>
-              </div>
-
-              {/* Action Button */}
-              <button
-            onClick={handleGoToOrders}
-            className="mt-10 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-12 rounded-xl shadow-lg transition-all hover:shadow-xl hover:scale-105"
-            style={{ animation: 'slideUp 0.5s ease-out 1s both' }}>
-            
-                Track Your Order
-              </button>
-            </div>
           </div>
+
+          {/* Success Content */}
+          <div className="relative z-10 flex flex-col items-center px-6">
+            {/* Success Tick Circle */}
+            <div
+              className="relative mb-8"
+              style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both' }}>
+
+              {/* Outer ring animation */}
+              <div
+                className="absolute inset-0 w-32 h-32 rounded-full border-4 border-green-500"
+                style={{
+                  animation: 'ringPulse 1.5s ease-out infinite',
+                  opacity: 0.3
+                }} />
+
+              {/* Main circle */}
+              <div className="w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-2xl">
+                <svg
+                  className="w-16 h-16 text-white"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ animation: 'checkDraw 0.5s ease-out 0.5s both' }}>
+
+                  <path d="M5 12l5 5L19 7" className="check-path" />
+                </svg>
+              </div>
+              {/* Sparkles */}
+              {[...Array(6)].map((_, i) =>
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 bg-yellow-400 rounded-full"
+                  style={{
+                    top: '50%',
+                    left: '50%',
+                    animation: `sparkle 0.6s ease-out ${0.3 + i * 0.1}s both`,
+                    transform: `rotate(${i * 60}deg) translateY(-80px)`
+                  }} />
+
+              )}
+            </div>
+
+            {/* Location Info */}
+            <div
+              className="text-center"
+              style={{ animation: 'slideUp 0.5s ease-out 0.6s both' }}>
+
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="w-5 h-5 text-red-500">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {getLocationDisplayName(defaultAddress)}
+                </h2>
+              </div>
+              <p className="text-gray-500 text-base">
+                {defaultAddress ? formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Delivery Address" : "Delivery Address"}
+              </p>
+            </div>
+
+            {/* Order Placed Message */}
+            <div
+              className="mt-12 text-center"
+              style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}>
+
+              <h3 className="text-3xl font-bold text-green-600 mb-2">Order Placed!</h3>
+              <p className="text-gray-600">Your delicious food is on its way</p>
+            </div>
+
+            {/* Action Button */}
+            <button
+              onClick={handleGoToOrders}
+              className="mt-10 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-12 rounded-xl shadow-lg transition-all hover:shadow-xl hover:scale-105"
+              style={{ animation: 'slideUp 0.5s ease-out 1s both' }}>
+
+              Track Your Order
+            </button>
+          </div>
+        </div>
 
       }
 
@@ -2310,7 +2190,7 @@ export default function Cart() {
                     }
                   }}
                   className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-100 bg-red-50/50 hover:bg-red-50 hover:border-red-200 transition-all group">
-                  
+
                   <div className="h-9 w-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Locate className="h-5 w-5" />
                   </div>
@@ -2326,7 +2206,7 @@ export default function Cart() {
                     openLocationSelector();
                   }}
                   className="flex items-center gap-3 p-4 rounded-xl border-2 border-blue-100 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-200 transition-all group">
-                  
+
                   <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Navigation className="h-5 w-5" />
                   </div>
@@ -2344,24 +2224,24 @@ export default function Cart() {
               </div>
 
               {addresses.length > 0 ?
-              addresses.map((address) => {
-                const isCurrent = defaultAddress?.id === address.id ||
-                defaultAddress?.formattedAddress === address.formattedAddress && !address.id;
+                addresses.map((address) => {
+                  const isCurrent = defaultAddress?.id === address.id ||
+                    defaultAddress?.formattedAddress === address.formattedAddress && !address.id;
 
-                return (
-                  <button
-                    key={address.id || address.label}
-                    onClick={() => handleSelectAddress(address)}
-                    className={`w-full flex items-start gap-4 p-4 rounded-xl border-2 transition-all ${isCurrent ?
-                    'border-red-600 bg-red-50 dark:bg-red-900/10' :
-                    'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'}`
-                    }>
-                    
+                  return (
+                    <button
+                      key={address.id || address.label}
+                      onClick={() => handleSelectAddress(address)}
+                      className={`w-full flex items-start gap-4 p-4 rounded-xl border-2 transition-all ${isCurrent ?
+                        'border-red-600 bg-red-50 dark:bg-red-900/10' :
+                        'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'}`
+                      }>
+
                       <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${isCurrent ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`
-                    }>
+                      }>
                         {address.label === 'Home' ? <Building2 className="h-4 w-4" /> :
-                      address.label === 'Office' ? <Building2 className="h-4 w-4" /> :
-                      <MapPin className="h-4 w-4" />}
+                          address.label === 'Office' ? <Building2 className="h-4 w-4" /> :
+                            <MapPin className="h-4 w-4" />}
                       </div>
                       <div className="flex-1 text-left min-w-0">
                         <div className="flex items-center justify-between mb-1">
@@ -2376,9 +2256,9 @@ export default function Cart() {
                       </div>
                     </button>);
 
-              }) :
+                }) :
 
-              <div className="text-center py-10">
+                <div className="text-center py-10">
                   <div className="bg-gray-100 dark:bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     <MapPin className="h-8 w-8 text-gray-400" />
                   </div>
@@ -2389,7 +2269,7 @@ export default function Cart() {
               <Link
                 to="/user/profile"
                 className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                
+
                 <Plus className="h-4 w-4" />
                 <span className="font-semibold">Add New Address</span>
               </Link>
@@ -2584,7 +2464,7 @@ export default function Cart() {
           stroke-dashoffset: 0;
         }
       `}</style>
-    </div>);
+    </div >);
 
 }
 

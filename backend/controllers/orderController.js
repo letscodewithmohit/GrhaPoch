@@ -8,6 +8,9 @@ import winston from 'winston';
 import { calculateOrderPricing, normalizeCoordinates } from '../services/orderCalculationService.js';
 import { getRazorpayCredentials } from '../utils/envService.js';
 import { notifyRestaurantNewOrder } from '../services/restaurantNotificationService.js';
+import { notifyUserOrderUpdate } from '../services/userNotificationService.js';
+import { notifyRestaurantFCM } from '../services/fcmNotificationService.js';
+
 import { calculateOrderSettlement } from '../services/orderSettlementService.js';
 import { holdEscrow } from '../services/escrowWalletService.js';
 import { processCancellationRefund } from '../services/cancellationRefundService.js';
@@ -80,7 +83,6 @@ export const createOrder = async (req, res) => {
       restaurantId,
       restaurantName,
       pricing,
-      deliveryFleet,
       note,
       sendCutlery,
       paymentMethod: bodyPaymentMethod
@@ -344,7 +346,6 @@ export const createOrder = async (req, res) => {
         restaurantId: restaurant._id.toString(),
         deliveryAddress: address,
         couponCode: pricing.couponCode || null,
-        deliveryFleet: deliveryFleet || 'standard',
         tip: pricing.tip || 0,
         donation: pricing.donation || 0
       });
@@ -551,7 +552,6 @@ export const createOrder = async (req, res) => {
       assignmentInfo: (typeof canonicalDistanceKm === 'number' && !Number.isNaN(canonicalDistanceKm))
         ? { distance: canonicalDistanceKm }
         : undefined,
-      deliveryFleet: deliveryFleet || 'standard',
       note: note || '',
       sendCutlery: sendCutlery !== false,
       status: 'pending',
@@ -763,6 +763,11 @@ export const createOrder = async (req, res) => {
             notifyRestaurantResult
           });
 
+          // Notify user about order confirmation
+          notifyUserOrderUpdate(order._id, 'confirmed').catch(err => {
+            logger.error('❌ Error notifying user about confirmed Wallet order:', err);
+          });
+
           // Calculate settlement (commission, earnings, etc.) - Run asynchronously
           calculateOrderSettlement(order._id).catch(err => {
             logger.error('❌ Error calculating settlement for Wallet order:', err);
@@ -846,6 +851,11 @@ export const createOrder = async (req, res) => {
           orderId: order.orderId,
           restaurantId: assignedRestaurantId,
           notifyRestaurantResult
+        });
+
+        // Notify user about order confirmation
+        notifyUserOrderUpdate(order._id, 'confirmed').catch(err => {
+          logger.error('❌ Error notifying user about confirmed COD order:', err);
         });
 
         // Calculate settlement (commission, earnings, etc.) - Run asynchronously
@@ -1137,6 +1147,11 @@ export const verifyOrderPayment = async (req, res) => {
       // But log it as critical for debugging
     }
 
+    // Notify user about order confirmation
+    notifyUserOrderUpdate(order._id, 'confirmed').catch(err => {
+      logger.error('❌ Error notifying user after payment verification:', err);
+    });
+
     logger.info(`Order payment verified: ${order.orderId}`, {
       orderId: order.orderId,
       paymentId: payment.paymentId,
@@ -1407,6 +1422,29 @@ export const cancelOrder = async (req, res) => {
       }
     } else if (actualPaymentMethod === 'cash') {
       refundMessage = ' No refund required as payment was not made.';
+    }
+
+    // Notifications for cancellation
+    try {
+      // Notify user
+      notifyUserOrderUpdate(order._id, 'cancelled').catch(e => logger.error('User cancel notify error:', e));
+
+      // Notify restaurant
+      const restaurantId = order.restaurantId?.toString() || order.restaurantId;
+      if (restaurantId) {
+        notifyRestaurantFCM(
+          restaurantId,
+          '❌ Order Cancelled',
+          `Order #${order.orderId} has been cancelled by the customer. Reason: ${order.cancellationReason || 'Not provided'}`,
+          {
+            orderId: order.orderId,
+            orderMongoId: order._id.toString(),
+            type: 'ORDER_CANCELLED'
+          }
+        ).catch(e => logger.error('Restaurant cancel notify error:', e));
+      }
+    } catch (notifError) {
+      logger.error('Error sending cancellation notifications:', notifError);
     }
 
     res.json({
