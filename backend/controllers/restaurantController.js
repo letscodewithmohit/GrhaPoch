@@ -920,6 +920,7 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
         if (dishesUnder250.length > 0) {
           return {
             id: restaurant._id.toString(),
+            isActive: restaurant.isActive,
             restaurantId: restaurant.restaurantId,
             name: restaurant.name,
             slug: restaurant.slug,
