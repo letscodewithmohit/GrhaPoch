@@ -3,7 +3,8 @@ import SubscriptionPlan from '../models/SubscriptionPlan.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import {
   createSubscription,
-  verifySubscriptionPayment
+  verifySubscriptionPayment,
+  cancelSubscription as cancelRazorpaySubscription
 } from '../services/razorpayService.js';
 import crypto from 'crypto';
 import AuditLog from '../models/AuditLog.js';
@@ -19,6 +20,7 @@ const SUBSCRIPTION_WEBHOOK_EVENTS = new Set([
   'subscription.activated',
   'subscription.charged',
   'subscription.completed',
+  'subscription.cancelled',
   'payment.failed'
 ]);
 
@@ -87,6 +89,90 @@ const appendRenewedHistory = ({ restaurant, now }) => {
     orderId: restaurant.subscription.orderId,
     activatedAt: restaurant.subscription.startDate || now
   });
+};
+
+const cancelSubscriptionCore = async ({
+  restaurant,
+  source = 'restaurant',
+  session
+}) => {
+  if (!restaurant.subscription || !restaurant.subscription.subscriptionId) {
+    throw new Error('No active subscription found to cancel');
+  }
+
+  if (
+    restaurant.subscription.status === 'expired' ||
+    restaurant.subscription.status === 'inactive' ||
+    // Already processed cancellation / auto-renew disabled
+    restaurant.subscription.cancelAtPeriodEnd === true
+  ) {
+    return { restaurant, wasAlreadyCancelled: true };
+  }
+
+  const subscriptionId = String(restaurant.subscription.subscriptionId || '').trim();
+  if (!subscriptionId) {
+    throw new Error('Razorpay subscription ID missing for cancellation');
+  }
+
+  // Cancel on Razorpay side so that no future auto-debits are attempted.
+  await cancelRazorpaySubscription(subscriptionId);
+
+  // Mark subscription to end gracefully at period end. Keep it active until endDate
+  // so that benefits (0% commission) continue for the current billing cycle.
+  restaurant.subscription.cancelAtPeriodEnd = true;
+  restaurant.subscription.autoRenew = false;
+  await restaurant.save({ session });
+
+  const paymentFilter = buildSubscriptionPaymentFilter({
+    razorpaySubscriptionId: subscriptionId
+  });
+  if (paymentFilter) {
+    const paymentRecord = await SubscriptionPayment.findOne(paymentFilter).session(session);
+    if (paymentRecord && paymentRecord.status === 'pending') {
+      paymentRecord.status = 'failed';
+      paymentRecord.source = source === 'webhook' ? 'webhook' : 'verify_api';
+      paymentRecord.lastError = 'Subscription cancelled before activation';
+      await paymentRecord.save({ session });
+    }
+  }
+
+  try {
+    await AuditLog.createLog(
+      {
+        entityType: 'restaurant',
+        entityId: restaurant._id,
+        action: 'subscription_cancelled',
+        actionType: 'update',
+        performedBy: {
+          type: source === 'admin' ? 'admin' : source === 'webhook' ? 'system' : 'restaurant',
+          userId:
+            source === 'admin'
+              ? 'admin'
+              : source === 'webhook'
+              ? 'system'
+              : restaurant._id,
+          name:
+            source === 'admin'
+              ? 'Admin'
+              : source === 'webhook'
+              ? 'Razorpay Webhook'
+              : restaurant.name
+        },
+        description: 'Subscription auto-renew disabled; subscription will remain active until end of period',
+        metadata: {
+          subscriptionId,
+          previousModel: 'Subscription Base',
+          newModel: 'Subscription Base',
+          source
+        }
+      },
+      { session }
+    );
+  } catch (logError) {
+    console.error('Error logging subscription cancellation:', logError);
+  }
+
+  return { restaurant, wasAlreadyCancelled: false };
 };
 
 export const activateSubscriptionTx = async ({
@@ -173,7 +259,10 @@ export const activateSubscriptionTx = async ({
     paymentId: razorpayPaymentId || '',
     orderId: razorpayOrderId || '',
     subscriptionId: razorpaySubscriptionId || '',
-    invoiceId: razorpayInvoiceId || ''
+    invoiceId: razorpayInvoiceId || '',
+    // New subscriptions always start with auto-renew enabled and no pending cancellation
+    cancelAtPeriodEnd: false,
+    autoRenew: true
   };
   restaurant.businessModel = 'Subscription Base';
   // Keep newly registered restaurants inactive until admin approval.
@@ -383,32 +472,15 @@ export const createSubscriptionOrder = async (req, res) => {
       }
     });
 
-    const renewalType =
-      restaurant.businessModel === 'Subscription Base' &&
-      restaurant.subscription?.status === 'active' &&
-      restaurant.subscription?.endDate ?
-        'renewal' : 'new';
-
-    await SubscriptionPayment.findOneAndUpdate(
-      { razorpaySubscriptionId: subscription.id },
-      {
-        $setOnInsert: {
-          restaurantId: restaurant._id,
-          planId: plan._id,
-          planName: plan.name,
-          razorpayPlanId: planRazorpayId,
-          amount: plan.price,
-          currency: plan.currency || 'INR',
-          razorpaySubscriptionId: subscription.id,
-          status: 'pending',
-          paymentDate: new Date(),
-          renewalType,
-          source: 'create_subscription',
-          lastError: ''
-        }
-      },
-      { upsert: true, setDefaultsOnInsert: true }
-    );
+    // NOTE: We intentionally do NOT create a SubscriptionPayment record here.
+    // Razorpay creates a new subscription ID every time the user opens the
+    // subscription checkout. If we stored a "pending" record for each open,
+    // we would quickly end up with many unused rows when users close the
+    // payment window without completing payment.
+    //
+    // Instead, we only create/update SubscriptionPayment records when:
+    // - Payment is successfully verified (activateSubscriptionTx), or
+    // - Reconciliation / webhook logic processes a real payment event.
 
     return successResponse(res, 200, 'Subscription created successfully', {
       subscriptionId: subscription.id,
@@ -632,6 +704,43 @@ export const handleSubscriptionWebhook = async (req, res) => {
       return successResponse(res, 200, 'Webhook processed (payment failed)');
     }
 
+    if (eventType === 'subscription.cancelled') {
+      if (context.subscriptionId) {
+        const restaurantWithSub = await Restaurant.findOne({
+          'subscription.subscriptionId': context.subscriptionId
+        });
+        if (restaurantWithSub) {
+          const session = await mongoose.startSession();
+          try {
+            await session.withTransaction(async () => {
+              await cancelSubscriptionCore({
+                restaurant: restaurantWithSub,
+                source: 'webhook',
+                session
+              });
+            });
+          } finally {
+            await session.endSession();
+          }
+        }
+
+        await SubscriptionPayment.updateMany(
+          { razorpaySubscriptionId: context.subscriptionId },
+          {
+            $set: {
+              source: 'webhook',
+              lastError: 'Subscription cancelled via Razorpay webhook'
+            }
+          }
+        );
+      }
+
+      webhookEvent.status = 'processed';
+      webhookEvent.processedAt = new Date();
+      await webhookEvent.save();
+      return successResponse(res, 200, 'Webhook processed (subscription cancelled)');
+    }
+
     if (eventType === 'subscription.completed') {
       if (context.subscriptionId) {
         await SubscriptionPayment.findOneAndUpdate(
@@ -702,6 +811,95 @@ export const handleSubscriptionWebhook = async (req, res) => {
   }
 };
 
+export const cancelSubscription = async (req, res) => {
+  const restaurantId = req.restaurant?._id;
+
+  if (!restaurantId) {
+    return errorResponse(res, 401, 'Unauthorized');
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    let restaurant = await Restaurant.findById(restaurantId).session(session);
+    if (!restaurant) {
+      return errorResponse(res, 404, 'Restaurant not found');
+    }
+
+    if (!restaurant.subscription || !restaurant.subscription.subscriptionId) {
+      return errorResponse(res, 400, 'No active subscription to cancel');
+    }
+
+    let result;
+    await session.withTransaction(async () => {
+      restaurant = await Restaurant.findById(restaurantId).session(session);
+      result = await cancelSubscriptionCore({
+        restaurant,
+        source: 'restaurant',
+        session
+      });
+    });
+
+    const message = result?.wasAlreadyCancelled
+      ? 'Subscription already cancelled'
+      : 'Subscription cancelled successfully';
+
+    return successResponse(res, 200, message, {
+      subscription: result?.restaurant?.subscription
+    });
+  } catch (error) {
+    console.error('Cancel subscription error:', error);
+    return errorResponse(res, 500, error.message || 'Failed to cancel subscription');
+  } finally {
+    await session.endSession();
+  }
+};
+
+export const adminCancelSubscription = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    if (!restaurantId) {
+      return errorResponse(res, 400, 'Restaurant ID is required');
+    }
+
+    const session = await mongoose.startSession();
+    let restaurant = await Restaurant.findById(restaurantId).session(session);
+    if (!restaurant) {
+      await session.endSession();
+      return errorResponse(res, 404, 'Restaurant not found');
+    }
+
+    if (!restaurant.subscription || !restaurant.subscription.subscriptionId) {
+      await session.endSession();
+      return errorResponse(res, 400, 'Restaurant does not have an active subscription to cancel');
+    }
+
+    let result;
+    try {
+      await session.withTransaction(async () => {
+        restaurant = await Restaurant.findById(restaurantId).session(session);
+        result = await cancelSubscriptionCore({
+          restaurant,
+          source: 'admin',
+          session
+        });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    const message = result?.wasAlreadyCancelled
+      ? 'Subscription already cancelled'
+      : 'Subscription cancelled successfully';
+
+    return successResponse(res, 200, message, {
+      subscription: result?.restaurant?.subscription
+    });
+  } catch (error) {
+    console.error('Admin cancel subscription error:', error);
+    return errorResponse(res, 500, error.message || 'Failed to cancel subscription');
+  }
+};
+
 /**
  * Helper to check and expire subscription if end date passed
  * @param {Object} restaurant - Restaurant document (mongoose document)
@@ -723,7 +921,9 @@ export const checkSubscriptionExpiry = async (restaurant) => {
         planName: restaurant.subscription.planName,
         subscriptionId: restaurant.subscription.subscriptionId || '',
         invoiceId: restaurant.subscription.invoiceId || '',
-        status: 'expired',
+        // If the user/admin cancelled auto-renew earlier, treat this as a
+        // "cancelled at period end" in history; otherwise mark as expired.
+        status: restaurant.subscription.cancelAtPeriodEnd ? 'cancelled' : 'expired',
         startDate: restaurant.subscription.startDate,
         endDate: restaurant.subscription.endDate,
         paymentId: restaurant.subscription.paymentId,
@@ -733,6 +933,10 @@ export const checkSubscriptionExpiry = async (restaurant) => {
 
       restaurant.businessModel = 'Commission Base';
       restaurant.subscription.status = 'expired';
+      // Once the period is over, clear cancellation/auto-renew flags so that
+      // any future subscription starts from a clean state.
+      restaurant.subscription.cancelAtPeriodEnd = false;
+      restaurant.subscription.autoRenew = false;
 
       await restaurant.save();
 

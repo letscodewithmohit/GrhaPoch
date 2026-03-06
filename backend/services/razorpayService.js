@@ -506,6 +506,64 @@ const fetchSubscriptionPayments = async (subscriptionId) => {
 };
 
 /**
+ * Cancel a Razorpay subscription (stops future auto-payments)
+ * @param {String} subscriptionId - Razorpay subscription ID
+ * @returns {Promise<Object>} Updated subscription object from Razorpay
+ */
+const cancelSubscription = async (subscriptionId) => {
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay is not initialized');
+  }
+
+  if (!subscriptionId) {
+    throw new Error('Subscription ID is required to cancel subscription');
+  }
+
+  try {
+    logger.info('Cancelling Razorpay subscription:', {
+      subscriptionId
+    });
+
+    // Optional mock mode for local development only
+    if (isMockRazorpayEnabled) {
+      logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock cancelled subscription for development.');
+      return {
+        id: subscriptionId.startsWith('sub_mock_') ? subscriptionId : `sub_mock_${subscriptionId}`,
+        status: 'cancelled',
+        ended_at: Math.floor(Date.now() / 1000)
+      };
+    }
+
+    const cancelled = await razorpay.subscriptions.cancel(subscriptionId);
+
+    logger.info(`Razorpay subscription cancelled successfully: ${cancelled.id}`, {
+      subscriptionId: cancelled.id,
+      status: cancelled.status
+    });
+
+    return cancelled;
+  } catch (error) {
+    logger.error('Error cancelling Razorpay subscription:', {
+      message: error.message,
+      error: error.error || error.description || error,
+      statusCode: error.statusCode,
+      status: error.status,
+      stack: error.stack
+    });
+
+    let errorMessage = 'Failed to cancel Razorpay subscription';
+    if (error.error && error.error.description) {
+      errorMessage = error.error.description;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+/**
  * Create a refund
  * @param {String} paymentId - Razorpay payment ID
  * @param {Number} amount - Refund amount in paise (optional, full refund if not provided)
@@ -554,6 +612,7 @@ export {
   createSubscription,
   fetchSubscription,
   fetchSubscriptionPayments,
+  cancelSubscription,
   createRefund
 };
 

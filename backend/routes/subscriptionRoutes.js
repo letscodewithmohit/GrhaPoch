@@ -4,7 +4,8 @@ import {
     createSubscriptionOrder,
     verifyPaymentAndActivate,
     getSubscriptionStatus,
-    handleSubscriptionWebhook
+    handleSubscriptionWebhook,
+    cancelSubscription
 } from '../controllers/subscriptionController.js';
 import { getActiveSubscriptionPlans } from '../controllers/subscriptionPlanController.js';
 
@@ -19,6 +20,9 @@ router.post('/create-subscription', authenticate, createSubscriptionOrder);
 
 // Verify payment and activate subscription
 router.post('/verify-payment', authenticate, verifyPaymentAndActivate);
+
+// Cancel active subscription (stop Razorpay auto-pay)
+router.post('/cancel', authenticate, cancelSubscription);
 
 // Get subscription status
 router.get('/status', authenticate, getSubscriptionStatus);

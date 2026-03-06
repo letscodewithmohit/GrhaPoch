@@ -34,14 +34,17 @@ const subscriptionPaymentSchema = new mongoose.Schema({
         default: null,
         sparse: true
     },
-    razorpayInvoiceId: {
+    razorpayInvoiceId: {        
         type: String,
         default: null,
         sparse: true
     },
     razorpayPaymentId: {
         type: String,
-        default: null,
+        // No default value here on purpose. We rely on the sparse unique
+        // index below and only set this field once a real Razorpay payment
+        // ID is available. Leaving it absent avoids duplicate-key issues
+        // for multiple pending subscription attempts.
         sparse: true
     },
     razorpayOrderId: {

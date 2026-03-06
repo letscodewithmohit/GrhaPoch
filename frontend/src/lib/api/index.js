@@ -650,6 +650,9 @@ export const restaurantAPI = {
   getSubscriptionPlans: () => {
     return apiClient.get(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.PLANS);
   },
+  cancelSubscription: () => {
+    return apiClient.post(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.CANCEL);
+  },
 
   // Notifications
   getNotifications: () => {

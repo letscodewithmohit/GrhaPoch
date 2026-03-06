@@ -351,12 +351,25 @@ const restaurantSchema = new mongoose.Schema(
         enum: ['active', 'expired', 'pending_approval', 'inactive', 'rejected'],
         default: 'inactive'
       },
+      // Human-readable plan name
       planName: String,
+      // Current billing period
       startDate: Date,
       endDate: Date,
+      // When subscription was requested (for pending_approval)
       requestedAt: Date,
+      // Razorpay identifiers for the latest successful payment
       paymentId: String,
-      orderId: String
+      orderId: String,
+      // Cancellation/auto-renew flags (added for graceful period-end cancellation)
+      cancelAtPeriodEnd: {
+        type: Boolean,
+        default: false
+      },
+      autoRenew: {
+        type: Boolean,
+        default: true
+      }
     },
 
     // Full history of all subscription plans (appended on each renewal/new sub)

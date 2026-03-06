@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAllWithdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest } from '../controllers/withdrawalController.js';
-import { getAllSubscriptions, updateSubscriptionStatus } from '../controllers/subscriptionController.js';
+import { getAllSubscriptions, updateSubscriptionStatus, adminCancelSubscription } from '../controllers/subscriptionController.js';
 import {
   getDashboardStats,
   getAdmins,
@@ -291,6 +291,7 @@ router.put('/restaurants/:id/menu', updateRestaurantMenu);
 // Restaurant Subscription Management
 router.get('/restaurants/subscriptions', getAllSubscriptions);
 router.put('/restaurants/subscription/:restaurantId', updateSubscriptionStatus);
+router.put('/restaurants/subscription/cancel/:restaurantId', adminCancelSubscription);
 
 // Subscription Plan Management
 router.get('/subscription-plans', getSubscriptionPlans);
