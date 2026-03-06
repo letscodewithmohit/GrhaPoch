@@ -159,6 +159,9 @@ export default function Cart() {
   const [showCustomDonation, setShowCustomDonation] = useState(false);
   const [tipOptions, setTipOptions] = useState([10, 20, 30]);
   const [donationOptions, setDonationOptions] = useState([20, 50, 100]);
+  // Track whether we have already applied the default tip/donation amounts.
+  // This prevents subsequent re-fetches from overriding values the user has changed.
+  const defaultsApplied = useRef(false);
 
   // Restaurant and pricing state
   const [restaurantData, setRestaurantData] = useState(null);
@@ -681,10 +684,26 @@ export default function Cart() {
       try {
         const response = await publicAPI.getBusinessSettings();
         const settings = response?.data?.data || {};
-        setTipOptions(normalizePresetAmounts(settings.deliveryTipAmounts, [10, 20, 30]));
-        setDonationOptions(normalizePresetAmounts(settings.donationAmounts, [20, 50, 100]));
+        const tips = normalizePresetAmounts(settings.deliveryTipAmounts, [10, 20, 30]);
+        const donations = normalizePresetAmounts(settings.donationAmounts, [20, 50, 100]);
+        setTipOptions(tips);
+        setDonationOptions(donations);
+
+        // Auto-apply the first preset as default ONLY on the very first load.
+        // After that, the user is in control – we never override their selection.
+        if (!defaultsApplied.current) {
+          defaultsApplied.current = true;
+          if (tips.length > 0) setTipAmount(tips[0]);
+          if (donations.length > 0) setDonationAmount(donations[0]);
+        }
       } catch (error) {
         console.error('Error fetching tip/donation settings:', error);
+        // On error, still apply defaults from state if not yet applied
+        if (!defaultsApplied.current) {
+          defaultsApplied.current = true;
+          setTipAmount(tipOptions[0] || 10);
+          setDonationAmount(donationOptions[0] || 20);
+        }
       }
     };
 
@@ -1723,7 +1742,7 @@ export default function Cart() {
 
               {/* Contact */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl">
-                <Link to="/user/profile" className="flex items-center justify-between">
+                <Link to="/user/profile" state={{ from: "cart" }} className="flex items-center justify-between">
                   <div className="flex items-center gap-3 md:gap-4">
                     <Phone className="h-4 w-4 md:h-5 md:w-5 text-gray-500 dark:text-gray-400" />
                     <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
@@ -1744,28 +1763,31 @@ export default function Cart() {
                     <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Tip your delivery partner</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">100% of the tip goes to your delivery partner</p>
                     <div className="flex flex-wrap gap-2 md:gap-3">
-                      {tipOptions.map((amount) =>
-                        <button
-                          key={amount}
-                          onClick={() => {
-                            setTipAmount(tipAmount === amount ? 0 : amount);
-                            setShowCustomTip(false);
-                          }}
-                          className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${tipAmount === amount ?
-                            "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400" :
-                            "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
-                          }>
-
-                          {"\u20B9"}{amount}
-                        </button>
-                      )}
+                      {tipOptions.map((amount) => {
+                        const isSelected = tipAmount === amount && !showCustomTip;
+                        return (
+                          <button
+                            key={amount}
+                            onClick={() => {
+                              setTipAmount(amount);
+                              setShowCustomTip(false);
+                            }}
+                            className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${isSelected ?
+                              "border-orange-600 bg-orange-600 text-white shadow-md scale-105" :
+                              "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-orange-200 dark:hover:border-orange-900/40 hover:bg-orange-50/50 dark:hover:bg-orange-900/10"}`
+                            }>
+                            {"\u20B9"}{amount}
+                          </button>
+                        );
+                      })}
                       <button
-                        onClick={() => setShowCustomTip(!showCustomTip)}
-                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${showCustomTip ?
-                          "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400" :
-                          "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
+                        onClick={() => {
+                          setShowCustomTip(!showCustomTip);
+                        }}
+                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${(showCustomTip || (tipAmount > 0 && !tipOptions.includes(tipAmount))) ?
+                          "border-orange-600 bg-orange-600 text-white shadow-md scale-105" :
+                          "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-orange-200 dark:hover:border-orange-900/40 hover:bg-orange-50/50 dark:hover:bg-orange-900/10"}`
                         }>
-
                         Custom
                       </button>
                     </div>
@@ -1796,28 +1818,31 @@ export default function Cart() {
                     <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Usai Foundation Donation</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Help us feed the needy. 100% of your donation goes to charity.</p>
                     <div className="flex flex-wrap gap-2 md:gap-3">
-                      {donationOptions.map((amount) =>
-                        <button
-                          key={amount}
-                          onClick={() => {
-                            setDonationAmount(donationAmount === amount ? 0 : amount);
-                            setShowCustomDonation(false);
-                          }}
-                          className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${donationAmount === amount ?
-                            "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400" :
-                            "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
-                          }>
-
-                          ₹{amount}
-                        </button>
-                      )}
+                      {donationOptions.map((amount) => {
+                        const isSelected = donationAmount === amount && !showCustomDonation;
+                        return (
+                          <button
+                            key={amount}
+                            onClick={() => {
+                              setDonationAmount(amount);
+                              setShowCustomDonation(false);
+                            }}
+                            className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${isSelected ?
+                              "border-blue-600 bg-blue-600 text-white shadow-md scale-105" :
+                              "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"}`
+                            }>
+                            ₹{amount}
+                          </button>
+                        );
+                      })}
                       <button
-                        onClick={() => setShowCustomDonation(!showCustomDonation)}
-                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-medium transition-all ${showCustomDonation ?
-                          "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400" :
-                          "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"}`
+                        onClick={() => {
+                          setShowCustomDonation(!showCustomDonation);
+                        }}
+                        className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${(showCustomDonation || (donationAmount > 0 && !donationOptions.includes(donationAmount))) ?
+                          "border-blue-600 bg-blue-600 text-white shadow-md scale-105" :
+                          "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-200 dark:hover:border-blue-900/40 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"}`
                         }>
-
                         Custom
                       </button>
                     </div>

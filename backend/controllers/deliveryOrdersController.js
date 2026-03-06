@@ -1868,9 +1868,16 @@ export const completeDelivery = asyncHandler(async (req, res) => {
     // Mark COD payment as collected (admin Payment Status → Collected)
     if (order.payment?.method === 'cash' || order.payment?.method === 'cod') {
       try {
+        // Update the status on the Payment record
         await Payment.updateOne(
           { orderId: orderMongoId },
           { $set: { status: 'completed', completedAt: new Date() } }
+        );
+
+        // ALSO update the status on the Order document itself for UI consistency
+        await Order.updateOne(
+          { _id: orderMongoId },
+          { $set: { 'payment.status': 'completed' } }
         );
 
       } catch (paymentUpdateError) {

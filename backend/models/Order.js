@@ -45,7 +45,9 @@ const orderSchema = new mongoose.Schema({
   },
   restaurantId: {
     type: String,
-    required: true
+    ref: 'Restaurant',
+    required: true,
+    index: true
   },
   restaurantName: {
     type: String,

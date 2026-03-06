@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -54,6 +54,7 @@ import { clearModuleAuth } from "@/lib/utils/auth";
 export default function Profile() {
   const { userProfile, vegMode, setVegMode } = useProfile();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Popup states
   const [vegModeOpen, setVegModeOpen] = useState(false);
@@ -328,11 +329,15 @@ export default function Profile() {
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10">
         {/* Back Arrow */}
         <div className="mb-4">
-          <Link to="/user">
-            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-              <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={() => {
+            if (location.state?.from === "cart") {
+              navigate("/user/cart");
+            } else {
+              navigate(-1);
+            }
+          }}>
+            <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
+          </Button>
         </div>
 
         {/* Profile Info Card */}
@@ -753,7 +758,7 @@ export default function Profile() {
 
             <Card
               className={`bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer overflow-hidden ${pushStatus === 'success' ? 'ring-2 ring-green-400 ring-offset-1' :
-                  pushStatus === 'error' || pushStatus === 'denied' ? 'ring-2 ring-red-400 ring-offset-1' : ''
+                pushStatus === 'error' || pushStatus === 'denied' ? 'ring-2 ring-red-400 ring-offset-1' : ''
                 }`}
               onClick={handleTestPush}>
 
@@ -761,8 +766,8 @@ export default function Profile() {
                 <div className="flex items-center gap-3">
                   <motion.div
                     className={`rounded-full p-2 ${pushStatus === 'success' ? 'bg-green-100 dark:bg-green-900/40' :
-                        pushStatus === 'error' || pushStatus === 'denied' ? 'bg-red-100 dark:bg-red-900/40' :
-                          'bg-gray-100 dark:bg-gray-800'
+                      pushStatus === 'error' || pushStatus === 'denied' ? 'bg-red-100 dark:bg-red-900/40' :
+                        'bg-gray-100 dark:bg-gray-800'
                       }`}
                     animate={pushStatus === 'sending' ? { rotate: [0, -15, 15, -10, 10, 0] } : {}}
                     transition={{ duration: 0.6, repeat: pushStatus === 'sending' ? Infinity : 0 }}>
@@ -803,8 +808,8 @@ export default function Profile() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
                           className={`text-xs mt-0.5 ${pushStatus === 'success' ? 'text-green-600 dark:text-green-400' :
-                              pushStatus === 'error' || pushStatus === 'denied' ? 'text-red-500' :
-                                'text-blue-500'
+                            pushStatus === 'error' || pushStatus === 'denied' ? 'text-red-500' :
+                              'text-blue-500'
                             }`}>
                           {pushMessage}
                         </motion.span>
@@ -829,10 +834,10 @@ export default function Profile() {
                 {/* Status badge */}
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${notifPermission === 'granted'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                      : notifPermission === 'denied'
-                        ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-                        : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                    : notifPermission === 'denied'
+                      ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'
                     }`}>
                     {notifPermission === 'granted' ? 'ON' : notifPermission === 'denied' ? 'BLOCKED' : 'OFF'}
                   </span>

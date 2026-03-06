@@ -1285,6 +1285,7 @@ export const getOrderDetails = async (req, res) => {
         _id: id,
         userId
       })
+        .populate('restaurantId', 'name profileImage address location phone ownerPhone onboarding')
         .populate('deliveryPartnerId', 'name email phone')
         .populate('userId', 'name fullName phone email')
         .lean();
@@ -1296,6 +1297,7 @@ export const getOrderDetails = async (req, res) => {
         orderId: id,
         userId
       })
+        .populate('restaurantId', 'name profileImage address location phone ownerPhone onboarding')
         .populate('deliveryPartnerId', 'name email phone')
         .populate('userId', 'name fullName phone email')
         .lean();
@@ -1306,6 +1308,21 @@ export const getOrderDetails = async (req, res) => {
         success: false,
         message: 'Order not found'
       });
+    }
+
+    // Fallback: If restaurantId didn't populate (happens if it's a string ID instead of _id), fetch it manually
+    if (order.restaurantId && typeof order.restaurantId === 'string') {
+      const foundRestaurant = await Restaurant.findOne({
+        $or: [
+          { restaurantId: order.restaurantId },
+          { slug: order.restaurantId },
+          { _id: mongoose.Types.ObjectId.isValid(order.restaurantId) ? order.restaurantId : undefined }
+        ].filter(q => q._id !== undefined || q.restaurantId || q.slug)
+      }).select('name profileImage address location phone ownerPhone onboarding').lean();
+
+      if (foundRestaurant) {
+        order.restaurantId = foundRestaurant;
+      }
     }
 
     // Get payment details

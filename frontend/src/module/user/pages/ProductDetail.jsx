@@ -131,9 +131,7 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (product) {
-      for (let i = 0; i < quantity; i++) {
-        addToCart(product)
-      }
+      addToCart(product, null, quantity)
     }
   }
 
@@ -241,10 +239,10 @@ export default function ProductDetail() {
       <Star
         key={i}
         className={`${size} ${i < Math.floor(rating)
-            ? "fill-yellow-400 text-yellow-400"
-            : i < rating
-              ? "fill-yellow-200 text-yellow-200"
-              : "fill-gray-300 text-gray-300"
+          ? "fill-yellow-400 text-yellow-400"
+          : i < rating
+            ? "fill-yellow-200 text-yellow-200"
+            : "fill-gray-300 text-gray-300"
           }`}
       />
     ))
@@ -533,7 +531,7 @@ export default function ProductDetail() {
                 )}
               </div> */}
 
-              {/* {showReviewForm && (
+          {/* {showReviewForm && (
                 <div className="space-y-4 pb-4 border-b">
                   <h3 className="text-lg font-semibold">Write Your Review</h3>
                   <form onSubmit={handleSubmitReview} className="space-y-4">
@@ -590,7 +588,7 @@ export default function ProductDetail() {
                 </div>
               )} */}
 
-              {/* <div className="space-y-4">
+          {/* <div className="space-y-4">
                 {reviews.length > 0 ? (
                   reviews.map((review, index) => (
                     <ScrollReveal key={review.id} delay={index * 0.05}>
@@ -736,7 +734,7 @@ export default function ProductDetail() {
                   </div>
                 )}
               </div> */}
-            {/* </div>
+          {/* </div>
           </ScrollReveal> */}
         </div>
       </div>

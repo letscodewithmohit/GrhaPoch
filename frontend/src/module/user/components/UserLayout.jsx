@@ -9,6 +9,7 @@ import LocationSelectorOverlay from "./LocationSelectorOverlay"
 import BottomNavigation from "./BottomNavigation"
 import DesktopNavbar from "./DesktopNavbar"
 import { UserLocationProvider } from "../context/UserLocationContext"
+import CartConflictModal from "./CartConflictModal"
 
 // Create SearchOverlay context with default value
 const SearchOverlayContext = createContext({
@@ -126,6 +127,7 @@ export default function UserLayout() {
     <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a] transition-colors duration-200">
       <UserLocationProvider>
         <CartProvider>
+          <CartConflictModal />
           <ProfileProvider>
             <OrdersProvider>
               <SearchOverlayProvider>
