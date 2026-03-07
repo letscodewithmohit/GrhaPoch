@@ -230,10 +230,11 @@ export default function PocketPage() {
     // Fetch immediately on mount
     fetchActiveEarningAddons();
 
-    // Refresh every 5 seconds to get latest offers
+    // Refresh periodically (reduced from 3s to avoid excessive API calls)
+    const ACTIVE_OFFERS_REFRESH_MS = 60000;
     const refreshInterval = setInterval(() => {
       fetchActiveEarningAddons();
-    }, 3000); // Refresh every 3 seconds - FAST REFRESH
+    }, ACTIVE_OFFERS_REFRESH_MS);
 
     // Refresh when page becomes visible
     const handleVisibilityChange = () => {
@@ -469,10 +470,11 @@ export default function PocketPage() {
 
     fetchWalletData();
 
-    // Refresh wallet data every 3 seconds to get latest balance (including bonus) - FAST REFRESH
+    // Refresh wallet data periodically (reduced from 3s to avoid excessive API calls)
+    const WALLET_REFRESH_MS = 60000;
     const refreshInterval = setInterval(() => {
       fetchWalletData();
-    }, 3000);
+    }, WALLET_REFRESH_MS);
 
     // INSTANT refresh when page becomes visible (user switches back to tab) - BONUS SHOWS FAST
     const handleVisibilityChange = () => {

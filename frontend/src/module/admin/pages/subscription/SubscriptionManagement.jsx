@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Search, Crown, Check, Edit2, Trash2, X, AlertCircle, Loader2, Sparkles, TrendingUp, Eye, Phone, Mail, Calendar, CreditCard, User, Building2, MapPin, Download, FileText, FileSpreadsheet, ChevronDown, History, RefreshCw } from "lucide-react"
 import { exportSubscriptionsToExcel, exportSubscriptionsToPDF } from "../../components/subscription/subscriptionExportUtils"
 import { adminAPI } from "../../../../lib/api"
