@@ -1040,10 +1040,10 @@ export default function DeliveryHome() {
   // When no offer is active, show 0 of 0 and ₹0
   const earningsGuaranteeTarget = activeEarningAddon?.earningAmount || 0;
   const earningsGuaranteeOrdersTarget = activeEarningAddon?.requiredOrders || 0;
-  // Only show current orders/earnings if there's an active offer
-  const earningsGuaranteeCurrentOrders = activeEarningAddon ? activeEarningAddon.currentOrders ?? weeklyOrders : 0;
-  // Show only bonus earnings from the offer, not total weekly earnings
-  const earningsGuaranteeCurrentEarnings = activeEarningAddon ? calculateBonusEarnings() : 0;
+  // Only show current orders/earnings if there's an active offer, else show dynamic weekly total
+  const earningsGuaranteeCurrentOrders = activeEarningAddon ? activeEarningAddon.currentOrders ?? weeklyOrders : weeklyOrders;
+  // Show bonus earnings from the offer, or total weekly earnings if no offer is active
+  const earningsGuaranteeCurrentEarnings = activeEarningAddon ? calculateBonusEarnings() : weeklyEarnings;
   const ordersProgress = earningsGuaranteeOrdersTarget > 0 ?
   Math.min(earningsGuaranteeCurrentOrders / earningsGuaranteeOrdersTarget, 1) :
   0;
@@ -8335,7 +8335,9 @@ export default function DeliveryHome() {
 
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-xl font-bold text-gray-900">{earningsGuaranteeCurrentOrders} of {earningsGuaranteeOrdersTarget || 0}</span>
+                          <span className="text-xl font-bold text-gray-900">
+                            {earningsGuaranteeOrdersTarget > 0 ? `${earningsGuaranteeCurrentOrders} of ${earningsGuaranteeOrdersTarget}` : earningsGuaranteeCurrentOrders}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 mt-3">
