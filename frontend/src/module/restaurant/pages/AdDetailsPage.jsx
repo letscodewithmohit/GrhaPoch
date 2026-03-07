@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { campaignAPI } from "@/lib/api"
 import { loadRazorpayScript } from "@/lib/utils/razorpay"
 
-const STATUS_REFRESH_INTERVAL_MS = 15000
+const STATUS_REFRESH_INTERVAL_MS = 60000
 
 const formatDate = (value, withTime = false) => {
   if (!value) return "-"
