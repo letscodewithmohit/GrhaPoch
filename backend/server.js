@@ -31,82 +31,86 @@ if (process.env.DEBUG_SOCKET_LOGS !== 'true') {
     if (
       message.includes('Socket.IO: Allowing connection') ||
       message.includes('Socket.IO: Allowing localhost connection')) {
-      return;
-    }
-    originalConsoleLog(...args);
-  };
+      message.includes('Socket.IO: Allowing connection') ||
+        message.includes('Socket.IO: Allowing localhost connection')) {
+        return;
+      }
+      originalConsoleLog(...args);
+    };
+  }
+
+  // Import configurations
+  import { connectDB } from './config/database.js';
+  import { connectRedis } from './config/redis.js';
+  import { initializeFirebaseRealtime } from './config/firebaseRealtime.js';
+  import { printStartupStatus } from './config/startupStatus.js';
+  import firebaseAuthService from './services/firebaseAuthService.js';
+
+  // Import middleware
+  import { errorHandler } from './middleware/errorHandler.js';
+
+  // Import routes
+  import authRoutes from './routes/auth.index.js';
+  import userRoutes from './routes/user.index.js';
+  import restaurantRoutes from './routes/restaurant.index.js';
+  import deliveryRoutes from './routes/delivery.index.js';
+  import orderRoutes from './routes/order.index.js';
+  import paymentRoutes from './routes/payment.index.js';
+  import menuRoutes from './routes/menu.index.js';
+  import campaignRoutes from './routes/campaign.index.js';
+  import advertisementPublicRoutes from './routes/campaign.public.routes.js';
+  import userAdvertisementRoutes from './routes/userAdvertisement.routes.js';
+  import notificationRoutes from './routes/notification.index.js';
+  import analyticsRoutes from './routes/analytics.index.js';
+  import adminRoutes from './routes/admin.index.js';
+  import categoryPublicRoutes from './routes/categoryPublicRoutes.js';
+  import feeSettingsPublicRoutes from './routes/feeSettingsPublicRoutes.js';
+  import envPublicRoutes from './routes/envPublicRoutes.js';
+  import aboutPublicRoutes from './routes/aboutPublicRoutes.js';
+  import businessSettingsPublicRoutes from './routes/businessSettingsPublicRoutes.js';
+  import termsPublicRoutes from './routes/termsPublicRoutes.js';
+  import privacyPublicRoutes from './routes/privacyPublicRoutes.js';
+  import refundPublicRoutes from './routes/refundPublicRoutes.js';
+  import shippingPublicRoutes from './routes/shippingPublicRoutes.js';
+  import cancellationPublicRoutes from './routes/cancellationPublicRoutes.js';
+  import feedbackPublicRoutes from './routes/feedbackPublicRoutes.js';
+  import feedbackExperiencePublicRoutes from './routes/feedbackExperiencePublicRoutes.js';
+  import safetyEmergencyPublicRoutes from './routes/safetyEmergencyPublicRoutes.js';
+  import zonePublicRoutes from './routes/zonePublicRoutes.js';
+  import subscriptionRoutes from './routes/subscription.index.js';
+  import uploadModuleRoutes from './routes/upload.index.js';
+  import locationRoutes from './routes/location.routes.js';
+  import heroBannerRoutes from './routes/heroBanner.index.js';
+  import diningRoutes from './routes/diningRoutes.js';
+
+
+  // Validate required environment variables
+  const requiredEnvVars = ['JWT_SECRET', 'MONGODB_URI'];
+  const missingEnvVars = [];
+
+  requiredEnvVars.forEach((varName) => {
+    let value = process.env[varName];
+
+    // Remove quotes if present (dotenv sometimes includes them)
+    if (value && typeof value === 'string') {
+      value = value.trim();
+      // Remove surrounding quotes
+      if (value.startsWith('"') && value.endsWith('"') ||
+        value.startsWith("'") && value.endsWith("'")) {
+        value.startsWith("'") && value.endsWith("'")) {
+    value = value.slice(1, -1).trim();
+  }
 }
 
-// Import configurations
-import { connectDB } from './config/database.js';
-import { connectRedis } from './config/redis.js';
-import { initializeFirebaseRealtime } from './config/firebaseRealtime.js';
-import { printStartupStatus } from './config/startupStatus.js';
+// Update the env var with cleaned value
+if (value) {
+  process.env[varName] = value;
+}
 
-// Import middleware
-import { errorHandler } from './middleware/errorHandler.js';
-
-// Import routes
-import authRoutes from './routes/auth.index.js';
-import userRoutes from './routes/user.index.js';
-import restaurantRoutes from './routes/restaurant.index.js';
-import deliveryRoutes from './routes/delivery.index.js';
-import orderRoutes from './routes/order.index.js';
-import paymentRoutes from './routes/payment.index.js';
-import menuRoutes from './routes/menu.index.js';
-import campaignRoutes from './routes/campaign.index.js';
-import advertisementPublicRoutes from './routes/campaign.public.routes.js';
-import userAdvertisementRoutes from './routes/userAdvertisement.routes.js';
-import notificationRoutes from './routes/notification.index.js';
-import analyticsRoutes from './routes/analytics.index.js';
-import adminRoutes from './routes/admin.index.js';
-import categoryPublicRoutes from './routes/categoryPublicRoutes.js';
-import feeSettingsPublicRoutes from './routes/feeSettingsPublicRoutes.js';
-import envPublicRoutes from './routes/envPublicRoutes.js';
-import aboutPublicRoutes from './routes/aboutPublicRoutes.js';
-import businessSettingsPublicRoutes from './routes/businessSettingsPublicRoutes.js';
-import termsPublicRoutes from './routes/termsPublicRoutes.js';
-import privacyPublicRoutes from './routes/privacyPublicRoutes.js';
-import refundPublicRoutes from './routes/refundPublicRoutes.js';
-import shippingPublicRoutes from './routes/shippingPublicRoutes.js';
-import cancellationPublicRoutes from './routes/cancellationPublicRoutes.js';
-import feedbackPublicRoutes from './routes/feedbackPublicRoutes.js';
-import feedbackExperiencePublicRoutes from './routes/feedbackExperiencePublicRoutes.js';
-import safetyEmergencyPublicRoutes from './routes/safetyEmergencyPublicRoutes.js';
-import zonePublicRoutes from './routes/zonePublicRoutes.js';
-import subscriptionRoutes from './routes/subscription.index.js';
-import uploadModuleRoutes from './routes/upload.index.js';
-import locationRoutes from './routes/location.routes.js';
-import heroBannerRoutes from './routes/heroBanner.index.js';
-import diningRoutes from './routes/diningRoutes.js';
-
-
-// Validate required environment variables
-const requiredEnvVars = ['JWT_SECRET', 'MONGODB_URI'];
-const missingEnvVars = [];
-
-requiredEnvVars.forEach((varName) => {
-  let value = process.env[varName];
-
-  // Remove quotes if present (dotenv sometimes includes them)
-  if (value && typeof value === 'string') {
-    value = value.trim();
-    // Remove surrounding quotes
-    if (value.startsWith('"') && value.endsWith('"') ||
-      value.startsWith("'") && value.endsWith("'")) {
-      value = value.slice(1, -1).trim();
-    }
-  }
-
-  // Update the env var with cleaned value
-  if (value) {
-    process.env[varName] = value;
-  }
-
-  // Check if valid
-  if (!value || value === '' || varName === 'JWT_SECRET' && value.includes('your-super-secret')) {
-    missingEnvVars.push(varName);
-  }
+// Check if valid
+if (!value || value === '' || varName === 'JWT_SECRET' && value.includes('your-super-secret')) {
+  missingEnvVars.push(varName);
+}
 });
 
 if (missingEnvVars.length > 0) {
@@ -135,6 +139,14 @@ const allowedSocketOrigins = [
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000'].
   filter(Boolean); // Remove undefined values
+process.env.CORS_ORIGIN,
+  'https://foozeto.appzeto.com',
+  'http://foozeto.appzeto.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'].
+filter(Boolean); // Remove undefined values
 
 const io = new Server(httpServer, {
   cors: {
@@ -352,6 +364,17 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174'].
   filter(Boolean); // Remove undefined values
+process.env.CORS_ORIGIN,
+  'https://foods.appzeto.com',
+  'http://foods.appzeto.com',
+  'https://foozeto.appzeto.com',
+  'http://foozeto.appzeto.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174'].
+filter(Boolean); // Remove undefined values
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -536,6 +559,16 @@ io.on('connection', (socket) => {
             }
           }).
           lean();
+        const query = mongoose.Types.ObjectId.isValid(orderId) ? { _id: orderId } : { orderId: orderId };
+        const order = await Order.findOne(query).
+          populate({
+            path: 'deliveryPartnerId',
+            select: 'availability',
+            populate: {
+              path: 'availability.currentLocation'
+            }
+          }).
+          lean();
 
         if (order?.deliveryPartnerId?.availability?.currentLocation) {
           const coords = order.deliveryPartnerId.availability.currentLocation.coordinates;
@@ -566,6 +599,13 @@ io.on('connection', (socket) => {
       const { default: Order } = await import('./models/Order.js');
 
       const order = await Order.findById(orderId).
+        populate({
+          path: 'deliveryPartnerId',
+          select: 'availability'
+        }).
+        lean();
+      const query = mongoose.Types.ObjectId.isValid(orderId) ? { _id: orderId } : { orderId: orderId };
+      const order = await Order.findOne(query).
         populate({
           path: 'deliveryPartnerId',
           select: 'availability'
@@ -607,10 +647,14 @@ io.on('connection', (socket) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 
+// Initialize Firebase Admin before starting server
+await firebaseAuthService.init();
+
 httpServer.listen(PORT, () => {
 
 
   // Print startup status after services initialize
+  printStartupStatus(PORT).catch(() => { });
   printStartupStatus(PORT).catch(() => { });
 
   // Initialize scheduled tasks after DB connection is established

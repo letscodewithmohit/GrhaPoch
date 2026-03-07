@@ -212,6 +212,53 @@ const fetchPayment = async (paymentId) => {
 };
 
 /**
+ * Verify Razorpay subscription payment signature
+ * @param {String} razorpaySubscriptionId - Razorpay subscription ID
+ * @param {String} razorpayPaymentId - Razorpay payment ID
+ * @param {String} razorpaySignature - Razorpay signature
+ * @returns {Boolean} True if signature is valid
+ */
+const verifySubscriptionPayment = async (razorpaySubscriptionId, razorpayPaymentId, razorpaySignature) => {
+  const credentials = await getRazorpayCredentials();
+  const keySecret = credentials.keySecret;
+
+  if (!keySecret) {
+    logger.error('Razorpay key secret not found');
+    return false;
+  }
+
+  try {
+    const generatedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(`${razorpayPaymentId}|${razorpaySubscriptionId}`)
+      .digest('hex');
+
+    const isValid = generatedSignature === razorpaySignature;
+
+    if (!isValid && isMockRazorpayEnabled) {
+      if (razorpaySubscriptionId && razorpaySubscriptionId.startsWith('sub_mock_')) {
+        logger.warn('⚠️ Verifying mock subscription payment because ENABLE_MOCK_RAZORPAY=true.');
+        return true;
+      }
+    }
+
+    if (!isValid) {
+      logger.warn('Invalid Razorpay subscription signature', {
+        razorpaySubscriptionId,
+        razorpayPaymentId,
+        providedSignature: razorpaySignature,
+        generatedSignature
+      });
+    }
+
+    return isValid;
+  } catch (error) {
+    logger.error(`Error verifying Razorpay subscription payment: ${error.message}`);
+    return false;
+  }
+};
+
+/**
  * Fetch order details from Razorpay
  * @param {String} orderId - Razorpay order ID
  * @returns {Promise<Object>} Order details
@@ -247,6 +294,272 @@ const fetchOrderPayments = async (orderId) => {
   } catch (error) {
     logger.error(`Error fetching Razorpay order payments: ${error.message}`);
     throw error;
+  }
+};
+
+/**
+ * Create a Razorpay plan
+ * @param {Object} options - Plan options
+ * @param {String} options.period - Billing period (e.g., monthly)
+ * @param {Number} options.interval - Billing interval (e.g., 1, 3, 6)
+ * @param {Object} options.item - Item details { name, amount, currency, description }
+ * @param {Object} options.notes - Optional notes
+ * @returns {Promise<Object>} Razorpay plan object
+ */
+const createPlan = async (options) => {
+  logger.info('Creating Razorpay plan with options:', {
+    period: options.period,
+    interval: options.interval,
+    itemName: options.item?.name,
+    currency: options.item?.currency
+  });
+
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    logger.error('Razorpay instance is null - credentials may be missing or invalid');
+    throw new Error('Razorpay is not initialized. Please check your credentials.');
+  }
+
+  try {
+    const planOptions = {
+      period: options.period || 'monthly',
+      interval: options.interval || 1,
+      item: {
+        name: options.item?.name || `Plan ${Date.now()}`,
+        amount: options.item?.amount,
+        currency: options.item?.currency || 'INR',
+        description: options.item?.description || ''
+      },
+      notes: options.notes || {}
+    };
+
+    if (typeof planOptions.item.amount !== 'number' || planOptions.item.amount < 0) {
+      throw new Error('Plan item amount must be a non-negative number');
+    }
+
+    // Optional mock mode for local development only
+    if (isMockRazorpayEnabled) {
+      logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock plan for development.');
+      return {
+        id: `plan_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        period: planOptions.period,
+        interval: planOptions.interval,
+        item: {
+          id: `item_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          ...planOptions.item
+        },
+        notes: planOptions.notes,
+        created_at: Math.floor(Date.now() / 1000)
+      };
+    }
+
+    const plan = await razorpay.plans.create(planOptions);
+
+    logger.info(`Razorpay plan created successfully: ${plan.id}`, {
+      planId: plan.id,
+      period: plan.period,
+      interval: plan.interval
+    });
+
+    return plan;
+  } catch (error) {
+    logger.error(`Error creating Razorpay plan:`, {
+      message: error.message,
+      error: error.error || error.description || error,
+      statusCode: error.statusCode,
+      status: error.status,
+      stack: error.stack
+    });
+
+    let errorMessage = 'Failed to create Razorpay plan';
+    if (error.error && error.error.description) {
+      errorMessage = error.error.description;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Create a Razorpay subscription
+ * @param {Object} options - Subscription options
+ * @param {String} options.plan_id - Razorpay plan ID
+ * @param {Number} options.total_count - Total billing cycles
+ * @param {Number} options.customer_notify - Notify customer (0/1)
+ * @param {Object} options.notes - Optional notes
+ * @param {Number} options.quantity - Quantity (optional)
+ * @param {Number} options.start_at - Unix timestamp for start (optional)
+ * @returns {Promise<Object>} Razorpay subscription object
+ */
+const createSubscription = async (options) => {
+  logger.info('Creating Razorpay subscription with options:', {
+    plan_id: options.plan_id,
+    total_count: options.total_count,
+    customer_notify: options.customer_notify
+  });
+
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    logger.error('Razorpay instance is null - credentials may be missing or invalid');
+    throw new Error('Razorpay is not initialized. Please check your credentials.');
+  }
+
+  try {
+    const subscriptionOptions = {
+      plan_id: options.plan_id,
+      total_count: options.total_count,
+      customer_notify: options.customer_notify ?? 1,
+      quantity: options.quantity,
+      start_at: options.start_at,
+      notes: options.notes || {}
+    };
+
+    if (!subscriptionOptions.plan_id) {
+      throw new Error('Subscription plan_id is required');
+    }
+    if (!Number.isFinite(subscriptionOptions.total_count) || subscriptionOptions.total_count < 1) {
+      throw new Error('Subscription total_count must be a positive number');
+    }
+
+    // Optional mock mode for local development only
+    if (isMockRazorpayEnabled) {
+      logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock subscription for development.');
+      return {
+        id: `sub_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        plan_id: subscriptionOptions.plan_id,
+        status: 'created',
+        total_count: subscriptionOptions.total_count,
+        quantity: subscriptionOptions.quantity || 1,
+        notes: subscriptionOptions.notes,
+        created_at: Math.floor(Date.now() / 1000),
+        short_url: `https://checkout.razorpay.com/v1/sub_mock_${Date.now()}`
+      };
+    }
+
+    const subscription = await razorpay.subscriptions.create(subscriptionOptions);
+
+    logger.info(`Razorpay subscription created successfully: ${subscription.id}`, {
+      subscriptionId: subscription.id,
+      status: subscription.status
+    });
+
+    return subscription;
+  } catch (error) {
+    logger.error(`Error creating Razorpay subscription:`, {
+      message: error.message,
+      error: error.error || error.description || error,
+      statusCode: error.statusCode,
+      status: error.status,
+      stack: error.stack
+    });
+
+    let errorMessage = 'Failed to create Razorpay subscription';
+    if (error.error && error.error.description) {
+      errorMessage = error.error.description;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Fetch subscription details from Razorpay
+ * @param {String} subscriptionId - Razorpay subscription ID
+ * @returns {Promise<Object>} Subscription details
+ */
+const fetchSubscription = async (subscriptionId) => {
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay is not initialized');
+  }
+
+  try {
+    return await razorpay.subscriptions.fetch(subscriptionId);
+  } catch (error) {
+    logger.error(`Error fetching Razorpay subscription: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Fetch payments linked to a Razorpay subscription
+ * @param {String} subscriptionId - Razorpay subscription ID
+ * @returns {Promise<Array>} Payments list
+ */
+const fetchSubscriptionPayments = async (subscriptionId) => {
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay is not initialized');
+  }
+
+  try {
+    const result = await razorpay.subscriptions.fetchPayments(subscriptionId);
+    return result?.items || [];
+  } catch (error) {
+    logger.error(`Error fetching Razorpay subscription payments: ${error.message}`);
+    throw error;
+  }
+};
+
+/**
+ * Cancel a Razorpay subscription (stops future auto-payments)
+ * @param {String} subscriptionId - Razorpay subscription ID
+ * @returns {Promise<Object>} Updated subscription object from Razorpay
+ */
+const cancelSubscription = async (subscriptionId) => {
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay is not initialized');
+  }
+
+  if (!subscriptionId) {
+    throw new Error('Subscription ID is required to cancel subscription');
+  }
+
+  try {
+    logger.info('Cancelling Razorpay subscription:', {
+      subscriptionId
+    });
+
+    // Optional mock mode for local development only
+    if (isMockRazorpayEnabled) {
+      logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock cancelled subscription for development.');
+      return {
+        id: subscriptionId.startsWith('sub_mock_') ? subscriptionId : `sub_mock_${subscriptionId}`,
+        status: 'cancelled',
+        ended_at: Math.floor(Date.now() / 1000)
+      };
+    }
+
+    const cancelled = await razorpay.subscriptions.cancel(subscriptionId);
+
+    logger.info(`Razorpay subscription cancelled successfully: ${cancelled.id}`, {
+      subscriptionId: cancelled.id,
+      status: cancelled.status
+    });
+
+    return cancelled;
+  } catch (error) {
+    logger.error('Error cancelling Razorpay subscription:', {
+      message: error.message,
+      error: error.error || error.description || error,
+      statusCode: error.statusCode,
+      status: error.status,
+      stack: error.stack
+    });
+
+    let errorMessage = 'Failed to cancel Razorpay subscription';
+    if (error.error && error.error.description) {
+      errorMessage = error.error.description;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
   }
 };
 
@@ -291,9 +604,15 @@ export {
   getRazorpayInstance,
   createOrder,
   verifyPayment,
+  verifySubscriptionPayment,
   fetchPayment,
   fetchOrder,
   fetchOrderPayments,
+  createPlan,
+  createSubscription,
+  fetchSubscription,
+  fetchSubscriptionPayments,
+  cancelSubscription,
   createRefund
 };
 

@@ -90,9 +90,9 @@ export const getOrders = asyncHandler(async (req, res) => {
       const Restaurant = (await import('../models/Restaurant.js')).default;
       const restaurantDoc = await Restaurant.findOne({
         $or: [
-        { name: { $regex: restaurant, $options: 'i' } },
-        { _id: mongoose.Types.ObjectId.isValid(restaurant) ? restaurant : null },
-        { restaurantId: restaurant }]
+          { name: { $regex: restaurant, $options: 'i' } },
+          { _id: mongoose.Types.ObjectId.isValid(restaurant) ? restaurant : null },
+          { restaurantId: restaurant }]
 
       }).select('_id restaurantId').lean();
 
@@ -129,7 +129,7 @@ export const getOrders = asyncHandler(async (req, res) => {
     // Search filter (orderId, customer name, customer phone)
     if (search) {
       query.$or = [
-      { orderId: { $regex: search, $options: 'i' } }];
+        { orderId: { $regex: search, $options: 'i' } }];
 
 
       // If search looks like a phone number, search in customer data
@@ -170,13 +170,13 @@ export const getOrders = asyncHandler(async (req, res) => {
 
     // Fetch orders with population
     const orders = await Order.find(query).
-    populate('userId', 'name email phone').
-    populate('restaurantId', 'name slug').
-    populate('deliveryPartnerId', 'name phone').
-    sort({ createdAt: -1 }).
-    limit(parseInt(limit)).
-    skip(skip).
-    lean();
+      populate('userId', 'name email phone').
+      populate('restaurantId', 'name slug').
+      populate('deliveryPartnerId', 'name phone').
+      sort({ createdAt: -1 }).
+      limit(parseInt(limit)).
+      skip(skip).
+      lean();
 
     // Get total count
     const total = await Order.countDocuments(query);
@@ -188,8 +188,8 @@ export const getOrders = asyncHandler(async (req, res) => {
       const OrderSettlement = (await import('../models/OrderSettlement.js')).default;
       const orderIds = orders.map((o) => o._id);
       const settlements = await OrderSettlement.find({ orderId: { $in: orderIds } }).
-      select('orderId userPayment.platformFee cancellationDetails.refundStatus').
-      lean();
+        select('orderId userPayment.platformFee cancellationDetails.refundStatus').
+        lean();
 
       // Create maps for quick lookup
       settlements.forEach((s) => {
@@ -263,9 +263,7 @@ export const getOrders = asyncHandler(async (req, res) => {
       }
 
       // Determine delivery type
-      const deliveryType = order.deliveryFleet === 'standard' ?
-      'Home Delivery' :
-      order.deliveryFleet === 'fast' ? 'Fast Delivery' : 'Home Delivery';
+      const deliveryType = 'Home Delivery';
 
       // Calculate report-specific fields
       const subtotal = order.pricing?.subtotal || 0;
@@ -344,8 +342,8 @@ export const getOrders = asyncHandler(async (req, res) => {
           }
         })(),
         paymentCollectionStatus: order.payment?.method === 'cash' || order.payment?.method === 'cod' ?
-        order.status === 'delivered' ? 'Collected' : 'Not Collected' :
-        'Collected',
+          order.status === 'delivered' ? 'Collected' : 'Not Collected' :
+          'Collected',
         orderStatus: orderStatusDisplay,
         status: order.status, // Backend status
         deliveryType: deliveryType,
@@ -399,19 +397,19 @@ export const getOrderById = asyncHandler(async (req, res) => {
     // Try MongoDB _id first
     if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
       order = await Order.findById(id).
-      populate('userId', 'name email phone').
-      populate('restaurantId', 'name slug location address phone').
-      populate('deliveryPartnerId', 'name phone availability').
-      lean();
+        populate('userId', 'name email phone').
+        populate('restaurantId', 'name slug location address phone').
+        populate('deliveryPartnerId', 'name phone availability').
+        lean();
     }
 
     // If not found, try by orderId
     if (!order) {
       order = await Order.findOne({ orderId: id }).
-      populate('userId', 'name email phone').
-      populate('restaurantId', 'name slug location address phone').
-      populate('deliveryPartnerId', 'name phone availability').
-      lean();
+        populate('userId', 'name email phone').
+        populate('restaurantId', 'name slug location address phone').
+        populate('deliveryPartnerId', 'name phone availability').
+        lean();
     }
 
     if (!order) {
@@ -448,8 +446,8 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
     const baseConditions = {
       status: { $in: ['ready', 'preparing'] },
       $or: [
-      { deliveryPartnerId: { $exists: false } },
-      { deliveryPartnerId: null }]
+        { deliveryPartnerId: { $exists: false } },
+        { deliveryPartnerId: null }]
 
     };
 
@@ -457,7 +455,7 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
     let searchConditions = null;
     if (search) {
       const searchOrConditions = [
-      { orderId: { $regex: search, $options: 'i' } }];
+        { orderId: { $regex: search, $options: 'i' } }];
 
 
       // If search looks like a phone number, search in customer data
@@ -493,8 +491,8 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
 
     // Combine all conditions
     const finalQuery = searchConditions ?
-    { $and: [baseConditions, searchConditions] } :
-    baseConditions;
+      { $and: [baseConditions, searchConditions] } :
+      baseConditions;
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -503,12 +501,12 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
 
     // Fetch orders with population
     const orders = await Order.find(finalQuery).
-    populate('userId', 'name email phone').
-    populate('restaurantId', 'name slug').
-    sort({ createdAt: -1 }).
-    limit(parseInt(limit)).
-    skip(skip).
-    lean();
+      populate('userId', 'name email phone').
+      populate('restaurantId', 'name slug').
+      sort({ createdAt: -1 }).
+      limit(parseInt(limit)).
+      skip(skip).
+      lean();
 
     // Get total count
     const total = await Order.countDocuments(finalQuery);
@@ -563,9 +561,7 @@ export const getSearchingDeliverymanOrders = asyncHandler(async (req, res) => {
       const orderStatusDisplay = statusMap[order.status] || 'Pending';
 
       // Determine delivery type
-      const deliveryType = order.deliveryFleet === 'standard' ?
-      'Home Delivery' :
-      order.deliveryFleet === 'fast' ? 'Fast Delivery' : 'Home Delivery';
+      const deliveryType = 'Home Delivery';
 
       // Format total amount
       const totalAmount = order.pricing?.total || 0;
@@ -640,7 +636,7 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
     let searchConditions = null;
     if (search) {
       const searchOrConditions = [
-      { orderId: { $regex: search, $options: 'i' } }];
+        { orderId: { $regex: search, $options: 'i' } }];
 
 
       // If search looks like a phone number, search in customer data
@@ -676,8 +672,8 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
 
     // Combine all conditions
     const finalQuery = searchConditions ?
-    { $and: [baseConditions, searchConditions] } :
-    baseConditions;
+      { $and: [baseConditions, searchConditions] } :
+      baseConditions;
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -686,13 +682,13 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
 
     // Fetch orders with population
     const orders = await Order.find(finalQuery).
-    populate('userId', 'name email phone').
-    populate('restaurantId', 'name slug').
-    populate('deliveryPartnerId', 'name phone').
-    sort({ createdAt: -1 }).
-    limit(parseInt(limit)).
-    skip(skip).
-    lean();
+      populate('userId', 'name email phone').
+      populate('restaurantId', 'name slug').
+      populate('deliveryPartnerId', 'name phone').
+      sort({ createdAt: -1 }).
+      limit(parseInt(limit)).
+      skip(skip).
+      lean();
 
     // Get total count
     const total = await Order.countDocuments(finalQuery);
@@ -751,16 +747,14 @@ export const getOngoingOrders = asyncHandler(async (req, res) => {
 
       // If delivery partner has reached pickup, show as "Handover"
       if (order.deliveryState?.currentPhase === 'at_pickup' ||
-      order.deliveryState?.currentPhase === 'en_route_to_delivery' ||
-      order.deliveryState?.currentPhase === 'at_delivery') {
+        order.deliveryState?.currentPhase === 'en_route_to_delivery' ||
+        order.deliveryState?.currentPhase === 'at_delivery') {
         orderStatusDisplay = 'Handover';
         orderStatusColor = 'bg-blue-50 text-blue-600';
       }
 
       // Determine delivery type
-      const deliveryType = order.deliveryFleet === 'standard' ?
-      'Home Delivery' :
-      order.deliveryFleet === 'fast' ? 'Fast Delivery' : 'Home Delivery';
+      const deliveryType = 'Home Delivery';
 
       // Format total amount
       const totalAmount = order.pricing?.total || 0;
@@ -854,9 +848,9 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
       const Restaurant = (await import('../models/Restaurant.js')).default;
       const restaurantDoc = await Restaurant.findOne({
         $or: [
-        { name: { $regex: restaurant, $options: 'i' } },
-        { _id: mongoose.Types.ObjectId.isValid(restaurant) ? restaurant : null },
-        { restaurantId: restaurant }]
+          { name: { $regex: restaurant, $options: 'i' } },
+          { _id: mongoose.Types.ObjectId.isValid(restaurant) ? restaurant : null },
+          { restaurantId: restaurant }]
 
       }).select('_id restaurantId').lean();
 
@@ -887,12 +881,12 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
 
     // Fetch orders with population
     const orders = await Order.find(query).
-    populate('userId', 'name email phone').
-    populate('restaurantId', 'name slug').
-    sort({ createdAt: -1 }).
-    limit(parseInt(limit)).
-    skip(skip).
-    lean();
+      populate('userId', 'name email phone').
+      populate('restaurantId', 'name slug').
+      sort({ createdAt: -1 }).
+      limit(parseInt(limit)).
+      skip(skip).
+      lean();
 
     // Get total count
     const total = await Order.countDocuments(query);
@@ -922,9 +916,9 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
       const Restaurant = (await import('../models/Restaurant.js')).default;
       const restaurantDoc = await Restaurant.findOne({
         $or: [
-        { name: { $regex: restaurant, $options: 'i' } },
-        { _id: mongoose.Types.ObjectId.isValid(restaurant) ? restaurant : null },
-        { restaurantId: restaurant }]
+          { name: { $regex: restaurant, $options: 'i' } },
+          { _id: mongoose.Types.ObjectId.isValid(restaurant) ? restaurant : null },
+          { restaurantId: restaurant }]
 
       }).select('_id restaurantId').lean();
 
@@ -936,24 +930,24 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
     // Get all orders for summary calculation (without pagination)
     const summaryQuery = { ...query };
     const allOrdersForSummary = await Order.find(summaryQuery).
-    populate('userId', 'name').
-    populate('restaurantId', 'name').
-    lean();
+      populate('userId', 'name').
+      populate('restaurantId', 'name').
+      lean();
 
     // Calculate completed transactions (delivered orders)
     const completedOrders = allOrdersForSummary.filter((order) =>
-    order.status === 'delivered' && order.payment?.status === 'completed'
+      order.status === 'delivered' && order.payment?.status === 'completed'
     );
     const completedTransaction = completedOrders.reduce((sum, order) =>
-    sum + (order.pricing?.total || 0), 0
+      sum + (order.pricing?.total || 0), 0
     );
 
     // Calculate refunded transactions
     const refundedOrders = allOrdersForSummary.filter((order) =>
-    order.payment?.status === 'refunded' || order.status === 'cancelled'
+      order.payment?.status === 'refunded' || order.status === 'cancelled'
     );
     const refundedTransaction = refundedOrders.reduce((sum, order) =>
-    sum + (order.pricing?.total || 0), 0
+      sum + (order.pricing?.total || 0), 0
     );
 
     // Get admin earning from AdminCommission
@@ -1082,8 +1076,8 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
 
         if (ordersInZone.length > 0) {
           restaurantQuery.$or = [
-          { _id: { $in: ordersInZone } },
-          { restaurantId: { $in: ordersInZone } }];
+            { _id: { $in: ordersInZone } },
+            { restaurantId: { $in: ordersInZone } }];
 
         } else {
           // No restaurants found in this zone
@@ -1108,15 +1102,15 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
     // Search filter
     if (search) {
       restaurantQuery.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { restaurantId: { $regex: search, $options: 'i' } }];
+        { name: { $regex: search, $options: 'i' } },
+        { restaurantId: { $regex: search, $options: 'i' } }];
 
     }
 
     // Get all restaurants matching the query
     const restaurants = await Restaurant.find(restaurantQuery).
-    select('_id restaurantId name profileImage rating totalRatings isActive').
-    lean();
+      select('_id restaurantId name profileImage rating totalRatings isActive').
+      lean();
 
 
 
@@ -1161,8 +1155,8 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
         const orderQuery = {
           ...dateQuery,
           $or: [
-          { restaurantId: restaurantId },
-          { restaurantId: restaurantIdField }]
+            { restaurantId: restaurantId },
+            { restaurantId: restaurantIdField }]
 
         };
 
@@ -1174,17 +1168,17 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
 
         // Total order amount
         const totalOrderAmount = orders.reduce((sum, order) =>
-        sum + (order.pricing?.total || 0), 0
+          sum + (order.pricing?.total || 0), 0
         );
 
         // Total discount given
         const totalDiscountGiven = orders.reduce((sum, order) =>
-        sum + (order.pricing?.discount || 0), 0
+          sum + (order.pricing?.discount || 0), 0
         );
 
         // Total VAT/TAX
         const totalVATTAX = orders.reduce((sum, order) =>
-        sum + (order.pricing?.tax || 0), 0
+          sum + (order.pricing?.tax || 0), 0
         );
 
         // Get unique food items (count distinct itemIds from all orders)
@@ -1202,8 +1196,8 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
 
         // Get admin commission for this restaurant
         const restaurantObjectId = restaurant._id instanceof mongoose.Types.ObjectId ?
-        restaurant._id :
-        new mongoose.Types.ObjectId(restaurant._id);
+          restaurant._id :
+          new mongoose.Types.ObjectId(restaurant._id);
 
         const commissionQuery = {
           restaurantId: restaurantObjectId,
@@ -1216,24 +1210,24 @@ export const getRestaurantReport = asyncHandler(async (req, res) => {
 
         const commissions = await AdminCommission.find(commissionQuery).lean();
         const totalAdminCommission = commissions.reduce((sum, comm) =>
-        sum + (comm.commissionAmount || 0), 0
+          sum + (comm.commissionAmount || 0), 0
         );
 
         // Get ratings from FeedbackExperience
         const ratingStats = await FeedbackExperience.aggregate([
-        {
-          $match: {
-            restaurantId: restaurantObjectId,
-            rating: { $exists: true, $ne: null, $gt: 0 }
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            averageRating: { $avg: '$rating' },
-            totalRatings: { $sum: 1 }
-          }
-        }]
+          {
+            $match: {
+              restaurantId: restaurantObjectId,
+              rating: { $exists: true, $ne: null, $gt: 0 }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              averageRating: { $avg: '$rating' },
+              totalRatings: { $sum: 1 }
+            }
+          }]
         );
 
         const averageRatings = ratingStats[0]?.averageRating || restaurant.rating || 0;
@@ -1332,9 +1326,9 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
         const Restaurant = (await import('../models/Restaurant.js')).default;
         const restaurantDoc = await Restaurant.findOne({
           $or: [
-          { name: { $regex: restaurant, $options: 'i' } },
-          ...(mongoose.Types.ObjectId.isValid(restaurant) ? [{ _id: restaurant }] : []),
-          { restaurantId: restaurant }]
+            { name: { $regex: restaurant, $options: 'i' } },
+            ...(mongoose.Types.ObjectId.isValid(restaurant) ? [{ _id: restaurant }] : []),
+            { restaurantId: restaurant }]
 
         }).select('_id restaurantId').lean();
 
@@ -1378,8 +1372,8 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
         const existingQuery = { ...query };
         query = {
           $and: [
-          existingQuery,
-          { $or: searchConditions }]
+            existingQuery,
+            { $or: searchConditions }]
 
         };
       } else if (query.$and) {
@@ -1400,16 +1394,16 @@ export const getRefundRequests = asyncHandler(async (req, res) => {
     let orders = [];
     try {
       orders = await Order.find(query).
-      populate('userId', 'name email phone').
-      populate({
-        path: 'restaurantId',
-        select: 'name slug',
-        match: { _id: { $exists: true } } // Only populate if it's a valid ObjectId
-      }).
-      sort({ cancelledAt: -1, createdAt: -1 }).
-      limit(parseInt(limit)).
-      skip(skip).
-      lean();
+        populate('userId', 'name email phone').
+        populate({
+          path: 'restaurantId',
+          select: 'name slug',
+          match: { _id: { $exists: true } } // Only populate if it's a valid ObjectId
+        }).
+        sort({ cancelledAt: -1, createdAt: -1 }).
+        limit(parseInt(limit)).
+        skip(skip).
+        lean();
 
       // Filter out orders where restaurantId population failed (null)
       orders = orders.filter((order) => order.restaurantId !== null || order.restaurantName);
@@ -1557,8 +1551,8 @@ export const processRefund = asyncHandler(async (req, res) => {
     if (mongoose.Types.ObjectId.isValid(orderId) && orderId.length === 24) {
 
       order = await Order.findById(orderId).
-      populate('userId', 'name email phone _id').
-      lean();
+        populate('userId', 'name email phone _id').
+        lean();
 
     }
 
@@ -1566,8 +1560,8 @@ export const processRefund = asyncHandler(async (req, res) => {
     if (!order) {
 
       order = await Order.findOne({ orderId: orderId }).
-      populate('userId', 'name email phone _id').
-      lean();
+        populate('userId', 'name email phone _id').
+        lean();
 
     }
 
@@ -1584,13 +1578,13 @@ export const processRefund = asyncHandler(async (req, res) => {
       try {
         const similarOrders = await Order.find({
           $or: [
-          { orderId: { $regex: orderId, $options: 'i' } },
-          { orderId: { $regex: orderId.substring(0, 10), $options: 'i' } }]
+            { orderId: { $regex: orderId, $options: 'i' } },
+            { orderId: { $regex: orderId.substring(0, 10), $options: 'i' } }]
 
         }).
-        select('_id orderId status').
-        limit(5).
-        lean();
+          select('_id orderId status').
+          limit(5).
+          lean();
 
 
 
@@ -1635,8 +1629,8 @@ export const processRefund = asyncHandler(async (req, res) => {
 
     // Check if it's a cancelled order (by restaurant or user)
     const isRestaurantCancelled = order.cancelledBy === 'restaurant' ||
-    order.cancellationReason &&
-    /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|outside delivery area|kitchen closing|technical issue/i.test(order.cancellationReason);
+      order.cancellationReason &&
+      /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|outside delivery area|kitchen closing|technical issue/i.test(order.cancellationReason);
 
     const isUserCancelled = order.cancelledBy === 'user';
 
@@ -1741,7 +1735,7 @@ export const processRefund = asyncHandler(async (req, res) => {
 
     // Check if refund already processed
     if (settlement.cancellationDetails?.refundStatus === 'processed' ||
-    settlement.cancellationDetails?.refundStatus === 'initiated') {
+      settlement.cancellationDetails?.refundStatus === 'initiated') {
       return errorResponse(res, 400, 'Refund already processed or initiated for this order');
     }
 

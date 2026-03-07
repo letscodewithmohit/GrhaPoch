@@ -338,17 +338,38 @@ const restaurantSchema = new mongoose.Schema(
         type: String,
         default: null
       },
+      subscriptionId: {
+        type: String,
+        default: ''
+      },
+      invoiceId: {
+        type: String,
+        default: ''
+      },
       status: {
         type: String,
         enum: ['active', 'expired', 'pending_approval', 'inactive', 'rejected'],
         default: 'inactive'
       },
+      // Human-readable plan name
       planName: String,
+      // Current billing period
       startDate: Date,
       endDate: Date,
+      // When subscription was requested (for pending_approval)
       requestedAt: Date,
+      // Razorpay identifiers for the latest successful payment
       paymentId: String,
-      orderId: String
+      orderId: String,
+      // Cancellation/auto-renew flags (added for graceful period-end cancellation)
+      cancelAtPeriodEnd: {
+        type: Boolean,
+        default: false
+      },
+      autoRenew: {
+        type: Boolean,
+        default: true
+      }
     },
 
     // Full history of all subscription plans (appended on each renewal/new sub)
@@ -356,6 +377,8 @@ const restaurantSchema = new mongoose.Schema(
       {
         planId: { type: String },
         planName: { type: String },
+        subscriptionId: { type: String },
+        invoiceId: { type: String },
         status: {
           type: String,
           enum: ['active', 'expired', 'cancelled', 'renewed'],
@@ -368,6 +391,16 @@ const restaurantSchema = new mongoose.Schema(
         activatedAt: { type: Date, default: Date.now }
       }
     ],
+
+    // FCM push notification tokens
+    fcmTokensWeb: {
+      type: [String],
+      default: []
+    },
+    fcmTokensMobile: {
+      type: [String],
+      default: []
+    }
 
   },
   {

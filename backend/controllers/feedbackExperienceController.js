@@ -1,8 +1,49 @@
+import mongoose from 'mongoose';
 import FeedbackExperience from '../models/FeedbackExperience.js';
 import User from '../models/User.js';
 import Restaurant from '../models/Restaurant.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import asyncHandler from '../middleware/asyncHandler.js';
+
+const updateRestaurantRatingStats = async (restaurantId) => {
+  if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return;
+
+  const restaurantObjectId = new mongoose.Types.ObjectId(restaurantId);
+  const ratingStats = await FeedbackExperience.aggregate([
+    {
+      $match: {
+        restaurantId: restaurantObjectId,
+        module: 'user',
+        rating: { $exists: true, $ne: null, $gt: 0 }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        avgRating: { $avg: '$rating' },
+        totalRatings: { $sum: 1 },
+        maxRating: { $max: '$rating' }
+      }
+    }
+  ]);
+
+  const avgRating = ratingStats[0]?.avgRating || 0;
+  const totalRatings = ratingStats[0]?.totalRatings || 0;
+  const maxRating = ratingStats[0]?.maxRating || 0;
+
+  let restaurantRating = 0;
+  if (totalRatings > 0) {
+    // If ratings are on 1-5 scale, keep as-is; if 1-10 scale, convert to 1-5
+    restaurantRating = maxRating <= 5 ? avgRating : avgRating / 2;
+  }
+
+  restaurantRating = Math.round(restaurantRating * 10) / 10;
+
+  await Restaurant.findByIdAndUpdate(restaurantId, {
+    rating: restaurantRating,
+    totalRatings
+  });
+};
 
 /**
  * Create a new feedback experience
@@ -80,6 +121,14 @@ export const createFeedbackExperience = asyncHandler(async (req, res) => {
       module: finalModule,
       metadata
     });
+
+    if (finalModule === 'user' && finalRestaurantId) {
+      try {
+        await updateRestaurantRatingStats(finalRestaurantId);
+      } catch (ratingError) {
+        console.error('Error updating restaurant rating stats:', ratingError);
+      }
+    }
 
     return successResponse(res, 201, 'Feedback experience created successfully', {
       feedbackExperience

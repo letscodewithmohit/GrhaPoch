@@ -206,8 +206,8 @@ export const API_ENDPOINTS = {
       CREATE_ORDER: '/restaurant/subscription/create-order',
       VERIFY_PAYMENT: '/restaurant/subscription/verify-payment',
       STATUS: '/restaurant/subscription/status',
-      PLANS: '/restaurant/subscription/plans'
-
+      PLANS: '/restaurant/subscription/plans',
+      CANCEL: '/restaurant/subscription/cancel'
     }
   },
   // Delivery endpoints

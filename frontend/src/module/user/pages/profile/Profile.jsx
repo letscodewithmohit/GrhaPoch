@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ChevronRight,
@@ -23,8 +23,15 @@ import {
   ShoppingCart,
   Heart,
   CalendarDays,
-  Megaphone } from
-"lucide-react";
+  Megaphone,
+  Bell,
+  BellOff,
+  Loader2,
+  BellRing,
+  CheckCircle2,
+  XCircle
+} from
+  "lucide-react";
 
 import AnimatedPage from "../../components/AnimatedPage";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,8 +44,9 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle } from
-"@/components/ui/dialog";
+  DialogTitle
+} from
+  "@/components/ui/dialog";
 import { authAPI, publicAPI } from "@/lib/api";
 import { firebaseAuth } from "@/lib/firebase";
 import { clearModuleAuth } from "@/lib/utils/auth";
@@ -46,12 +54,82 @@ import { clearModuleAuth } from "@/lib/utils/auth";
 export default function Profile() {
   const { userProfile, vegMode, setVegMode } = useProfile();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Popup states
   const [vegModeOpen, setVegModeOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  // Placeholder removed for donation states
+
+  // Push notification test state
+  const [pushStatus, setPushStatus] = useState('idle'); // idle | requesting | sending | success | error | denied | no-token
+  const [pushMessage, setPushMessage] = useState('');
+  const [notifPermission, setNotifPermission] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+  const hasFCMToken = !!localStorage.getItem('fcm_token_user');
+
+  const handleTestPush = async () => {
+    if (pushStatus === 'requesting' || pushStatus === 'sending') return;
+
+    // Step 1 — ensure permission
+    if (notifPermission !== 'granted') {
+      setPushStatus('requesting');
+      setPushMessage('Requesting permission…');
+      try {
+        const perm = await Notification.requestPermission();
+        setNotifPermission(perm);
+        if (perm !== 'granted') {
+          setPushStatus('denied');
+          setPushMessage('Permission denied. Enable notifications in browser settings.');
+          setTimeout(() => { setPushStatus('idle'); setPushMessage(''); }, 4000);
+          return;
+        }
+      } catch {
+        setPushStatus('error');
+        setPushMessage('Could not request permission.');
+        setTimeout(() => { setPushStatus('idle'); setPushMessage(''); }, 3000);
+        return;
+      }
+    }
+
+    // Step 2 — register / refresh FCM token then fire a local notification
+    setPushStatus('sending');
+    setPushMessage('Registering token & sending…');
+
+    try {
+      const { registerFCMToken } = await import('@/lib/pushNotificationService');
+      const token = await registerFCMToken('user', false);
+
+      if (!token) {
+        // fallback: show a plain local browser notification
+        new Notification('GrhaPoch 🔔', {
+          body: 'Push system initialised but no FCM token yet (VAPID key may be missing).',
+          icon: '/favicon.ico',
+          tag: 'test-push-fallback'
+        });
+        setPushStatus('success');
+        setPushMessage('Local notification sent (FCM token pending).');
+      } else {
+        // Show a real foreground notification via the browser Notifications API
+        new Notification('GrhaPoch 🔔 Test Notification', {
+          body: `Hi ${userProfile?.name || 'there'}! Push notifications are working perfectly on your device.`,
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          tag: `test-push-${Date.now()}`,
+          requireInteraction: false
+        });
+        setPushStatus('success');
+        setPushMessage('Notification sent! Check your notification tray.');
+      }
+    } catch (err) {
+      setPushStatus('error');
+      setPushMessage(err?.message || 'Failed to send notification.');
+    }
+
+    setTimeout(() => { setPushStatus('idle'); setPushMessage(''); }, 4000);
+  };
+
 
   // Settings states
   const [appearance, setAppearance] = useState(() => {
@@ -111,21 +189,21 @@ export default function Profile() {
 
     // Check name - must have value
     const hasName = !!(userProfile.name &&
-    typeof userProfile.name === 'string' &&
-    userProfile.name.trim() !== '');
+      typeof userProfile.name === 'string' &&
+      userProfile.name.trim() !== '');
 
     // Check contact - phone OR email (at least one)
     const hasPhone = !!(userProfile.phone &&
-    typeof userProfile.phone === 'string' &&
-    userProfile.phone.trim() !== '');
+      typeof userProfile.phone === 'string' &&
+      userProfile.phone.trim() !== '');
     const hasContact = hasPhone || hasValidEmail;
 
     // Check profile image - must have URL string
     const hasImage = !!(userProfile.profileImage &&
-    typeof userProfile.profileImage === 'string' &&
-    userProfile.profileImage.trim() !== '' &&
-    userProfile.profileImage !== 'null' &&
-    userProfile.profileImage !== 'undefined');
+      typeof userProfile.profileImage === 'string' &&
+      userProfile.profileImage.trim() !== '' &&
+      userProfile.profileImage !== 'null' &&
+      userProfile.profileImage !== 'undefined');
 
     // Check date of birth
     const hasDateOfBirth = isDateFilled(userProfile.dateOfBirth);
@@ -133,9 +211,9 @@ export default function Profile() {
     // Check gender - must be valid value
     const validGenders = ['male', 'female', 'other', 'prefer-not-to-say'];
     const hasGender = !!(userProfile.gender &&
-    typeof userProfile.gender === 'string' &&
-    userProfile.gender.trim() !== '' &&
-    validGenders.includes(userProfile.gender.trim().toLowerCase()));
+      typeof userProfile.gender === 'string' &&
+      userProfile.gender.trim() !== '' &&
+      validGenders.includes(userProfile.gender.trim().toLowerCase()));
 
     // Required fields only (anniversary is NOT counted - it's optional)
     // Only these 5 fields count towards 100%
@@ -251,11 +329,15 @@ export default function Profile() {
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10">
         {/* Back Arrow */}
         <div className="mb-4">
-          <Link to="/user">
-            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-              <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={() => {
+            if (location.state?.from === "cart") {
+              navigate("/user/cart");
+            } else {
+              navigate(-1);
+            }
+          }}>
+            <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
+          </Button>
         </div>
 
         {/* Profile Info Card */}
@@ -265,12 +347,12 @@ export default function Profile() {
               <motion.div
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ duration: 0.3, type: "spring", stiffness: 300 }}>
-                
+
                 <Avatar className="h-16 w-16 bg-blue-300 border-0">
                   {userProfile?.profileImage &&
-                  <AvatarImage
-                    src={userProfile.profileImage && userProfile.profileImage.trim() ? userProfile.profileImage : undefined}
-                    alt={displayName} />
+                    <AvatarImage
+                      src={userProfile.profileImage && userProfile.profileImage.trim() ? userProfile.profileImage : undefined}
+                      alt={displayName} />
 
                   }
                   <AvatarFallback className="bg-blue-300 text-white text-2xl font-semibold">
@@ -281,15 +363,15 @@ export default function Profile() {
               <div className="flex-1 pt-1">
                 <h2 className="text-xl font-bold text-black dark:text-white mb-1">{displayName}</h2>
                 {hasValidEmail &&
-                <p className="text-sm text-black dark:text-gray-300 mb-1">{userProfile.email}</p>
+                  <p className="text-sm text-black dark:text-gray-300 mb-1">{userProfile.email}</p>
                 }
                 {userProfile?.phone &&
-                <p className={`text-sm ${hasValidEmail ? 'text-gray-600 dark:text-gray-400' : 'text-black dark:text-white'} mb-3`}>
+                  <p className={`text-sm ${hasValidEmail ? 'text-gray-600 dark:text-gray-400' : 'text-black dark:text-white'} mb-3`}>
                     {userProfile.phone}
                   </p>
                 }
                 {!hasValidEmail && !userProfile?.phone &&
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Not available</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Not available</p>
                 }
                 {/* <Link to="/user/profile/activity" className="flex items-center gap-1 text-green-600 text-sm font-medium">
                    View activity
@@ -306,14 +388,14 @@ export default function Profile() {
             <motion.div
               whileHover={{ y: -4, scale: 1.02 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer h-full">
                 <CardContent className="p-4 h-full flex items-center gap-3">
                   <motion.div
                     className="bg-gray-100 dark:bg-gray-800 rounded-full p-2 flex-shrink-0"
                     whileHover={{ rotate: 360, scale: 1.1 }}
                     transition={{ duration: 0.5 }}>
-                    
+
                     <Wallet className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   </motion.div>
                   <div className="flex-1 min-w-0 flex flex-col">
@@ -329,14 +411,14 @@ export default function Profile() {
             <motion.div
               whileHover={{ y: -4, scale: 1.02 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer h-full">
                 <CardContent className="p-4 h-full flex items-center gap-3">
                   <motion.div
                     className="bg-gray-100 dark:bg-gray-800 rounded-full p-2 flex-shrink-0"
                     whileHover={{ rotate: 360, scale: 1.1 }}
                     transition={{ duration: 0.5 }}>
-                    
+
                     <Tag className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   </motion.div>
                   <div className="flex-1 min-w-0">
@@ -355,7 +437,7 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -363,7 +445,7 @@ export default function Profile() {
                       className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                       whileHover={{ rotate: 15, scale: 1.1 }}
                       transition={{ duration: 0.3 }}>
-                      
+
                       <ShoppingCart className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">Your cart</span>
@@ -371,7 +453,7 @@ export default function Profile() {
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   </motion.div>
                 </CardContent>
@@ -383,7 +465,7 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -391,7 +473,7 @@ export default function Profile() {
                       className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                       whileHover={{ rotate: 15, scale: 1.1 }}
                       transition={{ duration: 0.3 }}>
-                      
+
                       <CalendarDays className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">Dining bookings</span>
@@ -399,7 +481,7 @@ export default function Profile() {
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   </motion.div>
                 </CardContent>
@@ -412,7 +494,7 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -420,7 +502,7 @@ export default function Profile() {
                       className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                       whileHover={{ rotate: 15, scale: 1.1 }}
                       transition={{ duration: 0.3 }}>
-                      
+
                       <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">Your profile</span>
@@ -428,18 +510,18 @@ export default function Profile() {
                   <div className="flex items-center gap-2">
                     <motion.span
                       className={`text-xs font-medium px-2 py-1 rounded ${isComplete ?
-                      'bg-green-100 text-green-700 border border-green-300' :
-                      'bg-yellow-200 text-yellow-800'}`
+                        'bg-green-100 text-green-700 border border-green-300' :
+                        'bg-yellow-200 text-yellow-800'}`
                       }
                       whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.2 }}>
-                      
+
                       {profileCompletion}% completed
                     </motion.span>
                     <motion.div
                       whileHover={{ x: 4 }}
                       transition={{ duration: 0.2 }}>
-                      
+
                       <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </div>
@@ -452,7 +534,7 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -460,7 +542,7 @@ export default function Profile() {
                       className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                       whileHover={{ rotate: 15, scale: 1.1 }}
                       transition={{ duration: 0.3 }}>
-                      
+
                       <Megaphone className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">My advertisements</span>
@@ -468,7 +550,7 @@ export default function Profile() {
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   </motion.div>
                 </CardContent>
@@ -479,18 +561,18 @@ export default function Profile() {
           <motion.div
             whileHover={{ x: 4, scale: 1.01 }}
             transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-            
+
             <Card
               className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer"
               onClick={() => setVegModeOpen(true)}>
-              
+
               <CardContent className="p-4  flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <motion.div
                     className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                     whileHover={{ rotate: 15, scale: 1.1 }}
                     transition={{ duration: 0.3 }}>
-                    
+
                     <Leaf className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   </motion.div>
                   <span className="text-base font-medium text-gray-900 dark:text-white">Veg Mode</span>
@@ -500,13 +582,13 @@ export default function Profile() {
                     className="text-base font-medium text-gray-900 dark:text-white"
                     whileHover={{ scale: 1.1 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     {vegMode ? 'ON' : 'OFF'}
                   </motion.span>
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </motion.div>
                 </div>
@@ -517,18 +599,18 @@ export default function Profile() {
           <motion.div
             whileHover={{ x: 4, scale: 1.01 }}
             transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-            
+
             <Card
               className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer"
               onClick={() => setAppearanceOpen(true)}>
-              
+
               <CardContent className="p-4  flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <motion.div
                     className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                     whileHover={{ rotate: 15, scale: 1.1 }}
                     transition={{ duration: 0.3 }}>
-                    
+
                     <Palette className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   </motion.div>
                   <span className="text-base font-medium text-gray-900 dark:text-white">Appearance</span>
@@ -538,13 +620,13 @@ export default function Profile() {
                     className="text-base font-medium text-gray-900 dark:text-white capitalize"
                     whileHover={{ scale: 1.1 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     {appearance}
                   </motion.span>
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </motion.div>
                 </div>
@@ -564,7 +646,7 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                 <CardContent className="p-4  flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -572,7 +654,7 @@ export default function Profile() {
                       className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                       whileHover={{ rotate: 15, scale: 1.1 }}
                       transition={{ duration: 0.3 }}>
-                      
+
                       <Bookmark className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">Your collections</span>
@@ -580,7 +662,7 @@ export default function Profile() {
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   </motion.div>
                 </CardContent>
@@ -600,7 +682,7 @@ export default function Profile() {
               <motion.div
                 whileHover={{ x: 4, scale: 1.01 }}
                 transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-                
+
                 <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -608,7 +690,7 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        
+
                         <Building2 className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">Your orders</span>
@@ -616,7 +698,7 @@ export default function Profile() {
                     <motion.div
                       whileHover={{ x: 4 }}
                       transition={{ duration: 0.2 }}>
-                      
+
                       <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </CardContent>
@@ -638,7 +720,7 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -646,7 +728,7 @@ export default function Profile() {
                       className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                       whileHover={{ rotate: 15, scale: 1.1 }}
                       transition={{ duration: 0.3 }}>
-                      
+
                       <Percent className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">Redeem Gold coupon</span>
@@ -654,7 +736,7 @@ export default function Profile() {
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   </motion.div>
                 </CardContent>
@@ -663,7 +745,108 @@ export default function Profile() {
           </Link>
         </div>
 
-        {/* Contribution Section Removed */}
+        {/* Push Notification Test Section */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="w-1 h-4 bg-green-600 rounded"></div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Notifications</h3>
+          </div>
+
+          <motion.div
+            whileHover={{ x: 4, scale: 1.01 }}
+            transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
+
+            <Card
+              className={`bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer overflow-hidden ${pushStatus === 'success' ? 'ring-2 ring-green-400 ring-offset-1' :
+                pushStatus === 'error' || pushStatus === 'denied' ? 'ring-2 ring-red-400 ring-offset-1' : ''
+                }`}
+              onClick={handleTestPush}>
+
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className={`rounded-full p-2 ${pushStatus === 'success' ? 'bg-green-100 dark:bg-green-900/40' :
+                      pushStatus === 'error' || pushStatus === 'denied' ? 'bg-red-100 dark:bg-red-900/40' :
+                        'bg-gray-100 dark:bg-gray-800'
+                      }`}
+                    animate={pushStatus === 'sending' ? { rotate: [0, -15, 15, -10, 10, 0] } : {}}
+                    transition={{ duration: 0.6, repeat: pushStatus === 'sending' ? Infinity : 0 }}>
+
+                    <AnimatePresence mode="wait">
+                      {pushStatus === 'idle' && (
+                        <motion.div key="idle" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
+                          <Bell className={`h-5 w-5 ${notifPermission === 'denied' ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`} />
+                        </motion.div>
+                      )}
+                      {(pushStatus === 'requesting' || pushStatus === 'sending') && (
+                        <motion.div key="loading" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
+                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                        </motion.div>
+                      )}
+                      {pushStatus === 'success' && (
+                        <motion.div key="ok" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        </motion.div>
+                      )}
+                      {(pushStatus === 'error' || pushStatus === 'denied') && (
+                        <motion.div key="err" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+
+                  <div className="flex flex-col">
+                    <span className="text-base font-medium text-gray-900 dark:text-white">
+                      Test Push Notification
+                    </span>
+                    <AnimatePresence mode="wait">
+                      {pushMessage ? (
+                        <motion.span
+                          key={pushMessage}
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className={`text-xs mt-0.5 ${pushStatus === 'success' ? 'text-green-600 dark:text-green-400' :
+                            pushStatus === 'error' || pushStatus === 'denied' ? 'text-red-500' :
+                              'text-blue-500'
+                            }`}>
+                          {pushMessage}
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          key="hint"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                          {notifPermission === 'granted'
+                            ? hasFCMToken ? 'Tap to fire a test notification' : 'Tap to register & test'
+                            : notifPermission === 'denied'
+                              ? 'Enable in browser settings'
+                              : 'Tap to enable notifications'}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Status badge */}
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${notifPermission === 'granted'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                    : notifPermission === 'denied'
+                      ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'
+                    }`}>
+                    {notifPermission === 'granted' ? 'ON' : notifPermission === 'denied' ? 'BLOCKED' : 'OFF'}
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
 
         {/* More Section */}
         <div className="mb-6 pb-4">
@@ -676,7 +859,7 @@ export default function Profile() {
               <motion.div
                 whileHover={{ x: 4, scale: 1.01 }}
                 transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-                
+
                 <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -684,7 +867,7 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        
+
                         <Info className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">About</span>
@@ -692,7 +875,7 @@ export default function Profile() {
                     <motion.div
                       whileHover={{ x: 4 }}
                       transition={{ duration: 0.2 }}>
-                      
+
                       <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </CardContent>
@@ -704,7 +887,7 @@ export default function Profile() {
               <motion.div
                 whileHover={{ x: 4, scale: 1.01 }}
                 transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-                
+
                 <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -712,7 +895,7 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        
+
                         <PenSquare className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">Send feedback</span>
@@ -720,7 +903,7 @@ export default function Profile() {
                     <motion.div
                       whileHover={{ x: 4 }}
                       transition={{ duration: 0.2 }}>
-                      
+
                       <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </CardContent>
@@ -732,7 +915,7 @@ export default function Profile() {
               <motion.div
                 whileHover={{ x: 4, scale: 1.01 }}
                 transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-                
+
                 <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -740,7 +923,7 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        
+
                         <AlertTriangle className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">Report a safety emergency</span>
@@ -748,7 +931,7 @@ export default function Profile() {
                     <motion.div
                       whileHover={{ x: 4 }}
                       transition={{ duration: 0.2 }}>
-                      
+
                       <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </CardContent>
@@ -760,7 +943,7 @@ export default function Profile() {
               <motion.div
                 whileHover={{ x: 4, scale: 1.01 }}
                 transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-                
+
                 <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -768,7 +951,7 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        
+
                         <SettingsIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">Settings</span>
@@ -776,7 +959,7 @@ export default function Profile() {
                     <motion.div
                       whileHover={{ x: 4 }}
                       transition={{ duration: 0.2 }}>
-                      
+
                       <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     </motion.div>
                   </CardContent>
@@ -787,18 +970,18 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-              
+
               <Card
                 className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleLogout}>
-                
+
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <motion.div
                       className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                       whileHover={{ rotate: 15, scale: 1.1 }}
                       transition={{ duration: 0.3 }}>
-                      
+
                       <Power className={`h-5 w-5 text-gray-700 dark:text-gray-300 ${isLoggingOut ? 'animate-pulse' : ''}`} />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">
@@ -808,7 +991,7 @@ export default function Profile() {
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
-                    
+
                     <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   </motion.div>
                 </CardContent>
@@ -834,10 +1017,10 @@ export default function Profile() {
                 setVegModeOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center justify-between ${vegMode ?
-              'border-green-600 bg-green-50' :
-              'border-gray-200 bg-white hover:border-gray-300'}`
+                'border-green-600 bg-green-50' :
+                'border-gray-200 bg-white hover:border-gray-300'}`
               }>
-              
+
               <div className="flex items-center gap-3">
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${vegMode ? 'border-green-600 bg-green-600' : 'border-gray-300'}`
                 }>
@@ -856,10 +1039,10 @@ export default function Profile() {
                 setVegModeOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center justify-between ${!vegMode ?
-              'border-red-600 bg-red-50' :
-              'border-gray-200 bg-white hover:border-gray-300'}`
+                'border-red-600 bg-red-50' :
+                'border-gray-200 bg-white hover:border-gray-300'}`
               }>
-              
+
               <div className="flex items-center gap-3">
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${!vegMode ? 'border-red-600 bg-red-600' : 'border-gray-300'}`
                 }>
@@ -893,10 +1076,10 @@ export default function Profile() {
                 setAppearanceOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${appearance === 'light' ?
-              'border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20' :
-              'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`
+                'border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20' :
+                'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`
               }>
-              
+
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${appearance === 'light' ? 'border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500' : 'border-gray-300 dark:border-gray-600'}`
               }>
                 {appearance === 'light' && <Check className="h-3 w-3 text-white" />}
@@ -913,10 +1096,10 @@ export default function Profile() {
                 setAppearanceOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${appearance === 'dark' ?
-              'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20' :
-              'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`
+                'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20' :
+                'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`
               }>
-              
+
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${appearance === 'dark' ? 'border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500' : 'border-gray-300 dark:border-gray-600'}`
               }>
                 {appearance === 'dark' && <Check className="h-3 w-3 text-white" />}

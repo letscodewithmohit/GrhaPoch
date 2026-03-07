@@ -1,5 +1,5 @@
 // src/context/cart-context.jsx
-import { createContext, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
 
 // Default cart context value to prevent errors during initial render
 const defaultCartContext = {
@@ -8,16 +8,9 @@ const defaultCartContext = {
   items: [],
   itemCount: 0,
   total: 0,
-  lastAddEvent: null,
-  lastRemoveEvent: null,
-  addToCart: () => {
-    console.warn('CartProvider not available - addToCart called');
-  },
-  removeFromCart: () => {
-    console.warn('CartProvider not available - removeFromCart called');
-  },
-  updateQuantity: () => {
-    console.warn('CartProvider not available - updateQuantity called');
+  cartConflict: null,
+  resolveCartConflict: () => {
+    console.warn('CartProvider not available - resolveCartConflict called');
   },
   getCartCount: () => 0,
   isInCart: () => false,
@@ -49,6 +42,10 @@ export function CartProvider({ children }) {
   // Track last remove event for animation
   const [lastRemoveEvent, setLastRemoveEvent] = useState(null)
 
+  // Track cart conflict (different restaurant item attempted)
+  const [cartConflict, setCartConflict] = useState(null) // { existingRestaurant, newRestaurant, pendingItem }
+  const pendingItemRef = useRef(null) // Stores the item that caused the conflict
+
   // Persist to localStorage whenever cart changes
   useEffect(() => {
     try {
@@ -58,56 +55,65 @@ export function CartProvider({ children }) {
     }
   }, [cart])
 
-  const addToCart = (item, sourcePosition = null) => {
-    setCart((prev) => {
-      // CRITICAL: Validate restaurant consistency
-      // If cart already has items, ensure new item belongs to the same restaurant
-      if (prev.length > 0) {
-        const firstItemRestaurantId = prev[0]?.restaurantId;
-        const firstItemRestaurantName = prev[0]?.restaurant;
-        const newItemRestaurantId = item?.restaurantId;
-        const newItemRestaurantName = item?.restaurant;
+  const addToCart = (item, sourcePosition = null, quantity = 1) => {
+    const newItemRestaurantId = String(item?.restaurantId || "");
+    const newItemRestaurantName = item?.restaurant || "";
 
-        // Normalize restaurant names for comparison (trim and case-insensitive)
-        const normalizeName = (name) => name ? String(name).trim().toLowerCase() : '';
-        const firstRestaurantNameNormalized = normalizeName(firstItemRestaurantName);
-        const newRestaurantNameNormalized = normalizeName(newItemRestaurantName);
+    // Normalize restaurant names for comparison (trim and case-insensitive)
+    const normalizeName = (name) => name ? String(name).trim().toLowerCase() : '';
+    const newRestaurantNameNormalized = normalizeName(newItemRestaurantName);
 
-        // Check restaurant name first (more reliable than IDs which can have different formats)
-        if (firstRestaurantNameNormalized && newRestaurantNameNormalized) {
-          if (firstRestaurantNameNormalized !== newRestaurantNameNormalized) {
-            console.error('❌ Restaurant mismatch:', { firstItemRestaurantName, newItemRestaurantName });
-            throw new Error(`Cart already contains items from "${firstItemRestaurantName}". Please clear cart first.`);
-          }
-        } else if (firstItemRestaurantId && newItemRestaurantId) {
-          // Fallback to ID comparison as strings
-          if (String(firstItemRestaurantId) !== String(newItemRestaurantId)) {
-            console.error('❌ Restaurant ID mismatch:', { firstItemRestaurantId, newItemRestaurantId });
-            throw new Error(`Cart already contains items from "${firstItemRestaurantName || 'another restaurant'}".`);
-          }
-        }
+    const addQuantity = Math.max(1, quantity);
+
+    // 1. CRITICAL: Validate restaurant consistency BEFORE updating state
+    // This prevents "throw" inside state updaters which causing blank page crashes
+    if (cart.length > 0) {
+      const firstItemRestaurantId = String(cart[0]?.restaurantId || "");
+      const firstItemRestaurantName = cart[0]?.restaurant || "";
+      const firstRestaurantNameNormalized = normalizeName(firstItemRestaurantName);
+
+      // Check for mismatch
+      const isNameMismatch = firstRestaurantNameNormalized && newRestaurantNameNormalized &&
+        firstRestaurantNameNormalized !== newRestaurantNameNormalized;
+      const isIdMismatch = !isNameMismatch && firstItemRestaurantId && newItemRestaurantId &&
+        firstItemRestaurantId !== newItemRestaurantId;
+
+      if (isNameMismatch || isIdMismatch) {
+        // Store conflict info and pending item — DO NOT use browser confirm, use app state
+        pendingItemRef.current = { item, sourcePosition, quantity: addQuantity };
+
+        setCartConflict({
+          existingRestaurant: firstItemRestaurantName || 'Current Restaurant',
+          newRestaurant: newItemRestaurantName || 'New Restaurant',
+        });
+
+        return false; // Conflict detected, not added yet
       }
+    }
 
+    // 2. Regular Add/Update Logic
+    setCart((prev) => {
       const itemIdStr = String(item.id);
-      const existing = prev.find((i) => String(i.id) === itemIdStr)
+      const existing = prev.find((i) => String(i.id) === itemIdStr);
+
       if (existing) {
         if (sourcePosition) {
           setLastAddEvent({
             product: { id: existing.id, name: existing.name, imageUrl: existing.image || existing.imageUrl },
             sourcePosition
-          })
-          setTimeout(() => setLastAddEvent(null), 1500)
+          });
+          setTimeout(() => setLastAddEvent(null), 1500);
         }
-        return prev.map((i) => String(i.id) === itemIdStr ? { ...i, quantity: i.quantity + 1 } : i)
+        return prev.map((i) => String(i.id) === itemIdStr ? { ...i, quantity: i.quantity + addQuantity } : i);
       }
 
-      // Validate item has required restaurant info
-      if (!item.restaurantId && !item.restaurant) {
+      // Validate item has required restaurant info (safety check)
+      if (!newItemRestaurantId && !newItemRestaurantName) {
         console.error('❌ Cannot add item: Missing restaurant information!', item);
-        throw new Error('Item is missing restaurant information. Please refresh the page.');
+        return prev; // Return unchanged
       }
 
-      const newItem = { ...item, quantity: 1 }
+      const newItem = { ...item, quantity: addQuantity };
 
       // Set last add event for animation if sourcePosition is provided
       if (sourcePosition) {
@@ -118,13 +124,42 @@ export function CartProvider({ children }) {
             imageUrl: item.image || item.imageUrl,
           },
           sourcePosition,
-        })
-        // Clear after animation completes (increased delay to allow full animation)
-        setTimeout(() => setLastAddEvent(null), 1500)
+        });
+        setTimeout(() => setLastAddEvent(null), 1500);
       }
 
-      return [...prev, newItem]
-    })
+      return [...prev, newItem];
+    });
+
+    return true; // Success
+  }
+
+  // Resolve the cart conflict:
+  // replace=true  → clear cart and add the pending item
+  // replace=false → cancel (discard the pending item)
+  const resolveCartConflict = (replace) => {
+    const pending = pendingItemRef.current;
+    setCartConflict(null);
+    pendingItemRef.current = null;
+
+    if (replace && pending) {
+      // Clear cart and add the pending item
+      const newItem = { ...pending.item, quantity: pending.quantity || 1 };
+      setCart([newItem]);
+
+      // Optionally show animation
+      if (pending.sourcePosition) {
+        setLastAddEvent({
+          product: {
+            id: pending.item.id,
+            name: pending.item.name,
+            imageUrl: pending.item.image || pending.item.imageUrl
+          },
+          sourcePosition: pending.sourcePosition
+        });
+        setTimeout(() => setLastAddEvent(null), 1500);
+      }
+    }
   }
 
   const removeFromCart = (itemId, sourcePosition = null, productInfo = null) => {
@@ -333,16 +368,18 @@ export function CartProvider({ children }) {
       total: cartForAnimation.total,
       lastAddEvent,
       lastRemoveEvent,
+      cartConflict,
       addToCart,
       removeFromCart,
       updateQuantity,
+      resolveCartConflict,
       getCartCount,
       isInCart,
       getCartItem,
       clearCart,
       cleanCartForRestaurant,
     }),
-    [cart, cartForAnimation, lastAddEvent, lastRemoveEvent]
+    [cart, cartForAnimation, lastAddEvent, lastRemoveEvent, cartConflict]
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

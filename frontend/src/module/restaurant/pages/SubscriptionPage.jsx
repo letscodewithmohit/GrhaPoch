@@ -4,6 +4,7 @@ import { Check, ArrowLeft, Crown, Sparkles, TrendingUp, Loader2, History, Calend
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { restaurantAPI } from '@/lib/api';
+import { loadRazorpayScript } from '@/lib/utils/razorpay';
 
 const ICONS = {
     'Starter': Crown,
@@ -50,6 +51,7 @@ export default function SubscriptionPage() {
     const [subscriptionHistory, setSubscriptionHistory] = useState([]);
     const [businessModel, setBusinessModel] = useState(null);
     const [historyPage, setHistoryPage] = useState(1);
+    const [cancelling, setCancelling] = useState(false);
 
     const totalHistoryPages = useMemo(
         () => Math.max(1, Math.ceil(subscriptionHistory.length / HISTORY_ITEMS_PER_PAGE)),
@@ -156,6 +158,15 @@ export default function SubscriptionPage() {
             return;
         }
 
+        // Ensure Razorpay checkout script is loaded (same as other payment flows)
+        try {
+            await loadRazorpayScript();
+        } catch (e) {
+            console.error('Failed to load Razorpay script', e);
+            toast.error('Failed to load payment gateway. Please try again.');
+            return;
+        }
+
         if (!window.Razorpay) {
             toast.error("Razorpay SDK not loaded. Please refresh the page.");
             return;
@@ -165,7 +176,7 @@ export default function SubscriptionPage() {
         try {
             // 1. Create Order on Backend
             const orderRes = await restaurantAPI.createSubscriptionOrder(plan.id);
-            const { orderId, amount, currency, keyId } = orderRes.data.data;
+            const { subscriptionId, amount, currency, keyId } = orderRes.data.data;
 
             // 2. Open Razorpay Checkout
             const options = {
@@ -175,14 +186,14 @@ export default function SubscriptionPage() {
                 name: "GrhaPoch Partner",
                 description: `${plan.name} Subscription`,
                 image: "/logo.png",
-                order_id: orderId,
+                subscription_id: subscriptionId,
                 handler: async function (response) {
                     // 3. Verify Payment on Backend
                     try {
                         const verifyRes = await restaurantAPI.verifyPayment({
-                            razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,
+                            razorpay_subscription_id: response.razorpay_subscription_id,
                             planId: plan.id
                         });
 
@@ -226,6 +237,29 @@ export default function SubscriptionPage() {
             const errorMsg = error.response?.data?.message || 'Failed to initiate payment';
             toast.error(errorMsg);
             setSubmittingPlanId(null);
+        }
+    };
+
+    const handleCancelSubscription = async () => {
+        if (!currentSubscription || currentSubscription.status !== 'active') return;
+
+        const confirm = window.confirm('Are you sure you want to cancel your current subscription and stop auto-pay?');
+        if (!confirm) return;
+
+        try {
+            setCancelling(true);
+            const res = await restaurantAPI.cancelSubscription();
+            const message = res?.data?.message || 'Subscription cancelled successfully';
+            toast.success(message);
+
+            // Refresh status so UI shows latest subscription + business model
+            await fetchStatus();
+        } catch (error) {
+            console.error('Cancel subscription error:', error);
+            const msg = error?.response?.data?.message || 'Failed to cancel subscription';
+            toast.error(msg);
+        } finally {
+            setCancelling(false);
         }
     };
 
@@ -429,46 +463,58 @@ export default function SubscriptionPage() {
                         <div className="space-y-3">
                             {/* Current Active Plan — only shown when actually active */}
                             {currentSubscription?.status === 'active' && currentSubscription?.planId && (
-                                <div className="bg-white rounded-2xl border-2 border-green-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
-                                        <Crown className="w-5 h-5 text-green-600" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                                            <span className="font-bold text-slate-900 text-sm">{currentSubscription.planName || 'Current Plan'}</span>
-                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${currentSubscription.status === 'active'
-                                                ? 'bg-green-100 text-green-700'
-                                                : currentSubscription.status === 'expired'
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : 'bg-slate-100 text-slate-600'
-                                                }`}>
-                                                {currentSubscription.status === 'active' ? '✓ Active' : currentSubscription.status}
-                                            </span>
-                                            {subscriptionMeta.daysRemaining !== null && currentSubscription.status === 'active' && (
-                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${subscriptionMeta.showWarning ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'
+                                <div className="bg-white rounded-2xl border-2 border-green-200 shadow-sm p-5 flex flex-col gap-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+                                            <Crown className="w-5 h-5 text-green-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                <span className="font-bold text-slate-900 text-sm">{currentSubscription.planName || 'Current Plan'}</span>
+                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${currentSubscription.status === 'active'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : currentSubscription.status === 'expired'
+                                                        ? 'bg-red-100 text-red-700'
+                                                        : 'bg-slate-100 text-slate-600'
                                                     }`}>
-                                                    {subscriptionMeta.daysRemaining} day{subscriptionMeta.daysRemaining !== 1 ? 's' : ''} remaining
+                                                    {currentSubscription.status === 'active' ? '✓ Active' : currentSubscription.status}
                                                 </span>
-                                            )}
+                                                {subscriptionMeta.daysRemaining !== null && currentSubscription.status === 'active' && (
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${subscriptionMeta.showWarning ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'
+                                                        }`}>
+                                                        {subscriptionMeta.daysRemaining} day{subscriptionMeta.daysRemaining !== 1 ? 's' : ''} remaining
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                                <span className="flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {currentSubscription.startDate
+                                                        ? new Date(currentSubscription.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                        : 'N/A'}
+                                                    {' → '}
+                                                    {currentSubscription.endDate
+                                                        ? new Date(currentSubscription.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                        : 'N/A'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="w-3 h-3" />
-                                                {currentSubscription.startDate
-                                                    ? new Date(currentSubscription.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                    : 'N/A'}
-                                                {' → '}
-                                                {currentSubscription.endDate
-                                                    ? new Date(currentSubscription.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                    : 'N/A'}
-                                            </span>
-                                        </div>
+                                        {currentSubscription.paymentId && (
+                                            <div className="text-xs text-slate-400 font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 truncate max-w-[180px]" title={currentSubscription.paymentId}>
+                                                {currentSubscription.paymentId}
+                                            </div>
+                                        )}
                                     </div>
-                                    {currentSubscription.paymentId && (
-                                        <div className="text-xs text-slate-400 font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 truncate max-w-[180px]" title={currentSubscription.paymentId}>
-                                            {currentSubscription.paymentId}
-                                        </div>
-                                    )}
+                                    <div className="flex flex-wrap gap-2 justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelSubscription}
+                                            disabled={cancelling}
+                                            className="px-4 py-2 text-xs font-semibold rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            {cancelling ? 'Cancelling...' : 'Cancel Subscription'}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 

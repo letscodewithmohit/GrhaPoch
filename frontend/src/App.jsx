@@ -1,4 +1,6 @@
+import { useEffect } from "react"
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
+import { setupForegroundNotificationHandler } from "@/lib/pushNotificationService"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import AuthRedirect from "@/components/AuthRedirect"
 
@@ -122,6 +124,17 @@ function UserPathRedirect() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Start foreground notification handler once on mount.
+    // Returns an unsubscribe fn; clean up on unmount.
+    let unsubscribe = () => { };
+    setupForegroundNotificationHandler((payload) => {
+      // You can add custom in-app toast logic here if desired
+      console.log('[FCM] Foreground notification:', payload?.notification?.title);
+    }).then((unsub) => { unsubscribe = unsub; });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <Routes>
       <Route path="/user" element={<Navigate to="/" replace />} />

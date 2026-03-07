@@ -7,6 +7,7 @@ import { useCart } from "../context/CartContext"
 import { useLocationSelector } from "./UserLayout"
 import { FaLocationDot } from "react-icons/fa6"
 import { getCachedSettings, loadBusinessSettings } from "@/lib/utils/businessSettings"
+import { useProfile } from "../context/ProfileContext"
 
 
 export default function PageNavbar({
@@ -18,6 +19,7 @@ export default function PageNavbar({
   const { location, loading, requestLocation } = useLocation()
   const { getCartCount } = useCart()
   const { openLocationSelector } = useLocationSelector()
+  const { userProfile } = useProfile()
   const cartCount = getCartCount()
   const [logoUrl, setLogoUrl] = useState(null)
   const [companyName, setCompanyName] = useState(null)
@@ -1006,8 +1008,8 @@ export default function PageNavbar({
                 title="Profile"
               >
                 <div className={`h-full w-full rounded-full bg-white flex items-center justify-center shadow-lg ring-2 ${ringColor}`}>
-                  <span className="text-black text-xs sm:text-sm font-extrabold">
-                    A
+                  <span className="text-black text-xs sm:text-sm font-extrabold rotate-2">
+                    {userProfile?.name?.charAt(0)?.toUpperCase() || userProfile?.phone?.charAt(1)?.toUpperCase() || 'U'}
                   </span>
                 </div>
               </Button>

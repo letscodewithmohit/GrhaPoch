@@ -45,7 +45,9 @@ const orderSchema = new mongoose.Schema({
   },
   restaurantId: {
     type: String,
-    required: true
+    ref: 'Restaurant',
+    required: true,
+    index: true
   },
   restaurantName: {
     type: String,
@@ -206,11 +208,7 @@ const orderSchema = new mongoose.Schema({
       timestamp: { type: Date }
     }
   },
-  deliveryFleet: {
-    type: String,
-    enum: ['standard', 'fast', 'pure_veg'],
-    default: 'standard'
-  },
+
   note: {
     type: String
   },

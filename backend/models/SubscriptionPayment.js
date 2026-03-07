@@ -15,6 +15,11 @@ const subscriptionPaymentSchema = new mongoose.Schema({
     planName: {
         type: String
     },
+    razorpayPlanId: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     amount: {
         type: Number,
         required: true,
@@ -24,14 +29,27 @@ const subscriptionPaymentSchema = new mongoose.Schema({
         type: String,
         default: 'INR'
     },
-    razorpayPaymentId: {
+    razorpaySubscriptionId: {
         type: String,
         default: null,
         sparse: true
     },
+    razorpayInvoiceId: {        
+        type: String,
+        default: null,
+        sparse: true
+    },
+    razorpayPaymentId: {
+        type: String,
+        // No default value here on purpose. We rely on the sparse unique
+        // index below and only set this field once a real Razorpay payment
+        // ID is available. Leaving it absent avoids duplicate-key issues
+        // for multiple pending subscription attempts.
+        sparse: true
+    },
     razorpayOrderId: {
         type: String,
-        required: true
+        default: null
     },
     status: {
         type: String,
@@ -60,8 +78,8 @@ const subscriptionPaymentSchema = new mongoose.Schema({
     },
     source: {
         type: String,
-        enum: ['create_order', 'verify_api', 'webhook', 'reconcile'],
-        default: 'create_order'
+        enum: ['create_order', 'create_subscription', 'verify_api', 'webhook', 'reconcile'],
+        default: 'create_subscription'
     },
     lastError: {
         type: String,
@@ -74,6 +92,7 @@ const subscriptionPaymentSchema = new mongoose.Schema({
 // Indexes
 subscriptionPaymentSchema.index({ createdAt: -1 });
 subscriptionPaymentSchema.index({ razorpayPaymentId: 1 }, { unique: true, sparse: true });
+subscriptionPaymentSchema.index({ razorpaySubscriptionId: 1 }, { unique: true, sparse: true });
 subscriptionPaymentSchema.index({ razorpayOrderId: 1 });
 subscriptionPaymentSchema.index({ status: 1, createdAt: -1 });
 

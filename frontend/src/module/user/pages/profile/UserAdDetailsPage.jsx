@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { userAdvertisementAPI } from "@/lib/api"
 import { loadRazorpayScript } from "@/lib/utils/razorpay"
 
+const STATUS_REFRESH_INTERVAL_MS = 15000
+
 const formatDate = (value, withTime = false) => {
   if (!value) return "-"
   const date = new Date(value)
@@ -41,15 +43,15 @@ export default function UserAdDetailsPage() {
     return () => lenis.destroy()
   }, [])
 
-  const loadAdvertisement = useCallback(async () => {
-    setLoading(true)
+  const loadAdvertisement = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
       const response = await userAdvertisementAPI.getMyAdvertisementById(id)
       setAdData(response?.data?.data?.advertisement || null)
     } catch {
-      setAdData(null)
+      if (!silent) setAdData(null)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [id])
 
@@ -63,6 +65,35 @@ export default function UserAdDetailsPage() {
   const normalizedPaymentStatus = String(adData?.paymentStatus || "").trim().toLowerCase()
   const canPay = Boolean(adData?.canPay) || (["payment_pending", "approved"].includes(normalizedStatus) && normalizedPaymentStatus === "unpaid")
   const canCancel = normalizedStatus === "pending"
+  const shouldAutoRefreshStatus = useMemo(() => {
+    if (!adData?.id) return false
+    if (normalizedPaymentStatus === "paid") return false
+    return ["pending", "approved", "payment_pending"].includes(normalizedStatus)
+  }, [adData?.id, normalizedStatus, normalizedPaymentStatus])
+
+  useEffect(() => {
+    if (!shouldAutoRefreshStatus) return undefined
+
+    const intervalId = window.setInterval(() => {
+      loadAdvertisement({ silent: true })
+    }, STATUS_REFRESH_INTERVAL_MS)
+
+    const handleFocus = () => loadAdvertisement({ silent: true })
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadAdvertisement({ silent: true })
+      }
+    }
+
+    window.addEventListener("focus", handleFocus)
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener("focus", handleFocus)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [loadAdvertisement, shouldAutoRefreshStatus])
 
   const handlePayNow = async () => {
     if (!adData?.id) return
@@ -234,7 +265,7 @@ export default function UserAdDetailsPage() {
             <Card className="bg-white border border-gray-100">
               <CardContent className="p-4 space-y-2">
                 <h3 className="text-sm font-bold text-gray-900">Banner / Media</h3>
-                <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                <div className="w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-50 aspect-[12/5]">
                   {!coverMedia && <div className="w-full h-full flex items-center justify-center text-sm text-gray-500">No media</div>}
                   {coverMedia && <img src={coverMedia} alt="Advertisement banner" className="w-full h-full object-cover" />}
                 </div>

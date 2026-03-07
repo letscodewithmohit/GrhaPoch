@@ -258,6 +258,15 @@ const deliverySchema = new mongoose.Schema(
     rejectedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin'
+    },
+    // FCM push notification tokens
+    fcmTokensWeb: {
+      type: [String],
+      default: []
+    },
+    fcmTokensMobile: {
+      type: [String],
+      default: []
     }
   },
   {
