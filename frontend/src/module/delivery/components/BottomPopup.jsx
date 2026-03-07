@@ -237,131 +237,128 @@ export default function BottomPopup({
   return (
     <AnimatePresence>
       {isOpen &&
-      <>
+        <>
           {/* Backdrop */}
           {showBackdrop && backdropBlocksInteraction &&
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          onClick={handleBackdropClick}
-          className="fixed inset-0 bg-black/50 z-[100]" />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={handleBackdropClick}
+              className="fixed inset-0 bg-black/50 z-[100]" />
 
-        }
+          }
 
           {/* Popup */}
           <motion.div
-          ref={popupRef}
-          initial={{ y: "100%" }}
-          animate={{
-            y: isDragging ? dragY : 0,
-            transition: isDragging ? { duration: 0 } : {
+            ref={popupRef}
+            initial={{ y: "100%" }}
+            animate={{
+              y: isDragging ? dragY : 0,
+              transition: isDragging ? { duration: 0 } : {
+                type: "spring",
+                damping: 30,
+                stiffness: 300
+              }
+            }}
+            exit={{ y: "100%" }}
+            transition={{
               type: "spring",
               damping: 30,
               stiffness: 300
-            }
-          }}
-          exit={{ y: "100%" }}
-          transition={{
-            type: "spring",
-            damping: 30,
-            stiffness: 300
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onClick={(e) => {
-            // Don't stop propagation if clicking on handle
-            if (handleRef.current && handleRef.current.contains(e.target)) {
-              return;
-            }
-            handlePopupClick(e);
-          }}
-          className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[110] overflow-hidden flex flex-col"
-          style={{
-            maxHeight: isCollapsed ? "120px" : maxHeight,
-            touchAction: 'none'
-          }}>
-          
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={(e) => {
+              // Don't stop propagation if clicking on handle
+              if (handleRef.current && handleRef.current.contains(e.target)) {
+                return;
+              }
+              handlePopupClick(e);
+            }}
+            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[110] overflow-hidden flex flex-col"
+            style={{
+              maxHeight: isCollapsed ? "120px" : maxHeight,
+              touchAction: 'none'
+            }}>
+
             {/* Top Drag Handle Bar - Always visible for dragging */}
             {showHandle &&
-          <button
-            ref={handleRef}
-            type="button"
-            className="flex flex-col items-center pt-3 pb-2 cursor-pointer select-none bg-white sticky top-0 z-10 w-full border-0 outline-none p-0"
-            onClick={(e) => {
+              <button
+                ref={handleRef}
+                type="button"
+                className="flex flex-col items-center pt-3 pb-2 cursor-pointer select-none bg-white sticky top-0 z-10 w-full border-0 outline-none p-0"
+                onClick={(e) => {
 
-              e.stopPropagation();
-              e.preventDefault();
-              handleCollapseToggle(e);
-            }}
-            onTouchStart={(e) => {
-              // Store touch start for click detection
-              e.stopPropagation();
-            }}
-            onTouchEnd={(e) => {
-              // Handle touch end for mobile collapse toggle
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleCollapseToggle(e);
+                }}
+                onTouchStart={(e) => {
+                  // Store touch start for click detection
+                  e.stopPropagation();
+                }}
+                onTouchEnd={(e) => {
+                  // Handle touch end for mobile collapse toggle
 
-              e.stopPropagation();
-              e.preventDefault();
-              handleCollapseToggle(e);
-            }}
-            onMouseDown={(e) => {
-              // Prevent drag when clicking handle
-              e.stopPropagation();
-            }}
-            style={{
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              pointerEvents: 'auto',
-              userSelect: 'none',
-              background: 'transparent'
-            }}>
-            
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleCollapseToggle(e);
+                }}
+                onMouseDown={(e) => {
+                  // Prevent drag when clicking handle
+                  e.stopPropagation();
+                }}
+                style={{
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  pointerEvents: 'auto',
+                  userSelect: 'none',
+                  background: 'transparent'
+                }}>
+
                 <ChevronDown
-              className="w-6 h-6 text-gray-400 mb-1 pointer-events-none" />
-            
-                <div
-              className="w-12 h-1.5 bg-gray-300 rounded-full pointer-events-none" />
-            
-              </button>
-          }
+                  className="w-6 h-6 text-gray-400 mb-1 pointer-events-none" />
 
-            {/* Header */}
-            {(title || showCloseButton) &&
-          <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
-                {title &&
-            <h3 className="text-lg font-semibold text-gray-900">
-                    {title}
-                  </h3>
+                <div
+                  className="w-12 h-1.5 bg-gray-300 rounded-full pointer-events-none" />
+
+              </button>
             }
-                {showCloseButton &&
-            <button
-              onClick={handleClose}
-              className="ml-auto p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Close">
-              
-                    <X className="w-5 h-5 text-gray-600" />
-                  </button>
-            }
-              </div>
-          }
+
+            <div className={`flex items-center px-4 pt-4 pb-2 ${!showCloseButton ? 'justify-center' : 'justify-between'} border-b border-gray-100`}>
+              {title &&
+                <h3 className={`text-lg font-semibold text-gray-900 ${!showCloseButton ? 'text-center' : ''}`}>
+                  {title}
+                </h3>
+              }
+              {showCloseButton &&
+                <button
+                  onClick={handleClose}
+                  className="ml-auto p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="Close">
+
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              }
+            </div>
 
             {/* Content */}
             {!isCollapsed ?
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="flex-1 overflow-y-auto px-4 py-3">
                 {children}
               </div> :
 
-          <div className="px-4 py-4 pb-6">
+              <div className="px-4 py-4 pb-6">
                 {collapsedContent}
               </div>
-          }
+            }
           </motion.div>
         </>
       }

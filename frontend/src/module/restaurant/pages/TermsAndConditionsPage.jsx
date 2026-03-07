@@ -35,7 +35,7 @@ export default function TermsAndConditionsPage() {
     <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24 md:pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
         >
@@ -63,12 +63,12 @@ export default function TermsAndConditionsPage() {
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Acceptance of Terms</h3>
               <p className="mb-3">
-                By accessing and using the GrhaPoch restaurant management platform, you accept and agree to be bound 
-                by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use 
+                By accessing and using the GrhaPoch restaurant management platform, you accept and agree to be bound
+                by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use
                 this service.
               </p>
               <p>
-                These Terms and Conditions ("Terms") govern your access to and use of our services, including our website, 
+                These Terms and Conditions ("Terms") govern your access to and use of our services, including our website,
                 mobile application, and any related services provided by GrhaPoch.
               </p>
             </section>
@@ -128,9 +128,9 @@ export default function TermsAndConditionsPage() {
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">6. Intellectual Property</h3>
               <p>
-                The service and its original content, features, and functionality are owned by GrhaPoch and are protected 
-                by international copyright, trademark, patent, trade secret, and other intellectual property laws. You may not 
-                reproduce, distribute, modify, or create derivative works of any material found on the service without our 
+                The service and its original content, features, and functionality are owned by GrhaPoch and are protected
+                by international copyright, trademark, patent, trade secret, and other intellectual property laws. You may not
+                reproduce, distribute, modify, or create derivative works of any material found on the service without our
                 express written permission.
               </p>
             </section>
@@ -138,7 +138,7 @@ export default function TermsAndConditionsPage() {
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">7. Limitation of Liability</h3>
               <p className="mb-2">
-                To the fullest extent permitted by applicable law, GrhaPoch shall not be liable for any indirect, 
+                To the fullest extent permitted by applicable law, GrhaPoch shall not be liable for any indirect,
                 incidental, special, consequential, or punitive damages, including but not limited to:
               </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
@@ -148,7 +148,7 @@ export default function TermsAndConditionsPage() {
                 <li>Personal injury or property damage</li>
               </ul>
               <p className="mt-3">
-                Our total liability to you for all claims arising from or related to the use of our services shall not exceed 
+                Our total liability to you for all claims arising from or related to the use of our services shall not exceed
                 the amount you paid to us in the twelve (12) months prior to the claim.
               </p>
             </section>
@@ -156,9 +156,9 @@ export default function TermsAndConditionsPage() {
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">8. Indemnification</h3>
               <p>
-                You agree to defend, indemnify, and hold harmless GrhaPoch and its officers, directors, employees, and 
-                agents from and against any claims, liabilities, damages, losses, and expenses, including reasonable attorneys' 
-                fees, arising out of or in any way connected with your access to or use of the service, your violation of 
+                You agree to defend, indemnify, and hold harmless GrhaPoch and its officers, directors, employees, and
+                agents from and against any claims, liabilities, damages, losses, and expenses, including reasonable attorneys'
+                fees, arising out of or in any way connected with your access to or use of the service, your violation of
                 these Terms, or your violation of any rights of another.
               </p>
             </section>
@@ -174,7 +174,7 @@ export default function TermsAndConditionsPage() {
                 <li>We are required to do so by law</li>
               </ul>
               <p className="mt-3">
-                Upon termination, your right to use the service will immediately cease. All provisions of these Terms that by 
+                Upon termination, your right to use the service will immediately cease. All provisions of these Terms that by
                 their nature should survive termination shall survive termination.
               </p>
             </section>
@@ -182,8 +182,8 @@ export default function TermsAndConditionsPage() {
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">10. Dispute Resolution</h3>
               <p>
-                Any disputes arising out of or relating to these Terms or the service shall be resolved through binding 
-                arbitration in accordance with the rules of the arbitration association. You agree to waive any right to a 
+                Any disputes arising out of or relating to these Terms or the service shall be resolved through binding
+                arbitration in accordance with the rules of the arbitration association. You agree to waive any right to a
                 jury trial and to participate in a class action lawsuit.
               </p>
             </section>
@@ -191,9 +191,9 @@ export default function TermsAndConditionsPage() {
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">11. Changes to Terms</h3>
               <p>
-                We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide 
-                at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be 
-                determined at our sole discretion. Your continued use of the service after any changes constitutes acceptance 
+                We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide
+                at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be
+                determined at our sole discretion. Your continued use of the service after any changes constitutes acceptance
                 of the new Terms.
               </p>
             </section>
@@ -201,7 +201,7 @@ export default function TermsAndConditionsPage() {
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">12. Governing Law</h3>
               <p>
-                These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which 
+                These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which
                 GrhaPoch operates, without regard to its conflict of law provisions.
               </p>
             </section>
@@ -223,7 +223,7 @@ export default function TermsAndConditionsPage() {
 
       {/* Bottom Navigation Bar */}
       <BottomNavbar onMenuClick={() => setShowMenu(true)} />
-      
+
       {/* Menu Overlay */}
       <MenuOverlay showMenu={showMenu} setShowMenu={setShowMenu} />
     </div>

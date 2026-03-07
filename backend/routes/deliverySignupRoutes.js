@@ -3,6 +3,7 @@ import {
   submitSignupDetails,
   submitSignupDocuments
 } from '../controllers/deliverySignupController.js';
+import { cancelSignup } from '../controllers/deliveryAuthController.js';
 import { authenticate } from '../middleware/delivery.auth.js';
 import { validate } from '../middleware/validate.js';
 import Joi from 'joi';
@@ -20,7 +21,8 @@ router.post('/signup/details', validate(Joi.object({
   city: Joi.string().trim().required(),
   state: Joi.string().trim().required(),
   vehicleType: Joi.string().valid('bike', 'scooter', 'bicycle', 'car').required(),
-  vehicleName: Joi.string().trim().optional().allow(null, ''),
+  vehicleName: Joi.string().trim().required(),
+  vehicleModel: Joi.string().trim().optional().allow(null, ''),
   vehicleNumber: Joi.string().trim().required(),
   panNumber: Joi.string().trim().required(),
   aadharNumber: Joi.string().trim().required()
@@ -44,6 +46,8 @@ router.post('/signup/documents', validate(Joi.object({
     publicId: Joi.string().trim().required()
   }).required()
 })), submitSignupDocuments);
+
+// No routes here, moved to deliveryAuthRoutes.js
 
 export default router;
 

@@ -44,7 +44,8 @@ export default function DeliveryOTP() {
       } catch (e) {
 
         // Token parsing failed, continue with OTP flow
-      }}
+      }
+    }
 
     // Get auth data from sessionStorage (delivery module key)
     const stored = sessionStorage.getItem("deliveryAuthData");
@@ -186,7 +187,11 @@ export default function DeliveryOTP() {
       }
 
       // First attempt: verify OTP for login
-      const response = await deliveryAPI.verifyOTP(phone, code, "login");
+      // Determine purpose and include name if available from signup page
+      const purpose = authData?.isSignUp ? "register" : "login";
+      const name = authData?.name || null;
+
+      const response = await deliveryAPI.verifyOTP(phone, code, purpose, name);
       const data = response?.data?.data || {};
 
       // Check if user needs to complete signup
@@ -282,10 +287,10 @@ export default function DeliveryOTP() {
     } catch (err) {
       console.error("OTP Verification Error:", err);
       const message =
-      err?.response?.data?.message ||
-      err?.response?.data?.error ||
-      err?.message ||
-      "Failed to verify OTP. Please try again.";
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to verify OTP. Please try again.";
       setError(message);
       setIsLoading(false);
     }
@@ -377,10 +382,10 @@ export default function DeliveryOTP() {
     } catch (err) {
       console.error("Name Submission Error:", err);
       const message =
-      err?.response?.data?.message ||
-      err?.response?.data?.error ||
-      err?.message ||
-      "Failed to complete registration. Please try again.";
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to complete registration. Please try again.";
       setError(message);
     } finally {
       setIsLoading(false);
@@ -404,10 +409,10 @@ export default function DeliveryOTP() {
       await deliveryAPI.sendOTP(phone, "login");
     } catch (err) {
       const message =
-      err?.response?.data?.message ||
-      err?.response?.data?.error ||
-      err?.message ||
-      "Failed to resend OTP. Please try again.";
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to resend OTP. Please try again.";
       setError(message);
     } finally {
       setIsLoading(false);
@@ -461,11 +466,11 @@ export default function DeliveryOTP() {
           onClick={() => navigate("/delivery/sign-in")}
           className="absolute left-4 top-1/2 -translate-y-1/2"
           aria-label="Go back">
-          
+
           <ArrowLeft className="h-5 w-5 text-black" />
         </button>
         <h1 className="text-lg font-bold text-black">OTP Verification</h1>
-      </div> 
+      </div>
 
       {/* Main Content */}
       <div className="flex flex-col justify-center px-6 pt-8 pb-12">
@@ -474,11 +479,11 @@ export default function DeliveryOTP() {
           <div className="text-center space-y-2">
             <p className="text-base text-black">
               {showNameInput ?
-              "You're almost done! Please tell us your name to complete registration." :
-              "We have sent a verification code to"}
+                "You're almost done! Please tell us your name to complete registration." :
+                "We have sent a verification code to"}
             </p>
             {!showNameInput &&
-            <p className="text-base text-black font-medium">
+              <p className="text-base text-black font-medium">
                 {getPhoneNumber()}
               </p>
             }
@@ -486,32 +491,32 @@ export default function DeliveryOTP() {
 
           {/* Error message */}
           {error &&
-          <p className="text-sm text-red-500 text-center">
+            <p className="text-sm text-red-500 text-center">
               {error}
             </p>
           }
 
           {/* OTP Input Fields */}
           {!showNameInput &&
-          <>
+            <>
               <div className="flex justify-center gap-2">
                 {otp.map((digit, index) =>
-              <Input
-                key={index}
-                ref={(el) => inputRefs.current[index] = el}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={index === 0 ? handlePaste : undefined}
-                disabled={isLoading}
-                autoComplete="off"
-                autoFocus={false}
-                className="w-12 h-12 text-center text-lg font-semibold p-0 border border-black rounded-md focus-visible:ring-0 focus-visible:border-black bg-white" />
+                  <Input
+                    key={index}
+                    ref={(el) => inputRefs.current[index] = el}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={index === 0 ? handlePaste : undefined}
+                    disabled={isLoading}
+                    autoComplete="off"
+                    autoFocus={false}
+                    className="w-12 h-12 text-center text-lg font-semibold p-0 border border-black rounded-md focus-visible:ring-0 focus-visible:border-black bg-white" />
 
-              )}
+                )}
               </div>
 
               {/* Resend Section */}
@@ -520,55 +525,54 @@ export default function DeliveryOTP() {
                   Didn't get the OTP?
                 </p>
                 {resendTimer > 0 ?
-              <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500">
                     Resend SMS in {resendTimer}s
                   </p> :
 
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={isLoading}
-                className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50">
-                
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={isLoading}
+                    className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50">
+
                     Resend SMS
                   </button>
-              }
+                }
               </div>
             </>
           }
 
           {/* Name Input (shown only after OTP verified and user is new) */}
           {showNameInput &&
-          <div className="space-y-3">
+            <div className="space-y-3">
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-black text-left">
                   Full name
                 </label>
                 <Input
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (nameError) setNameError("");
-                }}
-                disabled={isLoading}
-                placeholder="Enter your name"
-                className={`h-11 border ${
-                nameError ? "border-red-500" : "border-gray-300"}`
-                } />
-              
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError("");
+                  }}
+                  disabled={isLoading}
+                  placeholder="Enter your name"
+                  className={`h-11 border ${nameError ? "border-red-500" : "border-gray-300"}`
+                  } />
+
                 {nameError &&
-              <p className="text-xs text-red-500 text-left">
+                  <p className="text-xs text-red-500 text-left">
                     {nameError}
                   </p>
-              }
+                }
               </div>
 
               <Button
-              onClick={handleSubmitName}
-              disabled={isLoading}
-              className="w-full h-11 bg-[#00B761] hover:bg-[#00A055] text-white font-semibold">
-              
+                onClick={handleSubmitName}
+                disabled={isLoading}
+                className="w-full h-11 bg-[#00B761] hover:bg-[#00A055] text-white font-semibold">
+
                 {isLoading ? "Continuing..." : "Continue"}
               </Button>
             </div>
@@ -576,7 +580,7 @@ export default function DeliveryOTP() {
 
           {/* Loading Spinner */}
           {isLoading && !showNameInput &&
-          <div className="flex justify-center pt-4">
+            <div className="flex justify-center pt-4">
               <Loader2 className="h-6 w-6 text-green-500 animate-spin" />
             </div>
           }
@@ -589,7 +593,7 @@ export default function DeliveryOTP() {
           type="button"
           onClick={() => navigate("/delivery/sign-in")}
           className="text-sm text-[#E23744] hover:underline">
-          
+
           Go back to login methods
         </button>
       </div>

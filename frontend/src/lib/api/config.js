@@ -74,7 +74,8 @@ try {
   } catch (e) {
 
     // Still invalid, keep original
-  }}
+  }
+}
 
 // Validate API base URL
 if (API_BASE_URL.includes('5173')) {
@@ -220,7 +221,8 @@ export const API_ENDPOINTS = {
     },
     SIGNUP: {
       DETAILS: '/delivery/signup/details',
-      DOCUMENTS: '/delivery/signup/documents'
+      DOCUMENTS: '/delivery/signup/documents',
+      CANCEL_SIGNUP: '/delivery/auth/cancel-signup'
     },
     DASHBOARD: '/delivery/dashboard',
     WALLET: '/delivery/wallet',

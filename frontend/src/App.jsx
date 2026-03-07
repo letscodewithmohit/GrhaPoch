@@ -114,7 +114,6 @@ import DeliverySignup from "@/module/delivery/pages/auth/Signup"
 import DeliveryOTP from "@/module/delivery/pages/auth/OTP"
 import DeliverySignupStep1 from "@/module/delivery/pages/auth/SignupStep1"
 import DeliverySignupStep2 from "@/module/delivery/pages/auth/SignupStep2"
-import DeliveryWelcome from "@/module/delivery/pages/auth/Welcome"
 
 function UserPathRedirect() {
   const location = useLocation()
@@ -828,7 +827,6 @@ export default function App() {
       <Route path="/delivery/sign-in" element={<DeliverySignIn />} />
       <Route path="/delivery/signup" element={<DeliverySignup />} />
       <Route path="/delivery/otp" element={<DeliveryOTP />} />
-      <Route path="/delivery/welcome" element={<AuthRedirect module="delivery"><DeliveryWelcome /></AuthRedirect>} />
 
       {/* Delivery Signup Routes (Protected - require authentication) */}
       <Route

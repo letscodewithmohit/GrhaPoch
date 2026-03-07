@@ -45,8 +45,8 @@ function getDedupKey(config) {
   const url = config.url || '';
   const params = config.params;
   const paramsStr = params && typeof params === 'object' ?
-  '?' + new URLSearchParams(params).toString() :
-  typeof params === 'string' ? '?' + params : '';
+    '?' + new URLSearchParams(params).toString() :
+    typeof params === 'string' ? '?' + params : '';
   // Include auth header in key so user-specific data (me, addresses) stays per-user
   const auth = config.headers?.Authorization || config.headers?.authorization || '';
   return url + paramsStr + '|' + (auth ? auth.slice(0, 20) : 'anon');
@@ -98,13 +98,13 @@ if (typeof defaultAdapter === 'function') {
 
     // 3. Make request, cache response, track in-flight
     const promise = defaultAdapter(config).
-    then((response) => {
-      setCachedResponse(key, response);
-      return response;
-    }).
-    finally(() => {
-      inFlightMap.delete(key);
-    });
+      then((response) => {
+        setCachedResponse(key, response);
+        return response;
+      }).
+      finally(() => {
+        inFlightMap.delete(key);
+      });
     inFlightMap.set(key, promise);
     return promise;
   };
@@ -181,41 +181,52 @@ apiClient.interceptors.request.use(
 
     // Check if this is a public restaurant route (should not require authentication)
     const isPublicRestaurantRoute = normalizedRequestUrl.includes('/restaurant/list') ||
-    normalizedRequestUrl.includes('/restaurant/under-250') ||
-    normalizedRequestUrl.startsWith('/restaurant/') &&
-    !normalizedRequestUrl.includes('/restaurant/orders') &&
-    !normalizedRequestUrl.includes('/restaurant/auth') &&
-    !normalizedRequestUrl.includes('/restaurant/menu') &&
-    !normalizedRequestUrl.includes('/restaurant/profile') &&
-    !normalizedRequestUrl.includes('/restaurant/staff') &&
-    !normalizedRequestUrl.includes('/restaurant/offers') &&
-    !normalizedRequestUrl.includes('/restaurant/inventory') &&
-    !normalizedRequestUrl.includes('/restaurant/categories') &&
-    !normalizedRequestUrl.includes('/restaurant/onboarding') &&
-    !normalizedRequestUrl.includes('/restaurant/delivery-status') &&
-    !normalizedRequestUrl.includes('/restaurant/dining-settings') &&
-    !normalizedRequestUrl.includes('/restaurant/finance') &&
-    !normalizedRequestUrl.includes('/restaurant/wallet') &&
-    !normalizedRequestUrl.includes('/restaurant/analytics') &&
-    !normalizedRequestUrl.includes('/restaurant/complaints') &&
-    !normalizedRequestUrl.includes('/restaurant/dining-tables') &&
-    !normalizedRequestUrl.includes('/restaurant/dining-activation') && (
-    normalizedRequestUrl.match(/\/restaurant\/[^/]+$/) ||
-    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/menu/) ||
-    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/addons/) ||
-    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/inventory/) ||
-    normalizedRequestUrl.match(/\/restaurant\/[^/]+\/offers/));
+      normalizedRequestUrl.includes('/restaurant/under-250') ||
+      normalizedRequestUrl.startsWith('/restaurant/') &&
+      !normalizedRequestUrl.includes('/restaurant/orders') &&
+      !normalizedRequestUrl.includes('/restaurant/auth') &&
+      !normalizedRequestUrl.includes('/restaurant/menu') &&
+      !normalizedRequestUrl.includes('/restaurant/profile') &&
+      !normalizedRequestUrl.includes('/restaurant/staff') &&
+      !normalizedRequestUrl.includes('/restaurant/offers') &&
+      !normalizedRequestUrl.includes('/restaurant/inventory') &&
+      !normalizedRequestUrl.includes('/restaurant/categories') &&
+      !normalizedRequestUrl.includes('/restaurant/onboarding') &&
+      !normalizedRequestUrl.includes('/restaurant/delivery-status') &&
+      !normalizedRequestUrl.includes('/restaurant/dining-settings') &&
+      !normalizedRequestUrl.includes('/restaurant/finance') &&
+      !normalizedRequestUrl.includes('/restaurant/wallet') &&
+      !normalizedRequestUrl.includes('/restaurant/analytics') &&
+      !normalizedRequestUrl.includes('/restaurant/complaints') &&
+      !normalizedRequestUrl.includes('/restaurant/dining-tables') &&
+      !normalizedRequestUrl.includes('/restaurant/dining-activation') && (
+        normalizedRequestUrl.match(/\/restaurant\/[^/]+$/) ||
+        normalizedRequestUrl.match(/\/restaurant\/[^/]+\/menu/) ||
+        normalizedRequestUrl.match(/\/restaurant\/[^/]+\/addons/) ||
+        normalizedRequestUrl.match(/\/restaurant\/[^/]+\/inventory/) ||
+        normalizedRequestUrl.match(/\/restaurant\/[^/]+\/offers/));
+
+    const isPublicDeliveryRoute = normalizedRequestUrl.includes('/delivery/sign-in') ||
+      normalizedRequestUrl.includes('/delivery/signup') ||
+      normalizedRequestUrl.includes('/delivery/otp') ||
+      normalizedRequestUrl.includes('/delivery/auth/send-otp') ||
+      normalizedRequestUrl.includes('/delivery/auth/verify-otp') ||
+      normalizedRequestUrl.includes('/delivery/auth/refresh-token');
+
+    // Check if the current API REQUEST URL requires authentication
+    // We check normalizedRequestUrl (the API endpoint) rather than path (the browser URL)
+    const isApiDeliveryRoute = normalizedRequestUrl.startsWith('/delivery') || normalizedRequestUrl.includes('/api/delivery');
 
     const isAuthenticatedRoute = (path.startsWith('/admin') ||
-    path.startsWith('/restaurant') && !path.startsWith('/restaurants') && !isPublicRestaurantRoute ||
-    path.startsWith('/delivery')) && !isPublicRestaurantRoute;
+      path.startsWith('/restaurant') && !path.startsWith('/restaurants') && !isPublicRestaurantRoute ||
+      isApiDeliveryRoute && !isPublicDeliveryRoute) && !isPublicRestaurantRoute;
 
     // For authenticated routes, ALWAYS ensure Authorization header is set if we have a token
     // This ensures FormData requests and other requests always have the token
     if (isAuthenticatedRoute) {
       // If no Authorization header or invalid format, set it
       if (!config.headers.Authorization ||
-      typeof config.headers.Authorization === 'string' && !config.headers.Authorization.startsWith('Bearer ')) {
+        typeof config.headers.Authorization === 'string' && !config.headers.Authorization.startsWith('Bearer ')) {
         if (accessToken && accessToken.trim() !== '' && accessToken !== 'null' && accessToken !== 'undefined') {
           config.headers.Authorization = `Bearer ${accessToken.trim()}`;
 
@@ -411,10 +422,10 @@ apiClient.interceptors.response.use(
         // Show error toast in development mode for refresh errors
         if (import.meta.env.DEV) {
           const refreshErrorMessage =
-          refreshError.response?.data?.message ||
-          refreshError.response?.data?.error ||
-          refreshError.message ||
-          'Token refresh failed';
+            refreshError.response?.data?.message ||
+            refreshError.response?.data?.error ||
+            refreshError.message ||
+            'Token refresh failed';
 
           toast.error(refreshErrorMessage, {
             duration: 3000,
@@ -588,7 +599,7 @@ apiClient.interceptors.response.use(
           // Individual restaurant lookups (like /restaurant/:id) can legitimately return 404 if restaurant doesn't exist
           // So we silently handle those 404s
           const isIndividualRestaurantLookup = /\/restaurant\/[a-f0-9]{24}$/i.test(url) ||
-          url.match(/\/restaurant\/[^/]+$/) && !url.includes('/restaurant/list');
+            url.match(/\/restaurant\/[^/]+$/) && !url.includes('/restaurant/list');
 
           if (!isIndividualRestaurantLookup && url.includes('/restaurant/list')) {
             toast.error('Restaurant API endpoint not found. Check backend routes.', {
@@ -629,8 +640,8 @@ apiClient.interceptors.response.use(
         errorMessages = [errorData.error];
       } else if (errorData?.data?.message) {
         errorMessages = Array.isArray(errorData.data.message) ?
-        errorData.data.message :
-        [errorData.data.message];
+          errorData.data.message :
+          [errorData.data.message];
       } else if (error.message) {
         errorMessages = [error.message];
       } else {

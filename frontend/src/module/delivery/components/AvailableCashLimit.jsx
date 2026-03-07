@@ -9,12 +9,17 @@ export default function AvailableCashLimit({ onClose, walletData = {} }) {
   const availableCashLimit = Math.max(0, totalCashLimit - cashInHand - deductions)
 
   return (
-    <div className="min-h-screen bg-white text-black flex flex-col">
+    <div className="bg-white text-black flex flex-col no-scrollbar pt-2 mt-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
       <div className="">
         <div className="py-3 flex justify-between border-b border-gray-200 items-start">
           <div>
             <div className="text-sm font-medium">Total cash limit</div>
-            <div className="text-xs text-gray-500 leading-tight mt-1">
+            <div className="text-sm font-medium text-gray-600 leading-tight mt-1">
               Resets every Monday and increases with<br />
               earnings
             </div>
@@ -26,14 +31,14 @@ export default function AvailableCashLimit({ onClose, walletData = {} }) {
         <DetailRow label="Deductions" value={formatCurrency(deductions)} />
         <DetailRow label="Pocket withdrawals" value={formatCurrency(pocketWithdrawals)} />
 
-        <div className="py-3 flex justify-between items-center border-b border-gray-200">
+        <div className="py-3 flex justify-between items-center border-b border-gray-100">
           <div className="text-sm font-medium">Available cash limit</div>
           <div className="text-sm font-semibold">{formatCurrency(availableCashLimit)}</div>
         </div>
       </div>
 
-      <div onClick={onClose} className="mt-6">
-        <button className="w-full bg-black text-white py-3 rounded-lg text-sm font-medium">
+      <div onClick={onClose} className="mt-8 pb-2">
+        <button className="w-full bg-black text-white py-3.5 rounded-xl text-sm font-bold active:scale-[0.98] transition-transform">
           Okay
         </button>
       </div>
@@ -43,9 +48,9 @@ export default function AvailableCashLimit({ onClose, walletData = {} }) {
 
 function DetailRow({ label, value }) {
   return (
-    <div className="py-3 flex justify-between items-center border-b border-gray-200">
-      <div className="text-sm font-medium">{label}</div>
-      <div className="text-sm font-semibold">{value}</div>
+    <div className="py-3.5 flex justify-between items-center border-b border-gray-50">
+      <div className="text-sm font-medium text-gray-600">{label}</div>
+      <div className="text-sm font-semibold text-gray-800">{value}</div>
     </div>
   )
 }

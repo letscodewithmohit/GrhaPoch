@@ -23,6 +23,7 @@ export default function ProfileDetails() {
   })
   const [bankDetailsErrors, setBankDetailsErrors] = useState({})
   const [isUpdatingBankDetails, setIsUpdatingBankDetails] = useState(false)
+  const [vehicleError, setVehicleError] = useState("")
 
   // Note: All alternate phone related code has been removed
 
@@ -84,7 +85,7 @@ export default function ProfileDetails() {
       {/* Profile Picture Area */}
       <div className="relative w-full bg-gray-200 overflow-hidden flex items-center justify-center">
         <img
-          src={profile?.profileImage?.url || profile?.documents?.photo || "https://i.pravatar.cc/400?img=12"}
+          src={profile?.profileImage?.url || profile?.documents?.photo || ""}
           alt="Profile"
           className="w-full h-auto max-h-96 object-contain"
         />
@@ -98,7 +99,7 @@ export default function ProfileDetails() {
           <div className="bg-white rounded-lg shadow-sm divide-y divide-gray-200">
             <div className="p-2 px-3 flex items-center justify-between">
               <p className="text-base text-gray-900">
-                {loading ? "Loading..." : `${profile?.name || "N/A"} (${profile?.deliveryId || "N/A"})`}
+                {loading ? "Loading..." : `${profile?.name || ""} (${profile?.deliveryId || "N/A"})`}
               </p>
             </div>
             <div className="divide-y divide-gray-200">
@@ -365,11 +366,21 @@ export default function ProfileDetails() {
             <input
               type="text"
               value={vehicleInput}
-              onChange={(e) => setVehicleInput(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const val = e.target.value;
+                const alphanumeric = val.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                if (val.length !== alphanumeric.length) {
+                  setVehicleError("Special characters not allowed");
+                } else {
+                  setVehicleError("");
+                }
+                setVehicleInput(alphanumeric);
+              }}
               placeholder="Enter vehicle number"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent ${vehicleError ? "border-red-500" : "border-gray-300"}`}
               autoFocus
             />
+            {vehicleError && <p className="text-red-500 text-sm mt-1">{vehicleError}</p>}
           </div>
           <button
             onClick={async () => {
@@ -405,36 +416,38 @@ export default function ProfileDetails() {
       </BottomPopup>
 
       {/* Document Image Modal */}
-      {showDocumentModal && selectedDocument && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto relative">
-            {/* Close Button */}
-            <button
-              onClick={() => {
-                setShowDocumentModal(false)
-                setSelectedDocument(null)
-              }}
-              className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
+      {
+        showDocumentModal && selectedDocument && (
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto relative">
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setShowDocumentModal(false)
+                  setSelectedDocument(null)
+                }}
+                className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
 
-            {/* Document Title */}
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">{selectedDocument.name}</h3>
-            </div>
+              {/* Document Title */}
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">{selectedDocument.name}</h3>
+              </div>
 
-            {/* Document Image */}
-            <div className="p-4">
-              <img
-                src={selectedDocument.url}
-                alt={selectedDocument.name}
-                className="w-full h-auto rounded-lg"
-              />
+              {/* Document Image */}
+              <div className="p-4">
+                <img
+                  src={selectedDocument.url}
+                  alt={selectedDocument.name}
+                  className="w-full h-auto rounded-lg"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Bank Details Edit Popup */}
       <BottomPopup
@@ -603,7 +616,7 @@ export default function ProfileDetails() {
         </div>
       </BottomPopup>
 
-    </div>
+    </div >
   )
 }
 

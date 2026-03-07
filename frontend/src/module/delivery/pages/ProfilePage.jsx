@@ -19,8 +19,9 @@ import {
   IndianRupee,
   Sparkles,
   LogOut,
-  X } from
-"lucide-react";
+  X
+} from
+  "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { deliveryAPI } from "@/lib/api";
 import { toast } from "sonner";
@@ -211,75 +212,66 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 font-poppins overflow-x-hidden">
       {/* Main Content */}
-        {/* Back Button and Profile Section */}
-        <div ref={profileRef} className="mb-0">
-          <div className="bg-white p-4 w-full shadow-sm">
-            {/* Back Button */}
-            <button
+      {/* Back Button and Profile Section */}
+      <div ref={profileRef} className="mb-0">
+        <div className="bg-white p-4 w-full shadow-sm">
+          {/* Back Button */}
+          <button
             onClick={() => navigate(-1)}
             className="mb-6">
-            
-              <ArrowLeft className="w-6 h-6" />
-            </button>
 
-            {/* Profile Information */}
-            <div
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+
+          {/* Profile Information */}
+          <div
             onClick={() => navigate("/delivery/profile/details")}
             className="flex items-start justify-between">
-            
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h2 className="text-2xl md:text-3xl font-bold">
-                    {loading ? "Loading..." : profile?.name || "Delivery Partner"}
-                  </h2>
-                  <ChevronRight className="w-5 h-5" />
-                </div>
-                <p className="text-gray-600 text-sm md:text-base mb-3">
-                  {profile?.deliveryId || "N/A"}
-                </p>
+
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-2xl md:text-3xl font-bold">
+                  {loading ? "Loading..." : profile?.name}
+                </h2>
+                <ChevronRight className="w-5 h-5" />
               </div>
-              <div className="relative shrink-0 ml-4">
-                {profile?.profileImage?.url ?
-              <img
-                src={profile.profileImage.url}
-                alt="Profile"
-                className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-gray-200"
-                onError={(e) => {
-                  // Fallback to documents.photo if profileImage fails to load
-                  if (profile?.documents?.photo) {
-                    e.target.src = profile.documents.photo;
-                  } else {
-                    // Show default icon if both fail
-                    e.target.style.display = 'none';
-                    e.target.nextElementSibling?.classList.remove('hidden');
-                  }
-                }} /> :
+              <p className="text-gray-600 text-sm md:text-base mb-3">
+                {profile?.deliveryId || "N/A"}
+              </p>
+            </div>
+            <div className="relative shrink-0 ml-4">
+              {profile?.profileImage?.url ?
+                <img
+                  src={profile.profileImage.url}
+                  alt="Profile"
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-gray-200"
+                  onError={(e) => {
+                    // Fallback to documents.photo if profileImage fails to load
+                    if (profile?.documents?.photo) {
+                      e.target.src = profile.documents.photo;
+                    } else {
+                      e.target.style.display = 'none';
+                    }
+                  }} /> :
 
-              profile?.documents?.photo ?
-              <img
-                src={profile.documents.photo}
-                alt="Profile"
-                className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-gray-200"
-                onError={(e) => {
-                  // Show default icon if image fails to load
-                  e.target.style.display = 'none';
-                  e.target.nextElementSibling?.classList.remove('hidden');
-                }} /> :
+                profile?.documents?.photo ?
+                  <img
+                    src={profile.documents.photo}
+                    alt="Profile"
+                    className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-gray-200"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }} /> :
 
-              null}
-                {!profile?.profileImage?.url && !profile?.documents?.photo &&
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-200">
-                    <User className="w-10 h-10 md:w-12 md:h-12 text-gray-500" />
-                  </div>
-              }
-                <div className="absolute bottom-0 right-0 bg-white rounded-full p-2 border-2 border-white">
-                  <Briefcase className="w-4 h-4" />
-                </div>
+                  null}
+              <div className="absolute bottom-0 right-0 bg-white rounded-full p-2 border-2 border-white">
+                <Briefcase className="w-4 h-4" />
               </div>
             </div>
           </div>
         </div>
-      
+      </div>
+
       <div className="px-4 py-6 pb-24 md:pb-6">
 
         {/* Navigation Buttons */}
@@ -287,7 +279,7 @@ export default function ProfilePage() {
           <button
             onClick={() => navigate("/delivery/trip-history")}
             className="bg-white rounded-lg p-4 flex flex-col items-center gap-1 hover:bg-gray-200 transition-colors">
-            
+
             <div className="rounded-lg p-2">
               <Bike className="w-5 h-5" />
             </div>
@@ -301,7 +293,7 @@ export default function ProfilePage() {
           <Card
             onClick={() => navigate("/delivery/refer-and-earn")}
             className="py-0 bg-white border-0 shadow-none cursor-pointer hover:bg-gray-200 transition-colors">
-            
+
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-medium mb-1">₹2000 referral bonus</h3>
@@ -321,7 +313,7 @@ export default function ProfilePage() {
               <Card
                 onClick={() => navigate("/delivery/help/tickets")}
                 className="bg-white py-0 border-0 shadow-none rounded-none first:rounded-t-lg last:rounded-b-lg cursor-pointer hover:bg-gray-200 transition-colors">
-                
+
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Ticket className="w-5 h-5" />
@@ -339,7 +331,7 @@ export default function ProfilePage() {
             <Card
               onClick={() => setShowAlertSoundPopup(true)}
               className="bg-white py-0 border-0 shadow-none rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
-              
+
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5" />
@@ -355,7 +347,7 @@ export default function ProfilePage() {
             <Card
               onClick={handleLogout}
               className="bg-white py-0 border-0 shadow-none rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
-              
+
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <LogOut className="w-5 h-5 text-red-600" />
@@ -370,15 +362,15 @@ export default function ProfilePage() {
 
       {/* Order Alert Sound Popup */}
       {showAlertSoundPopup &&
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
           <div className="bg-white w-full max-w-md rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-300">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold">Order alert sound</h3>
               <button
-              onClick={() => setShowAlertSoundPopup(false)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors">
-              
+                onClick={() => setShowAlertSoundPopup(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
@@ -390,68 +382,68 @@ export default function ProfilePage() {
                 <label className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors">
                   <span className="text-base font-medium">Original</span>
                   <input
-                  type="radio"
-                  name="alertSound"
-                  value="original"
-                  checked={selectedAlertSound === 'original'}
-                  onChange={(e) => {
-                    setSelectedAlertSound(e.target.value);
-                    localStorage.setItem('delivery_alert_sound', e.target.value);
-                    // Play preview sound
-                    try {
+                    type="radio"
+                    name="alertSound"
+                    value="original"
+                    checked={selectedAlertSound === 'original'}
+                    onChange={(e) => {
+                      setSelectedAlertSound(e.target.value);
+                      localStorage.setItem('delivery_alert_sound', e.target.value);
+                      // Play preview sound
+                      try {
 
-                      const audio = new Audio(originalSound);
-                      audio.volume = 0.7;
-                      const playPromise = audio.play();
-                      if (playPromise !== undefined) {
-                        playPromise.
-                        then(() => {
+                        const audio = new Audio(originalSound);
+                        audio.volume = 0.7;
+                        const playPromise = audio.play();
+                        if (playPromise !== undefined) {
+                          playPromise.
+                            then(() => {
 
-                        }).
-                        catch((err) => {
-                          console.error('❌ Preview audio error:', err);
-                        });
+                            }).
+                            catch((err) => {
+                              console.error('❌ Preview audio error:', err);
+                            });
+                        }
+                      } catch (err) {
+                        console.error('❌ Could not create preview audio:', err);
                       }
-                    } catch (err) {
-                      console.error('❌ Could not create preview audio:', err);
-                    }
-                  }}
-                  className="w-5 h-5 text-black focus:ring-2 focus:ring-black" />
-                
+                    }}
+                    className="w-5 h-5 text-black focus:ring-2 focus:ring-black" />
+
                 </label>
 
                 {/* Zomato Tone Option */}
                 <label className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors">
                   <span className="text-base font-medium">Zomato Tone</span>
                   <input
-                  type="radio"
-                  name="alertSound"
-                  value="zomato_tone"
-                  checked={selectedAlertSound === 'zomato_tone'}
-                  onChange={(e) => {
-                    setSelectedAlertSound(e.target.value);
-                    localStorage.setItem('delivery_alert_sound', e.target.value);
-                    // Play preview sound
-                    try {
+                    type="radio"
+                    name="alertSound"
+                    value="zomato_tone"
+                    checked={selectedAlertSound === 'zomato_tone'}
+                    onChange={(e) => {
+                      setSelectedAlertSound(e.target.value);
+                      localStorage.setItem('delivery_alert_sound', e.target.value);
+                      // Play preview sound
+                      try {
 
-                      const audio = new Audio(alertSound);
-                      audio.volume = 0.7;
-                      const playPromise = audio.play();
-                      if (playPromise !== undefined) {
-                        playPromise.
-                        then(() => {
+                        const audio = new Audio(alertSound);
+                        audio.volume = 0.7;
+                        const playPromise = audio.play();
+                        if (playPromise !== undefined) {
+                          playPromise.
+                            then(() => {
 
-                        }).
-                        catch((err) => {
-                          console.error('❌ Preview audio error:', err);
-                        });
+                            }).
+                            catch((err) => {
+                              console.error('❌ Preview audio error:', err);
+                            });
+                        }
+                      } catch (err) {
+                        console.error('❌ Could not create preview audio:', err);
                       }
-                    } catch (err) {
-                      console.error('❌ Could not create preview audio:', err);
-                    }
-                  }}
-                  className="w-5 h-5 text-black focus:ring-2 focus:ring-black" />
-                
+                    }}
+                    className="w-5 h-5 text-black focus:ring-2 focus:ring-black" />
+
                 </label>
               </div>
             </div>
@@ -459,9 +451,9 @@ export default function ProfilePage() {
             {/* Ok Button */}
             <div className="p-4 border-t border-gray-200">
               <button
-              onClick={() => setShowAlertSoundPopup(false)}
-              className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
-              
+                onClick={() => setShowAlertSoundPopup(false)}
+                className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
+
                 Ok
               </button>
             </div>

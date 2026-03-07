@@ -25,7 +25,8 @@ router.put('/profile', validate(Joi.object({
     type: Joi.string().valid('bike', 'scooter', 'bicycle', 'car').optional(),
     number: Joi.string().trim().optional().allow(null, ''),
     model: Joi.string().trim().optional().allow(null, ''),
-    brand: Joi.string().trim().optional().allow(null, '')
+    brand: Joi.string().trim().optional().allow(null, ''),
+    name: Joi.string().trim().optional().allow(null, '')
   }).optional(),
   location: Joi.object({
     addressLine1: Joi.string().trim().optional().allow(null, ''),

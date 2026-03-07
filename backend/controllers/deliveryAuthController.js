@@ -92,8 +92,8 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
       try {
         delivery = await Delivery.create(deliveryData);
-        logger.info(`New delivery boy registered: ${delivery._id}`, { 
-          phone, 
+        logger.info(`New delivery boy registered: ${delivery._id}`, {
+          phone,
           deliveryId: delivery._id,
           deliveryIdField: delivery.deliveryId
         });
@@ -113,36 +113,44 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       // Login (with optional auto-registration)
       delivery = await Delivery.findOne({ phone });
 
+      // If user exists but signup is incomplete, delete and force fresh start
+      if (delivery && !delivery.isProfileComplete) {
+        logger.info(`Deleting incomplete signup record for: ${phone}`);
+        await Delivery.findByIdAndDelete(delivery._id);
+        delivery = null;
+      }
+
       // Verify OTP first (before creating user)
       await otpService.verifyOTP(phone, otp, purpose, null);
 
       if (!delivery) {
         // New user - create minimal record for signup flow
-        // Use provided name or placeholder
         const deliveryData = {
-          name: normalizedName || 'Delivery Partner', // Placeholder if not provided
+          name: normalizedName || null,
           phone,
           phoneVerified: true,
           signupMethod: 'phone',
-          status: 'pending', // New delivery boys start as pending approval
-          isActive: true // Allow login to see verification message
+          status: 'pending',
+          isActive: true,
+          isProfileComplete: false
         };
 
         try {
           delivery = await Delivery.create(deliveryData);
-          logger.info(`New delivery boy created for signup: ${delivery._id}`, { 
-            phone, 
-            deliveryId: delivery._id,
-            deliveryIdField: delivery.deliveryId,
+          logger.info(`New delivery boy created for signup: ${delivery._id}`, {
+            phone,
             hasName: !!normalizedName
           });
         } catch (createError) {
           if (createError.code === 11000) {
             delivery = await Delivery.findOne({ phone });
-            if (!delivery) {
-              throw createError;
+            if (!delivery) throw createError;
+
+            // If it exists but is incomplete (race condition), clear name if placeholder
+            if (!delivery.isProfileComplete && delivery.name === 'Delivery Partner') {
+              delivery.name = null;
+              await delivery.save();
             }
-            logger.info(`Delivery boy found after duplicate key error: ${delivery._id}`);
           } else {
             throw createError;
           }
@@ -153,16 +161,22 @@ export const verifyOTP = asyncHandler(async (req, res) => {
           delivery.phoneVerified = true;
           await delivery.save();
         }
+
+        // Safety check: if existing user has placeholder name from legacy code, clear it
+        if (!delivery.isProfileComplete && delivery.name === 'Delivery Partner') {
+          delivery.name = null;
+          await delivery.save();
+        }
       }
 
       // Check if signup needs to be completed (missing required fields)
-      const needsSignup = !delivery.location?.city || 
-                         !delivery.vehicle?.number || 
-                         !delivery.documents?.pan?.number ||
-                         !delivery.documents?.aadhar?.number ||
-                         !delivery.documents?.aadhar?.document ||
-                         !delivery.documents?.pan?.document ||
-                         !delivery.documents?.drivingLicense?.document;
+      const needsSignup = !delivery.location?.city ||
+        !delivery.vehicle?.number ||
+        !delivery.documents?.pan?.number ||
+        !delivery.documents?.aadhar?.number ||
+        !delivery.documents?.aadhar?.document ||
+        !delivery.documents?.pan?.document ||
+        !delivery.documents?.drivingLicense?.document;
 
       if (needsSignup) {
         // Generate tokens for signup flow
@@ -322,6 +336,30 @@ export const logout = asyncHandler(async (req, res) => {
   });
 
   return successResponse(res, 200, 'Logged out successfully');
+});
+
+/**
+ * Cancel Incomplete Signup
+ * DELETE /api/delivery/auth/signup/cancel
+ */
+export const cancelSignup = asyncHandler(async (req, res) => {
+  const delivery = req.delivery;
+
+  if (delivery.isProfileComplete) {
+    return errorResponse(res, 400, 'Cannot cancel a completed signup');
+  }
+
+  // Delete the incomplete record
+  await Delivery.findByIdAndDelete(delivery._id);
+
+  // Clear refresh token cookie
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+
+  return successResponse(res, 200, 'Signup cancelled and session cleared');
 });
 
 /**

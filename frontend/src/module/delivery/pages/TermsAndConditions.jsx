@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { 
+import {
   ArrowLeft
 } from "lucide-react"
 
@@ -46,7 +46,7 @@ export default function TermsAndConditions() {
     <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4 md:py-3 flex items-center gap-4 rounded-b-3xl md:rounded-b-none">
-        <button 
+        <button
           onClick={() => navigate("/delivery/profile")}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
@@ -61,7 +61,7 @@ export default function TermsAndConditions() {
           <p className="text-gray-600 text-sm md:text-base mb-6">
             Last updated: January 1, 2024
           </p>
-          
+
           <div className="space-y-6">
             {sections.map((section, index) => (
               <motion.div

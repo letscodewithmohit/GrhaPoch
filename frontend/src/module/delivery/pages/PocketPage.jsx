@@ -16,15 +16,17 @@ import {
   FileText as FileTextIcon,
   Wallet as WalletIcon,
   Sparkles,
-  IndianRupee } from
-"lucide-react";
+  IndianRupee
+} from
+  "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   fetchDeliveryWallet,
   calculateDeliveryBalances,
-  calculatePeriodEarnings } from
-"../utils/deliveryWalletState";
+  calculatePeriodEarnings
+} from
+  "../utils/deliveryWalletState";
 import { formatCurrency } from "../../restaurant/utils/currency";
 import { useGigStore } from "../store/gigStore";
 import { useProgressStore } from "../store/progressStore";
@@ -84,10 +86,10 @@ export default function PocketPage() {
 
           // Check if all required bank details fields are filled
           const isFilled = !!(
-          bankDetails?.accountHolderName?.trim() &&
-          bankDetails?.accountNumber?.trim() &&
-          bankDetails?.ifscCode?.trim() &&
-          bankDetails?.bankName?.trim());
+            bankDetails?.accountHolderName?.trim() &&
+            bankDetails?.accountNumber?.trim() &&
+            bankDetails?.ifscCode?.trim() &&
+            bankDetails?.bankName?.trim());
 
 
           setBankDetailsFilled(isFilled);
@@ -118,15 +120,15 @@ export default function PocketPage() {
 
   // Carousel slides data - only show bank details banner when not filled
   const carouselSlides = useMemo(() =>
-  bankDetailsFilled ? [] : [{
-    id: 2,
-    title: "Submit bank details",
-    subtitle: "PAN & bank details required for payouts",
-    icon: "bank",
-    buttonText: "Submit",
-    bgColor: "bg-yellow-400"
-  }],
-  [bankDetailsFilled]);
+    bankDetailsFilled ? [] : [{
+      id: 2,
+      title: "Submit bank details",
+      subtitle: "PAN & bank details required for payouts",
+      icon: "bank",
+      buttonText: "Submit",
+      bgColor: "bg-yellow-400"
+    }],
+    [bankDetailsFilled]);
 
   // Calculate balances
   const balances = calculateDeliveryBalances(walletState);
@@ -153,18 +155,18 @@ export default function PocketPage() {
   // Calculate weekly earnings from wallet transactions (payment + earning_addon bonus)
   // Include both payment and earning_addon transactions in weekly earnings
   const weeklyEarnings = walletState?.transactions?.
-  filter((t) => {
-    // Include both payment and earning_addon transactions
-    if (t.type !== 'payment' && t.type !== 'earning_addon' || t.status !== 'Completed') return false;
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-    const transactionDate = t.date ? new Date(t.date) : t.createdAt ? new Date(t.createdAt) : null;
-    if (!transactionDate) return false;
-    return transactionDate >= startOfWeek && transactionDate <= now;
-  }).
-  reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    filter((t) => {
+      // Include both payment and earning_addon transactions
+      if (t.type !== 'payment' && t.type !== 'earning_addon' || t.status !== 'Completed') return false;
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const transactionDate = t.date ? new Date(t.date) : t.createdAt ? new Date(t.createdAt) : null;
+      if (!transactionDate) return false;
+      return transactionDate >= startOfWeek && transactionDate <= now;
+    }).
+    reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
   // Calculate weekly orders count from transactions
   const calculateWeeklyOrders = () => {
@@ -200,10 +202,10 @@ export default function PocketPage() {
 
           // Get the first valid active offer (prioritize isValid, then isUpcoming, then any active status)
           const activeOffer = offers.find((offer) => offer.isValid) ||
-          offers.find((offer) => offer.isUpcoming) ||
-          offers.find((offer) => offer.status === 'active') ||
-          offers[0] ||
-          null;
+            offers.find((offer) => offer.isUpcoming) ||
+            offers.find((offer) => offer.status === 'active') ||
+            offers[0] ||
+            null;
 
           setActiveEarningAddon(activeOffer);
         } else {
@@ -263,29 +265,29 @@ export default function PocketPage() {
     const endDate = activeEarningAddon.endDate ? new Date(activeEarningAddon.endDate) : null;
 
     return walletState.transactions.
-    filter((t) => {
-      // Only count earning_addon type transactions
-      if (t.type !== 'earning_addon' || t.status !== 'Completed') return false;
+      filter((t) => {
+        // Only count earning_addon type transactions
+        if (t.type !== 'earning_addon' || t.status !== 'Completed') return false;
 
-      // Filter by date range if offer has dates
-      if (startDate || endDate) {
-        const transactionDate = t.date ? new Date(t.date) : t.createdAt ? new Date(t.createdAt) : null;
-        if (!transactionDate) return false;
+        // Filter by date range if offer has dates
+        if (startDate || endDate) {
+          const transactionDate = t.date ? new Date(t.date) : t.createdAt ? new Date(t.createdAt) : null;
+          if (!transactionDate) return false;
 
-        if (startDate && transactionDate < startDate) return false;
-        if (endDate && transactionDate > endDate) return false;
-      }
+          if (startDate && transactionDate < startDate) return false;
+          if (endDate && transactionDate > endDate) return false;
+        }
 
-      // Check if transaction is related to current offer
-      if (t.metadata?.earningAddonId) {
-        return t.metadata.earningAddonId === activeEarningAddon._id?.toString() ||
-        t.metadata.earningAddonId === activeEarningAddon.id?.toString();
-      }
+        // Check if transaction is related to current offer
+        if (t.metadata?.earningAddonId) {
+          return t.metadata.earningAddonId === activeEarningAddon._id?.toString() ||
+            t.metadata.earningAddonId === activeEarningAddon.id?.toString();
+        }
 
-      // If no metadata, include all earning_addon transactions in date range
-      return true;
-    }).
-    reduce((sum, t) => sum + (t.amount || 0), 0);
+        // If no metadata, include all earning_addon transactions in date range
+        return true;
+      }).
+      reduce((sum, t) => sum + (t.amount || 0), 0);
   };
 
   // Earnings Guarantee - Use active earning addon if available, otherwise show 0
@@ -297,11 +299,11 @@ export default function PocketPage() {
   // Show only bonus earnings from the offer, not total weekly earnings
   const earningsGuaranteeCurrentEarnings = activeEarningAddon ? calculateBonusEarnings() : 0;
   const ordersProgress = earningsGuaranteeOrdersTarget > 0 ?
-  Math.min(earningsGuaranteeCurrentOrders / earningsGuaranteeOrdersTarget, 1) :
-  0;
+    Math.min(earningsGuaranteeCurrentOrders / earningsGuaranteeOrdersTarget, 1) :
+    0;
   const earningsProgress = earningsGuaranteeTarget > 0 ?
-  Math.min(earningsGuaranteeCurrentEarnings / earningsGuaranteeTarget, 1) :
-  0;
+    Math.min(earningsGuaranteeCurrentEarnings / earningsGuaranteeTarget, 1) :
+    0;
 
   // Get week end date for valid till - use offer end date if available
   const getWeekEndDate = () => {
@@ -325,21 +327,21 @@ export default function PocketPage() {
 
   // Calculate total bonus amount from all bonus transactions
   const totalBonus = walletState?.transactions?.
-  filter((t) => t.type === 'bonus' && t.status === 'Completed').
-  reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    filter((t) => t.type === 'bonus' && t.status === 'Completed').
+    reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
   // Calculate total tips from transactions
   const totalTips = walletState?.transactions?.
-  filter((t) => t.type === 'tip' && t.status === 'Completed').
-  reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    filter((t) => t.type === 'tip' && t.status === 'Completed').
+    reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
   // Pocket balance - shows total balance (includes bonus + tips)
   // Total balance = all earnings + bonus + tips - withdrawals
   // This is what delivery partner can withdraw
   // IMPORTANT: Use walletState.pocketBalance if available (from API), otherwise use totalBalance
   let pocketBalance = walletState?.pocketBalance !== undefined ?
-  walletState.pocketBalance :
-  walletState?.totalBalance || balances.totalBalance || 0;
+    walletState.pocketBalance :
+    walletState?.totalBalance || balances.totalBalance || 0;
 
   // IMPORTANT: Ensure pocket balance includes bonus and tips
   // If backend totalBalance is 0 but we have bonus/tips, calculate it manually
@@ -380,19 +382,19 @@ export default function PocketPage() {
   }, [pocketBalance, walletState, balances]);
   // Available cash limit = remaining limit (global limit - cash in hand)
   const totalCashLimit = Number.isFinite(Number(walletState?.totalCashLimit)) ?
-  Number(walletState.totalCashLimit) :
-  0;
+    Number(walletState.totalCashLimit) :
+    0;
   const availableCashLimit =
-  Number.isFinite(Number(walletState?.availableCashLimit)) &&
-  Number(walletState?.availableCashLimit) >= 0 ?
-  Number(walletState.availableCashLimit) :
-  Math.max(0, totalCashLimit - (Number(balances.cashInHand) || 0));
+    Number.isFinite(Number(walletState?.availableCashLimit)) &&
+      Number(walletState?.availableCashLimit) >= 0 ?
+      Number(walletState.availableCashLimit) :
+      Math.max(0, totalCashLimit - (Number(balances.cashInHand) || 0));
   const depositAmount = pocketBalance < 0 ? Math.abs(pocketBalance) : 0;
 
   // Customer tips balance - calculate from transactions
   const customerTipsBalance = walletState.transactions?.
-  filter((t) => t.type === 'tip' && t.status === 'Completed').
-  reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    filter((t) => t.type === 'tip' && t.status === 'Completed').
+    reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
   // Payout data - calculate from completed withdrawals in previous week
   const calculatePayoutAmount = () => {
@@ -405,13 +407,13 @@ export default function PocketPage() {
     lastWeekEnd.setHours(23, 59, 59, 999);
 
     return walletState.transactions?.
-    filter((t) => {
-      if (t.type !== 'withdrawal' || t.status !== 'Completed') return false;
-      const transactionDate = t.date ? new Date(t.date) : t.createdAt ? new Date(t.createdAt) : null;
-      if (!transactionDate) return false;
-      return transactionDate >= lastWeekStart && transactionDate <= lastWeekEnd;
-    }).
-    reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+      filter((t) => {
+        if (t.type !== 'withdrawal' || t.status !== 'Completed') return false;
+        const transactionDate = t.date ? new Date(t.date) : t.createdAt ? new Date(t.createdAt) : null;
+        if (!transactionDate) return false;
+        return transactionDate >= lastWeekStart && transactionDate <= lastWeekEnd;
+      }).
+      reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
   };
 
   const payoutAmount = calculatePayoutAmount();
@@ -447,7 +449,7 @@ export default function PocketPage() {
 
 
         const totalBonus = walletData?.transactions?.filter((t) => t.type === 'bonus' && t.status === 'Completed').
-        reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+          reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
       } catch (error) {
         console.error('Error fetching wallet data:', error);
@@ -502,6 +504,8 @@ export default function PocketPage() {
     };
   }, [location.pathname]);
 
+  const lenisRef = useRef(null);
+
   useEffect(() => {
     // Initialize Lenis for smooth scrolling
     const lenis = new Lenis({
@@ -509,6 +513,7 @@ export default function PocketPage() {
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true
     });
+    lenisRef.current = lenis;
 
     function raf(time) {
       lenis.raf(time);
@@ -519,8 +524,21 @@ export default function PocketPage() {
 
     return () => {
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, [location.pathname, animationKey]);
+
+  // Prevent background scroll when any popup is open
+  useEffect(() => {
+    const isAnyPopupOpen = showCashLimitPopup || showDepositPopup;
+    if (isAnyPopupOpen) {
+      document.body.style.overflow = 'hidden';
+      lenisRef.current?.stop();
+    } else {
+      document.body.style.overflow = '';
+      lenisRef.current?.start();
+    }
+  }, [showCashLimitPopup, showDepositPopup]);
 
   // Listen for refresh events from bottom navigation
   useEffect(() => {
@@ -696,28 +714,28 @@ export default function PocketPage() {
       <FeedNavbar
         isOnline={isOnline}
         onToggleOnline={handleToggleOnline}
-        onEmergencyClick={() => {}}
-        onHelpClick={() => {}}
+        onEmergencyClick={() => { }}
+        onHelpClick={() => { }}
         className="" />
-      
+
 
       {carouselSlides.length > 0 &&
-      <div
-        ref={carouselRef}
-        className="relative overflow-hidden bg-gray-700 cursor-grab active:cursor-grabbing select-none"
-        onTouchStart={handleCarouselTouchStart}
-        onTouchMove={handleCarouselTouchMove}
-        onTouchEnd={handleCarouselTouchEnd}
-        onMouseDown={handleCarouselMouseDown}>
-        
+        <div
+          ref={carouselRef}
+          className="relative overflow-hidden bg-gray-700 cursor-grab active:cursor-grabbing select-none"
+          onTouchStart={handleCarouselTouchStart}
+          onTouchMove={handleCarouselTouchMove}
+          onTouchEnd={handleCarouselTouchEnd}
+          onMouseDown={handleCarouselMouseDown}>
+
           <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentCarouselSlide * 100}%)` }}>
             {carouselSlides.map((slide) =>
-          <div key={slide.id} className="min-w-full">
+              <div key={slide.id} className="min-w-full">
                 <div className={`${slide.bgColor} px-4 py-3 flex items-center gap-3 min-h-[80px]`}>
                   {/* Icon */}
                   <div className="flex-shrink-0">
                     {slide.icon === "bag" ?
-                <div className="relative">
+                      <div className="relative">
                         {/* Delivery Bag Icon - Reduced size */}
                         <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center shadow-lg relative">
                           {/* Bag shape */}
@@ -729,7 +747,7 @@ export default function PocketPage() {
                         <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-black/30 rounded-full blur-sm"></div>
                       </div> :
 
-                <div className="relative w-10 h-10">
+                      <div className="relative w-10 h-10">
                         {/* Bank/Rupee Icon - Reduced size */}
                         <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center relative">
                           {/* Rupee symbol */}
@@ -738,7 +756,7 @@ export default function PocketPage() {
                           </svg>
                         </div>
                       </div>
-                }
+                    }
                   </div>
 
                   {/* Text Content */}
@@ -753,34 +771,34 @@ export default function PocketPage() {
 
                   {/* Button */}
                   <button
-                onClick={() => {
-                  if (slide.id === 2) {
-                    navigate("/delivery/profile/details");
-                  }
-                }}
-                className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-colors ${slide.bgColor === "bg-gray-700" ?
-                "bg-gray-600 text-white hover:bg-gray-500" :
-                "bg-yellow-300 text-black hover:bg-yellow-200"}`
-                }>
+                    onClick={() => {
+                      if (slide.id === 2) {
+                        navigate("/delivery/profile/details");
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-colors ${slide.bgColor === "bg-gray-700" ?
+                      "bg-gray-600 text-white hover:bg-gray-500" :
+                      "bg-yellow-300 text-black hover:bg-yellow-200"}`
+                    }>
                     {slide.buttonText}
                   </button>
                 </div>
               </div>
-          )}
+            )}
           </div>
 
           {/* Carousel Indicators */}
           <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
             {carouselSlides.map((_, index) =>
-          <button
-            key={index}
-            onClick={() => setCurrentCarouselSlide(index)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${index === currentCarouselSlide ?
-            currentCarouselSlide === 0 ? "w-6 bg-white" : "w-6 bg-black" :
-            index === 0 ? "w-1.5 bg-white/50" : "w-1.5 bg-black/30"}`
-            } />
+              <button
+                key={index}
+                onClick={() => setCurrentCarouselSlide(index)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${index === currentCarouselSlide ?
+                  currentCarouselSlide === 0 ? "w-6 bg-white" : "w-6 bg-black" :
+                  index === 0 ? "w-1.5 bg-white/50" : "w-1.5 bg-black/30"}`
+                } />
 
-          )}
+            )}
           </div>
         </div>
       }
@@ -794,7 +812,7 @@ export default function PocketPage() {
             {/* Top text */}
             <div className="flex justify-center mb-2">
               <span className="text-black text-sm">
-                Earnings: {getCurrentWeekRange()} →
+                Earnings: {getCurrentWeekRange()}
               </span>
             </div>
 
@@ -812,7 +830,7 @@ export default function PocketPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.25 }}
           className="w-full rounded-xl overflow-hidden bg-white mb-4">
-          
+
           {/* Header */}
           <div className="border-b  border-gray-100">
             <div className="flex p-2 px-3 items-center justify-between bg-black">
@@ -821,7 +839,7 @@ export default function PocketPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white">Valid till {weekEndDate}</span>
                   {isOfferLive &&
-                  <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span className="text-sm text-green-600 font-medium">Live</span>
                     </div>
@@ -845,7 +863,7 @@ export default function PocketPage() {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5, type: "spring" }}
                 className="flex flex-col items-center">
-                
+
                 <div className="relative w-32 h-32">
                   <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
                     {/* Background circle */}
@@ -856,7 +874,7 @@ export default function PocketPage() {
                       fill="none"
                       stroke="#e5e7eb"
                       strokeWidth="8" />
-                    
+
                     {/* Progress circle */}
                     <motion.circle
                       cx="60"
@@ -869,7 +887,7 @@ export default function PocketPage() {
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: ordersProgress }}
                       transition={{ delay: 0.6, duration: 1, ease: "easeOut" }} />
-                    
+
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-xl font-bold text-gray-900">{earningsGuaranteeCurrentOrders} of {earningsGuaranteeOrdersTarget || 0}</span>
@@ -889,7 +907,7 @@ export default function PocketPage() {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
                 className="flex flex-col items-center">
-                
+
                 <div className="relative w-32 h-32">
                   <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
                     {/* Background circle */}
@@ -900,7 +918,7 @@ export default function PocketPage() {
                       fill="none"
                       stroke="#e5e7eb"
                       strokeWidth="8" />
-                    
+
                     {/* Progress circle */}
                     <motion.circle
                       cx="60"
@@ -913,7 +931,7 @@ export default function PocketPage() {
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: earningsProgress }}
                       transition={{ delay: 0.7, duration: 1, ease: "easeOut" }} />
-                    
+
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-lg font-bold text-gray-900">₹{earningsGuaranteeCurrentEarnings.toFixed(2)}</span>
@@ -973,7 +991,7 @@ export default function PocketPage() {
                 <Button
                   onClick={() => setShowDepositPopup(true)}
                   className="flex-1 bg-white hover:bg-gray-300 text-black border border-black font-semibold py-3 rounded-lg">
-                  
+
                   Deposit
                 </Button>
               </div>
@@ -996,7 +1014,7 @@ export default function PocketPage() {
             <Card
               className=" py-0  bg-white border-0 shadow-none cursor-pointer hover:bg-gray-200 transition-colors"
               onClick={() => navigate("/delivery/payout")}>
-              
+
               <CardContent className="p-4 flex flex-col items-start text-start">
                 <div className="text-black text-2xl font-bold mb-2">₹{payoutAmount}</div>
                 <div className="text-black text-sm font-medium mb-1">Payout</div>
@@ -1008,7 +1026,7 @@ export default function PocketPage() {
             <Card
               className=" py-0  bg-white border-0 shadow-none cursor-pointer hover:bg-gray-200 transition-colors"
               onClick={() => navigate("/delivery/limit-settlement")}>
-              
+
               <CardContent className="p-4 flex flex-col items-start text-start">
                 <div className="w-12 h-12 flex items-start mb-3">
                   <Receipt className="w-8 h-8 text-black" />
@@ -1021,7 +1039,7 @@ export default function PocketPage() {
             <Card
               className=" py-0  bg-white border-0 shadow-none cursor-pointer hover:bg-gray-200 transition-colors"
               onClick={() => navigate("/delivery/deduction-statement")}>
-              
+
               <CardContent className="p-4 flex flex-col items-start text-start">
                 <div className="w-12 h-12 flex items-center justify-center mb-3">
                   <FileTextIcon className="w-8 h-8 text-black" />
@@ -1034,7 +1052,7 @@ export default function PocketPage() {
             <Card
               className=" py-0  bg-white border-0 shadow-none cursor-pointer hover:bg-gray-200 transition-colors"
               onClick={() => navigate("/delivery/pocket-details")}>
-              
+
               <CardContent className="p-4 flex flex-col items-start text-start">
                 <div className="w-12 h-12 flex items-center justify-center mb-3">
                   <WalletIcon className="w-8 h-8 text-black" />
@@ -1051,11 +1069,12 @@ export default function PocketPage() {
       <BottomPopup
         isOpen={showCashLimitPopup}
         onClose={() => setShowCashLimitPopup(false)}
-        title="Available Cash Limit?"
-        showCloseButton={true}
+        title="Available Cash Limit"
+        showCloseButton={false}
+        showHandle={false}
         closeOnBackdropClick={true}
         maxHeight="60vh">
-        
+
         <AvailableCashLimit
           onClose={() => setShowCashLimitPopup(false)}
           walletData={{
@@ -1065,7 +1084,7 @@ export default function PocketPage() {
             pocketWithdrawals: balances.totalWithdrawn ?? 0,
             settlementAdjustment: 0
           }} />
-        
+
       </BottomPopup>
 
       <BottomPopup
@@ -1075,11 +1094,11 @@ export default function PocketPage() {
         showCloseButton={true}
         closeOnBackdropClick={true}
         maxHeight="50vh">
-        
+
         <DepositPopup
           cashInHand={balances.cashInHand ?? walletState?.cashInHand ?? 0}
           onSuccess={() => setShowDepositPopup(false)} />
-        
+
       </BottomPopup>
     </div>);
 

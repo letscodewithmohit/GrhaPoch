@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { X, Loader2 } from "lucide-react"
+import { X, Loader2, User } from "lucide-react"
 import { deliveryAPI } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -15,7 +15,7 @@ export default function ShowIdCard() {
       try {
         setLoading(true)
         const response = await deliveryAPI.getProfile()
-        
+
         if (response?.data?.success && response?.data?.data?.profile) {
           setProfileData(response.data.data.profile)
         } else {
@@ -69,8 +69,8 @@ export default function ShowIdCard() {
       return profileData.documents.photo
     }
     // Fallback to avatar generator with name
-    const name = profileData?.name || "Delivery Partner"
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=ff8100&color=fff&size=128`
+    const name = profileData?.name || ""
+    return ""
   }
 
   // Get vehicle display text
@@ -111,7 +111,7 @@ export default function ShowIdCard() {
   }
 
   const idCardData = {
-    name: profileData.name || "Delivery Partner",
+    name: profileData.name || "",
     id: profileData.deliveryId || profileData._id?.toString().slice(-8).toUpperCase() || "N/A",
     phone: profileData.phone || "N/A",
     status: getStatusDisplay(),
@@ -136,12 +136,11 @@ export default function ShowIdCard() {
         {/* Profile Picture - Positioned on gray area, overlapping into white */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
           <img
-            src={idCardData.profileImage}
+            src={idCardData.profileImage || ""}
             alt={idCardData.name}
             className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
             onError={(e) => {
-              const name = idCardData.name || "Delivery Partner"
-              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=ff8100&color=fff&size=128`
+              e.target.style.display = 'none';
             }}
           />
         </div>

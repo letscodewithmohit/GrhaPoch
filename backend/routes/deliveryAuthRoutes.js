@@ -4,7 +4,8 @@ import {
   verifyOTP,
   refreshToken,
   logout,
-  getCurrentDelivery
+  getCurrentDelivery,
+  cancelSignup
 } from '../controllers/deliveryAuthController.js';
 import { authenticate } from '../middleware/delivery.auth.js';
 import { validate } from '../middleware/validate.js';
@@ -41,6 +42,7 @@ router.post('/refresh-token', refreshToken);
 // Protected routes (require authentication)
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentDelivery);
+router.post('/cancel-signup', authenticate, cancelSignup);
 
 export default router;
 

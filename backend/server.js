@@ -29,9 +29,8 @@ if (process.env.DEBUG_SOCKET_LOGS !== 'true') {
     const first = args?.[0];
     const message = typeof first === 'string' ? first : '';
     if (
-    message.includes('Socket.IO: Allowing connection') ||
-    message.includes('Socket.IO: Allowing localhost connection'))
-    {
+      message.includes('Socket.IO: Allowing connection') ||
+      message.includes('Socket.IO: Allowing localhost connection')) {
       return;
     }
     originalConsoleLog(...args);
@@ -94,7 +93,7 @@ requiredEnvVars.forEach((varName) => {
     value = value.trim();
     // Remove surrounding quotes
     if (value.startsWith('"') && value.endsWith('"') ||
-    value.startsWith("'") && value.endsWith("'")) {
+      value.startsWith("'") && value.endsWith("'")) {
       value = value.slice(1, -1).trim();
     }
   }
@@ -128,14 +127,14 @@ const httpServer = createServer(app);
 
 // Initialize Socket.IO with proper CORS configuration
 const allowedSocketOrigins = [
-process.env.CORS_ORIGIN,
-'https://foozeto.appzeto.com',
-'http://foozeto.appzeto.com',
-'http://localhost:5173',
-'http://localhost:3000',
-'http://127.0.0.1:5173',
-'http://127.0.0.1:3000'].
-filter(Boolean); // Remove undefined values
+  process.env.CORS_ORIGIN,
+  'https://foozeto.appzeto.com',
+  'http://foozeto.appzeto.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'].
+  filter(Boolean); // Remove undefined values
 
 const io = new Server(httpServer, {
   cors: {
@@ -342,17 +341,17 @@ connectRedis().catch(() => {
 app.use(helmet());
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
-process.env.CORS_ORIGIN,
-'https://foods.appzeto.com',
-'http://foods.appzeto.com',
-'https://foozeto.appzeto.com',
-'http://foozeto.appzeto.com',
-'http://localhost:3000',
-'http://localhost:5173',
-'http://localhost:5174',
-'http://127.0.0.1:5173',
-'http://127.0.0.1:5174'].
-filter(Boolean); // Remove undefined values
+  process.env.CORS_ORIGIN,
+  'https://foods.appzeto.com',
+  'http://foods.appzeto.com',
+  'https://foozeto.appzeto.com',
+  'http://foozeto.appzeto.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174'].
+  filter(Boolean); // Remove undefined values
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -529,14 +528,14 @@ io.on('connection', (socket) => {
         const { default: Order } = await import('./models/Order.js');
 
         const order = await Order.findById(orderId).
-        populate({
-          path: 'deliveryPartnerId',
-          select: 'availability',
-          populate: {
-            path: 'availability.currentLocation'
-          }
-        }).
-        lean();
+          populate({
+            path: 'deliveryPartnerId',
+            select: 'availability',
+            populate: {
+              path: 'availability.currentLocation'
+            }
+          }).
+          lean();
 
         if (order?.deliveryPartnerId?.availability?.currentLocation) {
           const coords = order.deliveryPartnerId.availability.currentLocation.coordinates;
@@ -567,11 +566,11 @@ io.on('connection', (socket) => {
       const { default: Order } = await import('./models/Order.js');
 
       const order = await Order.findById(orderId).
-      populate({
-        path: 'deliveryPartnerId',
-        select: 'availability'
-      }).
-      lean();
+        populate({
+          path: 'deliveryPartnerId',
+          select: 'availability'
+        }).
+        lean();
 
       if (order?.deliveryPartnerId?.availability?.currentLocation) {
         const coords = order.deliveryPartnerId.availability.currentLocation.coordinates;
@@ -612,7 +611,7 @@ httpServer.listen(PORT, () => {
 
 
   // Print startup status after services initialize
-  printStartupStatus(PORT).catch(() => {});
+  printStartupStatus(PORT).catch(() => { });
 
   // Initialize scheduled tasks after DB connection is established
   setTimeout(() => {

@@ -356,13 +356,12 @@ export const sidebarMenuData = [
         label: "Pages & Social Media",
         icon: "Link",
         subItems: [
-          { label: "Terms And Condition", path: "/admin/pages-social-media/terms" },
-          { label: "Privacy Policy", path: "/admin/pages-social-media/privacy" },
-          { label: "About Us", path: "/admin/pages-social-media/about" },
+          { label: "Terms and Conditions", path: "/admin/pages-social-media/terms" }, // Index 0
+          { label: "Privacy Policy", path: "/admin/pages-social-media/privacy" }, // Index 1
+          { label: "About Us", path: "/admin/pages-social-media/about" },        // Index 2 (The suspect index)
           { label: "Refund Policy", path: "/admin/pages-social-media/refund" },
           { label: "Shipping Policy", path: "/admin/pages-social-media/shipping" },
           { label: "Cancellation Policy", path: "/admin/pages-social-media/cancellation" },
-
         ],
       },
     ],

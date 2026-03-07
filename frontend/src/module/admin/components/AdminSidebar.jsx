@@ -358,14 +358,14 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
             }
           }}
           className={cn(
-            "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-300 ease-out menu-item-animate text-left",
+            "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-300 ease-out text-left",
             isInSection ? "text-sm font-semibold" : "text-sm",
             isActive(item.path)
               ? "bg-white/10 text-white border border-white/15 font-semibold"
               : "text-neutral-300 hover:bg-white/5 hover:text-white",
             isCollapsed && "justify-center px-2"
           )}
-          style={{ animationDelay: `${index * 0.05}s` }}
+          style={{ animationDelay: `${(parseFloat(index) || 0) * 0.05}s` }}
           title={isCollapsed ? item.label : undefined}
         >
           <Icon className={cn(
@@ -387,7 +387,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
 
       if (isCollapsed) {
         return (
-          <div key={index} className="menu-item-animate" style={{ animationDelay: `${index * 0.05}s` }}>
+          <div key={index} className="menu-item-animate" style={{ animationDelay: `${(parseFloat(index) || 0) * 0.05}s` }}>
             <button
               onClick={() => toggleSection(sectionKey)}
               className={cn(
@@ -403,7 +403,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
       }
 
       return (
-        <div key={index} className="menu-item-animate" style={{ animationDelay: `${index * 0.05}s` }}>
+        <div key={index} style={{ animationDelay: `${(parseFloat(index) || 0) * 0.05}s` }}>
           <button
             onClick={() => toggleSection(sectionKey)}
             className={cn(
@@ -420,7 +420,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
             </div>
           </button>
           {isExpanded && item.subItems && (
-            <div className="ml-5 mt-1 space-y-1 border-neutral-800/60 pl-3 submenu-animate overflow-hidden">
+            <div className="ml-5 mt-1 space-y-1 border-neutral-800/60 pl-3">
               {item.subItems.map((subItem, subIndex) => {
                 const allSubPaths = item.subItems.map(si => si.path)
                 return (
@@ -438,7 +438,9 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
                         ? "bg-white/10 text-white font-semibold"
                         : "text-neutral-300 hover:bg-white/5 hover:text-white"
                     )}
-                    style={{ animationDelay: `${subIndex * 0.03}s` }}
+                    style={{
+                      animationDelay: `${subIndex * 0.03}s`
+                    }}
                   >
                     <span className={cn(
                       "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-300",

@@ -780,7 +780,10 @@ export const deliveryAPI = {
 
   // Get delivery profile
   getProfile: () => {
-    return apiClient.get(API_ENDPOINTS.DELIVERY.PROFILE);
+    // Pass a cache-busting parameter to bypass the 30-second GET cache in axios.js
+    return apiClient.get(API_ENDPOINTS.DELIVERY.PROFILE, {
+      params: { _t: Date.now() }
+    });
   },
 
   // Update delivery profile
@@ -881,6 +884,9 @@ export const deliveryAPI = {
   },
   submitSignupDocuments: (data) => {
     return apiClient.post(API_ENDPOINTS.DELIVERY.SIGNUP.DOCUMENTS, data);
+  },
+  cancelSignup: () => {
+    return apiClient.post(API_ENDPOINTS.DELIVERY.SIGNUP.CANCEL_SIGNUP);
   },
 
   // Reverify (resubmit for approval)

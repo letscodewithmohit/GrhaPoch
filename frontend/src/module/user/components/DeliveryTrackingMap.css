@@ -224,8 +224,8 @@
 /* Hide Google Maps footer elements (Keyboard shortcuts, Map data, Terms) */
 .gm-style-cc,
 .gm-style-cc a,
-a[href*="keyboard"],
-a[href*="terms"],
+.gm-style a[href*="keyboard"],
+.gm-style a[href*="terms"],
 .gm-style-mtc,
 .gm-style-mtc div {
   display: none !important;
