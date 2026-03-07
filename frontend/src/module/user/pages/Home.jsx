@@ -1299,7 +1299,7 @@ export default function Home() {
 
       {/* Unified Navbar & Hero Section */}
       {/* Unified Header Section (Navbar + Search) */}
-      <div className="bg-white dark:bg-[#0a0a0a] pb-4 sticky top-0 z-40 shadow-sm">
+      <div className="bg-white dark:bg-[#0a0a0a] pb-4 relative z-30">
         {/* Navbar */}
         <div className="relative z-20 pt-2 sm:pt-3 lg:pt-4">
           <PageNavbar textColor="black" zIndex={20} />

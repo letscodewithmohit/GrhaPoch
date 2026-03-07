@@ -1,10 +1,10 @@
 /**
- * ╔══════════════════════════════════════════════════════════════╗
- * ║          GRHAPOCH - TEST CLEANUP SCRIPT                      ║
- * ║  Deletes test data but KEEPS: Admin, Restaurants, Menus,     ║
- * ║  Business Settings, Fee Settings, Subscription Plans,        ║
- * ║  All Images/Logos, Environment Variables                     ║
- * ╚══════════════════════════════════════════════════════════════╝
+ * GRHAPOCH - TARGETED TEST CLEANUP
+ * Removes order & fee trails only. Keeps:
+ * - Admins, Restaurants, Delivery boys, Users
+ * - Menus/Dishes/Add-ons, Coupons, Offers, Advertisements
+ * - Business/Subscription settings & subscription payments
+ * - All images/logos, environment vars
  */
 
 import mongoose from 'mongoose';
@@ -17,7 +17,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-// ─── Ask user confirmation ──────────────────────────────────────
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
@@ -28,133 +27,58 @@ if (!MONGODB_URI) {
 }
 
 async function cleanup() {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  const answer = await ask('\n⚠️  Kya aap sure hain? (yes/no): ');
+  const answer = await ask('\n⚠️  Are you sure you want to delete order/fee data? (yes/no): ');
   if (answer.toLowerCase() !== 'yes') {
-
     rl.close();
     process.exit(0);
   }
 
-
   await mongoose.connect(MONGODB_URI);
-
-
   const db = mongoose.connection.db;
   const results = {};
 
-  // Helper to safely delete from a collection
-  const deleteAll = async (collectionName, label) => {
+  const deleteAll = async (collectionName, label, filter = {}) => {
     try {
       const collection = db.collection(collectionName);
-      const count = await collection.countDocuments();
+      const count = await collection.countDocuments(filter);
       if (count === 0) {
-
         results[label] = 0;
         return;
       }
-      const res = await collection.deleteMany({});
+      const res = await collection.deleteMany(filter);
       results[label] = res.deletedCount;
-
     } catch (err) {
-
-      results[label] = 'error';
+      results[label] = `error: ${err.message}`;
     }
   };
 
-  // Helper to delete users by role only
-  const deleteUsersByRole = async (roles, label) => {
-    try {
-      const collection = db.collection('users');
-      const res = await collection.deleteMany({ role: { $in: roles } });
-      results[label] = res.deletedCount;
-
-    } catch (err) {
-
-    }
-  };
-
-
-
-  // ─── 1. Orders & related ──────────────────────────────────────
-
+  // 1) Orders and related trails
   await deleteAll('orders', 'Orders');
   await deleteAll('ordersettlements', 'Order Settlements');
   await deleteAll('orderevents', 'Order Events');
   await deleteAll('etalogs', 'ETA Logs');
-
-  // ─── 2. Deliveries ─────────────────────────────────────────
-
   await deleteAll('deliveries', 'Delivery Records');
+
+  // 2) Fee / commission / wallets / donations
   await deleteAll('deliverywallets', 'Delivery Wallets');
-  await deleteAll('deliverywithdrawalrequests', 'Withdrawal Requests');
-
-  // ─── 3. User Wallets ───────────────────────────────────────
-
-  await deleteAll('userwallets', 'User Wallets');
-  await deleteAll('donations', 'Donations');
-
-  // ─── 4. Auth/OTP ─────────────────────────────────────────
-
-  await deleteAll('otps', 'OTPs');
-
-  // ─── 5. Notifications ─────────────────────────────────────
-
-  await deleteAll('notifications', 'Notifications');
-  await deleteAll('restaurantnotifications', 'Restaurant Notifications');
-
-  // ─── 6. Subscription Payments (Gross Revenue + Sub Revenue → ₹0) ──
-
-  await deleteAll('subscriptionpayments', 'Subscription Payments');
+  await deleteAll('deliverywithdrawalrequests', 'Delivery Withdrawal Requests');
   await deleteAll('restaurantwallets', 'Restaurant Wallets');
   await deleteAll('withdrawalrequests', 'Restaurant Withdrawal Requests');
   await deleteAll('restaurantcommissions', 'Restaurant Commissions');
+  await deleteAll('donations', 'Donations');
 
-  // ─── 7. Users (delivery boys + customers only) ──────────
+  // 3) OTPs & notifications (often noise in test data)
+  await deleteAll('otps', 'OTPs');
+  await deleteAll('notifications', 'Notifications');
+  await deleteAll('restaurantnotifications', 'Restaurant Notifications');
 
-  await deleteUsersByRole(['delivery'], 'Delivery Boy Accounts');
-  await deleteUsersByRole(['user'], 'Customer Accounts');
+  // Note: We DO NOT delete users (any role), restaurants, menus, ads,
+  // coupons/offers, business settings, subscription plans, or subscription payments.
 
-  // ─── Summary ──────────────────────────────────────────────
-
-
-
+  console.log('\n✅ Cleanup summary:');
   for (const [key, val] of Object.entries(results)) {
-
+    console.log(`- ${key}: ${val}`);
   }
-
-
-
-
-
-
-
-
 
   await mongoose.disconnect();
   rl.close();
