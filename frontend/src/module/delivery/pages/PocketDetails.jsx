@@ -69,6 +69,19 @@ export default function PocketDetails() {
           return d >= weekRange.start && d <= weekRange.end && p.status === "Completed"
         })
 
+        // 3) Fetch bonus transactions
+        const bonuses = await fetchWalletTransactions({ type: "bonus", limit: 1000 })
+        const earningAddons = await fetchWalletTransactions({ type: "earning_addon", limit: 1000 })
+        const allBonuses = [...bonuses, ...earningAddons]
+        
+        // Filter bonuses within the selected week range
+        const filteredBonuses = allBonuses.filter((b) => {
+          const bonusDate = b.date || b.createdAt
+          if (!bonusDate) return false
+          const d = new Date(bonusDate)
+          return d >= weekRange.start && d <= weekRange.end && b.status === "Completed"
+        })
+
         // 4) Fetch tip transactions for mapping by orderId
         const tips = await fetchWalletTransactions({ type: "tip", limit: 1000 })
 
@@ -80,7 +93,57 @@ export default function PocketDetails() {
           return d >= weekRange.start && d <= weekRange.end && t.status === "Completed"
         })
 
-        setOrders(filteredTrips)
+        // 5) Create pseudo-orders for any transactions that don't have a matching trip
+        const existingOrderIds = new Set(filteredTrips.map(o => String(o.orderId || o._id || o.id)))
+        const allTransactions = [...filteredPayments, ...filteredBonuses, ...filteredTipsTransactions]
+        
+        const standaloneOrders = []
+        allTransactions.forEach(txn => {
+          const id = txn.orderId || txn.metadata?.orderId
+          
+          if (id) {
+            if (!existingOrderIds.has(String(id))) {
+              standaloneOrders.push({
+                _id: String(id),
+                orderId: String(id),
+                createdAt: txn.date || txn.createdAt,
+                restaurantName: txn.metadata?.restaurantName || "Unknown",
+                paymentMethod: "Online",
+                isStandalone: true
+              })
+              existingOrderIds.add(String(id))
+            }
+          } else {
+            // General transaction without order ID (like joining bonus or general earning addon)
+            const pseudoId = `txn_${txn._id || Math.random().toString(36).substr(2, 9)}`
+            if (!existingOrderIds.has(pseudoId)) {
+              let title = "Bonus"
+              if (txn.type === "earning_addon") title = "Earning Addon Target"
+              if (txn.type === "tip") title = "Tip"
+              if (txn.type === "payment") title = "Payment"
+
+              standaloneOrders.push({
+                _id: pseudoId,
+                orderId: title,
+                createdAt: txn.date || txn.createdAt,
+                restaurantName: txn.description || title,
+                paymentMethod: "System",
+                isStandalone: true,
+                _txnRef: txn
+              })
+              existingOrderIds.add(pseudoId)
+            }
+          }
+        })
+        
+        // Sort combining filteredTrips and standaloneOrders by date descending
+        const allOrders = [...filteredTrips, ...standaloneOrders].sort((a, b) => {
+          const dateA = new Date(a.deliveredAt || a.completedAt || a.createdAt || a.date || 0)
+          const dateB = new Date(b.deliveredAt || b.completedAt || b.createdAt || b.date || 0)
+          return dateB - dateA
+        })
+
+        setOrders(allOrders)
         setPaymentTransactions(filteredPayments)
         setBonusTransactions(filteredBonuses)
         setTipTransactions(filteredTipsTransactions)
@@ -161,6 +224,35 @@ export default function PocketDetails() {
         order.amount ||
         0
       )
+    }
+    return 0
+  }
+
+  // Helper: Get bonus for a specific order
+  const getOrderBonus = (orderId) => {
+    if (!orderId) return 0
+    // Try to find bonus transaction by orderId
+    const bonus = bonusTransactions.find((b) => {
+      const bonusOrderId = b.orderId || b.metadata?.orderId
+      return bonusOrderId && String(bonusOrderId) === String(orderId)
+    })
+    if (bonus) return bonus.amount || 0
+
+    // Fallback: try to match by date (same day)
+    const order = orders.find(o => {
+      const oId = o.orderId || o._id || o.id
+      return String(oId) === String(orderId)
+    })
+    if (order) {
+      const orderDate = order.deliveredAt || order.completedAt || order.createdAt || order.date
+      if (orderDate) {
+        const orderDateObj = new Date(orderDate)
+        const matchingBonus = bonusTransactions.find((b) => {
+          const bonusDate = new Date(b.date || b.createdAt)
+          return bonusDate.toDateString() === orderDateObj.toDateString()
+        })
+        if (matchingBonus) return matchingBonus.amount || 0
+      }
     }
     return 0
   }
@@ -306,9 +398,20 @@ export default function PocketDetails() {
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Order Details</h2>
             {orders.map((order, index) => {
               const orderId = getOrderId(order)
-              const earning = getOrderEarning(orderId)
-              const bonus = getOrderBonus(orderId)
-              const tip = getOrderTip(orderId)
+              let earning = 0
+              let bonus = 0
+              let tip = 0
+
+              if (order._txnRef) {
+                const type = order._txnRef.type
+                if (type === "payment") earning = order._txnRef.amount || 0
+                else if (type === "bonus" || type === "earning_addon") bonus = order._txnRef.amount || 0
+                else if (type === "tip") tip = order._txnRef.amount || 0
+              } else {
+                earning = getOrderEarning(orderId)
+                bonus = getOrderBonus(orderId)
+                tip = getOrderTip(orderId)
+              }
               const restaurantName = getRestaurantName(order)
               const orderDate = order.deliveredAt || order.completedAt || order.createdAt || order.date
               const paymentInfo = getPaymentMethod(order)
@@ -323,7 +426,7 @@ export default function PocketDetails() {
                       <div className="flex items-center gap-2 mb-1">
                         <Package className="w-4 h-4 text-gray-500" />
                         <span className="text-gray-900 font-semibold text-sm">
-                          Order #{orderId}
+                          {order._txnRef ? orderId : `Order #${orderId}`}
                         </span>
                       </div>
                       <p className="text-gray-600 text-xs mb-1">{restaurantName}</p>
