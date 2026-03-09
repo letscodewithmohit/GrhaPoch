@@ -645,7 +645,9 @@ export const restaurantAPI = {
     return apiClient.post(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.VERIFY_PAYMENT, paymentData);
   },
   getSubscriptionStatus: () => {
-    return apiClient.get(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.STATUS);
+    return apiClient.get(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.STATUS, {
+      params: { _t: Date.now() }
+    });
   },
   getSubscriptionPlans: () => {
     return apiClient.get(API_ENDPOINTS.RESTAURANT.SUBSCRIPTION.PLANS);
