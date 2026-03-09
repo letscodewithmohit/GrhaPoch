@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -27,6 +28,7 @@ import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, Dollar
 import { adminAPI } from "@/lib/api";
 
 export default function AdminHome() {
+  const navigate = useNavigate();
   const [selectedZone, setSelectedZone] = useState("all");
   const [selectedPeriod, setSelectedPeriod] = useState("overall");
   const [isLoading, setIsLoading] = useState(true);
@@ -107,6 +109,33 @@ export default function AdminHome() {
 
   const orderStats = getOrderStats();
   const monthlyData = getMonthlyData();
+
+  // Map metric titles to navigation targets (only where routes are known)
+  const cardLinks = {
+    "Gross revenue": "/admin/transaction-report?metric=gross",
+    "Commission earned": "/admin/restaurants/commission",
+    "Orders processed": "/admin/orders/all",
+    "Platform fee": "/admin/transaction-report?metric=platform_fee",
+    "Delivery fee": "/admin/transaction-report?metric=delivery_fee",
+    "GST": "/admin/transaction-report?metric=gst",
+    "Tips collected": "/admin/donation-management",
+    "Total Donations": "/admin/donation-management",
+    "Subscription Revenue": "/admin/subscription-management",
+    "Restaurant Ad Revenue": "/admin/advertisement",
+    "User Ad Revenue": "/admin/user-advertisements?tab=list",
+    "Total Ad Revenue": "/admin/advertisement",
+    "Total revenue": "/admin/transaction-report",
+    "Total restaurants": "/admin/restaurants",
+    "Restaurant request pending": "/admin/restaurants/joining-request",
+    "Total delivery boy": "/admin/delivery-partners",
+    "Delivery boy request pending": "/admin/delivery-partners/join-request",
+    "Total foods": "/admin/foods",
+    "Total addons": "/admin/addons",
+    "Total customers": "/admin/customers",
+    "Pending orders": "/admin/orders/pending",
+    "Completed orders": "/admin/orders/delivered"
+  };
+  const getCardClick = (title) => cardLinks[title] ? () => navigate(cardLinks[title]) : undefined;
 
   // Calculate totals from real data
   // Gross Revenue = Total Order Revenue + Subscription Revenue
@@ -205,160 +234,181 @@ export default function AdminHome() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Gross revenue"
-              value={`₹${revenueTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${revenueTotal.toLocaleString("en-IN")}`}
               helper="Rolling 12 months"
               icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
-              accent="bg-emerald-200/40" />
-            
+              accent="bg-emerald-200/40"
+              onClick={getCardClick("Gross revenue")}
+            />
             <MetricCard
               title="Commission earned"
-              value={`₹${commissionTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${commissionTotal.toLocaleString("en-IN")}`}
               helper="Restaurant commission"
               icon={<ArrowUpRight className="h-5 w-5 text-indigo-600" />}
-              accent="bg-indigo-200/40" />
-            
+              accent="bg-indigo-200/40"
+              onClick={getCardClick("Commission earned")}
+            />
             <MetricCard
               title="Orders processed"
               value={ordersTotal.toLocaleString("en-IN")}
               helper="Fulfilled & billed"
               icon={<Activity className="h-5 w-5 text-amber-600" />}
-              accent="bg-amber-200/40" />
-            
+              accent="bg-amber-200/40"
+              onClick={getCardClick("Orders processed")}
+            />
             <MetricCard
               title="Platform fee"
-              value={`₹${platformFeeTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${platformFeeTotal.toLocaleString("en-IN")}`}
               helper="Total platform fees"
               icon={<CreditCard className="h-5 w-5 text-purple-600" />}
-              accent="bg-purple-200/40" />
-            
+              accent="bg-purple-200/40"
+              onClick={getCardClick("Platform fee")}
+            />
             <MetricCard
               title="Delivery fee"
-              value={`₹${deliveryFeeTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${deliveryFeeTotal.toLocaleString("en-IN")}`}
               helper="Total delivery fees"
               icon={<Truck className="h-5 w-5 text-blue-600" />}
-              accent="bg-blue-200/40" />
-            
+              accent="bg-blue-200/40"
+              onClick={getCardClick("Delivery fee")}
+            />
             <MetricCard
               title="GST"
-              value={`₹${gstTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${gstTotal.toLocaleString("en-IN")}`}
               helper="Total GST collected"
               icon={<Receipt className="h-5 w-5 text-orange-600" />}
-              accent="bg-orange-200/40" />
-            
+              accent="bg-orange-200/40"
+              onClick={getCardClick("GST")}
+            />
             <MetricCard
               title="Tips collected"
-              value={`₹${tipsTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${tipsTotal.toLocaleString("en-IN")}`}
               helper="Total tips for delivery partners"
               icon={<Plus className="h-5 w-5 text-orange-500" />}
-              accent="bg-orange-100/30" />
-            
+              accent="bg-orange-100/30"
+              onClick={getCardClick("Tips collected")}
+            />
             <MetricCard
               title="Total Donations"
-              value={`₹${donationsTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${donationsTotal.toLocaleString("en-IN")}`}
               helper="Total donations collected"
               icon={<Gift className="h-5 w-5 text-pink-500" />}
-              accent="bg-pink-100/30" />
-            
+              accent="bg-pink-100/30"
+              onClick={getCardClick("Total Donations")}
+            />
             <MetricCard
               title="Subscription Revenue"
-              value={`₹${subscriptionTotal.toLocaleString("en-IN")}`}
+              value={`\u20B9${subscriptionTotal.toLocaleString("en-IN")}`}
               helper="Total subscription fees"
               icon={<Receipt className="h-5 w-5 text-teal-600" />}
-              accent="bg-teal-100/30" />
-            
+              accent="bg-teal-100/30"
+              onClick={getCardClick("Subscription Revenue")}
+            />
             <MetricCard
               title="Restaurant Ad Revenue"
               value={`\u20B9${restaurantAdvertisementTotal.toLocaleString("en-IN")}`}
               helper="Paid restaurant banners"
               icon={<Store className="h-5 w-5 text-violet-600" />}
-              accent="bg-violet-100/30" />
-            
+              accent="bg-violet-100/30"
+              onClick={getCardClick("Restaurant Ad Revenue")}
+            />
             <MetricCard
               title="User Ad Revenue"
               value={`\u20B9${userAdvertisementTotal.toLocaleString("en-IN")}`}
               helper="Paid user advertisements"
               icon={<UserCircle className="h-5 w-5 text-fuchsia-600" />}
-              accent="bg-fuchsia-100/30" />
-            
+              accent="bg-fuchsia-100/30"
+              onClick={getCardClick("User Ad Revenue")}
+            />
             <MetricCard
               title="Total Ad Revenue"
               value={`\u20B9${advertisementTotal.toLocaleString("en-IN")}`}
               helper="Restaurant + user advertisements"
               icon={<Activity className="h-5 w-5 text-violet-600" />}
-              accent="bg-violet-100/30" />
-            
+              accent="bg-violet-100/30"
+              onClick={getCardClick("Total Ad Revenue")}
+            />
             <MetricCard
               title="Total revenue"
-              value={`₹${totalAdminEarnings.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              value={`\u20B9${totalAdminEarnings.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               helper={`Com ${commissionTotal.toFixed(0)} + Plat ${platformFeeTotal.toFixed(0)} + Del ${deliveryFeeTotal.toFixed(0)} + GST ${gstTotal.toFixed(0)} + Sub ${subscriptionTotal.toFixed(0)} + Ad(Rest ${restaurantAdvertisementTotal.toFixed(0)} + User ${userAdvertisementTotal.toFixed(0)}) + Don ${donationsTotal.toFixed(0)}`}
               icon={<DollarSign className="h-5 w-5 text-green-600" />}
-              accent="bg-green-200/40" />
-            
+              accent="bg-green-200/40"
+              onClick={getCardClick("Total revenue")}
+            />
             <MetricCard
               title="Total restaurants"
               value={totalRestaurants.toLocaleString("en-IN")}
               helper="All registered restaurants"
               icon={<Store className="h-5 w-5 text-blue-600" />}
-              accent="bg-blue-200/40" />
-            
+              accent="bg-blue-200/40"
+              onClick={getCardClick("Total restaurants")}
+            />
             <MetricCard
               title="Restaurant request pending"
               value={pendingRestaurantRequests.toLocaleString("en-IN")}
               helper="Awaiting approval"
               icon={<UserCheck className="h-5 w-5 text-orange-600" />}
-              accent="bg-orange-200/40" />
-            
+              accent="bg-orange-200/40"
+              onClick={getCardClick("Restaurant request pending")}
+            />
             <MetricCard
               title="Total delivery boy"
               value={totalDeliveryBoys.toLocaleString("en-IN")}
               helper="All delivery partners"
               icon={<Truck className="h-5 w-5 text-indigo-600" />}
-              accent="bg-indigo-200/40" />
-            
+              accent="bg-indigo-200/40"
+              onClick={getCardClick("Total delivery boy")}
+            />
             <MetricCard
               title="Delivery boy request pending"
               value={pendingDeliveryBoyRequests.toLocaleString("en-IN")}
               helper="Awaiting verification"
               icon={<Clock className="h-5 w-5 text-yellow-600" />}
-              accent="bg-yellow-200/40" />
-            
+              accent="bg-yellow-200/40"
+              onClick={getCardClick("Delivery boy request pending")}
+            />
             <MetricCard
               title="Total foods"
               value={totalFoods.toLocaleString("en-IN")}
               helper="Active menu items"
               icon={<Package className="h-5 w-5 text-purple-600" />}
-              accent="bg-purple-200/40" />
-            
+              accent="bg-purple-200/40"
+              onClick={getCardClick("Total foods")}
+            />
             <MetricCard
               title="Total addons"
               value={totalAddons.toLocaleString("en-IN")}
               helper="Active addon items"
               icon={<Plus className="h-5 w-5 text-pink-600" />}
-              accent="bg-pink-200/40" />
-            
+              accent="bg-pink-200/40"
+              onClick={getCardClick("Total addons")}
+            />
             <MetricCard
               title="Total customers"
               value={totalCustomers.toLocaleString("en-IN")}
               helper="Registered users"
               icon={<UserCircle className="h-5 w-5 text-cyan-600" />}
-              accent="bg-cyan-200/40" />
-            
+              accent="bg-cyan-200/40"
+              onClick={getCardClick("Total customers")}
+            />
             <MetricCard
               title="Pending orders"
               value={pendingOrders.toLocaleString("en-IN")}
               helper="Orders awaiting processing"
               icon={<Clock className="h-5 w-5 text-red-600" />}
-              accent="bg-red-200/40" />
-            
+              accent="bg-red-200/40"
+              onClick={getCardClick("Pending orders")}
+            />
             <MetricCard
               title="Completed orders"
               value={completedOrders.toLocaleString("en-IN")}
               helper="Successfully delivered"
               icon={<CheckCircle className="h-5 w-5 text-emerald-600" />}
-              accent="bg-emerald-200/40" />
-            
+              accent="bg-emerald-200/40"
+              onClick={getCardClick("Completed orders")}
+            />
           </div>
-
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-2 border-neutral-200 bg-white">
               <CardHeader className="flex flex-col gap-2 border-b border-neutral-200 pb-4">
@@ -557,9 +607,22 @@ export default function AdminHome() {
 
 }
 
-function MetricCard({ title, value, helper, icon, accent }) {
+function MetricCard({ title, value, helper, icon, accent, onClick }) {
+  const isClickable = typeof onClick === "function";
   return (
-    <Card className="overflow-hidden border-neutral-200 bg-white p-0">
+    <Card
+      className={`overflow-hidden border-neutral-200 bg-white p-0 ${isClickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+      onClick={onClick}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!isClickable) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <CardContent className="relative flex flex-col gap-2 px-4 pb-4 pt-4">
         <div className={`absolute inset-0 ${accent} `} />
         <div className="relative flex items-center justify-between">
@@ -576,3 +639,4 @@ function MetricCard({ title, value, helper, icon, accent }) {
     </Card>);
 
 }
+

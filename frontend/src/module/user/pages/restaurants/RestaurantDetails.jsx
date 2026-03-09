@@ -2058,7 +2058,7 @@ export default function RestaurantDetails() {
 
                 {/* Menu Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col"
+                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-md w-full md:w-[440px] flex flex-col"
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -2067,6 +2067,10 @@ export default function RestaurantDetails() {
 
                   {/* Scrollable Content */}
                   <div className="flex-1 overflow-y-auto px-4 py-6">
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Menu sections</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Jump to a section quickly</p>
+                    </div>
                     <div className="space-y-1">
                       {menuCategories.map((category, index) =>
                         <button
@@ -2091,7 +2095,7 @@ export default function RestaurantDetails() {
                             {category.name}
                           </span>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                               {category.count}
                             </span>
                           </div>

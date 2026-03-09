@@ -47,14 +47,16 @@ export default function DesktopNavbar() {
     return () => window.removeEventListener("businessSettingsUpdated", handler)
   }, [])
 
-  // Hide duplicate brand logos outside the header
+  // Hide duplicate brand logos outside the header (desktop only, to avoid hiding mobile logo)
   useEffect(() => {
-    // cleanup previous run
     logoCleanupRef.current?.()
     if (!logoUrl) return
-    const imgs = Array.from(document.querySelectorAll(`img[src="${logoUrl}"]`))
-    const headerImg = document.querySelector('.header-brand-logo')
-    const toHide = imgs.filter((img) => img !== headerImg)
+    if (window.innerWidth < 768) return // skip on mobile
+
+    const headerScope = document.querySelector('[data-header-logo-scope]')
+    const imgs = headerScope ? Array.from(headerScope.querySelectorAll(`img[src="${logoUrl}"]`)) : []
+    const headerImg = headerScope?.querySelector('.header-brand-logo')
+    const toHide = headerImg ? imgs.filter((img) => img !== headerImg) : []
     toHide.forEach((img) => (img.dataset.prevDisplay = img.style.display, img.style.display = 'none'))
     logoCleanupRef.current = () => {
       toHide.forEach((img) => {
@@ -137,7 +139,8 @@ export default function DesktopNavbar() {
       className="hidden md:block fixed top-0 left-0 right-0 z-50"
     >
       <style>{`
-        img[src*="grhapochlogo"] { display: none !important; }
+        /* Only suppress duplicate logos inside this desktop nav scope */
+        [data-header-logo-scope] img[src*="grhapochlogo"] { display: none !important; }
         [data-header-logo-scope] .header-brand-logo { display: inline-block !important; }
       `}</style>
       {/* Background */}
@@ -146,9 +149,18 @@ export default function DesktopNavbar() {
       {/* Content */}
       <div className="relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center h-16 gap-4">
-          {/* Left: Logo + Location */}
-          <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center h-16 gap-5">
+          {/* Left: Logo (clickable home) + Location */}
+          <div className="flex items-center gap-4 lg:gap-6 min-w-0">
+            <Link to="/user" className="flex-shrink-0" title="Go to Home">
+              <img
+                src={logoUrl || logo}
+                alt="Brand logo"
+                className="header-brand-logo h-10 w-auto lg:h-12 object-contain"
+                onError={(e) => { e.currentTarget.src = logo }}
+              />
+            </Link>
+
             <Button
               variant="ghost"
               onClick={handleLocationClick}
@@ -161,30 +173,22 @@ export default function DesktopNavbar() {
                 </span>
               ) : (
                 <div className="flex items-center gap-3 lg:gap-4 min-w-0">
-                  <img
-                    src={logoUrl || logo}
-                    alt="Brand logo"
-                    className="header-brand-logo h-7 w-auto lg:h-8 flex-shrink-0 object-contain"
-                    onError={(e) => { e.currentTarget.src = logo }}
-                  />
-                  <div className="flex flex-col items-start min-w-0">
-                    <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                      <FaLocationDot 
-                        className="h-5 w-5 lg:h-6 lg:w-6 text-black flex-shrink-0" 
-                        fill="black" 
-                        strokeWidth={2} 
-                      />
-                      <span className="text-sm lg:text-base font-bold text-black whitespace-nowrap max-w-[10rem] lg:max-w-[14rem] truncate">
-                        {mainLocationName}
-                      </span>
-                      <ChevronDown className="h-4 w-4 lg:h-5 lg:w-5 text-black flex-shrink-0" strokeWidth={2.5} />
-                    </div>
-                    {secondaryLocation && (
-                      <span className="text-xs lg:text-sm font-bold text-black mt-0.5 max-w-[12rem] lg:max-w-[16rem] truncate">
-                        {secondaryLocation}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                    <FaLocationDot 
+                      className="h-5 w-5 lg:h-6 lg:w-6 text-black flex-shrink-0" 
+                      fill="black" 
+                      strokeWidth={2} 
+                    />
+                    <span className="text-sm lg:text-base font-bold text-black whitespace-nowrap max-w-[10rem] lg:max-w-[14rem] truncate">
+                      {mainLocationName}
+                    </span>
+                    <ChevronDown className="h-4 w-4 lg:h-5 lg:w-5 text-black flex-shrink-0" strokeWidth={2.5} />
                   </div>
+                  {secondaryLocation && (
+                    <span className="text-xs lg:text-sm font-bold text-black mt-0.5 max-w-[12rem] lg:max-w-[16rem] truncate">
+                      {secondaryLocation}
+                    </span>
+                  )}
                 </div>
               )}
             </Button>

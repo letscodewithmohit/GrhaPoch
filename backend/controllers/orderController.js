@@ -20,6 +20,7 @@ import OrderEvent from '../models/OrderEvent.js';
 import UserWallet from '../models/UserWallet.js';
 import RestaurantCommission from '../models/RestaurantCommission.js';
 import { getFirebaseRealtimeDb } from '../config/firebaseRealtime.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -1185,6 +1186,94 @@ export const verifyOrderPayment = async (req, res) => {
     });
   }
 };
+
+/**
+ * Create/refresh Razorpay order for an existing pending order (retry payment)
+ * POST /api/order/:id/create-payment
+ */
+export const createOrderPayment = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    // Find order by MongoDB _id or orderId
+    let order;
+    const mongoose = (await import('mongoose')).default;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findOne({ _id: id, userId });
+    }
+    if (!order) {
+      order = await Order.findOne({ orderId: id, userId });
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.payment?.method && order.payment.method !== 'razorpay') {
+      return res.status(400).json({ success: false, message: 'Order is not an online payment order' });
+    }
+
+    if (order.payment?.status === 'completed' || order.status === 'confirmed') {
+      return res.status(400).json({ success: false, message: 'Order payment already completed' });
+    }
+
+    let razorpayOrder = null;
+    try {
+      razorpayOrder = await createRazorpayOrder({
+        amount: Math.round((order.pricing?.total || 0) * 100),
+        currency: 'INR',
+        receipt: order.orderId,
+        notes: {
+          orderId: order.orderId,
+          userId: userId.toString(),
+          restaurantId: order.restaurantId?.toString() || 'unknown'
+        }
+      });
+
+      order.payment = {
+        ...(order.payment || {}),
+        method: 'razorpay',
+        status: 'pending',
+        razorpayOrderId: razorpayOrder.id
+      };
+      await order.save();
+    } catch (razorpayError) {
+      return res.status(500).json({
+        success: false,
+        message: razorpayError.message || 'Failed to create payment order'
+      });
+    }
+
+    let razorpayKeyId = null;
+    try {
+      const credentials = await getRazorpayCredentials();
+      razorpayKeyId = credentials.keyId || process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY;
+    } catch (error) {
+      razorpayKeyId = process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY;
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        order: {
+          id: order._id.toString(),
+          orderId: order.orderId,
+          status: order.status,
+          total: order.pricing?.total || 0
+        },
+        razorpay: {
+          orderId: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          key: razorpayKeyId
+        }
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to create payment order' });
+  }
+});
 
 /**
  * Get user orders
