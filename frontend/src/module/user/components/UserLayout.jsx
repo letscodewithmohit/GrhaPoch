@@ -134,6 +134,8 @@ export default function UserLayout() {
                 <LocationSelectorProvider>
                   {/* <Navbar /> */}
                   {showBottomNav && <DesktopNavbar />}
+                  {/* Spacer for fixed desktop navbar */}
+                  {showBottomNav && <div className="hidden md:block h-16" />}
                   <LocationPrompt />
                   <Outlet />
                   {showBottomNav && <BottomNavigation />}

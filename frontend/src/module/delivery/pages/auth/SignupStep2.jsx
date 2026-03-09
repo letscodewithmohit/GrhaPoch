@@ -5,6 +5,96 @@ import { deliveryAPI } from "@/lib/api"
 import apiClient from "@/lib/api/axios"
 import { toast } from "sonner"
 
+const DocumentUpload = ({ docType, label, required = true, documents, uploadedDocs, uploading, handleRemove, setActiveCamera, handleFileSelect }) => {
+  const file = documents[docType]
+  const uploaded = uploadedDocs[docType]
+  const isUploading = uploading[docType]
+  const cameraInputRef = useRef(null)
+  const galleryInputRef = useRef(null)
+
+  return (
+    <div className="bg-white rounded-lg p-4 border border-gray-200">
+      <label className="block text-sm font-medium text-gray-700 mb-3">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+
+      {uploaded ? (
+        <div className="relative">
+          <img
+            src={uploaded.url}
+            alt={label}
+            className="w-full h-48 object-cover rounded-lg"
+          />
+          <button
+            type="button"
+            onClick={() => handleRemove(docType)}
+            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="absolute bottom-2 left-2 bg-green-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm shadow-md">
+            <Check className="w-4 h-4" />
+            <span>Uploaded</span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 transition-all hover:border-gray-400">
+          {isUploading ? (
+            <div className="flex flex-col items-center justify-center p-6">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500 mb-3"></div>
+              <p className="text-sm font-medium text-gray-600">Uploading Document...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center w-full p-4">
+              <p className="text-sm text-gray-500 mb-4">Select upload method</p>
+              <div className="flex items-center justify-center gap-6 w-full">
+                <button
+                  type="button"
+                  onClick={() => setActiveCamera(docType)}
+                  className="flex flex-col items-center justify-center gap-2 group"
+                >
+                  <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:border-green-500 group-hover:bg-green-50 transition-all group-active:scale-95">
+                    <Camera className="w-8 h-8 text-gray-600 group-hover:text-green-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-gray-600 group-hover:text-green-600 uppercase tracking-wider">Camera</span>
+                </button>
+
+                <div className="h-10 w-[1px] bg-gray-200"></div>
+
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 group"
+                >
+                  <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:border-green-500 group-hover:bg-green-50 transition-all group-active:scale-95">
+                    <Image className="w-8 h-8 text-gray-600 group-hover:text-green-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-gray-600 group-hover:text-green-600 uppercase tracking-wider">Gallery</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-6 font-medium">MAX SIZE 3MB (PNG, JPG)</p>
+            </div>
+          )}
+
+          {/* Hidden Input for Gallery */}
+          <input
+            type="file"
+            ref={galleryInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => {
+              const selectedFile = e.target.files[0]
+              if (selectedFile) handleFileSelect(docType, selectedFile)
+              e.target.value = '' // Clear input
+            }}
+            disabled={isUploading}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SignupStep2() {
   const navigate = useNavigate()
   const [documents, setDocuments] = useState(() => {
@@ -381,95 +471,7 @@ export default function SignupStep2() {
     }
   }
 
-  const DocumentUpload = ({ docType, label, required = true }) => {
-    const file = documents[docType]
-    const uploaded = uploadedDocs[docType]
-    const isUploading = uploading[docType]
-    const cameraInputRef = useRef(null)
-    const galleryInputRef = useRef(null)
 
-    return (
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-
-        {uploaded ? (
-          <div className="relative">
-            <img
-              src={uploaded.url}
-              alt={label}
-              className="w-full h-48 object-cover rounded-lg"
-            />
-            <button
-              type="button"
-              onClick={() => handleRemove(docType)}
-              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="absolute bottom-2 left-2 bg-green-500 text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm shadow-md">
-              <Check className="w-4 h-4" />
-              <span>Uploaded</span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 transition-all hover:border-gray-400">
-            {isUploading ? (
-              <div className="flex flex-col items-center justify-center p-6">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500 mb-3"></div>
-                <p className="text-sm font-medium text-gray-600">Uploading Document...</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center w-full p-4">
-                <p className="text-sm text-gray-500 mb-4">Select upload method</p>
-                <div className="flex items-center justify-center gap-6 w-full">
-                  <button
-                    type="button"
-                    onClick={() => setActiveCamera(docType)}
-                    className="flex flex-col items-center justify-center gap-2 group"
-                  >
-                    <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:border-green-500 group-hover:bg-green-50 transition-all group-active:scale-95">
-                      <Camera className="w-8 h-8 text-gray-600 group-hover:text-green-600" />
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600 group-hover:text-green-600 uppercase tracking-wider">Camera</span>
-                  </button>
-
-                  <div className="h-10 w-[1px] bg-gray-200"></div>
-
-                  <button
-                    type="button"
-                    onClick={() => galleryInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-2 group"
-                  >
-                    <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center shadow-sm group-hover:border-green-500 group-hover:bg-green-50 transition-all group-active:scale-95">
-                      <Image className="w-8 h-8 text-gray-600 group-hover:text-green-600" />
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600 group-hover:text-green-600 uppercase tracking-wider">Gallery</span>
-                  </button>
-                </div>
-                <p className="text-[10px] text-gray-400 mt-6 font-medium">MAX SIZE 3MB (PNG, JPG)</p>
-              </div>
-            )}
-
-            {/* Hidden Input for Gallery */}
-            <input
-              type="file"
-              ref={galleryInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={(e) => {
-                const selectedFile = e.target.files[0]
-                if (selectedFile) handleFileSelect(docType, selectedFile)
-                e.target.value = '' // Clear input
-              }}
-              disabled={isUploading}
-            />
-          </div>
-        )}
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -493,10 +495,10 @@ export default function SignupStep2() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <DocumentUpload docType="profilePhoto" label="Profile Photo" required={true} />
-          <DocumentUpload docType="aadharPhoto" label="Aadhar Card Photo" required={true} />
-          <DocumentUpload docType="panPhoto" label="PAN Card Photo" required={true} />
-          <DocumentUpload docType="drivingLicensePhoto" label="Driving License Photo" required={true} />
+          <DocumentUpload docType="profilePhoto" label="Profile Photo" required={true} documents={documents} uploadedDocs={uploadedDocs} uploading={uploading} handleRemove={handleRemove} setActiveCamera={setActiveCamera} handleFileSelect={handleFileSelect} />
+          <DocumentUpload docType="aadharPhoto" label="Aadhar Card Photo" required={true} documents={documents} uploadedDocs={uploadedDocs} uploading={uploading} handleRemove={handleRemove} setActiveCamera={setActiveCamera} handleFileSelect={handleFileSelect} />
+          <DocumentUpload docType="panPhoto" label="PAN Card Photo" required={true} documents={documents} uploadedDocs={uploadedDocs} uploading={uploading} handleRemove={handleRemove} setActiveCamera={setActiveCamera} handleFileSelect={handleFileSelect} />
+          <DocumentUpload docType="drivingLicensePhoto" label="Driving License Photo" required={true} documents={documents} uploadedDocs={uploadedDocs} uploading={uploading} handleRemove={handleRemove} setActiveCamera={setActiveCamera} handleFileSelect={handleFileSelect} />
 
           {/* Submit Button */}
           <button

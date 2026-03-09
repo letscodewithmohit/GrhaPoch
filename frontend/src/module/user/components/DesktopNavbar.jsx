@@ -6,6 +6,8 @@ import { useLocation as useLocationHook } from "../hooks/useLocation"
 import { useCart } from "../context/CartContext"
 import { useLocationSelector } from "./UserLayout"
 import { FaLocationDot } from "react-icons/fa6"
+import logo from "@/assets/grhapochlogo.png"
+import { getCachedSettings, loadBusinessSettings } from "@/lib/utils/businessSettings"
 
 export default function DesktopNavbar() {
   const location = useLocation()
@@ -15,6 +17,57 @@ export default function DesktopNavbar() {
   const cartCount = getCartCount()
   const [isVisible, setIsVisible] = useState(true)
   const lastScrollY = useRef(0)
+  const [logoUrl, setLogoUrl] = useState(null)
+  const logoCleanupRef = useRef(() => {})
+
+  // Load admin-configured logo
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const cached = getCachedSettings()
+        if (cached?.logo?.url) {
+          setLogoUrl(cached.logo.url)
+          return
+        }
+        const settings = await loadBusinessSettings()
+        if (settings?.logo?.url) {
+          setLogoUrl(settings.logo.url)
+        }
+      } catch (err) {
+        // silent fail, fall back to default asset
+        console.error("Error loading business logo", err)
+      }
+    }
+    loadLogo()
+    const handler = () => {
+      const cached = getCachedSettings()
+      if (cached?.logo?.url) setLogoUrl(cached.logo.url)
+    }
+    window.addEventListener("businessSettingsUpdated", handler)
+    return () => window.removeEventListener("businessSettingsUpdated", handler)
+  }, [])
+
+  // Hide duplicate brand logos outside the header
+  useEffect(() => {
+    // cleanup previous run
+    logoCleanupRef.current?.()
+    if (!logoUrl) return
+    const imgs = Array.from(document.querySelectorAll(`img[src="${logoUrl}"]`))
+    const headerImg = document.querySelector('.header-brand-logo')
+    const toHide = imgs.filter((img) => img !== headerImg)
+    toHide.forEach((img) => (img.dataset.prevDisplay = img.style.display, img.style.display = 'none'))
+    logoCleanupRef.current = () => {
+      toHide.forEach((img) => {
+        if (img.dataset.prevDisplay !== undefined) {
+          img.style.display = img.dataset.prevDisplay
+          delete img.dataset.prevDisplay
+        } else {
+          img.style.display = ''
+        }
+      })
+    }
+    return () => logoCleanupRef.current()
+  }, [logoUrl])
 
   // Show area if available, otherwise show city
   // Priority: area > city > "Select"
@@ -80,54 +133,65 @@ export default function DesktopNavbar() {
 
   return (
     <nav 
-      className={`hidden md:block fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
-        isVisible ? "translate-y-0" : "-translate-y-full"
-      }`}
+      data-header-logo-scope
+      className="hidden md:block fixed top-0 left-0 right-0 z-50"
     >
+      <style>{`
+        img[src*="grhapochlogo"] { display: none !important; }
+        [data-header-logo-scope] .header-brand-logo { display: inline-block !important; }
+      `}</style>
       {/* Background */}
       <div className="absolute inset-0 bg-white/98 dark:bg-[#1a1a1a]/98 border-b border-gray-200/50 dark:border-gray-800/50 shadow-sm" />
       
       {/* Content */}
       <div className="relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Left: Location */}
+        <div className="grid grid-cols-[auto_1fr_auto] items-center h-16 gap-4">
+          {/* Left: Logo + Location */}
           <div className="flex items-center gap-3 lg:gap-4 min-w-0">
             <Button
               variant="ghost"
               onClick={handleLocationClick}
               disabled={locationLoading}
-              className="h-auto px-0 py-0 hover:bg-transparent transition-colors flex-shrink-0"
+              className="h-auto px-0 py-0 hover:bg-transparent transition-colors flex-shrink min-w-0"
             >
               {locationLoading ? (
                 <span className="text-sm font-bold text-black">
                   Loading...
                 </span>
               ) : (
-                <div className="flex flex-col items-start min-w-0">
-                  <div className="flex items-center gap-1.5 lg:gap-2">
-                    <FaLocationDot 
-                      className="h-5 w-5 lg:h-6 lg:w-6 text-black flex-shrink-0" 
-                      fill="black" 
-                      strokeWidth={2} 
-                    />
-                    <span className="text-sm lg:text-base font-bold text-black whitespace-nowrap">
-                      {mainLocationName}
-                    </span>
-                    <ChevronDown className="h-4 w-4 lg:h-5 lg:w-5 text-black flex-shrink-0" strokeWidth={2.5} />
+                <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+                  <img
+                    src={logoUrl || logo}
+                    alt="Brand logo"
+                    className="header-brand-logo h-7 w-auto lg:h-8 flex-shrink-0 object-contain"
+                    onError={(e) => { e.currentTarget.src = logo }}
+                  />
+                  <div className="flex flex-col items-start min-w-0">
+                    <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                      <FaLocationDot 
+                        className="h-5 w-5 lg:h-6 lg:w-6 text-black flex-shrink-0" 
+                        fill="black" 
+                        strokeWidth={2} 
+                      />
+                      <span className="text-sm lg:text-base font-bold text-black whitespace-nowrap max-w-[10rem] lg:max-w-[14rem] truncate">
+                        {mainLocationName}
+                      </span>
+                      <ChevronDown className="h-4 w-4 lg:h-5 lg:w-5 text-black flex-shrink-0" strokeWidth={2.5} />
+                    </div>
+                    {secondaryLocation && (
+                      <span className="text-xs lg:text-sm font-bold text-black mt-0.5 max-w-[12rem] lg:max-w-[16rem] truncate">
+                        {secondaryLocation}
+                      </span>
+                    )}
                   </div>
-                  {secondaryLocation && (
-                    <span className="text-xs lg:text-sm font-bold text-black mt-0.5 whitespace-nowrap">
-                      {secondaryLocation}
-                    </span>
-                  )}
                 </div>
               )}
             </Button>
           </div>
 
           {/* Center: Navigation Tabs */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center justify-center space-x-1">
             {/* Delivery Tab */}
             <Link
               to="/user"
@@ -235,4 +299,3 @@ export default function DesktopNavbar() {
     </nav>
   )
 }
-

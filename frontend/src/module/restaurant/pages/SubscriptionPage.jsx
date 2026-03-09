@@ -71,9 +71,8 @@ export default function SubscriptionPage() {
         try {
             const res = await restaurantAPI.getSubscriptionStatus();
             const data = res.data?.data;
-            if (data?.subscription) {
-                setCurrentSubscription(data.subscription);
-            }
+            // Always set from API so that when subscription is removed in DB, UI clears
+            setCurrentSubscription(data?.subscription ?? null);
             setBusinessModel(data?.businessModel || null);
             setSubscriptionMeta({
                 daysRemaining: data?.daysRemaining ?? null,
@@ -131,6 +130,13 @@ export default function SubscriptionPage() {
             }
         };
         fetchInitialData();
+    }, []);
+
+    // Refetch status when user returns to this tab (e.g. after updating DB) so UI is never stale
+    useEffect(() => {
+        const onFocus = () => fetchStatus();
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
     }, []);
 
     useEffect(() => {

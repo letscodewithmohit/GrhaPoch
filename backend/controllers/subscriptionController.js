@@ -115,7 +115,21 @@ const cancelSubscriptionCore = async ({
   }
 
   // Cancel on Razorpay side so that no future auto-debits are attempted.
-  await cancelRazorpaySubscription(subscriptionId);
+  // If Razorpay returns "not cancellable in completed status", the subscription has
+  // already ended (all cycles done) - no more auto-debits will occur. Update our DB only.
+  try {
+    await cancelRazorpaySubscription(subscriptionId);
+  } catch (razorpayError) {
+    const msg = String(razorpayError?.message || '');
+    const isCompletedNotCancellable =
+      msg.toLowerCase().includes('not cancellable') &&
+      msg.toLowerCase().includes('completed');
+    if (isCompletedNotCancellable) {
+      // Subscription is completed in Razorpay = no future charges. Update local state only.
+    } else {
+      throw razorpayError;
+    }
+  }
 
   // Mark subscription to end gracefully at period end. Keep it active until endDate
   // so that benefits (0% commission) continue for the current billing cycle.
@@ -1025,8 +1039,20 @@ export const getSubscriptionStatus = async (req, res) => {
     slice().
     reverse();
 
+    // Prevent browser/proxy caching so UI always reflects current DB state
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
+    // Only return subscription when it is a real active/pending plan; otherwise null so UI does not show "Active"
+    const sub = restaurant.subscription;
+    const effectiveSubscription =
+      sub && (sub.status === 'active' || sub.status === 'pending_approval') && sub.planId
+        ? sub
+        : null;
+
     return successResponse(res, 200, 'Subscription status retrieved', {
-      subscription: restaurant.subscription,
+      subscription: effectiveSubscription,
       subscriptionHistory,
       isActive: restaurant.isActive,
       businessModel: restaurant.businessModel,
