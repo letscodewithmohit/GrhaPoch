@@ -327,21 +327,9 @@ export default function Profile() {
   return (
     <AnimatedPage className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a]">
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10">
-        {/* Back Arrow */}
-        <div className="mb-4">
-          <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={() => {
-            if (location.state?.from === "cart") {
-              navigate("/user/cart");
-            } else {
-              navigate(-1);
-            }
-          }}>
-            <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
-          </Button>
-        </div>
 
         {/* Profile Info Card */}
-        <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl py-0 pt-1 shadow-sm mb-0 border-0 dark:border-gray-800 overflow-hidden">
+        <Card className="bg-white dark:bg-[#1a1a1a] mt-6 rounded-2xl py-0 pt-1 shadow-sm mb-0 border-0 dark:border-gray-800 overflow-hidden">
           <CardContent className="p-4 py-0 pt-2">
             <div className="flex items-start gap-4 mb-4">
               <motion.div
