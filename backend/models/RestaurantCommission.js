@@ -217,7 +217,7 @@ restaurantCommissionSchema.statics.calculateCommissionForOrder = async function 
   const hasActiveSubscription =
     restaurant &&
     restaurant.businessModel === 'Subscription Base' &&
-    restaurant.subscription?.status === 'active' &&
+    ['active', 'cancelled'].includes(restaurant.subscription?.status) &&
     (
       !restaurant.subscription?.endDate ||
       new Date(restaurant.subscription.endDate) > now

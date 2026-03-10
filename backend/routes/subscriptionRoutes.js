@@ -23,6 +23,7 @@ router.post('/verify-payment', authenticate, verifyPaymentAndActivate);
 
 // Cancel active subscription (stop Razorpay auto-pay)
 router.post('/cancel', authenticate, cancelSubscription);
+router.delete('/cancel', authenticate, cancelSubscription);
 
 // Get subscription status
 router.get('/status', authenticate, getSubscriptionStatus);
