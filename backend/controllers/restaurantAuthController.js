@@ -343,8 +343,12 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       }
       restaurant = await Restaurant.findOne(findQuery);
 
+      // Fix: Verify OTP first before checking if restaurant needs to provide a name
+      // This ensures that wrong OTP results in an error instead of "needsName: true"
+      await otpService.verifyOTP(phone || null, otp, purpose, email || null);
+
       if (!restaurant && !name) {
-        // Tell the client that we need restaurant name to proceed with auto-registration
+        // OTP has been verified. Now check if we need restaurant name to proceed with auto-registration.
         return successResponse(res, 200, 'Restaurant not found. Please provide restaurant name for registration.', {
           needsName: true,
           identifierType,
@@ -357,16 +361,12 @@ export const verifyOTP = asyncHandler(async (req, res) => {
         if (!restaurant) {
           return errorResponse(res, 404, 'No restaurant account found with this email.');
         }
-        // Verify OTP for password reset
-        await otpService.verifyOTP(phone || null, otp, purpose, email || null);
+        // Verification already done above
         return successResponse(res, 200, 'OTP verified. You can now reset your password.', {
           verified: true,
           email: restaurant.email
         });
       }
-
-      // Verify OTP first
-      await otpService.verifyOTP(phone || null, otp, purpose, email || null);
 
       if (!restaurant) {
         // Auto-register new restaurant after OTP verification

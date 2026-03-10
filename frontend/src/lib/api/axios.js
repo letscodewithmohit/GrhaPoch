@@ -512,7 +512,7 @@ apiClient.interceptors.response.use(
 
           // Show helpful error message (only once per minute)
           toast.error(`Backend not connected! Start server: cd appzetofood/backend && npm run dev`, {
-            duration: 10000,
+            duration: 3000,
             id: 'network-error-toast', // Use ID to prevent duplicate toasts
             style: {
               background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -552,7 +552,7 @@ apiClient.interceptors.response.use(
 
           // Show helpful error message (only once per minute)
           toast.error(`Request timeout - Backend may be slow or not responding. Check server status.`, {
-            duration: 8000,
+            duration: 3000,
             id: 'timeout-error-toast', // Use ID to prevent duplicate toasts
             style: {
               background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -581,7 +581,7 @@ apiClient.interceptors.response.use(
         // Show toast for auth routes (important)
         if (url.includes('/auth/') || url.includes('/send-otp') || url.includes('/verify-otp')) {
           toast.error('Auth API endpoint not found. Make sure backend is running on port 5000.', {
-            duration: 8000,
+            duration: 3000,
             style: {
               background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
               color: '#ffffff',
@@ -603,7 +603,7 @@ apiClient.interceptors.response.use(
 
           if (!isIndividualRestaurantLookup && url.includes('/restaurant/list')) {
             toast.error('Restaurant API endpoint not found. Check backend routes.', {
-              duration: 5000,
+              duration: 3000,
               style: {
                 background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                 color: '#ffffff',
@@ -653,7 +653,7 @@ apiClient.interceptors.response.use(
         // Add slight delay for multiple toasts to appear sequentially
         setTimeout(() => {
           toast.error(errorMessage, {
-            duration: 5000,
+            duration: 3000,
             style: {
               background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
               color: '#ffffff',

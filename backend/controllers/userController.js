@@ -45,7 +45,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
  */
 export const updateUserProfile = asyncHandler(async (req, res) => {
   try {
-    const { name, email, phone, dateOfBirth, anniversary, gender } = req.body;
+    const { name, email, phone, dateOfBirth, anniversary, gender, profileImage } = req.body;
 
     const user = await User.findById(req.user._id);
 
@@ -101,6 +101,10 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
 
     if (gender !== undefined) {
       user.gender = gender || null;
+    }
+
+    if (profileImage !== undefined) {
+      user.profileImage = profileImage || null;
     }
 
     // Save to database

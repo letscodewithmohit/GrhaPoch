@@ -159,36 +159,18 @@ export const verifyOTP = asyncHandler(async (req, res) => {
         : { email, role: userRole };
       user = await User.findOne(findQuery);
 
+      // Fix: Verify OTP first before checking if user needs to provide a name
+      // This ensures that wrong OTP results in an error instead of "needsName: true"
+      await otpService.verifyOTP(phone || null, otp, purpose, email || null);
+
       if (!user && !name) {
-        // OTP has NOT been verified yet in this flow.
-        // Tell the client that we need user's name to proceed with auto-registration.
-        // The client should collect name and call this endpoint again with the same OTP and name.
+        // OTP has been verified. Now check if we need user's name to proceed with auto-registration.
         return successResponse(res, 200, 'User not found. Please provide name for registration.', {
           needsName: true,
           identifierType,
           identifier
         });
       }
-
-      // Handle reset-password purpose
-      if (purpose === 'reset-password') {
-        if (!user) {
-          return errorResponse(res, 404, `No ${userRole} account found with this email.`);
-        }
-        // Verify OTP for password reset
-        await otpService.verifyOTP(phone || null, otp, purpose, email || null);
-        // Return success - frontend will call reset-password endpoint with OTP
-        return successResponse(res, 200, 'OTP verified. You can now reset your password.', {
-          verified: true,
-          email: user.email
-        });
-      }
-
-      // At this point, either:
-      // - user exists (normal login), or
-      // - user does not exist but name is provided (auto-registration)
-      // In both cases we must verify OTP first.
-      await otpService.verifyOTP(phone || null, otp, purpose, email || null);
 
       if (!user) {
         // Auto-register new user after OTP verification
