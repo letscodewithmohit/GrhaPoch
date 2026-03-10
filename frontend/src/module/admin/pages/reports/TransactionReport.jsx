@@ -168,13 +168,20 @@ export default function TransactionReport() {
         primaryValue: filteredTransactions.reduce((sum, tx) => sum + (tx.platformFee || 0), 0)
       }
     }
+    if (metricFilter === "admin_earning") {
+      return {
+        primaryLabel: "Admin Earning",
+        primaryValue: summary.adminEarning || 0
+      }
+    }
     return null
   }, [metricFilter, filteredTransactions])
 
   const displaySummary = metricSummary ? {
     completedTransaction: metricSummary.primaryValue,
     refundedTransaction: 0,
-    adminEarning: filteredTransactions.reduce((sum, tx) => sum + (tx.adminEarning || 0), 0),
+    // Keep admin earning from backend summary (includes ads + subscriptions), regardless of metric filter
+    adminEarning: summary.adminEarning || 0,
     restaurantEarning: filteredTransactions.reduce((sum, tx) => sum + (tx.restaurantEarning || 0), 0),
     deliverymanEarning: filteredTransactions.reduce((sum, tx) => sum + (tx.deliverymanEarning || 0), 0)
   } : summary
@@ -208,13 +215,13 @@ export default function TransactionReport() {
 
   const formatCurrency = (amount) => {
     if (amount >= 1000) {
-      return `$ ${(amount / 1000).toFixed(2)}K`
+      return `₹ ${(amount / 1000).toFixed(2)}K`
     }
-    return `$ ${amount.toFixed(2)}`
+    return `₹ ${amount.toFixed(2)}`
   }
 
   const formatFullCurrency = (amount) => {
-    return `$ ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   if (loading) {

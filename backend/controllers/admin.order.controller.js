@@ -981,6 +981,80 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
       }, 0);
     }
 
+    // Add non-order admin income: subscriptions + advertisements
+    const SubscriptionPayment = (await import('../models/SubscriptionPayment.js')).default;
+    const Advertisement = (await import('../models/Advertisement.js')).default;
+    const UserAdvertisement = (await import('../models/UserAdvertisement.js')).default;
+
+    const subscriptionMatch = { status: 'success' };
+    if (fromDate || toDate) {
+      subscriptionMatch.paymentDate = {};
+      if (fromDate) {
+        const startDate = new Date(fromDate);
+        startDate.setHours(0, 0, 0, 0);
+        subscriptionMatch.paymentDate.$gte = startDate;
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        subscriptionMatch.paymentDate.$lte = endDate;
+      }
+    }
+
+    const subscriptionAgg = await SubscriptionPayment.aggregate([
+      { $match: subscriptionMatch },
+      { $group: { _id: null, amount: { $sum: '$amount' } } }
+    ]);
+    const subscriptionTotal = subscriptionAgg[0]?.amount || 0;
+
+    const restaurantAdMatch = {
+      adType: 'restaurant_banner',
+      paymentStatus: 'paid',
+      isDeleted: false,
+      price: { $gt: 0 }
+    };
+    if (summaryRestaurantQuery.restaurantId) {
+      restaurantAdMatch.restaurantId = summaryRestaurantQuery.restaurantId;
+    }
+
+    const restaurantAdAgg = await Advertisement.aggregate([
+      { $match: restaurantAdMatch },
+      { $addFields: { paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] } } },
+      ...(fromDate || toDate ? [{
+        $match: {
+          paidAt: {
+            ...(fromDate ? { $gte: new Date(new Date(fromDate).setHours(0, 0, 0, 0)) } : {}),
+            ...(toDate ? { $lte: new Date(new Date(toDate).setHours(23, 59, 59, 999)) } : {})
+          }
+        }
+      }] : []),
+      { $group: { _id: null, total: { $sum: '$price' } } }
+    ]);
+
+    const userAdMatch = {
+      paymentStatus: 'paid',
+      isDeleted: false,
+      price: { $gt: 0 }
+    };
+
+    const userAdAgg = await UserAdvertisement.aggregate([
+      { $match: userAdMatch },
+      { $addFields: { paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] } } },
+      ...(fromDate || toDate ? [{
+        $match: {
+          paidAt: {
+            ...(fromDate ? { $gte: new Date(new Date(fromDate).setHours(0, 0, 0, 0)) } : {}),
+            ...(toDate ? { $lte: new Date(new Date(toDate).setHours(23, 59, 59, 999)) } : {})
+          }
+        }
+      }] : []),
+      { $group: { _id: null, total: { $sum: '$price' } } }
+    ]);
+
+    const advertisementTotal = (restaurantAdAgg[0]?.total || 0) + (userAdAgg[0]?.total || 0);
+
+    adminEarning += subscriptionTotal + advertisementTotal;
+
     // Map settlements for the current page (to expose per-order earnings)
     const pageOrderIds = orders.map((order) => order._id);
     const pageSettlements = pageOrderIds.length > 0

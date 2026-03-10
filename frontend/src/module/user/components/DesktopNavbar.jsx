@@ -172,7 +172,7 @@ export default function DesktopNavbar() {
                   Loading...
                 </span>
               ) : (
-                <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+                <div className="flex flex-col items-start min-w-0">
                   <div className="flex items-center gap-2 lg:gap-3 min-w-0">
                     <FaLocationDot 
                       className="h-5 w-5 lg:h-6 lg:w-6 text-black flex-shrink-0" 

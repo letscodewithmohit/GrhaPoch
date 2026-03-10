@@ -292,7 +292,7 @@ export default function Dining() {
             {/* Search Bar Container */}
             <div className="z-20">
               {/* Enhanced Search Bar */}
-              <div className="w-full relative">
+              <div className="w-full relative max-w-4xl mx-auto">
                 <div className="relative bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-1 sm:p-1.5 transition-all duration-300 hover:shadow-xl">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <Search className="h-4 w-4 sm:h-4 sm:w-4 text-green-500 flex-shrink-0 ml-2 sm:ml-3" strokeWidth={2.5} />

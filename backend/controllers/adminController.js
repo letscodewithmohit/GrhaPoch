@@ -215,6 +215,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     let totalCommission = 0;
     let totalPlatformFee = 0;
     let totalDeliveryFee = 0;
+    let totalDeliveryMargin = 0;
     let totalGST = 0;
 
     allSettlements.forEach((s, index) => {
@@ -222,11 +223,13 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       const platformFee = s.adminEarning?.platformFee || 0;
       const deliveryFee = s.adminEarning?.deliveryFee || 0;
       const gst = s.adminEarning?.gst || 0;
+      const deliveryMargin = s.adminEarning?.deliveryMargin || 0;
 
       totalCommission += commission;
       totalPlatformFee += platformFee;
       totalDeliveryFee += deliveryFee;
       totalGST += gst;
+      totalDeliveryMargin += deliveryMargin;
 
       // Log each settlement for debugging
 
@@ -238,6 +241,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     totalPlatformFee = Math.round(totalPlatformFee * 100) / 100;
     totalDeliveryFee = Math.round(totalDeliveryFee * 100) / 100;
     totalGST = Math.round(totalGST * 100) / 100;
+    totalDeliveryMargin = Math.round(totalDeliveryMargin * 100) / 100;
 
 
 
@@ -248,6 +252,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     const last30DaysCommission = last30DaysSettlements.reduce((sum, s) => sum + (s.adminEarning?.commission || 0), 0);
     const last30DaysPlatformFee = last30DaysSettlements.reduce((sum, s) => sum + (s.adminEarning?.platformFee || 0), 0);
     const last30DaysDeliveryFee = last30DaysSettlements.reduce((sum, s) => sum + (s.adminEarning?.deliveryFee || 0), 0);
+    const last30DaysDeliveryMargin = last30DaysSettlements.reduce((sum, s) => sum + (s.adminEarning?.deliveryMargin || 0), 0);
     const last30DaysGST = last30DaysSettlements.reduce((sum, s) => sum + (s.adminEarning?.gst || 0), 0);
 
     // Get order statistics
@@ -480,6 +485,11 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         last30Days: last30DaysDeliveryFee,
         currency: 'INR'
       },
+      deliveryMargin: {
+        total: totalDeliveryMargin,
+        last30Days: last30DaysDeliveryMargin,
+        currency: 'INR'
+      },
       gst: {
         total: totalGST,
         last30Days: last30DaysGST,
@@ -520,8 +530,8 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         currency: 'INR'
       },
       totalAdminEarnings: {
-        total: totalCommission + totalPlatformFee + totalDeliveryFee + totalGST + totalSubscriptionRevenue + advertisementRevenueData.total + (revenueData.totalDonations || 0),
-        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryFee + last30DaysGST + last30DaysSubscriptionRevenue + advertisementRevenueData.last30Days + (revenueData.last30DaysDonations || 0),
+        total: totalCommission + totalPlatformFee + totalDeliveryMargin + totalGST + totalSubscriptionRevenue + advertisementRevenueData.total + (revenueData.totalDonations || 0),
+        last30Days: last30DaysCommission + last30DaysPlatformFee + last30DaysDeliveryMargin + last30DaysGST + last30DaysSubscriptionRevenue + advertisementRevenueData.last30Days + (revenueData.last30DaysDonations || 0),
         currency: 'INR'
       },
       orders: {

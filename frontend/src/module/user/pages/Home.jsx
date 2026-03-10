@@ -1478,7 +1478,7 @@ export default function Home() {
       </div>
 
       {activeRestaurantAds.length > 0 &&
-      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 mt-4">
+      <div className="w-full mt-4 sm:mt-4 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 sm:max-w-7xl sm:mx-auto">
           <div
           className={`relative rounded-xl sm:rounded-2xl overflow-hidden h-28 sm:h-36 md:h-44 bg-white shadow-sm border border-gray-200 ${isCurrentSponsoredAdClickable ? "cursor-pointer" : "cursor-default"}`}
           onClick={() => {
@@ -1506,15 +1506,25 @@ export default function Home() {
               transition={{ duration: 0.45 }}
               className="absolute inset-0">
               
+                {/* Blur-fill background so full image is visible without white padding */}
+                <div
+                  className="absolute inset-0 scale-110 blur-lg"
+                  style={{
+                    backgroundImage: `url(${currentSponsoredAd?.bannerImage || ""})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/10" />
                 <img
-                src={currentSponsoredAd?.bannerImage}
-                alt={currentSponsoredAd?.title || currentSponsoredAd?.restaurant?.name || "Restaurant Advertisement"}
-                className="w-full h-full object-cover" />
+                  src={currentSponsoredAd?.bannerImage}
+                  alt={currentSponsoredAd?.title || currentSponsoredAd?.restaurant?.name || "Restaurant Advertisement"}
+                  className="relative z-10 w-full h-full object-contain" />
               
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                <div className="absolute left-3 bottom-3 text-white">
-                  <p className="text-[10px] uppercase tracking-wide opacity-80">Sponsored</p>
-                  <p className="text-sm font-semibold">
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+                <div className="absolute left-3 bottom-3 text-white z-20 rounded-lg bg-black/35 px-2 py-1 backdrop-blur-[1px]">
+                  <p className="text-[10px] uppercase tracking-wide opacity-90">Sponsored</p>
+                  <p className="text-sm font-semibold leading-tight">
                     {currentSponsoredAd?.title || currentSponsoredAd?.restaurant?.name || "Restaurant Ad"}
                   </p>
                 </div>
