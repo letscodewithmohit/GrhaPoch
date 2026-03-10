@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Mail, ChevronDown, Phone } from "lucide-react"
 import { setAuthData } from "@/lib/utils/auth"
@@ -55,6 +55,36 @@ export default function RestaurantLogin() {
   })
   const [isSending, setIsSending] = useState(false)
   const [apiError, setApiError] = useState("")
+
+  // Pre-fill data if user comes back from OTP screen
+  useEffect(() => {
+    const stored = sessionStorage.getItem("restaurantAuthData");
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        if (data.method === "phone" && data.phone) {
+          setLoginMethod("phone");
+          // Extract digits from stored phone (handles cases like "+91 9098569620")
+          const phoneNum = data.phone.split(" ").slice(1).join("") || data.phone.replace(/^\+\d+\s?/, "");
+          const countryCode = data.phone.split(" ")[0] || "+91";
+          
+          setFormData(prev => ({
+            ...prev,
+            phone: phoneNum,
+            countryCode: countryCodes.some(c => c.code === countryCode) ? countryCode : "+91"
+          }));
+        } else if (data.method === "email" && data.email) {
+          setLoginMethod("email");
+          setFormData(prev => ({
+            ...prev,
+            email: data.email
+          }));
+        }
+      } catch (e) {
+        console.error("Failed to parse stored auth data:", e);
+      }
+    }
+  }, []);
 
   // Get selected country details dynamically
   const selectedCountry = countryCodes.find(c => c.code === formData.countryCode) || countryCodes[2] // Default to India (+91)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button";
 import { restaurantAPI } from "@/lib/api";
 import { setAuthData as setRestaurantAuthData } from "@/lib/utils/auth";
@@ -65,11 +66,24 @@ export default function RestaurantOTP() {
   }, [navigate]);
 
   useEffect(() => {
-    // Focus first input on mount
-    if (inputRefs.current[0]) {
-      inputRefs.current[0].focus();
+    // Focus first input on mount with a small delay to ensure page transition is complete
+    if (!showNameInput) {
+      const timer = setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [showNameInput]);
+
+  useEffect(() => {
+    // Auto-clear error after 3 seconds
+    if (error) {
+      const timer = setTimeout(() => {
+        setError("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleChange = (index, value) => {
     // Only allow digits
@@ -270,7 +284,9 @@ export default function RestaurantOTP() {
       "Invalid OTP. Please try again.";
       setError(message);
       setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 50);
     } finally {
       setIsLoading(false);
     }
@@ -347,50 +363,27 @@ export default function RestaurantOTP() {
             </p>
           </div>
 
-          {/* OTP Input Fields - Horizontal Lines */}
-          <div className="flex justify-center gap-4">
-            {otp.map((digit, index) => {
-              const hasValue = digit !== "";
-              const isFocused = focusedIndex === index;
-
-              return (
-                <div key={index} className="relative flex flex-col items-center min-w-[48px] py-2" style={{ minHeight: '60px' }}>
-                  {/* Clickable Input Area - Large clickable zone */}
-                  <input
-                    ref={(el) => inputRefs.current[index] = el}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit || ""}
-                    onChange={(e) => handleChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    onPaste={index === 0 ? handlePaste : undefined}
-                    onFocus={() => setFocusedIndex(index)}
-                    onBlur={() => setFocusedIndex(null)}
-                    disabled={isLoading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-text z-20"
-                    style={{ minHeight: '60px' }}
-                    aria-label={`OTP digit ${index + 1}`} />
-                  
-                  {/* Digit Display Above Line */}
-                  {hasValue &&
-                  <div className="absolute top-0 text-2xl font-semibold text-gray-900 pointer-events-none z-10">
-                      {digit}
-                    </div>
-                  }
-                  {/* Visual Line Indicator */}
-                  <div className="w-12 relative mt-8">
-                    {hasValue ?
-                    <div className="absolute inset-0 bg-blue-600 h-0.5" /> :
-                    isFocused ?
-                    <div className="absolute inset-0 bg-blue-600 h-0.5" /> :
-
-                    <div className="absolute inset-0 h-0.5 border-b border-dashed border-gray-400" />
-                    }
-                  </div>
-                </div>);
-
-            })}
+          {/* OTP Input Fields */}
+          <div className="flex justify-center gap-2 sm:gap-4">
+            {otp.map((digit, index) => (
+              <Input
+                key={index}
+                ref={(el) => (inputRefs.current[index] = el)}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={index === 0 ? handlePaste : undefined}
+                disabled={isLoading}
+                autoComplete="off"
+                autoFocus={index === 0}
+                className={`w-12 h-12 text-center text-lg font-semibold p-0 border border-gray-300 rounded-lg focus-visible:ring-2 focus-visible:ring-blue-600 bg-white transition-opacity ${
+                  isLoading ? "opacity-50" : "opacity-100"
+                }`}
+              />
+            ))}
           </div>
 
           {/* Name input:

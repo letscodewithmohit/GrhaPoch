@@ -1301,67 +1301,43 @@ export default function Home() {
       {/* Unified Header Section (Navbar + Search) */}
       <div className="bg-white dark:bg-[#0a0a0a] pb-4 relative z-30">
         {/* Navbar */}
-        <div className="relative z-20 pt-2 sm:pt-3 lg:pt-4">
+        <div className="relative z-20 pt-2 sm:pt-3 lg:pt-4 md:hidden">
           <PageNavbar textColor="black" zIndex={20} />
         </div>
 
         {/* Search Bar and VEG MODE Container */}
-        <div className="relative z-20 w-full pt-2 sm:pt-3 pb-1">
+        <div className="relative z-20 w-full pt-4 sm:pt-6 pb-2">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12">
             <div className="flex items-center gap-3 sm:gap-4 lg:gap-6">
-              {/* Enhanced Search Bar */}
+              {/* Enhanced Search Bar Trigger */}
               <motion.div
                 className="flex-1 relative"
                 whileHover={{ scale: 1.01 }}
+                onClick={() => openSearch()}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}>
                 
-                <div className="relative bg-gray-100 dark:bg-[#1a1a1a] rounded-xl lg:rounded-2xl border border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-700 focus-within:bg-white dark:focus-within:bg-black p-1 sm:p-1.5 lg:p-2 transition-all duration-300">
-                  <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+                <div className="relative bg-gray-100 dark:bg-[#1a1a1a] rounded-xl lg:rounded-2xl border border-transparent hover:border-gray-300 dark:hover:border-gray-700 hover:bg-white dark:hover:bg-black p-1 sm:p-1.5 lg:p-2 transition-all duration-300 cursor-pointer">
+                  <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 h-8 sm:h-9 lg:h-11">
                     <Search className="h-4 w-4 sm:h-4 sm:w-4 lg:h-5 lg:w-5 text-gray-500 flex-shrink-0 ml-2 sm:ml-3 lg:ml-4" strokeWidth={2.5} />
-                    <div className="flex-1 relative">
-                      <div className="relative w-full">
-                        <Input
-                          value={heroSearch}
-                          onChange={(e) => setHeroSearch(e.target.value)}
-                          onFocus={handleSearchFocus}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && heroSearch.trim()) {
-                              navigate(`/user/search?q=${encodeURIComponent(heroSearch.trim())}`);
-                              closeSearch();
-                              setHeroSearch("");
-                            }
-                          }}
-                          className="pl-0 pr-2 h-8 sm:h-9 lg:h-11 w-full bg-transparent border-0 text-sm sm:text-base lg:text-lg font-semibold text-gray-700 dark:text-white focus-visible:ring-0 focus-visible:ring-offset-0 rounded-full placeholder:text-gray-400 dark:placeholder:text-gray-500" />
-                        
-                        {/* Animated placeholder */}
-                        {!heroSearch &&
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 pointer-events-none h-5 lg:h-6 overflow-hidden">
-                            <AnimatePresence mode="wait">
-                              <motion.span
-                              key={placeholderIndex}
-                              initial={{ y: 16, opacity: 0 }}
-                              animate={{ y: 0, opacity: 1 }}
-                              exit={{ y: -16, opacity: 0 }}
-                              transition={{ duration: 0.3 }}
-                              className="text-sm sm:text-base lg:text-lg font-semibold text-gray-400 dark:text-gray-500 inline-block">
-                              
-                                {placeholders[placeholderIndex]}
-                              </motion.span>
-                            </AnimatePresence>
-                          </div>
-                        }
-                      </div>
+                    <div className="flex-1 relative h-full flex items-center">
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={placeholderIndex}
+                          initial={{ y: 16, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: -16, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="text-sm sm:text-base lg:text-lg font-semibold text-gray-400 dark:text-gray-500 inline-block pointer-events-none">
+                          {placeholders[placeholderIndex]}
+                        </motion.span>
+                      </AnimatePresence>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleSearchFocus}
-                      className="flex-shrink-0 mr-2 sm:mr-3 lg:mr-4 p-1 lg:p-1.5 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-colors">
-                      
-                      <Mic className="h-4 w-4 sm:h-4 sm:w-4 lg:h-5 lg:w-5 text-gray-500 dark:text-gray-400" strokeWidth={2.5} />
-                    </button>
+                    {/* Voice Search Icon */}
+                    <Mic className="h-4 w-4 sm:h-5 lg:h-6 text-gray-400 mr-2 sm:mr-3 lg:mr-4 cursor-pointer hover:text-green-600 transition-colors" />
                   </div>
                 </div>
               </motion.div>
+
 
               {/* VEG MODE Toggle */}
               <div

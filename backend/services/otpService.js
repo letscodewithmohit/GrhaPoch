@@ -244,7 +244,7 @@ class OTPService {
       // For reset-password purpose, allow already-verified OTPs within 10 minutes
       let otpRecord;
 
-      if (purpose === 'reset-password') {
+      if (purpose === 'reset-password' || purpose === 'login' || purpose === 'register') {
         // First try to find unverified OTP
         const unverifiedQuery = {
           otp,
@@ -257,15 +257,15 @@ class OTPService {
 
         otpRecord = await Otp.findOne(unverifiedQuery);
 
-        // If not found, check for already-verified OTP within last 10 minutes
+        // If not found, check for already-verified OTP within last 5 minutes
         if (!otpRecord) {
-          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
           const verifiedQuery = {
             otp,
             purpose,
             verified: true,
             expiresAt: { $gt: new Date() },
-            updatedAt: { $gt: tenMinutesAgo }
+            updatedAt: { $gt: fiveMinutesAgo }
           };
           if (phone) verifiedQuery.phone = phone;
           if (email) verifiedQuery.email = email;
@@ -273,7 +273,7 @@ class OTPService {
           otpRecord = await Otp.findOne(verifiedQuery);
 
           if (otpRecord) {
-            // OTP already verified and still valid (within 10 minutes)
+            // OTP already verified and still valid (within 5 minutes)
             return {
               success: true,
               message: 'OTP verified successfully'
