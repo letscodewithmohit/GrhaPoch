@@ -326,38 +326,46 @@ export default function Profile() {
 
   return (
     <AnimatedPage className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a]">
-      <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10">
-        {/* Back Arrow */}
-        <div className="mb-4">
-          <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={() => {
-            if (location.state?.from === "cart") {
-              navigate("/user/cart");
-            } else {
-              navigate(-1);
-            }
-          }}>
-            <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
-          </Button>
-        </div>
+      <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10 pb-[74px] md:pb-12">
 
         {/* Profile Info Card */}
-        <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl py-0 pt-1 shadow-sm mb-0 border-0 dark:border-gray-800 overflow-hidden">
+        <Card className="bg-white dark:bg-[#1a1a1a] mt-6 rounded-2xl py-0 pt-1 shadow-sm mb-0 border-0 dark:border-gray-800 overflow-hidden">
           <CardContent className="p-4 py-0 pt-2">
             <div className="flex items-start gap-4 mb-4">
               <motion.div
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ duration: 0.3, type: "spring", stiffness: 300 }}>
 
-                <Avatar className="h-16 w-16 bg-blue-300 border-0">
-                  {userProfile?.profileImage &&
-                    <AvatarImage
-                      src={userProfile.profileImage && userProfile.profileImage.trim() ? userProfile.profileImage : undefined}
-                      alt={displayName} />
-
-                  }
-                  <AvatarFallback className="bg-blue-300 text-white text-2xl font-semibold">
-                    {avatarInitial}
-                  </AvatarFallback>
+                <Avatar className="h-16 w-16 border-0 overflow-hidden bg-transparent">
+                  <AnimatePresence mode="wait">
+                    {userProfile?.profileImage && userProfile?.profileImage !== 'null' && userProfile?.profileImage !== 'undefined' ? (
+                      <motion.div
+                        key="image"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="w-full h-full"
+                      >
+                        <AvatarImage
+                          src={userProfile.profileImage.trim()}
+                          alt={displayName} 
+                          className="object-cover w-full h-full"
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="initials"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-center justify-center w-full h-full bg-blue-500 text-white text-2xl font-semibold uppercase select-none"
+                      >
+                        {avatarInitial}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Avatar>
               </motion.div>
               <div className="flex-1 pt-1">
@@ -849,7 +857,7 @@ export default function Profile() {
         </div>
 
         {/* More Section */}
-        <div className="mb-6 pb-4">
+        <div className="mb-6 pb-0">
           <div className="flex items-center gap-2 mb-2 px-1">
             <div className="w-1 h-4 bg-green-600 rounded"></div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">More</h3>
@@ -999,6 +1007,18 @@ export default function Profile() {
             </motion.div>
           </div>
         </div>
+
+        {/* Footer Note - Hidden on mobile, shown on desktop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+          className="hidden md:block text-center mt-12 mb-4"
+        >
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            © {new Date().getFullYear()} GrhaPoch. All rights reserved.
+          </p>
+        </motion.div>
       </div>
 
       {/* Veg Mode Popup */}

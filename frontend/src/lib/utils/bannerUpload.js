@@ -56,18 +56,6 @@ export const optimizeBannerForUpload = async (file) => {
   }
 
   const sourceRatio = originalWidth / originalHeight
-  let sourceX = 0
-  let sourceY = 0
-  let sourceWidth = originalWidth
-  let sourceHeight = originalHeight
-
-  if (sourceRatio > TARGET_BANNER_RATIO) {
-    sourceWidth = Math.round(originalHeight * TARGET_BANNER_RATIO)
-    sourceX = Math.round((originalWidth - sourceWidth) / 2)
-  } else if (sourceRatio < TARGET_BANNER_RATIO) {
-    sourceHeight = Math.round(originalWidth / TARGET_BANNER_RATIO)
-    sourceY = Math.round((originalHeight - sourceHeight) / 2)
-  }
 
   const canvas = document.createElement("canvas")
   canvas.width = TARGET_BANNER_WIDTH
@@ -77,17 +65,20 @@ export const optimizeBannerForUpload = async (file) => {
     throw new Error("Unable to process image in this browser")
   }
 
-  context.drawImage(
-    image,
-    sourceX,
-    sourceY,
-    sourceWidth,
-    sourceHeight,
-    0,
-    0,
-    TARGET_BANNER_WIDTH,
-    TARGET_BANNER_HEIGHT
+  // Contain without cropping: fit the full image into target canvas with padding.
+  context.fillStyle = "#ffffff"
+  context.fillRect(0, 0, TARGET_BANNER_WIDTH, TARGET_BANNER_HEIGHT)
+
+  const scale = Math.min(
+    TARGET_BANNER_WIDTH / originalWidth,
+    TARGET_BANNER_HEIGHT / originalHeight
   )
+  const drawWidth = Math.round(originalWidth * scale)
+  const drawHeight = Math.round(originalHeight * scale)
+  const drawX = Math.round((TARGET_BANNER_WIDTH - drawWidth) / 2)
+  const drawY = Math.round((TARGET_BANNER_HEIGHT - drawHeight) / 2)
+
+  context.drawImage(image, drawX, drawY, drawWidth, drawHeight)
 
   let optimizedBlob = null
   for (const quality of QUALITY_STEPS) {
@@ -112,7 +103,7 @@ export const optimizeBannerForUpload = async (file) => {
 
   const previewUrl = URL.createObjectURL(optimizedFile)
   const sourceRatioLabel = sourceRatio.toFixed(2)
-  const summary = `Auto-adjusted ${originalWidth}x${originalHeight} (${sourceRatioLabel}:1) -> ${TARGET_BANNER_WIDTH}x${TARGET_BANNER_HEIGHT} (2.4:1), ${formatKb(file.size)} -> ${formatKb(optimizedFile.size)}`
+  const summary = `Auto-fit ${originalWidth}x${originalHeight} (${sourceRatioLabel}:1) -> ${TARGET_BANNER_WIDTH}x${TARGET_BANNER_HEIGHT} (2.4:1), ${formatKb(file.size)} -> ${formatKb(optimizedFile.size)}`
 
   return {
     file: optimizedFile,

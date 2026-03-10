@@ -391,13 +391,13 @@ export default function Under250() {
         }
 
         {/* Navbar */}
-        <div className="relative z-20 pt-2 sm:pt-3 lg:pt-4">
+        <div className="relative z-20 pt-2 sm:pt-3 lg:pt-4 md:hidden">
           <PageNavbar textColor="black" zIndex={20} showProfile={true} />
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 space-y-0 pt-2 sm:pt-3 md:pt-4 lg:pt-6 pb-6 md:pb-8 lg:pb-10">
+      <div className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 space-y-0 pt-6 sm:pt-8 md:pt-10 lg:pt-12 pb-6 md:pb-8 lg:pb-10">
 
         <section className="space-y-1 sm:space-y-1.5">
           <div

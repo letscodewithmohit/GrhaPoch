@@ -104,7 +104,7 @@ export default function RestaurantCommission() {
           total: paginationData?.total ?? commissionsData.length,
           page: paginationData?.page ?? page,
           limit: paginationData?.limit ?? PAGE_SIZE,
-          pages: paginationData?.pages ?? 1,
+          pages: paginationData?.pages ?? Math.max(1, Math.ceil((paginationData?.total ?? commissionsData.length) / (paginationData?.limit ?? PAGE_SIZE))),
         })
       } else {
         setCommissions([])

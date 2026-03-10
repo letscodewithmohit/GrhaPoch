@@ -21,6 +21,7 @@ const iconMap = {
 
 export default function About() {
   const [loading, setLoading] = useState(true)
+  const [logoUrl, setLogoUrl] = useState("")
   const [aboutData, setAboutData] = useState({
     appName: 'GrhaPoch',
     version: '1.0.0',
@@ -37,9 +38,18 @@ export default function About() {
   const fetchAboutData = async () => {
     try {
       setLoading(true)
-      const response = await api.get(API_ENDPOINTS.ADMIN.ABOUT_PUBLIC)
-      if (response.data.success) {
-        setAboutData(response.data.data)
+      const [aboutResponse, businessResponse] = await Promise.all([
+        api.get(API_ENDPOINTS.ADMIN.ABOUT_PUBLIC),
+        api.get(API_ENDPOINTS.ADMIN.BUSINESS_SETTINGS_PUBLIC)
+      ])
+      if (aboutResponse?.data?.success) {
+        setAboutData(aboutResponse.data.data)
+      }
+      if (businessResponse?.data?.success) {
+        const settingsLogo = businessResponse.data.data?.logo?.url
+        if (settingsLogo) {
+          setLogoUrl(settingsLogo)
+        }
       }
     } catch (error) {
       console.error('Error fetching about data:', error)
@@ -93,7 +103,7 @@ export default function About() {
                   <div className="absolute inset-0 bg-green-400 rounded-full blur-2xl opacity-30 animate-pulse" />
                   <div className="relative bg-white dark:bg-gray-800 rounded-full p-4 md:p-6 shadow-xl">
                     <img
-                      src={aboutData.logo && aboutData.logo.trim() ? aboutData.logo : grhaPochLogo}
+                      src={logoUrl || (aboutData.logo && aboutData.logo.trim() ? aboutData.logo : grhaPochLogo)}
                       alt={`${aboutData.appName} Logo`}
                       className="h-16 w-16 md:h-20 md:w-20 object-contain rounded-full"
                     />

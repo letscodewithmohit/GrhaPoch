@@ -1158,8 +1158,25 @@ export default function Cart() {
         return;
       }
 
-      // Create order in backend
-      const orderResponse = await orderAPI.createOrder(orderPayload);
+      // If a pending order exists, reuse it for payment retry
+      let pendingOrderId = null
+      if (selectedPaymentMethod === "razorpay") {
+        pendingOrderId = localStorage.getItem("pendingOrderId")
+      }
+
+      let orderResponse
+      if (pendingOrderId && selectedPaymentMethod === "razorpay") {
+        try {
+          orderResponse = await orderAPI.createPaymentOrder(pendingOrderId)
+        } catch (reuseError) {
+          console.warn("Pending order reuse failed, creating new order:", reuseError)
+          localStorage.removeItem("pendingOrderId")
+          orderResponse = await orderAPI.createOrder(orderPayload)
+        }
+      } else {
+        // Create order in backend
+        orderResponse = await orderAPI.createOrder(orderPayload);
+      }
 
 
 
@@ -1221,6 +1238,10 @@ export default function Cart() {
 
 
 
+      let paymentCompleted = false
+      // Store pending order id for retry
+      localStorage.setItem("pendingOrderId", order.id)
+
       // Initialize Razorpay payment
       await initRazorpayPayment({
         key: razorpay.key,
@@ -1258,7 +1279,7 @@ export default function Cart() {
 
             if (verifyResponse.data.success) {
               // Payment successful
-
+              paymentCompleted = true
 
 
 
@@ -1266,6 +1287,7 @@ export default function Cart() {
               setShowOrderSuccess(true);
               clearCart();
               setIsPlacingOrder(false);
+              localStorage.removeItem("pendingOrderId")
             } else {
               throw new Error(verifyResponse.data.message || "Payment verification failed");
             }
@@ -1286,7 +1308,6 @@ export default function Cart() {
           setIsPlacingOrder(false);
         },
         onClose: () => {
-
           setIsPlacingOrder(false);
         }
       });
@@ -1769,8 +1790,13 @@ export default function Cart() {
                           <button
                             key={amount}
                             onClick={() => {
-                              setTipAmount(amount);
-                              setShowCustomTip(false);
+                              if (isSelected) {
+                                setTipAmount(0); // deselect preset
+                                setShowCustomTip(false);
+                              } else {
+                                setTipAmount(amount);
+                                setShowCustomTip(false);
+                              }
                             }}
                             className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${isSelected ?
                               "border-orange-600 bg-orange-600 text-white shadow-md scale-105" :
@@ -1782,7 +1808,12 @@ export default function Cart() {
                       })}
                       <button
                         onClick={() => {
-                          setShowCustomTip(!showCustomTip);
+                          if (showCustomTip) {
+                            setTipAmount(0); // close and clear
+                            setShowCustomTip(false);
+                          } else {
+                            setShowCustomTip(true);
+                          }
                         }}
                         className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${(showCustomTip || (tipAmount > 0 && !tipOptions.includes(tipAmount))) ?
                           "border-orange-600 bg-orange-600 text-white shadow-md scale-105" :
@@ -1824,8 +1855,13 @@ export default function Cart() {
                           <button
                             key={amount}
                             onClick={() => {
-                              setDonationAmount(amount);
-                              setShowCustomDonation(false);
+                              if (isSelected) {
+                                setDonationAmount(0); // deselect preset
+                                setShowCustomDonation(false);
+                              } else {
+                                setDonationAmount(amount);
+                                setShowCustomDonation(false);
+                              }
                             }}
                             className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${isSelected ?
                               "border-blue-600 bg-blue-600 text-white shadow-md scale-105" :
@@ -1837,7 +1873,12 @@ export default function Cart() {
                       })}
                       <button
                         onClick={() => {
-                          setShowCustomDonation(!showCustomDonation);
+                          if (showCustomDonation) {
+                            setDonationAmount(0); // close and clear
+                            setShowCustomDonation(false);
+                          } else {
+                            setShowCustomDonation(true);
+                          }
                         }}
                         className={`px-4 py-1.5 rounded-full border text-xs md:text-sm font-semibold transition-all duration-300 ${(showCustomDonation || (donationAmount > 0 && !donationOptions.includes(donationAmount))) ?
                           "border-blue-600 bg-blue-600 text-white shadow-md scale-105" :
@@ -2492,4 +2533,3 @@ export default function Cart() {
     </div >);
 
 }
-

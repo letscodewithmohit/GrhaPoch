@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { DateRangeCalendar } from "@/components/ui/date-range-calendar";
-import { Bell, HelpCircle, Menu, Search, TrendingUp, BarChart3, Users, CalendarRange, Download, MoreVertical, ChevronLeft, ChevronRight, Wand2, X, MapPin, Crown, ArrowRight, AlertCircle, Sparkles } from "lucide-react";
+import { Bell, HelpCircle, Menu, Search, TrendingUp, BarChart3, Users, CalendarRange, Download, MoreVertical, ChevronLeft, ChevronRight, Wand2, X, MapPin, Crown, ArrowRight, AlertCircle, Sparkles, BadgePercent } from "lucide-react";
 import {
   FaPhone,
   FaHistory,
@@ -2042,23 +2042,20 @@ export default function ToHub() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="mx-4 mt-4 bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg shadow-purple-200 flex items-center justify-between overflow-hidden relative">
+        className="mx-4 mt-4 bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg shadow-purple-200 flex items-center gap-3 overflow-hidden relative">
 
           {/* Decorative background circle */}
           <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
 
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/30 shadow-inner">
-              <Crown className="w-5 h-5 text-yellow-300 fill-yellow-300" />
+          <div className="flex items-center gap-3 relative z-10 min-w-0 flex-1">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/30 shadow-inner flex-shrink-0">
+              <BadgePercent className="w-5 h-5 text-yellow-200" />
             </div>
-            <div>
-              <h3 className="font-bold text-sm flex items-center gap-1.5">
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm whitespace-nowrap">
                 {restaurantData?.subscription?.status === 'expired' ? 'Plan Expired' : 'Commission Base Mode'}
-                <span className={`bg-white/20 text-[9px] px-1.5 py-0.5 rounded text-white border border-white/20 uppercase tracking-tighter ${restaurantData?.subscription?.status === 'expired' ? 'bg-red-500/40 border-red-200' : ''}`}>
-                  {restaurantData?.subscription?.status === 'expired' ? 'Action Required' : 'Active'}
-                </span>
               </h3>
-              <p className="text-[10px] text-white/80 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+              <p className="text-[11px] text-white/80 font-medium leading-snug max-w-[240px]">
                 {restaurantData?.subscription?.status === 'expired' ?
               'Your plan has ended. Renew for 0% commission.' :
               'Get 0% extra commission with Subscription plans'}
@@ -2067,7 +2064,7 @@ export default function ToHub() {
           </div>
           <button
           onClick={() => navigate('/restaurant/subscription-plans')}
-          className={`bg-white px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10 ${restaurantData?.subscription?.status === 'expired' ? 'text-red-700 hover:bg-red-50' : 'text-indigo-700 hover:bg-indigo-50'}`}>
+          className={`bg-white px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 relative z-10 whitespace-nowrap ${restaurantData?.subscription?.status === 'expired' ? 'text-red-700 hover:bg-red-50' : 'text-indigo-700 hover:bg-indigo-50'}`}>
 
             {restaurantData?.subscription?.status === 'expired' ? 'Renew' : 'Upgrade'}
             <ArrowRight className="w-3 h-3" />
@@ -2137,34 +2134,35 @@ export default function ToHub() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mx-4 mt-5 bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-5 text-white shadow-xl shadow-emerald-100 flex items-center justify-between overflow-hidden relative border border-emerald-500/30">
+        className="mx-4 mt-4 bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl p-3 text-white shadow-xl shadow-emerald-100 flex items-center gap-3 overflow-hidden relative border border-emerald-500/30">
 
           {/* Enhanced decorative patterns */}
           <div className="absolute -right-6 -top-10 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-emerald-400/10 rounded-full blur-2xl"></div>
 
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="bg-white/15 p-3 rounded-2xl backdrop-blur-md border border-white/20 shadow-lg shrink-0">
-              <Crown className="w-6 h-6 text-yellow-300 fill-yellow-300 animate-pulse" />
+          <div className="flex items-center gap-3 relative z-10 flex-1 min-w-0">
+            <div className="bg-white/15 p-2.5 rounded-2xl backdrop-blur-md border border-white/20 shadow-lg shrink-0">
+              <Crown className="w-6 h-6 text-yellow-300 fill-yellow-300" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h3 className="font-bold text-[15px] tracking-tight whitespace-nowrap">
-                  Subscription Base Mode
-                </h3>
-                <span className="bg-emerald-400/20 text-emerald-50 text-[10px] px-2 py-0.5 rounded-full border border-emerald-400/30 font-bold uppercase tracking-widest backdrop-blur-sm">
-                  {restaurantData?.subscription?.planName || 'Active'}
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-50/80 font-medium leading-tight">
-                Premium status • 0% Commission active
+              <h3 className="font-bold text-[15px] tracking-tight whitespace-nowrap mb-1">
+                Subscription Base Mode
+              </h3>
+              <p className="text-[11px] text-emerald-50/85 leading-tight max-w-[210px]">
+                {restaurantData?.subscription?.planName &&
+                  <span className="font-semibold text-white">
+                    {restaurantData.subscription.planName} plan
+                  </span>
+                }
+                {restaurantData?.subscription?.planName ? ' • ' : ''}
+                0% commission active
               </p>
             </div>
           </div>
 
           <button
           onClick={() => navigate('/restaurant/subscription-plans')}
-          className="bg-white text-emerald-800 px-5 py-2.5 rounded-xl text-xs font-extra-bold hover:bg-emerald-50 transition-all shadow-xl active:scale-95 flex items-center gap-2 relative z-10 shrink-0 border border-emerald-100/50">
+          className="bg-white text-emerald-800 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-50 transition-all shadow-md active:scale-95 flex items-center gap-2 relative z-10 shrink-0 border border-emerald-100/50 whitespace-nowrap">
 
             <span className="font-bold whitespace-nowrap">My Plan</span>
             <ArrowRight className="w-3.5 h-3.5" />

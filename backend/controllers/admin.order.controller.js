@@ -950,30 +950,123 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
       sum + (order.pricing?.total || 0), 0
     );
 
-    // Get admin earning from AdminCommission
-    const adminCommissionQuery = {
-      status: 'completed',
-      ...summaryDateQuery,
-      ...summaryRestaurantQuery
+    // Prefer OrderSettlement for accurate earnings (single source of truth)
+    const OrderSettlement = (await import('../models/OrderSettlement.js')).default;
+    const summaryOrderIds = allOrdersForSummary.map((order) => order._id);
+    const settlements = summaryOrderIds.length > 0
+      ? await OrderSettlement.find({ orderId: { $in: summaryOrderIds } }).lean()
+      : [];
+
+    let adminEarning = 0;
+    let restaurantEarning = 0;
+    let deliverymanEarning = 0;
+
+    if (settlements.length > 0) {
+      adminEarning = settlements.reduce((sum, s) => sum + (s.adminEarning?.totalEarning || 0), 0);
+      restaurantEarning = settlements.reduce((sum, s) => sum + (s.restaurantEarning?.netEarning || 0), 0);
+      deliverymanEarning = settlements.reduce((sum, s) => sum + (s.deliveryPartnerEarning?.totalEarning || 0), 0);
+    } else {
+      // Fallback to AdminCommission if settlements are missing
+      const adminCommissionQuery = {
+        status: 'completed',
+        ...summaryDateQuery,
+        ...summaryRestaurantQuery
+      };
+      const adminCommissions = await AdminCommission.find(adminCommissionQuery).lean();
+      adminEarning = adminCommissions.reduce((sum, comm) => sum + (comm.commissionAmount || 0), 0);
+      restaurantEarning = adminCommissions.reduce((sum, comm) => sum + (comm.restaurantEarning || 0), 0);
+      // Estimate deliveryman earning from delivery fee (legacy fallback)
+      deliverymanEarning = completedOrders.reduce((sum, order) => {
+        return sum + (order.pricing?.deliveryFee || 0) * 0.8;
+      }, 0);
+    }
+
+    // Add non-order admin income: subscriptions + advertisements
+    const SubscriptionPayment = (await import('../models/SubscriptionPayment.js')).default;
+    const Advertisement = (await import('../models/Advertisement.js')).default;
+    const UserAdvertisement = (await import('../models/UserAdvertisement.js')).default;
+
+    const subscriptionMatch = { status: 'success' };
+    if (fromDate || toDate) {
+      subscriptionMatch.paymentDate = {};
+      if (fromDate) {
+        const startDate = new Date(fromDate);
+        startDate.setHours(0, 0, 0, 0);
+        subscriptionMatch.paymentDate.$gte = startDate;
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        subscriptionMatch.paymentDate.$lte = endDate;
+      }
+    }
+
+    const subscriptionAgg = await SubscriptionPayment.aggregate([
+      { $match: subscriptionMatch },
+      { $group: { _id: null, amount: { $sum: '$amount' } } }
+    ]);
+    const subscriptionTotal = subscriptionAgg[0]?.amount || 0;
+
+    const restaurantAdMatch = {
+      adType: 'restaurant_banner',
+      paymentStatus: 'paid',
+      isDeleted: false,
+      price: { $gt: 0 }
     };
-    const adminCommissions = await AdminCommission.find(adminCommissionQuery).lean();
-    const adminEarning = adminCommissions.reduce((sum, comm) => sum + (comm.commissionAmount || 0), 0);
+    if (summaryRestaurantQuery.restaurantId) {
+      restaurantAdMatch.restaurantId = summaryRestaurantQuery.restaurantId;
+    }
 
-    // Calculate restaurant earning (order total - admin commission - delivery commission)
-    // For simplicity, we'll use restaurantEarning from AdminCommission if available
-    const restaurantEarning = adminCommissions.reduce((sum, comm) => sum + (comm.restaurantEarning || 0), 0);
+    const restaurantAdAgg = await Advertisement.aggregate([
+      { $match: restaurantAdMatch },
+      { $addFields: { paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] } } },
+      ...(fromDate || toDate ? [{
+        $match: {
+          paidAt: {
+            ...(fromDate ? { $gte: new Date(new Date(fromDate).setHours(0, 0, 0, 0)) } : {}),
+            ...(toDate ? { $lte: new Date(new Date(toDate).setHours(23, 59, 59, 999)) } : {})
+          }
+        }
+      }] : []),
+      { $group: { _id: null, total: { $sum: '$price' } } }
+    ]);
 
-    // Calculate deliveryman earning (from delivery commissions)
-    // This would need to be calculated from delivery wallet transactions or order assignment info
-    // For now, we'll estimate based on delivery fee or use a placeholder
-    const deliverymanEarning = completedOrders.reduce((sum, order) => {
-      // Delivery commission is typically calculated from distance
-      // For now, we'll use a simple estimate or fetch from delivery wallet
-      return sum + (order.pricing?.deliveryFee || 0) * 0.8; // Estimate 80% of delivery fee goes to deliveryman
-    }, 0);
+    const userAdMatch = {
+      paymentStatus: 'paid',
+      isDeleted: false,
+      price: { $gt: 0 }
+    };
+
+    const userAdAgg = await UserAdvertisement.aggregate([
+      { $match: userAdMatch },
+      { $addFields: { paidAt: { $ifNull: ['$razorpay.paidAt', '$updatedAt'] } } },
+      ...(fromDate || toDate ? [{
+        $match: {
+          paidAt: {
+            ...(fromDate ? { $gte: new Date(new Date(fromDate).setHours(0, 0, 0, 0)) } : {}),
+            ...(toDate ? { $lte: new Date(new Date(toDate).setHours(23, 59, 59, 999)) } : {})
+          }
+        }
+      }] : []),
+      { $group: { _id: null, total: { $sum: '$price' } } }
+    ]);
+
+    const advertisementTotal = (restaurantAdAgg[0]?.total || 0) + (userAdAgg[0]?.total || 0);
+
+    adminEarning += subscriptionTotal + advertisementTotal;
+
+    // Map settlements for the current page (to expose per-order earnings)
+    const pageOrderIds = orders.map((order) => order._id);
+    const pageSettlements = pageOrderIds.length > 0
+      ? await OrderSettlement.find({ orderId: { $in: pageOrderIds } }).lean()
+      : [];
+    const settlementByOrderId = new Map(
+      pageSettlements.map((s) => [s.orderId?.toString(), s])
+    );
 
     // Transform orders to match frontend format
     const transformedTransactions = orders.map((order, index) => {
+      const settlement = settlementByOrderId.get(order._id.toString());
       const subtotal = order.pricing?.subtotal || 0;
       const discount = order.pricing?.discount || 0;
       const deliveryFee = order.pricing?.deliveryFee || 0;
@@ -1009,7 +1102,11 @@ export const getTransactionReport = asyncHandler(async (req, res) => {
         discountedAmount: discountedAmount,
         vatTax: vatTax,
         deliveryCharge: deliveryCharge,
-        orderAmount: orderAmount
+        orderAmount: orderAmount,
+        platformFee: settlement?.adminEarning?.platformFee || 0,
+        adminEarning: settlement?.adminEarning?.totalEarning || 0,
+        restaurantEarning: settlement?.restaurantEarning?.netEarning || 0,
+        deliverymanEarning: settlement?.deliveryPartnerEarning?.totalEarning || 0
       };
     });
 

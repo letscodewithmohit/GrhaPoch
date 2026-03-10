@@ -79,7 +79,11 @@ export function ProfileProvider({ children }) {
 
   // Save to localStorage whenever userProfile, addresses or paymentMethods change
   useEffect(() => {
-    localStorage.setItem("userProfile", JSON.stringify(userProfile))
+    if (userProfile) {
+      const stringifiedProfile = JSON.stringify(userProfile);
+      localStorage.setItem("userProfile", stringifiedProfile);
+      localStorage.setItem("user_user", stringifiedProfile);
+    }
   }, [userProfile])
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { X, Search, Clock } from "lucide-react"
+import { X, Search, Clock, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -103,15 +103,16 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
         <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <form onSubmit={handleSearchSubmit} className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground dark:text-gray-400 z-10" />
+              <div className="flex-1 relative flex items-center">
+                <Search className="absolute left-4 h-5 w-5 text-muted-foreground dark:text-gray-400 z-10" />
                 <Input
                   ref={inputRef}
                   value={searchValue}
                   onChange={(e) => onSearchChange(e.target.value)}
                   placeholder="Search for food, restaurants..."
-                  className="pl-12 pr-4 h-12 w-full bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 focus:border-primary-orange dark:focus:border-primary-orange rounded-full text-lg dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  className="pl-12 pr-12 h-12 w-full bg-gray-100 dark:bg-[#1a1a1a] border-transparent focus:border-gray-300 dark:focus:border-gray-700 focus:bg-white dark:focus:bg-black rounded-xl lg:rounded-2xl text-lg dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 transition-all duration-300"
                 />
+                <Mic className="absolute right-4 h-5 w-5 text-gray-400 cursor-pointer hover:text-green-600 transition-colors" />
               </div>
               <Button
                 type="button"

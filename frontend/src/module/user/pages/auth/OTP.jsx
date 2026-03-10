@@ -55,7 +55,7 @@ export default function OTP() {
       } else {
         setContactInfo(data.phone || "")
       }
-      
+
       // OTP auto-fill removed - user must manually enter OTP
     }
 
@@ -75,11 +75,24 @@ export default function OTP() {
   }, [navigate])
 
   useEffect(() => {
-    // Focus first input on mount
-    if (inputRefs.current[0] && !showNameInput) {
-      inputRefs.current[0].focus()
+    // Focus first input on mount with a small delay to ensure page transition is complete
+    if (!showNameInput) {
+      const timer = setTimeout(() => {
+        inputRefs.current[0]?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
     }
   }, [showNameInput])
+
+  useEffect(() => {
+    // Auto-clear error after 3 seconds
+    if (error) {
+      const timer = setTimeout(() => {
+        setError("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleChange = (index, value) => {
     // Only allow digits
@@ -165,7 +178,7 @@ export default function OTP() {
     }
 
     const code = otpValue || otp.join("")
-    
+
     if (code.length !== 6) {
       return
     }
@@ -222,6 +235,11 @@ export default function OTP() {
         err?.message ||
         "Failed to verify OTP. Please try again."
       setError(message)
+      // Clear OTP on error so user can re-try
+      setOtp(["", "", "", "", "", ""])
+      setTimeout(() => {
+        inputRefs.current[0]?.focus()
+      }, 50)
     } finally {
       setIsLoading(false)
     }
@@ -350,8 +368,10 @@ export default function OTP() {
         >
           <ArrowLeft className="h-5 w-5 md:h-6 md:w-6 text-black dark:text-white" />
         </button>
-        <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-black dark:text-white">OTP Verification</h1>
-      </div> 
+        <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-black dark:text-white">
+          {showNameInput ? "Complete Your Profile" : "OTP Verification"}
+        </h1>
+      </div>
 
       {/* Main Content */}
       <div className="flex flex-col justify-center px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 pt-8 sm:pt-12 md:pt-16 lg:pt-20 pb-12 sm:pb-16 md:pb-20">
@@ -362,8 +382,8 @@ export default function OTP() {
               {showNameInput
                 ? "You're almost done! Please tell us your name to complete registration."
                 : contactType === "email"
-                ? "We have sent a verification code to"
-                : "We have sent a verification code to"}
+                  ? "We have sent a verification code to"
+                  : "We have sent a verification code to"}
             </p>
             {!showNameInput && (
               <p className="text-base md:text-lg lg:text-xl text-black dark:text-white font-medium">
@@ -395,6 +415,7 @@ export default function OTP() {
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={index === 0 ? handlePaste : undefined}
                     disabled={isLoading}
+                    autoFocus={index === 0}
                     className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-18 lg:h-18 text-center text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold p-0 border-2 border-black dark:border-gray-600 rounded-lg focus-visible:ring-2 focus-visible:ring-[#E23744] focus-visible:border-[#E23744] dark:focus-visible:border-[#E23744] bg-white dark:bg-[#1a1a1a] text-black dark:text-white transition-all"
                   />
                 ))}
@@ -439,9 +460,8 @@ export default function OTP() {
                   }}
                   disabled={isLoading}
                   placeholder="Enter your name"
-                  className={`h-11 md:h-14 text-base md:text-lg border-2 ${
-                    nameError ? "border-red-500" : "border-gray-300 dark:border-gray-700"
-                  } bg-white dark:bg-[#1a1a1a] text-black dark:text-white rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-[#E23744]`}
+                  className={`h-11 md:h-14 text-base md:text-lg border-2 ${nameError ? "border-red-500" : "border-gray-300 dark:border-gray-700"
+                    } bg-white dark:bg-[#1a1a1a] text-black dark:text-white rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-[#E23744]`}
                 />
                 {nameError && (
                   <p className="text-xs md:text-sm text-red-500 text-left">

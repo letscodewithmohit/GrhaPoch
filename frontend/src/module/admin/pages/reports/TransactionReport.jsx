@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
+import { useLocation } from "react-router-dom"
 import { BarChart3, ChevronDown, Info, Settings, FileText, FileSpreadsheet, Code, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -18,6 +19,7 @@ import searchIcon from "../../assets/Dashboard-icons/image8.png"
 import exportIcon from "../../assets/Dashboard-icons/image9.png"
 
 export default function TransactionReport() {
+  const location = useLocation()
   const [searchQuery, setSearchQuery] = useState("")
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +38,10 @@ export default function TransactionReport() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [zones, setZones] = useState([])
   const [restaurants, setRestaurants] = useState([])
+  const metricFilter = useMemo(() => {
+    const metric = new URLSearchParams(location.search).get("metric")
+    return metric ? metric.toLowerCase() : ""
+  }, [location.search])
 
   // Fetch zones and restaurants for filters
   useEffect(() => {
@@ -122,8 +128,63 @@ export default function TransactionReport() {
   }, [searchQuery, filters])
 
   const filteredTransactions = useMemo(() => {
+    if (metricFilter === "gst") {
+      return transactions.filter((tx) => (tx.vatTax || 0) > 0)
+    }
+    if (metricFilter === "gross") {
+      return transactions.filter((tx) => (tx.orderAmount || 0) > 0)
+    }
+    if (metricFilter === "delivery_fee") {
+      return transactions.filter((tx) => (tx.deliveryCharge || 0) > 0)
+    }
+    if (metricFilter === "platform_fee") {
+      return transactions.filter((tx) => (tx.platformFee || 0) > 0)
+    }
     return transactions // Backend already filters, so just return transactions
-  }, [transactions])
+  }, [transactions, metricFilter])
+
+  const metricSummary = useMemo(() => {
+    if (metricFilter === "gst") {
+      return {
+        primaryLabel: "GST Total",
+        primaryValue: filteredTransactions.reduce((sum, tx) => sum + (tx.vatTax || 0), 0)
+      }
+    }
+    if (metricFilter === "gross") {
+      return {
+        primaryLabel: "Gross Revenue",
+        primaryValue: filteredTransactions.reduce((sum, tx) => sum + (tx.orderAmount || 0), 0)
+      }
+    }
+    if (metricFilter === "delivery_fee") {
+      return {
+        primaryLabel: "Delivery Fee",
+        primaryValue: filteredTransactions.reduce((sum, tx) => sum + (tx.deliveryCharge || 0), 0)
+      }
+    }
+    if (metricFilter === "platform_fee") {
+      return {
+        primaryLabel: "Platform Fee",
+        primaryValue: filteredTransactions.reduce((sum, tx) => sum + (tx.platformFee || 0), 0)
+      }
+    }
+    if (metricFilter === "admin_earning") {
+      return {
+        primaryLabel: "Admin Earning",
+        primaryValue: summary.adminEarning || 0
+      }
+    }
+    return null
+  }, [metricFilter, filteredTransactions])
+
+  const displaySummary = metricSummary ? {
+    completedTransaction: metricSummary.primaryValue,
+    refundedTransaction: 0,
+    // Keep admin earning from backend summary (includes ads + subscriptions), regardless of metric filter
+    adminEarning: summary.adminEarning || 0,
+    restaurantEarning: filteredTransactions.reduce((sum, tx) => sum + (tx.restaurantEarning || 0), 0),
+    deliverymanEarning: filteredTransactions.reduce((sum, tx) => sum + (tx.deliverymanEarning || 0), 0)
+  } : summary
 
   const handleExport = (format) => {
     if (filteredTransactions.length === 0) {
@@ -154,13 +215,13 @@ export default function TransactionReport() {
 
   const formatCurrency = (amount) => {
     if (amount >= 1000) {
-      return `$ ${(amount / 1000).toFixed(2)}K`
+      return `₹ ${(amount / 1000).toFixed(2)}K`
     }
-    return `$ ${amount.toFixed(2)}`
+    return `₹ ${amount.toFixed(2)}`
   }
 
   const formatFullCurrency = (amount) => {
-    return `$ ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   if (loading) {
@@ -179,11 +240,31 @@ export default function TransactionReport() {
       <div className="w-full mx-auto">
         {/* Page Header */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-3 mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
               <BarChart3 className="w-3.5 h-3.5 text-white" />
             </div>
             <h1 className="text-lg font-bold text-slate-900">Transaction Report</h1>
+            {metricFilter === "gst" && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                GST only
+              </span>
+            )}
+            {metricFilter === "gross" && (
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                Gross revenue only
+              </span>
+            )}
+            {metricFilter === "delivery_fee" && (
+              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                Delivery fee only
+              </span>
+            )}
+            {metricFilter === "platform_fee" && (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                Platform fee only
+              </span>
+            )}
           </div>
         </div>
 
@@ -269,8 +350,8 @@ export default function TransactionReport() {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-xl font-bold text-green-600 mb-1">{formatCurrency(summary.completedTransaction)}</p>
-                <p className="text-sm text-slate-600 leading-tight">Completed Transaction</p>
+                <p className="text-xl font-bold text-green-600 mb-1">{formatCurrency(displaySummary.completedTransaction)}</p>
+                <p className="text-sm text-slate-600 leading-tight">{metricSummary ? metricSummary.primaryLabel : "Completed Transaction"}</p>
               </div>
             </div>
 
@@ -285,7 +366,7 @@ export default function TransactionReport() {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-xl font-bold text-red-600 mb-1">{formatFullCurrency(summary.refundedTransaction)}</p>
+                <p className="text-xl font-bold text-red-600 mb-1">{formatFullCurrency(displaySummary.refundedTransaction)}</p>
                 <p className="text-sm text-slate-600 leading-tight">Refunded Transaction</p>
               </div>
             </div>
@@ -307,7 +388,7 @@ export default function TransactionReport() {
                     </div>
                   </div>
                 </div>
-                <p className="text-base font-bold text-slate-900">{formatCurrency(summary.adminEarning)}</p>
+                <p className="text-base font-bold text-slate-900">{formatCurrency(displaySummary.adminEarning)}</p>
               </div>
             </div>
 
@@ -325,7 +406,7 @@ export default function TransactionReport() {
                     </div>
                   </div>
                 </div>
-                <p className="text-base font-bold text-green-600">{formatCurrency(summary.restaurantEarning)}</p>
+                <p className="text-base font-bold text-green-600">{formatCurrency(displaySummary.restaurantEarning)}</p>
               </div>
             </div>
 
@@ -343,7 +424,7 @@ export default function TransactionReport() {
                     </div>
                   </div>
                 </div>
-                <p className="text-base font-bold text-orange-600">{formatCurrency(summary.deliverymanEarning)}</p>
+                <p className="text-base font-bold text-orange-600">{formatCurrency(displaySummary.deliverymanEarning)}</p>
               </div>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { useLocationSelector } from "./UserLayout"
 import { FaLocationDot } from "react-icons/fa6"
 import { getCachedSettings, loadBusinessSettings } from "@/lib/utils/businessSettings"
 import { useProfile } from "../context/ProfileContext"
+import fallbackLogo from "@/assets/grhapochlogo.png"
 
 
 export default function PageNavbar({
@@ -21,7 +22,7 @@ export default function PageNavbar({
   const { openLocationSelector } = useLocationSelector()
   const { userProfile } = useProfile()
   const cartCount = getCartCount()
-  const [logoUrl, setLogoUrl] = useState(null)
+  const [logoUrl, setLogoUrl] = useState(fallbackLogo)
   const [companyName, setCompanyName] = useState(null)
 
   // Auto-trigger location fetch if we have placeholder values (only once on mount)
@@ -76,8 +77,12 @@ export default function PageNavbar({
             setCompanyName(settings.companyName)
           }
         }
+        // Final fallback if nothing was set
+        setLogoUrl((current) => current || fallbackLogo)
       } catch (error) {
         console.error('Error loading logo:', error)
+        // Fallback to bundled logo if API fails
+        setLogoUrl(fallbackLogo)
       }
     }
 
@@ -907,15 +912,15 @@ export default function PageNavbar({
       className={`relative ${zIndexClass} w-full px-1 pr-2 sm:px-2 sm:pr-3 md:px-3 lg:px-6 xl:px-8 py-1.5 sm:py-3 lg:py-4`}
       onClick={onNavClick}
     >
-      <div className="flex items-center justify-between gap-2 sm:gap-3 max-w-7xl mx-auto w-full overflow-hidden">
-        {/* Left: Location - Hidden on desktop, shown on mobile */}
-        <div className="flex md:hidden items-center min-w-0 flex-1 overflow-hidden max-w-[55%]">
-          {/* Location Button */}
+      {/* Mobile layout: location (left), centered logo, actions (right) */}
+      <div className="relative flex items-center justify-between gap-2 sm:gap-3 max-w-7xl mx-auto w-full md:hidden">
+        {/* Location (takes available space) */}
+        <div className="flex items-center min-w-0 flex-1">
           <Button
             variant="ghost"
             onClick={handleLocationClick}
             disabled={loading}
-            className="h-auto px-0 py-0 hover:bg-transparent transition-colors min-w-0 w-full"
+            className="h-auto px-0 py-0 hover:bg-transparent transition-colors min-w-0 w-full text-left"
           >
             {loading ? (
               <span className={`text-sm font-bold ${textColorClass} ${textColor === "white" ? "drop-shadow-lg" : ""}`}>
@@ -934,7 +939,6 @@ export default function PageNavbar({
                   </span>
                   <ChevronDown className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${textColorClass} flex-shrink-0 ${textColor === "white" ? "drop-shadow-lg" : ""}`} strokeWidth={2.5} />
                 </div>
-                {/* Show sub location (city, state) in second line */}
                 {subLocationName && (
                   <span className={`text-[10px] sm:text-xs font-bold ${textColorClass}${textColor === "white" ? "/90" : ""} truncate mt-0.5 w-full ${textColor === "white" ? "drop-shadow-md" : ""}`}>
                     {subLocationName}
@@ -945,26 +949,21 @@ export default function PageNavbar({
           </Button>
         </div>
 
-        {/* Center: Company Logo or Name - Show on all screen sizes */}
-        <Link to="/user" className="flex items-center justify-center flex-shrink-0">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt="Company Logo"
-              className="h-12 w-20 mr-3 sm:h-10 sm:w-10 md:h-12 md:w-12 object-contain"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-          ) : (
-            <span className={`text-xl font-bold ${textColorClass} mr-3`}>
-              {companyName || "GrhaPoch"}
-            </span>
-          )}
+        {/* Centered Logo */}
+        <Link to="/user" className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center flex-shrink-0 w-20 min-w-[72px]">
+          <img
+            src={logoUrl || fallbackLogo}
+            alt="Company Logo"
+            className="h-11 w-auto object-contain"
+            onError={(e) => {
+              e.currentTarget.src = fallbackLogo
+              e.currentTarget.style.display = 'inline-block'
+            }}
+          />
         </Link>
 
-        {/* Right: Actions - Hidden on desktop, shown on mobile */}
-        <div className="flex md:hidden items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* Wallet Icon */}
           <Link to="/user/wallet">
             <Button

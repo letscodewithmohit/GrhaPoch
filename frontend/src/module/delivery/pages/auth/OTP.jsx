@@ -77,14 +77,24 @@ export default function DeliveryOTP() {
   }, []);
 
   useEffect(() => {
-    // Don't auto-focus - let user manually enter OTP
-    // Focus first input only if all fields are empty (small delay to ensure inputs are rendered)
-    if (inputRefs.current[0] && otp.every((digit) => digit === "")) {
-      setTimeout(() => {
+    // Focus first input on mount with a small delay to ensure page transition is complete
+    if (!showNameInput) {
+      const timer = setTimeout(() => {
         inputRefs.current[0]?.focus();
       }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [otp]);
+  }, [showNameInput]);
+
+  useEffect(() => {
+    // Auto-clear error after 3 seconds
+    if (error) {
+      const timer = setTimeout(() => {
+        setError("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleChange = (index, value) => {
     // Only allow digits
@@ -292,6 +302,11 @@ export default function DeliveryOTP() {
         err?.message ||
         "Failed to verify OTP. Please try again.";
       setError(message);
+      // Clear OTP on error so user can re-try
+      setOtp(["", "", "", "", "", ""]);
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 50);
       setIsLoading(false);
     }
   };
@@ -513,7 +528,7 @@ export default function DeliveryOTP() {
                     onPaste={index === 0 ? handlePaste : undefined}
                     disabled={isLoading}
                     autoComplete="off"
-                    autoFocus={false}
+                    autoFocus={index === 0}
                     className="w-12 h-12 text-center text-lg font-semibold p-0 border border-black rounded-md focus-visible:ring-0 focus-visible:border-black bg-white" />
 
                 )}

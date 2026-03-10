@@ -5,7 +5,8 @@ import {
   getUserOrders,
   getOrderDetails,
   calculateOrder,
-  cancelOrder
+  cancelOrder,
+  createOrderPayment
 } from '../controllers/orderController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -23,6 +24,8 @@ router.post('/', createOrder);
 
 // Verify payment
 router.post('/verify-payment', verifyOrderPayment);
+// Create/refresh Razorpay order for pending payment
+router.post('/:id/create-payment', createOrderPayment);
 
 // Get user orders
 router.get('/', getUserOrders);
