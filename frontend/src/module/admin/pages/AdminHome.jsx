@@ -116,7 +116,7 @@ export default function AdminHome() {
     "Commission earned": "/admin/restaurants/commission",
     "Orders processed": "/admin/orders/all",
     "Platform fee": "/admin/transaction-report?metric=platform_fee",
-    "Delivery fee": "/admin/transaction-report?metric=delivery_fee",
+    "Delivery fee": "/admin/delivery-partners/earnings",
     "GST": "/admin/transaction-report?metric=gst",
     "Tips collected": "/admin/donation-management",
     "Total Donations": "/admin/donation-management",
@@ -124,7 +124,7 @@ export default function AdminHome() {
     "Restaurant Ad Revenue": "/admin/advertisement",
     "User Ad Revenue": "/admin/user-advertisements?tab=list",
     "Total Ad Revenue": "/admin/advertisement",
-    "Total revenue": "/admin/transaction-report",
+    "Total revenue": "/admin/transaction-report?metric=admin_earning",
     "Total restaurants": "/admin/restaurants",
     "Restaurant request pending": "/admin/restaurants/joining-request",
     "Total delivery boy": "/admin/delivery-partners",
@@ -138,12 +138,13 @@ export default function AdminHome() {
   const getCardClick = (title) => cardLinks[title] ? () => navigate(cardLinks[title]) : undefined;
 
   // Calculate totals from real data
-  // Gross Revenue = Total Order Revenue + Subscription Revenue
-  const revenueTotal = (dashboardData?.revenue?.total || 0) + (dashboardData?.subscription?.total || 0);
+  // Gross Revenue = Total Order Revenue (GMV)
+  const revenueTotal = (dashboardData?.revenue?.total || 0);
   const commissionTotal = dashboardData?.commission?.total || 0;
   const ordersTotal = dashboardData?.orders?.total || 0;
   const platformFeeTotal = dashboardData?.platformFee?.total || 0;
   const deliveryFeeTotal = dashboardData?.deliveryFee?.total || 0;
+  const deliveryMarginTotal = dashboardData?.deliveryMargin?.total ?? 0;
   const gstTotal = dashboardData?.gst?.total || 0;
   const tipsTotal = dashboardData?.tips?.total || 0;
   const donationsTotal = dashboardData?.donations?.total || 0;
@@ -160,8 +161,8 @@ export default function AdminHome() {
   const advertisementTotal =
   Number(advertisementRevenueData?.total ??
   (restaurantAdvertisementTotal + userAdvertisementTotal)) || 0;
-  // Total revenue = Commission + Platform Fee + Delivery Fee + GST + Subscription + Advertisement + Donation
-  const totalAdminEarnings = commissionTotal + platformFeeTotal + deliveryFeeTotal + gstTotal + subscriptionTotal + advertisementTotal + donationsTotal;
+  // Total revenue (net) = Commission + Platform Fee + Delivery Margin + GST + Subscription + Advertisement + Donation
+  const totalAdminEarnings = commissionTotal + platformFeeTotal + deliveryMarginTotal + gstTotal + subscriptionTotal + advertisementTotal + donationsTotal;
 
   // Additional stats
   const totalRestaurants = dashboardData?.restaurants?.total || 0;
@@ -235,7 +236,7 @@ export default function AdminHome() {
             <MetricCard
               title="Gross revenue"
               value={`\u20B9${revenueTotal.toLocaleString("en-IN")}`}
-              helper="Rolling 12 months"
+              helper="Orders GMV"
               icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
               accent="bg-emerald-200/40"
               onClick={getCardClick("Gross revenue")}
@@ -267,7 +268,7 @@ export default function AdminHome() {
             <MetricCard
               title="Delivery fee"
               value={`\u20B9${deliveryFeeTotal.toLocaleString("en-IN")}`}
-              helper="Total delivery fees"
+              helper="Collected delivery fees"
               icon={<Truck className="h-5 w-5 text-blue-600" />}
               accent="bg-blue-200/40"
               onClick={getCardClick("Delivery fee")}
