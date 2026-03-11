@@ -98,17 +98,15 @@ export const upsertOnboarding = async (req, res) => {
 
 
 
-    // Sync fields to main restaurant document if onboarding steps are valid
-    if (step1 || step2 || step4) {
+    // Sync fields to main restaurant document ONLY when onboarding is complete (step 5)
+    if (finalCompletedSteps === 5) {
       try {
-
         const syncData = {
           step1: step1 || onboarding.step1,
           step2: step2 || onboarding.step2,
           step4: step4 || onboarding.step4
         };
         await createRestaurantFromOnboarding(syncData, restaurantId);
-
       } catch (syncError) {
         console.error('⚠️ Error syncing onboarding data to restaurant schema:', syncError);
         // We continue anyway so onboarding state is at least saved
@@ -119,8 +117,8 @@ export const upsertOnboarding = async (req, res) => {
     if (finalCompletedSteps >= 5 && (step5 || businessModel)) {
 
       const modelToSave = step5?.businessModel === 'Subscription Base' || businessModel === 'Subscription Base' || onboarding.businessModel === 'Subscription Base' ?
-      'Subscription Base' :
-      'Commission Base';
+        'Subscription Base' :
+        'Commission Base';
 
 
 
