@@ -9,7 +9,11 @@ import { calculateRoute } from './routeCalculationService.js';
  * Get active fee settings from database
  * Returns default values if no settings found
  */
-const getFeeSettings = async () => {
+/**
+ * Get active fee settings from database
+ * Returns default values if no settings found
+ */
+export const getFeeSettings = async () => {
   try {
     const feeSettings = await FeeSettings.findOne({ isActive: true }).
       sort({ createdAt: -1 }).
@@ -147,9 +151,9 @@ export const calculateDeliveryDistance = async (restaurant, deliveryAddress = nu
 /**
  * Calculate delivery fee based on order value, distance, and restaurant settings
  */
-export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddress = null, distanceInKm = null) => {
-  // Get fee settings from database
-  const feeSettings = await getFeeSettings();
+export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddress = null, distanceInKm = null, cachedFeeSettings = null) => {
+  // Get fee settings from database or use cached
+  const feeSettings = cachedFeeSettings || await getFeeSettings();
 
   // 1. Free delivery threshold check DISABLED
 
@@ -203,8 +207,8 @@ export const calculateDeliveryFee = async (orderValue, restaurant, deliveryAddre
  * @param {number} distanceInKm - Distance between user and restaurant in kilometers
  * @returns {Promise<number>} - Platform fee amount
  */
-export const calculatePlatformFee = async (distanceInKm = null) => {
-  const feeSettings = await getFeeSettings();
+export const calculatePlatformFee = async (distanceInKm = null, cachedFeeSettings = null) => {
+  const feeSettings = cachedFeeSettings || await getFeeSettings();
 
   // If distance is provided and platform fee ranges are configured, use range-based calculation
   if (distanceInKm !== null && distanceInKm !== undefined &&
@@ -243,9 +247,9 @@ export const calculatePlatformFee = async (distanceInKm = null) => {
  * Calculate GST (Goods and Services Tax)
  * GST is calculated on subtotal after discounts
  */
-export const calculateGST = async (subtotal, discount = 0) => {
+export const calculateGST = async (subtotal, discount = 0, cachedFeeSettings = null) => {
   try {
-    const feeSettings = await getFeeSettings();
+    const feeSettings = cachedFeeSettings || await getFeeSettings();
     const gstRate = Number(feeSettings?.gstRate) || 0;
     const taxableAmount = Math.max(0, Number(subtotal || 0) - Number(discount || 0));
     const gstAmount = (taxableAmount * gstRate) / 100;
@@ -408,17 +412,18 @@ export const calculateOrderPricing = async ({
       subtotal,
       restaurant,
       deliveryAddress,
-      distanceInKm
+      distanceInKm,
+      feeSettings
     );
 
     // Apply free delivery from coupon
     const finalDeliveryFee = appliedCoupon?.freeDelivery ? 0 : deliveryFee;
 
     // Calculate platform fee based on distance
-    const platformFee = await calculatePlatformFee(distanceInKm);
+    const platformFee = await calculatePlatformFee(distanceInKm, feeSettings);
 
     // Calculate GST on subtotal after discount
-    const gst = await calculateGST(subtotal, discount);
+    const gst = await calculateGST(subtotal, discount, feeSettings);
 
     // Calculate total
     const total = subtotal - discount + finalDeliveryFee + platformFee + fixedFee + gst + Number(tip) + Number(donation);

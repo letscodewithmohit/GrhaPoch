@@ -976,29 +976,35 @@ export default function DeliveryHome() {
     // Fetch immediately on mount
     fetchActiveEarningAddons();
 
-    // Refresh every 5 seconds to get latest offers
-    const refreshInterval = setInterval(() => {
-      fetchActiveEarningAddons();
-    }, 5000);
+    // Refresh every 30 seconds to get latest offers (only when visible)
+    let refreshRef = { current: null };
+    const startPolling = () => {
+      if (!refreshRef.current) {
+        refreshRef.current = setInterval(fetchActiveEarningAddons, 30000);
+      }
+    };
+    const stopPolling = () => {
+      if (refreshRef.current) {
+        clearInterval(refreshRef.current);
+        refreshRef.current = null;
+      }
+    };
 
-    // Refresh when page becomes visible
+    if (!document.hidden) startPolling();
+
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         fetchActiveEarningAddons();
+        startPolling();
+      } else {
+        stopPolling();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Also listen for focus events for instant refresh
-    const handleFocus = () => {
-      fetchActiveEarningAddons();
-    };
-    window.addEventListener('focus', handleFocus);
-
     return () => {
-      clearInterval(refreshInterval);
+      stopPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 

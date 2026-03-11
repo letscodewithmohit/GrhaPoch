@@ -15,7 +15,7 @@ const landingPageSettingsSchema = new mongoose.Schema({
 });
 
 // Ensure only one settings document exists
-landingPageSettingsSchema.statics.getSettings = async function() {
+landingPageSettingsSchema.statics.getSettings = async function () {
   let settings = await this.findOne();
   if (!settings) {
     settings = new this({ exploreMoreHeading: 'Explore More' });

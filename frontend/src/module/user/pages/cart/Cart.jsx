@@ -352,7 +352,10 @@ export default function Cart() {
       if (cart[0]?.restaurant && !restaurantData) {
         try {
 
-          const searchResponse = await restaurantAPI.getRestaurants({ limit: 100 });
+          const searchResponse = await restaurantAPI.getRestaurants({ 
+            name: cart[0].restaurant,
+            limit: 5 
+          });
           const restaurants = searchResponse?.data?.data?.restaurants || searchResponse?.data?.data || [];
 
 
@@ -530,54 +533,45 @@ export default function Cart() {
         return;
       }
 
-
       setLoadingCoupons(true);
 
-      const allCoupons = [];
-      const uniqueCouponCodes = new Set();
+      try {
+        const couponPromises = cart.map(async (cartItem) => {
+          if (!cartItem.id) return [];
+          try {
+            const response = await restaurantAPI.getCouponsByItemIdPublic(restaurantId, cartItem.id);
+            return (response?.data?.success && response?.data?.data?.coupons) ? response.data.data.coupons : [];
+          } catch (error) {
+            console.error(`[CART-COUPONS] Error fetching coupons for item ${cartItem.id}:`, error);
+            return [];
+          }
+        });
 
-      // Fetch coupons for each item in cart
-      for (const cartItem of cart) {
-        if (!cartItem.id) {
+        const results = await Promise.all(couponPromises);
+        const allCoupons = [];
+        const uniqueCouponCodes = new Set();
 
-          continue;
-        }
-
-        try {
-
-          const response = await restaurantAPI.getCouponsByItemIdPublic(restaurantId, cartItem.id);
-
-          if (response?.data?.success && response?.data?.data?.coupons) {
-            const coupons = response.data.data.coupons;
-
-
-            // Add coupons, avoiding duplicates
-            coupons.forEach((coupon) => {
-              if (!uniqueCouponCodes.has(coupon.couponCode)) {
-                uniqueCouponCodes.add(coupon.couponCode);
-                // Convert backend coupon format to frontend format
-                allCoupons.push({
-                  code: coupon.couponCode,
-                  discount: coupon.originalPrice - coupon.discountedPrice,
-                  discountPercentage: coupon.discountPercentage,
-                  minOrder: coupon.minOrderValue || 0,
-                  description: `Save ₹${coupon.originalPrice - coupon.discountedPrice} with '${coupon.couponCode}'`,
-                  originalPrice: coupon.originalPrice,
-                  discountedPrice: coupon.discountedPrice,
-                  itemId: cartItem.id,
-                  itemName: cartItem.name
-                });
-              }
+        results.flat().forEach((coupon) => {
+          if (!uniqueCouponCodes.has(coupon.couponCode)) {
+            uniqueCouponCodes.add(coupon.couponCode);
+            allCoupons.push({
+              code: coupon.couponCode,
+              discount: coupon.originalPrice - coupon.discountedPrice,
+              discountPercentage: coupon.discountPercentage,
+              minOrder: coupon.minOrderValue || 0,
+              description: `Save ₹${coupon.originalPrice - coupon.discountedPrice} with '${coupon.couponCode}'`,
+              originalPrice: coupon.originalPrice,
+              discountedPrice: coupon.discountedPrice,
             });
           }
-        } catch (error) {
-          console.error(`[CART-COUPONS] Error fetching coupons for item ${cartItem.id}:`, error);
-        }
+        });
+
+        setAvailableCoupons(allCoupons);
+      } catch (error) {
+        console.error("Error in parallel coupon fetch:", error);
+      } finally {
+        setLoadingCoupons(false);
       }
-
-
-      setAvailableCoupons(allCoupons);
-      setLoadingCoupons(false);
     };
 
     fetchCouponsForCartItems();
@@ -708,7 +702,6 @@ export default function Cart() {
     };
 
     fetchTipAndDonationSettings();
-    const intervalId = setInterval(fetchTipAndDonationSettings, 30000);
 
     const handleFocus = () => fetchTipAndDonationSettings();
     const handleVisibilityChange = () => {
@@ -721,7 +714,6 @@ export default function Cart() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

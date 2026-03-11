@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import AnimatedPage from "../components/AnimatedPage";
 import { diningAPI, restaurantAPI, userAPI } from "@/lib/api";
+import { useProfile } from "../context/ProfileContext";
 import OptimizedImage from "@/components/OptimizedImage";
 import { toast } from "sonner";
 import axios from "axios";
@@ -12,6 +13,7 @@ import { getRazorpayKeyId } from "@/lib/utils/razorpayKey";
 import { mergeDiningBookings, normalizeDiningBooking, readDiningBookings, writeDiningBookings } from "../utils/diningBookings";
 
 export default function DiningRestaurantDetail() {
+  const { userProfile } = useProfile();
   const { category, slug } = useParams();
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
@@ -66,10 +68,11 @@ export default function DiningRestaurantDetail() {
   };
 
   useEffect(() => {
-    if (restaurant?._id) {
+    const restaurantId = restaurant?._id || restaurant?.id;
+    if (restaurantId) {
       fetchPlatformFee();
     }
-  }, [restaurant]);
+  }, [restaurant?._id, restaurant?.id]);
 
   const [dates, setDates] = useState([]);
 
@@ -118,23 +121,15 @@ export default function DiningRestaurantDetail() {
   }, [selectedTimePeriod, restaurant?.diningSlots, selectedTimeSlot]);
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const res = await userAPI.getProfile();
-        if (res.data?.success) {
-          const userData = res.data.data.user || res.data.data;
-          setCustomerDetails((prev) => ({
-            ...prev,
-            name: userData.name || "",
-            phone: userData.phone || ""
-          }));
-        }
-      } catch (err) {
+    if (userProfile && !customerDetails.name && !customerDetails.phone) {
+      setCustomerDetails({
+        name: userProfile.name || "",
+        phone: userProfile.phone || ""
+      });
+    }
+  }, [userProfile, customerDetails.name, customerDetails.phone]);
 
-      }
-    };
-    fetchUserProfile();
-
+  useEffect(() => {
     const fetchRestaurant = async () => {
       setLoading(true);
       try {

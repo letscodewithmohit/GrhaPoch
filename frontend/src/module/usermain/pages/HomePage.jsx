@@ -20,8 +20,9 @@ import {
   UtensilsCrossed,
   Store,
   Coffee,
-  ChevronRight } from
-"lucide-react";
+  ChevronRight
+} from
+  "lucide-react";
 import { Button } from "@/components/ui/button";
 import { campaignAPI, userAdvertisementAPI } from "@/lib/api";
 
@@ -83,9 +84,9 @@ export default function HomePage() {
       // Fallback: Try to extract city and state from address parts
       // Usually city and state are in the middle/end of address
       const cityIndex = parts.findIndex((p) =>
-      p.toLowerCase().includes('indore') ||
-      p.toLowerCase().includes('city') ||
-      p.length > 3 && !p.match(/^\d/)
+        p.toLowerCase().includes('indore') ||
+        p.toLowerCase().includes('city') ||
+        p.length > 3 && !p.match(/^\d/)
       );
       if (cityIndex !== -1 && cityIndex < parts.length - 1) {
         subLocation = `${parts[cityIndex]}, ${parts[cityIndex + 1]}`;
@@ -175,10 +176,10 @@ export default function HomePage() {
 
             // Validate: both should be non-empty and not numbers
             if (cityPart && statePart &&
-            !cityPart.match(/^\d+$/) &&
-            !statePart.match(/^\d+$/) &&
-            cityPart.length > 2 &&
-            statePart.length > 2) {
+              !cityPart.match(/^\d+$/) &&
+              !statePart.match(/^\d+$/) &&
+              cityPart.length > 2 &&
+              statePart.length > 2) {
               subLocation = `${cityPart}, ${statePart}`;
             }
           }
@@ -193,10 +194,10 @@ export default function HomePage() {
               const statePart = parts[5];
 
               if (cityPart && statePart &&
-              !cityPart.match(/^\d+$/) &&
-              !statePart.match(/^\d+$/) &&
-              cityPart.length > 2 &&
-              statePart.length > 2) {
+                !cityPart.match(/^\d+$/) &&
+                !statePart.match(/^\d+$/) &&
+                cityPart.length > 2 &&
+                statePart.length > 2) {
                 subLocation = `${cityPart}, ${statePart}`;
               }
             }
@@ -210,14 +211,14 @@ export default function HomePage() {
             const statePart = parts[5];
 
             if (cityPart && statePart &&
-            !cityPart.match(/^\d+$/) &&
-            !statePart.match(/^\d+$/) &&
-            cityPart.length > 2 &&
-            statePart.length > 2 &&
-            !cityPart.toLowerCase().includes("center") &&
-            !cityPart.toLowerCase().includes("princess") &&
-            !cityPart.toLowerCase().includes("opposite") &&
-            !cityPart.toLowerCase().includes("garden")) {
+              !cityPart.match(/^\d+$/) &&
+              !statePart.match(/^\d+$/) &&
+              cityPart.length > 2 &&
+              statePart.length > 2 &&
+              !cityPart.toLowerCase().includes("center") &&
+              !cityPart.toLowerCase().includes("princess") &&
+              !cityPart.toLowerCase().includes("opposite") &&
+              !cityPart.toLowerCase().includes("garden")) {
               subLocation = `${cityPart}, ${statePart}`;
             }
           }
@@ -240,10 +241,10 @@ export default function HomePage() {
               const statePart = parts[parts.length - 3];
 
               if (cityPart && statePart &&
-              !cityPart.match(/^\d+$/) &&
-              !statePart.match(/^\d+$/) &&
-              cityPart.length > 2 &&
-              statePart.length > 2) {
+                !cityPart.match(/^\d+$/) &&
+                !statePart.match(/^\d+$/) &&
+                cityPart.length > 2 &&
+                statePart.length > 2) {
                 subLocation = `${cityPart}, ${statePart}`;
               }
             }
@@ -290,27 +291,27 @@ export default function HomePage() {
 
   // Engaging placeholder texts that rotate
   const placeholderTexts = [
-  "Are you hungry !!",
-  "Search for delicious food...",
-  "What would you like to eat?",
-  "Find your favorite restaurant",
-  "Craving something special?",
-  "Discover amazing dishes",
-  "Order your favorite meal",
-  "Explore new flavors",
-  "Find the best deals",
-  "What's cooking today?",
-  "Search restaurants nearby",
-  "Hungry? We've got you!"];
+    "Are you hungry !!",
+    "Search for delicious food...",
+    "What would you like to eat?",
+    "Find your favorite restaurant",
+    "Craving something special?",
+    "Discover amazing dishes",
+    "Order your favorite meal",
+    "Explore new flavors",
+    "Find the best deals",
+    "What's cooking today?",
+    "Search restaurants nearby",
+    "Hungry? We've got you!"];
 
 
   // Carousel slides data
   const carouselSlides = [
-  { id: 1, title: "Biryani That Will Change Your Mind", image: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=1200&h=600&fit=crop", discount: "14% OFF", rating: "5/5" },
-  { id: 2, title: "Delicious Pizza", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&h=600&fit=crop", discount: "20% OFF", rating: "4.8/5" },
-  { id: 3, title: "Fresh Burgers", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&h=600&fit=crop", discount: "15% OFF", rating: "4.9/5" },
-  { id: 4, title: "Tasty Pasta", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=1200&h=600&fit=crop", discount: "10% OFF", rating: "4.7/5" },
-  { id: 5, title: "Sushi Delight", image: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=1200&h=600&fit=crop", discount: "12% OFF", rating: "4.6/5" }];
+    { id: 1, title: "Biryani That Will Change Your Mind", image: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=1200&h=600&fit=crop", discount: "14% OFF", rating: "5/5" },
+    { id: 2, title: "Delicious Pizza", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&h=600&fit=crop", discount: "20% OFF", rating: "4.8/5" },
+    { id: 3, title: "Fresh Burgers", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&h=600&fit=crop", discount: "15% OFF", rating: "4.9/5" },
+    { id: 4, title: "Tasty Pasta", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=1200&h=600&fit=crop", discount: "10% OFF", rating: "4.7/5" },
+    { id: 5, title: "Sushi Delight", image: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=1200&h=600&fit=crop", discount: "12% OFF", rating: "4.6/5" }];
 
 
   const getAdWebsiteTarget = (ad) => {
@@ -338,17 +339,17 @@ export default function HomePage() {
     const loadActiveAds = async () => {
       try {
         const [campaignAdsResult, userAdsResult] = await Promise.allSettled([
-        campaignAPI.getActiveAdvertisementsPublic(),
-        userAdvertisementAPI.getPublicActiveUserAdvertisements()]
+          campaignAPI.getActiveAdvertisementsPublic(),
+          userAdvertisementAPI.getPublicActiveUserAdvertisements()]
         );
         const campaignAds =
-        campaignAdsResult.status === "fulfilled" ?
-        campaignAdsResult.value?.data?.data?.advertisements || [] :
-        [];
+          campaignAdsResult.status === "fulfilled" ?
+            campaignAdsResult.value?.data?.data?.advertisements || [] :
+            [];
         const userAds =
-        userAdsResult.status === "fulfilled" ?
-        userAdsResult.value?.data?.data?.advertisements || [] :
-        [];
+          userAdsResult.status === "fulfilled" ?
+            userAdsResult.value?.data?.data?.advertisements || [] :
+            [];
         const mergedAds = [...campaignAds, ...userAds].filter((ad) => {
           const banner = String(ad?.bannerImage || "").trim();
           return banner.length > 0;
@@ -375,7 +376,7 @@ export default function HomePage() {
     if (activeSponsoredAds.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentAdSlide((prev) => (prev + 1) % activeSponsoredAds.length);
-    }, 4500);
+    }, 5000);
     return () => clearInterval(interval);
   }, [activeSponsoredAds.length]);
 
@@ -465,75 +466,75 @@ export default function HomePage() {
 
   // Food categories
   const categories = [
-  { id: 1, name: "American", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=200&h=200&fit=crop", color: "bg-blue-100" },
-  { id: 2, name: "Bengali", image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=200&h=200&fit=crop", color: "bg-orange-100" },
-  { id: 3, name: "Caribbean", image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=200&h=200&fit=crop", color: "bg-pink-100" },
-  { id: 4, name: "Chinese", image: "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=200&h=200&fit=crop", color: "bg-purple-100" },
-  { id: 5, name: "Italian", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=200&h=200&fit=crop", color: "bg-green-100" },
-  { id: 6, name: "Mexican", image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=200&h=200&fit=crop", color: "bg-yellow-100" },
-  { id: 7, name: "Indian", image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=200&h=200&fit=crop", color: "bg-red-100" }];
+    { id: 1, name: "American", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=200&h=200&fit=crop", color: "bg-blue-100" },
+    { id: 2, name: "Bengali", image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=200&h=200&fit=crop", color: "bg-orange-100" },
+    { id: 3, name: "Caribbean", image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=200&h=200&fit=crop", color: "bg-pink-100" },
+    { id: 4, name: "Chinese", image: "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=200&h=200&fit=crop", color: "bg-purple-100" },
+    { id: 5, name: "Italian", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=200&h=200&fit=crop", color: "bg-green-100" },
+    { id: 6, name: "Mexican", image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=200&h=200&fit=crop", color: "bg-yellow-100" },
+    { id: 7, name: "Indian", image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=200&h=200&fit=crop", color: "bg-red-100" }];
 
 
   // Today's Trends items
   const trendsItems = [
-  { id: 1, name: "Red n hot pizza", description: "Spicy chicken, beef", image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 },
-  { id: 2, name: "Meat Pasta", description: "meat & Basil", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 },
-  { id: 3, name: "Brushetta", description: "topings & tomato", image: "https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 },
-  { id: 4, name: "Salad", description: "Baked Salmon", image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 }];
+    { id: 1, name: "Red n hot pizza", description: "Spicy chicken, beef", image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 },
+    { id: 2, name: "Meat Pasta", description: "meat & Basil", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 },
+    { id: 3, name: "Brushetta", description: "topings & tomato", image: "https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 },
+    { id: 4, name: "Salad", description: "Baked Salmon", image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop", price: "$9.50", rating: 4.5, reviews: 25 }];
 
 
   // Popular Restaurants data
   const popularRestaurants = [
-  {
-    id: 1,
-    name: "Hungry Puppets",
-    foodImage: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop",
-    restaurantIcon: UtensilsCrossed,
-    cuisines: "Bengali, Indian, Pizza, Pasta",
-    distance: "967.40 km",
-    deliveryTime: "30-40 min",
-    rating: 4.7
-  },
-  {
-    id: 2,
-    name: "Pizza Paradise",
-    foodImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop",
-    restaurantIcon: ChefHat,
-    cuisines: "Italian, Pizza, Pasta",
-    distance: "850.20 km",
-    deliveryTime: "20-25 min",
-    rating: 4.8
-  },
-  {
-    id: 3,
-    name: "Burger King",
-    foodImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
-    restaurantIcon: Store,
-    cuisines: "American, Fast Food, Burgers",
-    distance: "720.50 km",
-    deliveryTime: "30-35 min",
-    rating: 4.6
-  },
-  {
-    id: 4,
-    name: "Sushi Express",
-    foodImage: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400&h=300&fit=crop",
-    restaurantIcon: ChefHat,
-    cuisines: "Japanese, Sushi, Asian",
-    distance: "1100.30 km",
-    deliveryTime: "35-40 min",
-    rating: 4.9
-  },
-  {
-    id: 5,
-    name: "Taco Bell",
-    foodImage: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&h=300&fit=crop",
-    restaurantIcon: Coffee,
-    cuisines: "Mexican, Fast Food, Tacos",
-    distance: "650.80 km",
-    deliveryTime: "25-30 min",
-    rating: 4.5
-  }];
+    {
+      id: 1,
+      name: "Hungry Puppets",
+      foodImage: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop",
+      restaurantIcon: UtensilsCrossed,
+      cuisines: "Bengali, Indian, Pizza, Pasta",
+      distance: "967.40 km",
+      deliveryTime: "30-40 min",
+      rating: 4.7
+    },
+    {
+      id: 2,
+      name: "Pizza Paradise",
+      foodImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop",
+      restaurantIcon: ChefHat,
+      cuisines: "Italian, Pizza, Pasta",
+      distance: "850.20 km",
+      deliveryTime: "20-25 min",
+      rating: 4.8
+    },
+    {
+      id: 3,
+      name: "Burger King",
+      foodImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
+      restaurantIcon: Store,
+      cuisines: "American, Fast Food, Burgers",
+      distance: "720.50 km",
+      deliveryTime: "30-35 min",
+      rating: 4.6
+    },
+    {
+      id: 4,
+      name: "Sushi Express",
+      foodImage: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400&h=300&fit=crop",
+      restaurantIcon: ChefHat,
+      cuisines: "Japanese, Sushi, Asian",
+      distance: "1100.30 km",
+      deliveryTime: "35-40 min",
+      rating: 4.9
+    },
+    {
+      id: 5,
+      name: "Taco Bell",
+      foodImage: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&h=300&fit=crop",
+      restaurantIcon: Coffee,
+      cuisines: "Mexican, Fast Food, Tacos",
+      distance: "650.80 km",
+      deliveryTime: "25-30 min",
+      rating: 4.5
+    }];
 
 
   return (
@@ -550,19 +551,19 @@ export default function HomePage() {
               <div className="flex items-center gap-1">
                 <div className="flex-1 min-w-0">
                   {locationLoading && !location ?
-                  <p className="text-white text-sm font-bold truncate">
+                    <p className="text-white text-sm font-bold truncate">
                       Loading...
                     </p> :
 
-                  <>
+                    <>
                       <p className="text-white text-sm font-bold truncate">
                         {locationDisplay.main || "Select location"}
                       </p>
                       {locationDisplay.sub &&
-                    <p className="text-white text-[10px] truncate">
+                        <p className="text-white text-[10px] truncate">
                           {locationDisplay.sub}
                         </p>
-                    }
+                      }
                     </>
                   }
                 </div>
@@ -587,7 +588,7 @@ export default function HomePage() {
             type="text"
             placeholder={placeholderTexts[currentPlaceholderIndex]}
             className="flex-1 outline-none text-sm text-gray-700 placeholder-gray-400 transition-all duration-300" />
-          
+
           <button className="p-1">
             <Mic className="w-5 h-5 text-gray-400" />
           </button>
@@ -599,7 +600,7 @@ export default function HomePage() {
         <div
           className="relative rounded-xl overflow-hidden h-36 md:h-48 cursor-pointer"
           onClick={() => navigate(`/usermain/food/${carouselSlides[currentSlide].id}`)}>
-          
+
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSlide}
@@ -611,20 +612,20 @@ export default function HomePage() {
                 ease: [0.4, 0, 0.2, 1]
               }}
               className="absolute inset-0">
-              
+
               {/* Full Banner Image */}
-            <img
+              <img
                 src={carouselSlides[currentSlide].image}
                 alt={carouselSlides[currentSlide].title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.src = `https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=1200&h=600&fit=crop`;
                 }} />
-              
-              
+
+
               {/* Gradient Overlay for better text readability */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
-              
+
               {/* Content Overlay */}
               <div className="absolute inset-0 flex items-center px-4 py-3">
                 <div className="flex-1 z-10">
@@ -633,7 +634,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
                     className="text-white text-base md:text-xl font-bold mb-2 md:mb-3">
-                    
+
                     {carouselSlides[currentSlide].title}
                   </motion.h2>
                   <motion.div
@@ -641,42 +642,41 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.5 }}
                     className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                    
+
                     <Button
                       className="bg-transparent border-2 border-[#ff8100] text-white hover:bg-[#ff8100] rounded-full px-3 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-semibold transition-colors">
-                      
+
                       Order Now
                     </Button>
                     {carouselSlides[currentSlide].rating &&
-                    <span className="text-white text-xs md:text-sm font-semibold bg-white/20 backdrop-blur-sm px-2 md:px-3 py-1 md:py-1.5 rounded-full">
+                      <span className="text-white text-xs md:text-sm font-semibold bg-white/20 backdrop-blur-sm px-2 md:px-3 py-1 md:py-1.5 rounded-full">
                         {carouselSlides[currentSlide].rating}
                       </span>
                     }
                   </motion.div>
-          </div>
-        </div>
-              
+                </div>
+              </div>
+
               {/* Discount Tag */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
                 className="absolute bottom-2 md:bottom-4 right-2 md:right-4 bg-[#ff8100] text-white rounded-full px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold shadow-lg">
-                
+
                 {carouselSlides[currentSlide].discount}
               </motion.div>
             </motion.div>
           </AnimatePresence>
 
-        {/* Carousel Indicators */}
+          {/* Carousel Indicators */}
           <div className="absolute bottom-2 md:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
-          {carouselSlides.map((_, index) =>
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${
-              index === currentSlide ? 'bg-[#ff8100] w-5 md:w-6' : 'bg-white/50 w-1.5 md:w-2 hover:bg-white/70'}`
-              } />
+            {carouselSlides.map((_, index) =>
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-[#ff8100] w-5 md:w-6' : 'bg-white/50 w-1.5 md:w-2 hover:bg-white/70'}`
+                } />
 
             )}
           </div>
@@ -684,40 +684,40 @@ export default function HomePage() {
       </div>
 
       {activeSponsoredAds.length > 0 &&
-      <div className="px-4 mb-6">
+        <div className="px-4 mb-6">
           <h3 className="text-sm font-bold text-gray-900 mb-2">Sponsored Ads</h3>
           <div
-          className={`relative rounded-xl overflow-hidden h-32 md:h-40 bg-white shadow-sm border border-gray-200 ${getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "cursor-pointer" : "cursor-default"}`}
-          onClick={() => {
-            const activeAd = activeSponsoredAds[currentAdSlide];
-            if (getAdWebsiteTarget(activeAd)) {
-              handleSponsoredAdClick(activeAd);
-            }
-          }}
-          onKeyDown={(event) => {
-            const activeAd = activeSponsoredAds[currentAdSlide];
-            if (!getAdWebsiteTarget(activeAd)) return;
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleSponsoredAdClick(activeAd);
-            }
-          }}
-          role={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "button" : undefined}
-          tabIndex={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? 0 : undefined}
-          aria-label={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "Open sponsored advertisement" : undefined}>
+            className={`relative rounded-xl overflow-hidden h-32 md:h-40 bg-white shadow-sm border border-gray-200 ${getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "cursor-pointer" : "cursor-default"}`}
+            onClick={() => {
+              const activeAd = activeSponsoredAds[currentAdSlide];
+              if (getAdWebsiteTarget(activeAd)) {
+                handleSponsoredAdClick(activeAd);
+              }
+            }}
+            onKeyDown={(event) => {
+              const activeAd = activeSponsoredAds[currentAdSlide];
+              if (!getAdWebsiteTarget(activeAd)) return;
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleSponsoredAdClick(activeAd);
+              }
+            }}
+            role={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "button" : undefined}
+            tabIndex={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? 0 : undefined}
+            aria-label={getAdWebsiteTarget(activeSponsoredAds[currentAdSlide]) ? "Open sponsored advertisement" : undefined}>
             <AnimatePresence mode="wait">
               <motion.div
-              key={currentAdSlide}
-              initial={{ opacity: 0, x: 200 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -200 }}
-              transition={{ duration: 0.5 }}
-              className="absolute inset-0">
+                key={currentAdSlide}
+                initial={{ opacity: 0, x: 200 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -200 }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0">
 
                 <img
-                src={activeSponsoredAds[currentAdSlide]?.bannerImage}
-                alt={activeSponsoredAds[currentAdSlide]?.title || activeSponsoredAds[currentAdSlide]?.restaurant?.name || "Advertisement"}
-                className="w-full h-full object-cover" />
+                  src={activeSponsoredAds[currentAdSlide]?.bannerImage}
+                  alt={activeSponsoredAds[currentAdSlide]?.title || activeSponsoredAds[currentAdSlide]?.restaurant?.name || "Advertisement"}
+                  className="w-full h-full object-cover" />
 
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
                 <div className="absolute left-3 bottom-3 text-white">
@@ -728,16 +728,16 @@ export default function HomePage() {
             </AnimatePresence>
 
             {activeSponsoredAds.length > 1 &&
-          <div className="absolute bottom-2 right-2 flex items-center gap-1.5 z-10">
+              <div className="absolute bottom-2 right-2 flex items-center gap-1.5 z-10">
                 {activeSponsoredAds.map((_, index) =>
-            <button
-              key={index}
-              onClick={() => setCurrentAdSlide(index)}
-              className={`h-1.5 rounded-full transition-all ${index === currentAdSlide ? "bg-[#ff8100] w-5" : "bg-white/60 w-2"}`} />
+                  <button
+                    key={index}
+                    onClick={() => setCurrentAdSlide(index)}
+                    className={`h-1.5 rounded-full transition-all ${index === currentAdSlide ? "bg-[#ff8100] w-5" : "bg-white/60 w-2"}`} />
 
-            )}
+                )}
               </div>
-          }
+            }
           </div>
         </div>
       }
@@ -749,29 +749,29 @@ export default function HomePage() {
           <button
             onClick={() => navigate("/usermain/categories")}
             className="bg-[#ff8100] rounded-full p-1.5 hover:bg-[#e67300] transition-colors">
-            
+
             <ChevronRight className="w-4 h-4 text-white" />
           </button>
         </div>
-        
+
         <div className="overflow-hidden -mx-4">
           <div className="flex gap-3 animate-scroll">
             {/* Duplicate categories for seamless loop */}
             {[...categories, ...categories].map((category, index) =>
-            <div
-              key={`${category.id}-${index}`}
-              className="flex-shrink-0 w-20 flex flex-col items-center gap-1.5 cursor-pointer"
-              onClick={() => navigate(`/usermain/category/${category.name}`)}>
-              
+              <div
+                key={`${category.id}-${index}`}
+                className="flex-shrink-0 w-20 flex flex-col items-center gap-1.5 cursor-pointer"
+                onClick={() => navigate(`/usermain/category/${category.name}`)}>
+
                 <div className="w-20 h-20 rounded-full overflow-hidden">
-                <img
-                  src={category.image}
-                  alt={category.name}
-                  className="w-full h-full object-cover" />
-                
-              </div>
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="w-full h-full object-cover" />
+
+                </div>
                 <p className="text-[10px] font-medium text-gray-700 text-center leading-tight">{category.name}</p>
-            </div>
+              </div>
             )}
           </div>
         </div>
@@ -781,50 +781,49 @@ export default function HomePage() {
       <div className="px-4 mb-6">
         <h3 className="text-lg font-bold text-[#ff8100] mb-1">Today's Trends</h3>
         <p className="text-sm text-gray-600 mb-4">Here's what you might like to taste</p>
-        
+
         <div className="grid grid-cols-2 gap-3">
           {trendsItems.map((item) =>
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            whileHover={{ y: -5 }}
-            className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full"
-            onClick={() => navigate(`/usermain/food/${item.id}`)}>
-            
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              whileHover={{ y: -5 }}
+              className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full"
+              onClick={() => navigate(`/usermain/food/${item.id}`)}>
+
               {/* Image Container */}
               <div className="relative flex-shrink-0">
                 <img
-                src={item.image}
-                alt={item.name}
-                className="w-full h-32 object-cover rounded-t-xl"
-                onError={(e) => {
-                  e.target.src = `https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=400&fit=crop`;
-                }} />
-              
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-32 object-cover rounded-t-xl"
+                  onError={(e) => {
+                    e.target.src = `https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=400&fit=crop`;
+                  }} />
+
                 {/* Price Badge - Top Left - White oval with black border */}
                 <div className="absolute top-1.5 left-1.5 bg-white border-2 border-black rounded-full px-2 py-0.5">
                   <span className="text-[10px] font-bold text-gray-900">{item.price}</span>
                 </div>
                 {/* Favorite Icon - Top Right */}
                 <button
-                className="absolute top-1.5 right-1.5 p-0.5 hover:scale-110 transition-transform z-10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleWishlist(item, 'food');
-                }}>
-                
+                  className="absolute top-1.5 right-1.5 p-0.5 hover:scale-110 transition-transform z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleWishlist(item, 'food');
+                  }}>
+
                   <Heart
-                  className={`w-4 h-4 transition-all ${
-                  isInWishlist(item, 'food') ?
-                  'text-red-500 fill-red-500' :
-                  'text-gray-400 hover:text-red-500'}`
-                  } />
-                
+                    className={`w-4 h-4 transition-all ${isInWishlist(item, 'food') ?
+                        'text-red-500 fill-red-500' :
+                        'text-gray-400 hover:text-red-500'}`
+                    } />
+
                 </button>
               </div>
-              
+
               {/* Content */}
               <div className="p-2.5 flex flex-col flex-1">
                 {/* Title and Rating - Same Row */}
@@ -836,16 +835,16 @@ export default function HomePage() {
                     <span className="text-[10px] text-gray-500">({item.reviews}+)</span>
                   </div>
                 </div>
-                
+
                 {/* Add Button */}
                 <Button
-                className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white text-xs font-semibold py-1.5 rounded-lg"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  showToast("Item added to the cart");
-                  // Handle add to cart logic here
-                }}>
-                
+                  className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white text-xs font-semibold py-1.5 rounded-lg"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showToast("Item added to the cart");
+                    // Handle add to cart logic here
+                  }}>
+
                   Add
                 </Button>
               </div>
@@ -862,68 +861,67 @@ export default function HomePage() {
             <ArrowRight className="w-4 h-4 text-[#ff8100]" />
           </button>
         </div>
-        
+
         <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4">
           {popularRestaurants.map((restaurant) =>
-          <motion.div
-            key={restaurant.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4 }}
-            whileHover={{ y: -5 }}
-            className="flex-shrink-0 w-[200px] bg-white rounded-xl overflow-visible shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => {
+            <motion.div
+              key={restaurant.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4 }}
+              whileHover={{ y: -5 }}
+              className="flex-shrink-0 w-[200px] bg-white rounded-xl overflow-visible shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => {
 
 
-            }}>
-            
+              }}>
+
               {/* Food Image - Large */}
               <div className="relative w-full h-40 rounded-t-xl overflow-hidden">
                 <img
-                src={restaurant.foodImage}
-                alt={restaurant.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = `https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop`;
-                }} />
-              
+                  src={restaurant.foodImage}
+                  alt={restaurant.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.src = `https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop`;
+                  }} />
+
                 {/* Heart Icon - Top Right */}
                 <button
-                className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-full hover:scale-110 transition-transform z-10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleWishlist(restaurant, 'restaurant');
-                }}>
-                
+                  className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-full hover:scale-110 transition-transform z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleWishlist(restaurant, 'restaurant');
+                  }}>
+
                   <Heart
-                  className={`w-4 h-4 transition-all ${
-                  isInWishlist(restaurant, 'restaurant') ?
-                  'text-amber-700 fill-amber-700' :
-                  'text-gray-400 hover:text-amber-700'}`
-                  } />
-                
+                    className={`w-4 h-4 transition-all ${isInWishlist(restaurant, 'restaurant') ?
+                        'text-amber-700 fill-amber-700' :
+                        'text-gray-400 hover:text-amber-700'}`
+                    } />
+
                 </button>
                 {/* Distance Badge - Bottom Right (White Banner with Orange Border) */}
                 <div className="absolute bottom-2 right-2 bg-white border-2 border-[#ff8100] rounded-lg px-2.5 py-1 shadow-md">
                   <span className="text-[10px] font-bold text-gray-900">{restaurant.distance}</span>
                 </div>
               </div>
-              
+
               {/* Restaurant Details */}
               <div className="p-3 pt-2 relative">
                 {/* Restaurant Icon - Half on image, half below (Overlapping) */}
                 <div className="absolute -top-5 left-3 w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md z-10">
                   {restaurant.restaurantIcon &&
-                <restaurant.restaurantIcon className="w-5 h-5 text-[#ff8100]" />
-                }
+                    <restaurant.restaurantIcon className="w-5 h-5 text-[#ff8100]" />
+                  }
                 </div>
-                
+
                 {/* Restaurant Name and Cuisines */}
                 <div className="ml-14 mb-2">
                   <h4 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{restaurant.name}</h4>
                   <p className="text-[10px] text-gray-600 line-clamp-2 leading-tight">{restaurant.cuisines}</p>
                 </div>
-                
+
                 {/* Rating and Time - Bottom Row with Orange Icons */}
                 <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100">
                   <div className="flex items-center gap-1">
@@ -948,7 +946,7 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="bg-gradient-to-r from-[#f6e9dc] to-[#fef5e7] rounded-2xl overflow-hidden shadow-md relative min-h-[140px] md:min-h-[180px]">
-          
+
           <div className="flex items-center gap-3 md:gap-6 p-4 md:p-8 h-full">
             {/* Left Side - Cafe Illustration */}
             <div className="flex items-center justify-center flex-shrink-0 w-24 h-24 md:w-40 md:h-40 relative">
@@ -1011,7 +1009,7 @@ export default function HomePage() {
 
                 }}
                 className="bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold px-4 py-2 md:px-8 md:py-3 rounded-lg text-sm md:text-base shadow-md transition-all hover:scale-105 whitespace-nowrap">
-                
+
                 See Location
               </Button>
             </div>
@@ -1029,7 +1027,7 @@ export default function HomePage() {
           <button
             onClick={() => navigate('/usermain/wishlist')}
             className="flex flex-col items-center gap-1 p-2 text-gray-600 hover:text-[#ff8100] transition-colors">
-            
+
             <Heart className="w-6 h-6" />
             <span className="text-xs text-gray-600 font-medium">Wishlist</span>
           </button>
@@ -1041,7 +1039,7 @@ export default function HomePage() {
           <button
             onClick={() => navigate('/usermain/orders')}
             className="flex flex-col items-center gap-1 p-2 text-gray-600 hover:text-[#ff8100] transition-colors">
-            
+
             <ShoppingBag className="w-6 h-6" />
             <span className="text-xs text-gray-600 font-medium">Orders</span>
           </button>

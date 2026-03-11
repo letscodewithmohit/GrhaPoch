@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { IndianRupee, Loader2 } from "lucide-react";
 import { userAPI } from "@/lib/api";
 import { initRazorpayPayment } from "@/lib/utils/razorpay";
+import { useProfile } from "../context/ProfileContext";
 import { toast } from "sonner";
 
 export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
+  const { userProfile } = useProfile();
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -64,14 +66,10 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
 
       setProcessing(true);
 
-      // Get user info for Razorpay prefill
-      let userInfo = {};
-      try {
-        const userResponse = await userAPI.getProfile();
-        userInfo = userResponse?.data?.data?.user || userResponse?.data?.user || {};
-      } catch (err) {
-        console.warn("Could not fetch user profile for Razorpay prefill:", err);
-      }
+      setProcessing(true);
+
+      // Get user info from context for Razorpay prefill
+      const userInfo = userProfile || {};
 
       const userPhone = userInfo.phone || "";
       const userEmail = userInfo.email || "";
