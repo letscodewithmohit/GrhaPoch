@@ -651,6 +651,19 @@ apiClient.interceptors.response.use(
 
       // Show beautiful error toast for each error message
       errorMessages.forEach((errorMessage, index) => {
+        // Skip toast for known non-critical states that might trigger during polling
+        // Specifically skip "Restaurant account is inactive" message as it's handled by main UI
+        const lowerMsg = errorMessage.toLowerCase();
+        if (
+          lowerMsg.includes('account matches no record') ||
+          lowerMsg.includes('inactive') ||
+          lowerMsg.includes('wait for admin approval') ||
+          lowerMsg.includes('account is inactive') ||
+          lowerMsg.includes('verification pending')
+        ) {
+          return;
+        }
+
         // Add slight delay for multiple toasts to appear sequentially
         setTimeout(() => {
           toast.error(errorMessage, {

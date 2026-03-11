@@ -67,6 +67,8 @@ export default function SubscriptionPage() {
     const historyEndIndex = Math.min(historyPage * HISTORY_ITEMS_PER_PAGE, subscriptionHistory.length);
 
 
+    const [isActive, setIsActive] = useState(true);
+
     const fetchStatus = async () => {
         try {
             const res = await restaurantAPI.getSubscriptionStatus();
@@ -74,6 +76,7 @@ export default function SubscriptionPage() {
             // Always set from API so that when subscription is removed in DB, UI clears
             setCurrentSubscription(data?.subscription ?? null);
             setBusinessModel(data?.businessModel || null);
+            setIsActive(data?.isActive ?? true);
             setSubscriptionMeta({
                 daysRemaining: data?.daysRemaining ?? null,
                 showWarning: data?.showWarning ?? false,
@@ -103,7 +106,11 @@ export default function SubscriptionPage() {
             }
         } catch (error) {
             console.error('Failed to fetch subscription plans', error);
-            toast.error('Failed to load subscription plans');
+            // Don't show toast for 401 errors (likely due to inactive account) 
+            // as this is handled by the overall UI or suppressed in axios interceptor
+            if (error.response?.status !== 401) {
+                toast.error('Failed to load subscription plans');
+            }
         }
     };
 
@@ -303,7 +310,14 @@ export default function SubscriptionPage() {
                 <div className="max-w-7xl mx-auto px-4 py-4">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => navigate(-1)}
+                            onClick={() => {
+                                if (!isActive) {
+                                    // If taking user back to onboarding, we use step 5
+                                    navigate("/restaurant/onboarding?step=5");
+                                } else {
+                                    navigate(-1);
+                                }
+                            }}
                             className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500 hover:text-slate-800"
                         >
                             <ArrowLeft className="w-5 h-5" />

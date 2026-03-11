@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,9 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue } from
-"@/components/ui/select";
+  SelectValue
+} from
+  "@/components/ui/select";
 import { uploadAPI, api } from "@/lib/api";
 import { MobileTimePicker } from "@mui/x-date-pickers/MobileTimePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -21,13 +22,13 @@ import { determineStepToShow } from "../utils/onboardingUtils";
 import { toast } from "sonner";
 
 const cuisinesOptions = [
-"North Indian",
-"South Indian",
-"Chinese",
-"Pizza",
-"Burgers",
-"Bakery",
-"Cafe"];
+  "North Indian",
+  "South Indian",
+  "Chinese",
+  "Pizza",
+  "Burgers",
+  "Bakery",
+  "Cafe"];
 
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -47,21 +48,21 @@ const saveOnboardingToLocalStorage = (step1, step2, step3, step4, step5, current
         return file;
       }),
       profileImage: step2.profileImage instanceof File ?
-      { name: step2.profileImage.name, size: step2.profileImage.size, type: step2.profileImage.type } :
-      step2.profileImage
+        { name: step2.profileImage.name, size: step2.profileImage.size, type: step2.profileImage.type } :
+        step2.profileImage
     };
 
     const serializableStep3 = {
       ...step3,
       panImage: step3.panImage instanceof File ?
-      { name: step3.panImage.name, size: step3.panImage.size, type: step3.panImage.type } :
-      step3.panImage,
+        { name: step3.panImage.name, size: step3.panImage.size, type: step3.panImage.type } :
+        step3.panImage,
       gstImage: step3.gstImage instanceof File ?
-      { name: step3.gstImage.name, size: step3.gstImage.size, type: step3.gstImage.type } :
-      step3.gstImage,
+        { name: step3.gstImage.name, size: step3.gstImage.size, type: step3.gstImage.type } :
+        step3.gstImage,
       fssaiImage: step3.fssaiImage instanceof File ?
-      { name: step3.fssaiImage.name, size: step3.fssaiImage.size, type: step3.fssaiImage.type } :
-      step3.fssaiImage
+        { name: step3.fssaiImage.name, size: step3.fssaiImage.size, type: step3.fssaiImage.type } :
+        step3.fssaiImage
     };
 
     const dataToSave = {
@@ -163,7 +164,7 @@ function TimeSelector({ label, value, onChange }) {
           }
         }}
         format="hh:mm a" />
-      
+
     </div>);
 
 }
@@ -230,6 +231,7 @@ export default function RestaurantOnboarding() {
     businessModel: "Commission Base"
   });
 
+  const fetchCalledRef = useRef(false);
 
   // Load from localStorage on mount and check URL parameter
   useEffect(() => {
@@ -237,7 +239,7 @@ export default function RestaurantOnboarding() {
     const stepParam = searchParams.get("step");
     if (stepParam) {
       const stepNum = parseInt(stepParam, 10);
-      if (stepNum >= 1 && stepNum <= 3) {
+      if (stepNum >= 1 && stepNum <= 5) {
         setStep(stepNum);
       }
     }
@@ -317,6 +319,8 @@ export default function RestaurantOnboarding() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (fetchCalledRef.current) return;
+      fetchCalledRef.current = true;
       try {
         setLoading(true);
         const res = await api.get("/restaurant/onboarding");
@@ -362,8 +366,8 @@ export default function RestaurantOnboarding() {
               gstImage: null, // Don't load images from API, user needs to re-upload
               fssaiNumber: data.step3.fssai?.registrationNumber || "",
               fssaiExpiry: data.step3.fssai?.expiryDate ?
-              data.step3.fssai.expiryDate.slice(0, 10) :
-              "",
+                data.step3.fssai.expiryDate.slice(0, 10) :
+                "",
               fssaiImage: null, // Don't load images from API, user needs to re-upload
               accountNumber: data.step3.bank?.accountNumber || "",
               confirmAccountNumber: data.step3.bank?.accountNumber || "",
@@ -390,7 +394,10 @@ export default function RestaurantOnboarding() {
 
           // Determine which step to show based on completeness
           const stepToShow = determineStepToShow(data);
-          setStep(stepToShow);
+          // Only auto-jump if no explicit step is in URL
+          if (!searchParams.get("step")) {
+            setStep(stepToShow || 1);
+          }
         }
       } catch (err) {
         // Handle error gracefully - if it's a 401 (unauthorized), the user might need to login again
@@ -479,9 +486,9 @@ export default function RestaurantOnboarding() {
     } else {
       // Verify profile image is either a File or has a valid URL
       const isValidProfileImage =
-      step2.profileImage instanceof File ||
-      step2.profileImage?.url && typeof step2.profileImage.url === 'string' ||
-      typeof step2.profileImage === 'string' && step2.profileImage.startsWith('http');
+        step2.profileImage instanceof File ||
+        step2.profileImage?.url && typeof step2.profileImage.url === 'string' ||
+        typeof step2.profileImage === 'string' && step2.profileImage.startsWith('http');
       if (!isValidProfileImage) {
         errors.push("Please upload a valid restaurant profile image");
       }
@@ -542,9 +549,9 @@ export default function RestaurantOnboarding() {
       errors.push("PAN image is required");
     } else {
       const isValidPanImage =
-      step3.panImage instanceof File ||
-      step3.panImage?.url && typeof step3.panImage.url === 'string' ||
-      typeof step3.panImage === 'string' && step3.panImage.startsWith('http');
+        step3.panImage instanceof File ||
+        step3.panImage?.url && typeof step3.panImage.url === 'string' ||
+        typeof step3.panImage === 'string' && step3.panImage.startsWith('http');
       if (!isValidPanImage) {
         errors.push("Please upload a valid PAN image");
       }
@@ -561,9 +568,9 @@ export default function RestaurantOnboarding() {
       errors.push("FSSAI image is required");
     } else {
       const isValidFssaiImage =
-      step3.fssaiImage instanceof File ||
-      step3.fssaiImage?.url && typeof step3.fssaiImage.url === 'string' ||
-      typeof step3.fssaiImage === 'string' && step3.fssaiImage.startsWith('http');
+        step3.fssaiImage instanceof File ||
+        step3.fssaiImage?.url && typeof step3.fssaiImage.url === 'string' ||
+        typeof step3.fssaiImage === 'string' && step3.fssaiImage.startsWith('http');
       if (!isValidFssaiImage) {
         errors.push("Please upload a valid FSSAI image");
       }
@@ -585,9 +592,9 @@ export default function RestaurantOnboarding() {
         errors.push("GST image is required when GST registered");
       } else {
         const isValidGstImage =
-        step3.gstImage instanceof File ||
-        step3.gstImage?.url && typeof step3.gstImage.url === 'string' ||
-        typeof step3.gstImage === 'string' && step3.gstImage.startsWith('http');
+          step3.gstImage instanceof File ||
+          step3.gstImage?.url && typeof step3.gstImage.url === 'string' ||
+          typeof step3.gstImage === 'string' && step3.gstImage.startsWith('http');
         if (!isValidGstImage) {
           errors.push("Please upload a valid GST image");
         }
@@ -991,10 +998,10 @@ export default function RestaurantOnboarding() {
       }
     } catch (err) {
       const msg =
-      err?.response?.data?.message ||
-      err?.response?.data?.error ||
-      err?.message ||
-      "Failed to save onboarding data";
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to save onboarding data";
       setError(msg);
     } finally {
       setSaving(false);
@@ -1023,7 +1030,7 @@ export default function RestaurantOnboarding() {
   };
 
   const renderStep1 = () =>
-  <div className="space-y-6">
+    <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md">
         <h2 className="text-lg font-semibold text-black mb-4">Restaurant information</h2>
         <p className="text-sm text-gray-600 mb-4">Restaurant name</p>
@@ -1031,11 +1038,11 @@ export default function RestaurantOnboarding() {
           <div>
             <Label className="text-xs text-gray-700">Restaurant name*</Label>
             <Input
-            value={step1.restaurantName || ""}
-            onChange={(e) => setStep1({ ...step1, restaurantName: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="Customers will see this name" />
-          
+              value={step1.restaurantName || ""}
+              onChange={(e) => setStep1({ ...step1, restaurantName: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="Customers will see this name" />
+
           </div>
         </div>
       </section>
@@ -1049,30 +1056,30 @@ export default function RestaurantOnboarding() {
           <div>
             <Label className="text-xs text-gray-700">Full name*</Label>
             <Input
-            value={step1.ownerName || ""}
-            onChange={(e) => setStep1({ ...step1, ownerName: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="Owner full name" />
-          
+              value={step1.ownerName || ""}
+              onChange={(e) => setStep1({ ...step1, ownerName: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="Owner full name" />
+
           </div>
           <div>
             <Label className="text-xs text-gray-700">Email address*</Label>
             <Input
-            type="email"
-            value={step1.ownerEmail || ""}
-            onChange={(e) => setStep1({ ...step1, ownerEmail: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="owner@example.com" />
-          
+              type="email"
+              value={step1.ownerEmail || ""}
+              onChange={(e) => setStep1({ ...step1, ownerEmail: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="owner@example.com" />
+
           </div>
           <div>
             <Label className="text-xs text-gray-700">Phone number*</Label>
             <Input
-            value={step1.ownerPhone || ""}
-            onChange={(e) => setStep1({ ...step1, ownerPhone: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="+91 98XXXXXX" />
-          
+              value={step1.ownerPhone || ""}
+              onChange={(e) => setStep1({ ...step1, ownerPhone: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="+91 98XXXXXX" />
+
           </div>
         </div>
       </section>
@@ -1082,13 +1089,13 @@ export default function RestaurantOnboarding() {
         <div>
           <Label className="text-xs text-gray-700">Primary contact number*</Label>
           <Input
-          value={step1.primaryContactNumber || ""}
-          onChange={(e) =>
-          setStep1({ ...step1, primaryContactNumber: e.target.value })
-          }
-          className="mt-1 bg-white text-sm text-black placeholder-black"
-          placeholder="Restaurant's primary contact number" />
-        
+            value={step1.primaryContactNumber || ""}
+            onChange={(e) =>
+              setStep1({ ...step1, primaryContactNumber: e.target.value })
+            }
+            className="mt-1 bg-white text-sm text-black placeholder-black"
+            placeholder="Restaurant's primary contact number" />
+
           <p className="text-[11px] text-gray-500 mt-1">
             Customers, delivery partners and Appzeto may call on this number for order
             support.
@@ -1099,60 +1106,60 @@ export default function RestaurantOnboarding() {
             Add your restaurant's location for order pick-up.
           </p>
           <Input
-          value={step1.location?.area || ""}
-          onChange={(e) =>
-          setStep1({
-            ...step1,
-            location: { ...step1.location, area: e.target.value }
-          })
-          }
-          className="bg-white text-sm"
-          placeholder="Area / Sector / Locality*" />
-        
+            value={step1.location?.area || ""}
+            onChange={(e) =>
+              setStep1({
+                ...step1,
+                location: { ...step1.location, area: e.target.value }
+              })
+            }
+            className="bg-white text-sm"
+            placeholder="Area / Sector / Locality*" />
+
           <Input
-          value={step1.location?.city || ""}
-          onChange={(e) =>
-          setStep1({
-            ...step1,
-            location: { ...step1.location, city: e.target.value }
-          })
-          }
-          className="bg-white text-sm"
-          placeholder="City" />
-        
+            value={step1.location?.city || ""}
+            onChange={(e) =>
+              setStep1({
+                ...step1,
+                location: { ...step1.location, city: e.target.value }
+              })
+            }
+            className="bg-white text-sm"
+            placeholder="City" />
+
           <Input
-          value={step1.location?.addressLine1 || ""}
-          onChange={(e) =>
-          setStep1({
-            ...step1,
-            location: { ...step1.location, addressLine1: e.target.value }
-          })
-          }
-          className="bg-white text-sm"
-          placeholder="Shop no. / building no. (optional)" />
-        
+            value={step1.location?.addressLine1 || ""}
+            onChange={(e) =>
+              setStep1({
+                ...step1,
+                location: { ...step1.location, addressLine1: e.target.value }
+              })
+            }
+            className="bg-white text-sm"
+            placeholder="Shop no. / building no. (optional)" />
+
           <Input
-          value={step1.location?.addressLine2 || ""}
-          onChange={(e) =>
-          setStep1({
-            ...step1,
-            location: { ...step1.location, addressLine2: e.target.value }
-          })
-          }
-          className="bg-white text-sm"
-          placeholder="Floor / tower (optional)" />
-        
+            value={step1.location?.addressLine2 || ""}
+            onChange={(e) =>
+              setStep1({
+                ...step1,
+                location: { ...step1.location, addressLine2: e.target.value }
+              })
+            }
+            className="bg-white text-sm"
+            placeholder="Floor / tower (optional)" />
+
           <Input
-          value={step1.location?.landmark || ""}
-          onChange={(e) =>
-          setStep1({
-            ...step1,
-            location: { ...step1.location, landmark: e.target.value }
-          })
-          }
-          className="bg-white text-sm"
-          placeholder="Nearby landmark (optional)" />
-        
+            value={step1.location?.landmark || ""}
+            onChange={(e) =>
+              setStep1({
+                ...step1,
+                location: { ...step1.location, landmark: e.target.value }
+              })
+            }
+            className="bg-white text-sm"
+            placeholder="Nearby landmark (optional)" />
+
           <p className="text-[11px] text-gray-500 mt-1">
             Please ensure that this address is the same as mentioned on your FSSAI license.
           </p>
@@ -1162,7 +1169,7 @@ export default function RestaurantOnboarding() {
 
 
   const renderStep2 = () =>
-  <div className="space-y-6">
+    <div className="space-y-6">
       {/* Images section */}
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
         <h2 className="text-lg font-semibold text-black">Menu & photos</h2>
@@ -1187,68 +1194,68 @@ export default function RestaurantOnboarding() {
               </div>
             </div>
             <label
-            htmlFor="menuImagesInput"
-            className="inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-sm bg-white text-black  border-black text-xs font-medium cursor-pointer     w-full items-center">
-            
+              htmlFor="menuImagesInput"
+              className="inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-sm bg-white text-black  border-black text-xs font-medium cursor-pointer     w-full items-center">
+
               <Upload className="w-4.5 h-4.5" />
               <span>Choose files</span>
             </label>
             <input
-            id="menuImagesInput"
-            type="file"
-            multiple
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const files = Array.from(e.target.files || []);
-              if (!files.length) return;
+              id="menuImagesInput"
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
 
-              setStep2((prev) => ({
-                ...prev,
-                menuImages: [...(prev.menuImages || []), ...files] // Append new files to existing ones
-              }));
-              // Reset input to allow selecting same file again
-              e.target.value = '';
-            }} />
-          
+                setStep2((prev) => ({
+                  ...prev,
+                  menuImages: [...(prev.menuImages || []), ...files] // Append new files to existing ones
+                }));
+                // Reset input to allow selecting same file again
+                e.target.value = '';
+              }} />
+
           </div>
 
           {/* Menu image previews */}
           {!!step2.menuImages.length &&
-        <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {step2.menuImages.map((file, idx) => {
-            // Handle both File objects and URL objects
-            let imageUrl = null;
-            let imageName = `Image ${idx + 1}`;
+                // Handle both File objects and URL objects
+                let imageUrl = null;
+                let imageName = `Image ${idx + 1}`;
 
-            if (file instanceof File) {
-              imageUrl = URL.createObjectURL(file);
-              imageName = file.name;
-            } else if (file?.url) {
-              // If it's an object with url property (from backend)
-              imageUrl = file.url;
-              imageName = file.name || `Image ${idx + 1}`;
-            } else if (typeof file === 'string') {
-              // If it's a direct URL string
-              imageUrl = file;
-            }
+                if (file instanceof File) {
+                  imageUrl = URL.createObjectURL(file);
+                  imageName = file.name;
+                } else if (file?.url) {
+                  // If it's an object with url property (from backend)
+                  imageUrl = file.url;
+                  imageName = file.name || `Image ${idx + 1}`;
+                } else if (typeof file === 'string') {
+                  // If it's a direct URL string
+                  imageUrl = file;
+                }
 
-            return (
-              <div
-                key={idx}
-                className="relative aspect-[4/5] rounded-md overflow-hidden bg-gray-100">
-                
+                return (
+                  <div
+                    key={idx}
+                    className="relative aspect-[4/5] rounded-md overflow-hidden bg-gray-100">
+
                     {imageUrl ?
-                <img
-                  src={imageUrl}
-                  alt={`Menu ${idx + 1}`}
-                  className="w-full h-full object-cover" /> :
+                      <img
+                        src={imageUrl}
+                        alt={`Menu ${idx + 1}`}
+                        className="w-full h-full object-cover" /> :
 
 
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-500 px-2 text-center">
+                      <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-500 px-2 text-center">
                         Preview unavailable
                       </div>
-                }
+                    }
                     <div className="absolute bottom-0 inset-x-0 bg-black/60 px-2 py-1">
                       <p className="text-[10px] text-white truncate">
                         {imageName}
@@ -1256,9 +1263,9 @@ export default function RestaurantOnboarding() {
                     </div>
                   </div>);
 
-          })}
+              })}
             </div>
-        }
+          }
         </div>
 
         {/* Profile image */}
@@ -1267,32 +1274,32 @@ export default function RestaurantOnboarding() {
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
               {step2.profileImage ?
-            (() => {
-              let imageSrc = null;
+                (() => {
+                  let imageSrc = null;
 
-              if (step2.profileImage instanceof File) {
-                imageSrc = URL.createObjectURL(step2.profileImage);
-              } else if (step2.profileImage?.url) {
-                // If it's an object with url property (from backend)
-                imageSrc = step2.profileImage.url;
-              } else if (typeof step2.profileImage === 'string') {
-                // If it's a direct URL string
-                imageSrc = step2.profileImage;
+                  if (step2.profileImage instanceof File) {
+                    imageSrc = URL.createObjectURL(step2.profileImage);
+                  } else if (step2.profileImage?.url) {
+                    // If it's an object with url property (from backend)
+                    imageSrc = step2.profileImage.url;
+                  } else if (typeof step2.profileImage === 'string') {
+                    // If it's a direct URL string
+                    imageSrc = step2.profileImage;
+                  }
+
+                  return imageSrc ?
+                    <img
+                      src={imageSrc}
+                      alt="Restaurant profile"
+                      className="w-full h-full object-cover" /> :
+
+
+                    <ImageIcon className="w-6 h-6 text-gray-500" />;
+
+                })() :
+
+                <ImageIcon className="w-6 h-6 text-gray-500" />
               }
-
-              return imageSrc ?
-              <img
-                src={imageSrc}
-                alt="Restaurant profile"
-                className="w-full h-full object-cover" /> :
-
-
-              <ImageIcon className="w-6 h-6 text-gray-500" />;
-
-            })() :
-
-            <ImageIcon className="w-6 h-6 text-gray-500" />
-            }
             </div>
             <div className="flex-1 flex-col flex items-center justify-between gap-3">
               <div className="flex flex-col">
@@ -1306,30 +1313,30 @@ export default function RestaurantOnboarding() {
 
           </div>
           <label
-          htmlFor="profileImageInput"
-          className="inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-sm bg-white text-black  border-black text-xs font-medium cursor-pointer     w-full items-center">
-          
+            htmlFor="profileImageInput"
+            className="inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-sm bg-white text-black  border-black text-xs font-medium cursor-pointer     w-full items-center">
+
             <Upload className="w-4.5 h-4.5" />
             <span>Upload</span>
           </label>
           <input
-          id="profileImageInput"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0] || null;
-            if (file) {
+            id="profileImageInput"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              if (file) {
 
-              setStep2((prev) => ({
-                ...prev,
-                profileImage: file
-              }));
-            }
-            // Reset input to allow selecting same file again
-            e.target.value = '';
-          }} />
-        
+                setStep2((prev) => ({
+                  ...prev,
+                  profileImage: file
+                }));
+              }
+              // Reset input to allow selecting same file again
+              e.target.value = '';
+            }} />
+
         </div>
       </section>
 
@@ -1340,19 +1347,19 @@ export default function RestaurantOnboarding() {
           <Label className="text-xs text-gray-700">Select cuisines (up to 3)</Label>
           <div className="mt-2 flex flex-wrap gap-2">
             {cuisinesOptions.map((cuisine) => {
-            const active = step2.cuisines.includes(cuisine);
-            return (
-              <button
-                key={cuisine}
-                type="button"
-                onClick={() => toggleCuisine(cuisine)}
-                className={`px-3 py-1.5 text-xs rounded-full ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
-                }>
-                
+              const active = step2.cuisines.includes(cuisine);
+              return (
+                <button
+                  key={cuisine}
+                  type="button"
+                  onClick={() => toggleCuisine(cuisine)}
+                  className={`px-3 py-1.5 text-xs rounded-full ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
+                  }>
+
                   {cuisine}
                 </button>);
 
-          })}
+            })}
           </div>
         </div>
 
@@ -1361,15 +1368,15 @@ export default function RestaurantOnboarding() {
           <Label className="text-xs text-gray-700">Delivery timings</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TimeSelector
-            label="Opening time"
-            value={step2.openingTime || ""}
-            onChange={(val) => setStep2({ ...step2, openingTime: val || "" })} />
-          
+              label="Opening time"
+              value={step2.openingTime || ""}
+              onChange={(val) => setStep2({ ...step2, openingTime: val || "" })} />
+
             <TimeSelector
-            label="Closing time"
-            value={step2.closingTime || ""}
-            onChange={(val) => setStep2({ ...step2, closingTime: val || "" })} />
-          
+              label="Closing time"
+              value={step2.closingTime || ""}
+              onChange={(val) => setStep2({ ...step2, closingTime: val || "" })} />
+
           </div>
         </div>
 
@@ -1384,19 +1391,19 @@ export default function RestaurantOnboarding() {
           </p>
           <div className="mt-1 grid grid-cols-7 gap-1.5 sm:gap-2">
             {daysOfWeek.map((day) => {
-            const active = step2.openDays.includes(day);
-            return (
-              <button
-                key={day}
-                type="button"
-                onClick={() => toggleDay(day)}
-                className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
-                }>
-                
+              const active = step2.openDays.includes(day);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => toggleDay(day)}
+                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
+                  }>
+
                   {day.charAt(0)}
                 </button>);
 
-          })}
+            })}
           </div>
         </div>
       </section>
@@ -1404,37 +1411,37 @@ export default function RestaurantOnboarding() {
 
 
   const renderStep3 = () =>
-  <div className="space-y-6">
+    <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">PAN details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-xs text-gray-700">PAN number</Label>
             <Input
-            value={step3.panNumber || ""}
-            onChange={(e) => setStep3({ ...step3, panNumber: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black" />
-          
+              value={step3.panNumber || ""}
+              onChange={(e) => setStep3({ ...step3, panNumber: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black" />
+
           </div>
           <div>
             <Label className="text-xs text-gray-700">Name on PAN</Label>
             <Input
-            value={step3.nameOnPan || ""}
-            onChange={(e) => setStep3({ ...step3, nameOnPan: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black" />
-          
+              value={step3.nameOnPan || ""}
+              onChange={(e) => setStep3({ ...step3, nameOnPan: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black" />
+
           </div>
         </div>
         <div>
           <Label className="text-xs text-gray-700">PAN image</Label>
           <Input
-          type="file"
-          accept="image/*"
-          onChange={(e) =>
-          setStep3({ ...step3, panImage: e.target.files?.[0] || null })
-          }
-          className="mt-1 bg-white text-sm text-black placeholder-black" />
-        
+            type="file"
+            accept="image/*"
+            onChange={(e) =>
+              setStep3({ ...step3, panImage: e.target.files?.[0] || null })
+            }
+            className="mt-1 bg-white text-sm text-black placeholder-black" />
+
         </div>
       </section>
 
@@ -1443,158 +1450,158 @@ export default function RestaurantOnboarding() {
         <div className="flex gap-4 items-center text-sm">
           <span className="text-gray-700">GST registered?</span>
           <button
-          type="button"
-          onClick={() => setStep3({ ...step3, gstRegistered: true })}
-          className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
-          }>
-          
+            type="button"
+            onClick={() => setStep3({ ...step3, gstRegistered: true })}
+            className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
+            }>
+
             Yes
           </button>
           <button
-          type="button"
-          onClick={() => setStep3({ ...step3, gstRegistered: false })}
-          className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
-          }>
-          
+            type="button"
+            onClick={() => setStep3({ ...step3, gstRegistered: false })}
+            className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`
+            }>
+
             No
           </button>
         </div>
         {step3.gstRegistered &&
-      <div className="space-y-3">
+          <div className="space-y-3">
             <Input
-          value={step3.gstNumber || ""}
-          onChange={(e) => setStep3({ ...step3, gstNumber: e.target.value })}
-          className="bg-white text-sm"
-          placeholder="GST number" />
-        
+              value={step3.gstNumber || ""}
+              onChange={(e) => setStep3({ ...step3, gstNumber: e.target.value })}
+              className="bg-white text-sm"
+              placeholder="GST number" />
+
             <Input
-          value={step3.gstLegalName || ""}
-          onChange={(e) => setStep3({ ...step3, gstLegalName: e.target.value })}
-          className="bg-white text-sm"
-          placeholder="Legal name" />
-        
+              value={step3.gstLegalName || ""}
+              onChange={(e) => setStep3({ ...step3, gstLegalName: e.target.value })}
+              className="bg-white text-sm"
+              placeholder="Legal name" />
+
             <Input
-          value={step3.gstAddress || ""}
-          onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })}
-          className="bg-white text-sm"
-          placeholder="Registered address" />
-        
+              value={step3.gstAddress || ""}
+              onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })}
+              className="bg-white text-sm"
+              placeholder="Registered address" />
+
             <Input
-          type="file"
-          accept="image/*"
-          onChange={(e) =>
-          setStep3({ ...step3, gstImage: e.target.files?.[0] || null })
-          }
-          className="bg-white text-sm" />
-        
+              type="file"
+              accept="image/*"
+              onChange={(e) =>
+                setStep3({ ...step3, gstImage: e.target.files?.[0] || null })
+              }
+              className="bg-white text-sm" />
+
           </div>
-      }
+        }
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">FSSAI details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-          value={step3.fssaiNumber || ""}
-          onChange={(e) => setStep3({ ...step3, fssaiNumber: e.target.value })}
-          className="bg-white text-sm"
-          placeholder="FSSAI number" />
-        
+            value={step3.fssaiNumber || ""}
+            onChange={(e) => setStep3({ ...step3, fssaiNumber: e.target.value })}
+            className="bg-white text-sm"
+            placeholder="FSSAI number" />
+
           <div>
             <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <button
-                type="button"
-                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between hover:bg-gray-50">
-                
+                  type="button"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between hover:bg-gray-50">
+
                   <span className={step3.fssaiExpiry ? "text-gray-900" : "text-gray-500"}>
                     {step3.fssaiExpiry ?
-                  new Date(step3.fssaiExpiry).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric"
-                  }) :
-                  "Select expiry date"}
+                      new Date(step3.fssaiExpiry).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric"
+                      }) :
+                      "Select expiry date"}
                   </span>
                   <CalendarIcon className="w-4 h-4 text-gray-500" />
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
-                mode="single"
-                selected={step3.fssaiExpiry ? new Date(step3.fssaiExpiry) : undefined}
-                onSelect={(date) => {
-                  if (date) {
-                    const formattedDate = date.toISOString().split("T")[0];
-                    setStep3({ ...step3, fssaiExpiry: formattedDate });
-                  }
-                }}
-                initialFocus
-                className="rounded-md border border-gray-200" />
-              
+                  mode="single"
+                  selected={step3.fssaiExpiry ? new Date(step3.fssaiExpiry) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      const formattedDate = date.toISOString().split("T")[0];
+                      setStep3({ ...step3, fssaiExpiry: formattedDate });
+                    }
+                  }}
+                  initialFocus
+                  className="rounded-md border border-gray-200" />
+
               </PopoverContent>
             </Popover>
           </div>
         </div>
         <Input
-        type="file"
-        accept="image/*"
-        onChange={(e) =>
-        setStep3({ ...step3, fssaiImage: e.target.files?.[0] || null })
-        }
-        className="bg-white text-sm" />
-      
+          type="file"
+          accept="image/*"
+          onChange={(e) =>
+            setStep3({ ...step3, fssaiImage: e.target.files?.[0] || null })
+          }
+          className="bg-white text-sm" />
+
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">Bank account details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-          value={step3.accountNumber || ""}
-          onChange={(e) =>
-          setStep3({ ...step3, accountNumber: e.target.value.trim() })
-          }
-          className="bg-white text-sm"
-          placeholder="Account number" />
-        
+            value={step3.accountNumber || ""}
+            onChange={(e) =>
+              setStep3({ ...step3, accountNumber: e.target.value.trim() })
+            }
+            className="bg-white text-sm"
+            placeholder="Account number" />
+
           <Input
-          value={step3.confirmAccountNumber || ""}
-          onChange={(e) =>
-          setStep3({ ...step3, confirmAccountNumber: e.target.value.trim() })
-          }
-          className="bg-white text-sm"
-          placeholder="Re-enter account number" />
-        
+            value={step3.confirmAccountNumber || ""}
+            onChange={(e) =>
+              setStep3({ ...step3, confirmAccountNumber: e.target.value.trim() })
+            }
+            className="bg-white text-sm"
+            placeholder="Re-enter account number" />
+
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-          value={step3.ifscCode || ""}
-          onChange={(e) => setStep3({ ...step3, ifscCode: e.target.value })}
-          className="bg-white text-sm"
-          placeholder="IFSC code" />
-        
+            value={step3.ifscCode || ""}
+            onChange={(e) => setStep3({ ...step3, ifscCode: e.target.value })}
+            className="bg-white text-sm"
+            placeholder="IFSC code" />
+
           <Input
-          value={step3.accountType || ""}
-          onChange={(e) => setStep3({ ...step3, accountType: e.target.value })}
-          className="bg-white text-sm"
-          placeholder="Account type (savings / current)" />
-        
+            value={step3.accountType || ""}
+            onChange={(e) => setStep3({ ...step3, accountType: e.target.value })}
+            className="bg-white text-sm"
+            placeholder="Account type (savings / current)" />
+
         </div>
         <Input
-        value={step3.accountHolderName || ""}
-        onChange={(e) =>
-        setStep3({ ...step3, accountHolderName: e.target.value })
-        }
-        className="bg-white text-sm"
-        placeholder="Account holder name" />
-      
+          value={step3.accountHolderName || ""}
+          onChange={(e) =>
+            setStep3({ ...step3, accountHolderName: e.target.value })
+          }
+          className="bg-white text-sm"
+          placeholder="Account holder name" />
+
       </section>
     </div>;
 
 
   const renderStep4 = () =>
-  <div className="space-y-6">
+    <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">Delivery & Featured Items</h2>
         <p className="text-sm text-gray-600">
@@ -1605,42 +1612,42 @@ export default function RestaurantOnboarding() {
           <div>
             <Label className="text-xs text-gray-700">Estimated Delivery Time (minutes)</Label>
             <Input
-            value={step4.estimatedDeliveryTime || ""}
-            onChange={(e) => setStep4({ ...step4, estimatedDeliveryTime: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="e.g. 30-45" />
-          
+              value={step4.estimatedDeliveryTime || ""}
+              onChange={(e) => setStep4({ ...step4, estimatedDeliveryTime: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. 30-45" />
+
           </div>
 
           <div>
             <Label className="text-xs text-gray-700">Featured Dish Name</Label>
             <Input
-            value={step4.featuredDish || ""}
-            onChange={(e) => setStep4({ ...step4, featuredDish: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="e.g. Butter Chicken" />
-          
+              value={step4.featuredDish || ""}
+              onChange={(e) => setStep4({ ...step4, featuredDish: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. Butter Chicken" />
+
           </div>
 
           <div>
             <Label className="text-xs text-gray-700">Featured Dish Price</Label>
             <Input
-            type="number"
-            value={step4.featuredPrice || ""}
-            onChange={(e) => setStep4({ ...step4, featuredPrice: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="e.g. 249" />
-          
+              type="number"
+              value={step4.featuredPrice || ""}
+              onChange={(e) => setStep4({ ...step4, featuredPrice: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. 249" />
+
           </div>
 
           <div>
             <Label className="text-xs text-gray-700">Special Offer (Optional)</Label>
             <Input
-            value={step4.offer || ""}
-            onChange={(e) => setStep4({ ...step4, offer: e.target.value })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="e.g. 20% off on first order" />
-          
+              value={step4.offer || ""}
+              onChange={(e) => setStep4({ ...step4, offer: e.target.value })}
+              className="mt-1 bg-white text-sm text-black placeholder-black"
+              placeholder="e.g. 20% off on first order" />
+
           </div>
         </div>
       </section>
@@ -1648,7 +1655,7 @@ export default function RestaurantOnboarding() {
 
 
   const renderStep5 = () =>
-  <div className="space-y-6">
+    <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-6">
         <h2 className="text-xl font-bold text-black border-b pb-4">Choose Your Business Model</h2>
         <p className="text-sm text-gray-600">
@@ -1658,20 +1665,20 @@ export default function RestaurantOnboarding() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Commission Based Option */}
           <div
-          onClick={() => setStep5({ businessModel: "Commission Base" })}
-          className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 relative overflow-hidden ${step5.businessModel === "Commission Base" ?
-          "border-black bg-gray-50 shadow-md" :
-          "border-gray-200 hover:border-gray-300"}`
-          }>
-          
+            onClick={() => setStep5({ businessModel: "Commission Base" })}
+            className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 relative overflow-hidden ${step5.businessModel === "Commission Base" ?
+              "border-black bg-gray-50 shadow-md" :
+              "border-gray-200 hover:border-gray-300"}`
+            }>
+
             {step5.businessModel === "Commission Base" &&
-          <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3">
                 <CheckCircle className="w-6 h-6 text-black fill-white" />
               </div>
-          }
+            }
             <div className="mb-4">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${step5.businessModel === "Commission Base" ? "bg-black text-white" : "bg-gray-100 text-gray-600"}`
-            }>
+              }>
                 <span className="text-lg font-bold">%</span>
               </div>
               <h3 className="text-lg font-bold text-black">Commission Based</h3>
@@ -1695,20 +1702,20 @@ export default function RestaurantOnboarding() {
 
           {/* Subscription Based Option */}
           <div
-          onClick={() => setStep5({ businessModel: "Subscription Base" })}
-          className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 relative overflow-hidden ${step5.businessModel === "Subscription Base" ?
-          "border-black bg-gray-50 shadow-md" :
-          "border-gray-200 hover:border-gray-300"}`
-          }>
-          
+            onClick={() => setStep5({ businessModel: "Subscription Base" })}
+            className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 relative overflow-hidden ${step5.businessModel === "Subscription Base" ?
+              "border-black bg-gray-50 shadow-md" :
+              "border-gray-200 hover:border-gray-300"}`
+            }>
+
             {step5.businessModel === "Subscription Base" &&
-          <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3">
                 <CheckCircle className="w-6 h-6 text-black fill-white" />
               </div>
-          }
+            }
             <div className="mb-4">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${step5.businessModel === "Subscription Base" ? "bg-black text-white" : "bg-gray-100 text-gray-600"}`
-            }>
+              }>
                 <Sparkles className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-black">Subscription Based</h3>
@@ -1758,13 +1765,13 @@ export default function RestaurantOnboarding() {
           <div className="text-sm font-semibold text-black">Restaurant onboarding</div>
           <div className="flex items-center gap-3">
             {import.meta.env.DEV &&
-            <Button
-              onClick={fillDummyData}
-              variant="outline"
-              size="sm"
-              className="text-xs bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100 flex items-center gap-1.5"
-              title="Fill with dummy data (Dev only)">
-              
+              <Button
+                onClick={fillDummyData}
+                variant="outline"
+                size="sm"
+                className="text-xs bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100 flex items-center gap-1.5"
+                title="Fill with dummy data (Dev only)">
+
                 <Sparkles className="w-3 h-3" />
                 Fill Dummy
               </Button>
@@ -1777,14 +1784,14 @@ export default function RestaurantOnboarding() {
 
         <main className="flex-1 px-4 sm:px-6 py-4 space-y-4">
           {loading ?
-          <p className="text-sm text-gray-600">Loading...</p> :
+            <p className="text-sm text-gray-600">Loading...</p> :
 
-          renderStep()
+            renderStep()
           }
         </main>
 
         {error &&
-        <div className="px-4 sm:px-6 pb-2 text-xs text-red-600">
+          <div className="px-4 sm:px-6 pb-2 text-xs text-red-600">
             {error}
           </div>
         }
@@ -1796,14 +1803,14 @@ export default function RestaurantOnboarding() {
               disabled={step === 1 || saving}
               onClick={() => setStep((s) => Math.max(1, s - 1))}
               className="text-sm text-gray-700 bg-transparent">
-              
+
               Back
             </Button>
             <Button
               onClick={handleNext}
               disabled={saving}
               className="text-sm bg-black text-white px-6">
-              
+
               {step === 5 ? saving ? "Saving..." : "Finish" : saving ? "Saving..." : "Continue"}
             </Button>
           </div>

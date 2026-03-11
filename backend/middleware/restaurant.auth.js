@@ -54,42 +54,35 @@ export const authenticate = async (req, res, next) => {
     // - baseUrl: /auth (if mounted)
     // /owner/me is directly under /api/restaurant, so reqPath would be /owner/me
     const isProfileRoute = requestPath.includes('/auth/me') || requestPath.includes('/auth/reverify') ||
-    requestPath.includes('/owner/me') ||
-    reqPath === '/me' || reqPath === '/reverify' || reqPath === '/owner/me' ||
-    baseUrl.includes('/auth') && (reqPath === '/me' || reqPath === '/reverify');
+      requestPath.includes('/owner/me') ||
+      reqPath === '/me' || reqPath === '/reverify' || reqPath === '/owner/me' ||
+      baseUrl.includes('/auth') && (reqPath === '/me' || reqPath === '/reverify');
 
     // Check for menu routes - restaurants need to access menu even when inactive
     // They might need to set up menu during onboarding or after approval
     // Routes: /api/restaurant/menu, /api/restaurant/menu/section, /api/restaurant/menu/item/schedule, etc.
     const isMenuRoute = requestPath.includes('/menu') ||
-    reqPath === '/menu' ||
-    reqPath.startsWith('/menu/') ||
-    baseUrl.includes('/menu');
+      reqPath === '/menu' ||
+      reqPath.startsWith('/menu/') ||
+      baseUrl.includes('/menu');
 
     // Check for inventory routes - restaurants need to manage inventory even when inactive
     const isInventoryRoute = requestPath.includes('/inventory') ||
-    reqPath === '/inventory' ||
-    reqPath.startsWith('/inventory/');
+      reqPath === '/inventory' ||
+      reqPath.startsWith('/inventory/');
 
     // Check for subscription routes - restaurants need to pay to activate account
-    const isSubscriptionRoute = requestPath.includes('/subscription') ||
-    reqPath === '/subscription' ||
-    reqPath.startsWith('/subscription/');
+    const isSubscriptionRoute = requestPath.includes('subscription') || baseUrl.includes('subscription') || reqPath.includes('subscription');
 
-    // Check for dining table routes
-    const isDiningTableRoute = requestPath.includes('/dining-tables') ||
-    reqPath === '/dining-tables' ||
-    reqPath.startsWith('/dining-tables/');
+    // Check for dining routes
+    const isDiningTableRoute = requestPath.includes('dining-tables') || baseUrl.includes('dining-tables');
+    const isDiningSettingsRoute = requestPath.includes('dining-settings') || baseUrl.includes('dining-settings');
+    const isDiningActivationRoute = requestPath.includes('dining-activation') || baseUrl.includes('dining-activation');
 
-    // Check for dining settings routes
-    const isDiningSettingsRoute = requestPath.includes('/dining-settings') ||
-    reqPath === '/dining-settings' ||
-    reqPath.startsWith('/dining-settings/');
-
-    // Check for dining activation routes
-    const isDiningActivationRoute = requestPath.includes('/dining-activation') ||
-    reqPath === '/dining-activation' ||
-    reqPath.startsWith('/dining-activation/');
+    // Check for notification/fcm routes
+    const isNotificationRoute = requestPath.includes('/notification') ||
+      reqPath.includes('/notification') ||
+      baseUrl.includes('/notification');
 
     // Debug logging for inactive restaurants
 
@@ -113,25 +106,18 @@ export const authenticate = async (req, res, next) => {
 
 
     // Allow essential routes even if inactive
-    if (!restaurant.isActive && !isOnboardingRoute && !isProfileRoute && !isMenuRoute && !isInventoryRoute && !isSubscriptionRoute && !isDiningTableRoute && !isDiningSettingsRoute && !isDiningActivationRoute) {
-      console.error('❌ Restaurant account is inactive - access denied:', {
-        restaurantId: restaurant._id,
-        restaurantName: restaurant.name,
-        isActive: restaurant.isActive,
-        requestPath,
-        reqPath,
-        baseUrl,
-        routeChecks: {
-          isOnboardingRoute,
-          isProfileRoute,
-          isMenuRoute,
-          isInventoryRoute,
-          isSubscriptionRoute,
-          isDiningTableRoute,
-          isDiningSettingsRoute,
-          isDiningActivationRoute
-        }
-      });
+    const isAllowed = isOnboardingRoute ||
+      isProfileRoute ||
+      isMenuRoute ||
+      isInventoryRoute ||
+      isSubscriptionRoute ||
+      isDiningTableRoute ||
+      isDiningSettingsRoute ||
+      isDiningActivationRoute ||
+      isNotificationRoute;
+
+    if (!restaurant.isActive && !isAllowed) {
+      console.error('❌ Restaurant account is inactive - access denied for route:', requestPath);
       return errorResponse(res, 401, 'Restaurant account is inactive. Please wait for admin approval.');
     }
 

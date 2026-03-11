@@ -17,16 +17,16 @@ const STORAGE_KEY = "restaurant_online_status";
 
 // Top filter tabs
 const filterTabs = [
-{ id: "preparing", label: "Preparing" },
-{ id: "ready", label: "Ready" },
-{ id: "out-for-delivery", label: "Out for delivery" },
-{ id: "scheduled", label: "Scheduled" },
-{ id: "completed", label: "Completed" },
-{ id: "cancelled", label: "Cancelled" }];
+  { id: "preparing", label: "Preparing" },
+  { id: "ready", label: "Ready" },
+  { id: "out-for-delivery", label: "Out for delivery" },
+  { id: "scheduled", label: "Scheduled" },
+  { id: "completed", label: "Completed" },
+  { id: "cancelled", label: "Cancelled" }];
 
 
 // Completed Orders List Component
-function CompletedOrders({ onSelectOrder }) {
+function CompletedOrders({ onSelectOrder, isActive }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +35,10 @@ function CompletedOrders({ onSelectOrder }) {
     let intervalId = null;
 
     const fetchOrders = async () => {
+      if (isActive !== true) {
+        setLoading(false);
+        return;
+      }
       try {
         const response = await restaurantAPI.getOrders();
 
@@ -96,14 +100,13 @@ function CompletedOrders({ onSelectOrder }) {
         fetchOrders();
       }
     }, 10000);
-
     return () => {
       isMounted = false;
       if (intervalId) {
         clearInterval(intervalId);
       }
     };
-  }, []);
+  }, [isActive]);
 
   if (loading) {
     return (
@@ -126,53 +129,53 @@ function CompletedOrders({ onSelectOrder }) {
         <span className="text-xs text-gray-500">{orders.length} total</span>
       </div>
       {orders.length === 0 ?
-      <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-gray-500 text-sm">
           No completed orders yet
         </div> :
 
-      <div>
+        <div>
           {orders.map((order) => {
-          const deliveredDate = order.deliveredAt ?
-          new Date(order.deliveredAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          }) :
-          'N/A';
+            const deliveredDate = order.deliveredAt ?
+              new Date(order.deliveredAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) :
+              'N/A';
 
-          return (
-            <div key={order.orderId || order.mongoId} className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
+            return (
+              <div key={order.orderId || order.mongoId} className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
                 <button
-                type="button"
-                onClick={() =>
-                onSelectOrder?.({
-                  orderId: order.orderId,
-                  status: 'Delivered',
-                  customerName: order.customerName,
-                  type: order.type,
-                  tableOrToken: order.tableOrToken,
-                  timePlaced: deliveredDate,
-                  itemsSummary: order.itemsSummary
-                })
-                }
-                className="w-full text-left flex gap-3 items-stretch">
-                
+                  type="button"
+                  onClick={() =>
+                    onSelectOrder?.({
+                      orderId: order.orderId,
+                      status: 'Delivered',
+                      customerName: order.customerName,
+                      type: order.type,
+                      tableOrToken: order.tableOrToken,
+                      timePlaced: deliveredDate,
+                      itemsSummary: order.itemsSummary
+                    })
+                  }
+                  className="w-full text-left flex gap-3 items-stretch">
+
                   <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
                     {order.photoUrl ?
-                  <img
-                    src={order.photoUrl}
-                    alt={order.photoAlt}
-                    className="h-full w-full object-cover" /> :
+                      <img
+                        src={order.photoUrl}
+                        alt={order.photoAlt}
+                        className="h-full w-full object-cover" /> :
 
 
-                  <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
+                      <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
                         <span className="text-[11px] font-medium text-gray-500 text-center leading-tight">
                           {order.photoAlt}
                         </span>
                       </div>
-                  }
+                    }
                   </div>
 
                   <div className="flex-1 flex flex-col justify-between min-h-[80px]">
@@ -220,7 +223,7 @@ function CompletedOrders({ onSelectOrder }) {
                 </button>
               </div>);
 
-        })}
+          })}
         </div>
       }
     </div>);
@@ -228,7 +231,7 @@ function CompletedOrders({ onSelectOrder }) {
 }
 
 // Cancelled Orders List Component
-function CancelledOrders({ onSelectOrder }) {
+function CancelledOrders({ onSelectOrder, isActive }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -237,6 +240,10 @@ function CancelledOrders({ onSelectOrder }) {
     let intervalId = null;
 
     const fetchOrders = async () => {
+      if (isActive !== true) {
+        setLoading(false);
+        return;
+      }
       try {
         const response = await restaurantAPI.getOrders();
 
@@ -308,7 +315,7 @@ function CancelledOrders({ onSelectOrder }) {
         clearInterval(intervalId);
       }
     };
-  }, []);
+  }, [isActive]);
 
   if (loading) {
     return (
@@ -331,59 +338,59 @@ function CancelledOrders({ onSelectOrder }) {
         <span className="text-xs text-gray-500">{orders.length} total</span>
       </div>
       {orders.length === 0 ?
-      <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-gray-500 text-sm">
           No cancelled orders yet
         </div> :
 
-      <div>
+        <div>
           {orders.map((order) => {
-          const cancelledDate = order.cancelledAt ?
-          new Date(order.cancelledAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          }) :
-          'N/A';
+            const cancelledDate = order.cancelledAt ?
+              new Date(order.cancelledAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) :
+              'N/A';
 
-          const cancelledByText = order.cancelledBy === 'user' ?
-          'Cancelled by User' :
-          order.cancelledBy === 'restaurant' ?
-          'Cancelled by Restaurant' :
-          'Cancelled';
+            const cancelledByText = order.cancelledBy === 'user' ?
+              'Cancelled by User' :
+              order.cancelledBy === 'restaurant' ?
+                'Cancelled by Restaurant' :
+                'Cancelled';
 
-          return (
-            <div key={order.orderId || order.mongoId} className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
+            return (
+              <div key={order.orderId || order.mongoId} className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
                 <button
-                type="button"
-                onClick={() =>
-                onSelectOrder?.({
-                  orderId: order.orderId,
-                  status: 'Cancelled',
-                  customerName: order.customerName,
-                  type: order.type,
-                  tableOrToken: order.tableOrToken,
-                  timePlaced: cancelledDate,
-                  itemsSummary: order.itemsSummary
-                })
-                }
-                className="w-full text-left flex gap-3 items-stretch">
-                
+                  type="button"
+                  onClick={() =>
+                    onSelectOrder?.({
+                      orderId: order.orderId,
+                      status: 'Cancelled',
+                      customerName: order.customerName,
+                      type: order.type,
+                      tableOrToken: order.tableOrToken,
+                      timePlaced: cancelledDate,
+                      itemsSummary: order.itemsSummary
+                    })
+                  }
+                  className="w-full text-left flex gap-3 items-stretch">
+
                   <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
                     {order.photoUrl ?
-                  <img
-                    src={order.photoUrl}
-                    alt={order.photoAlt}
-                    className="h-full w-full object-cover" /> :
+                      <img
+                        src={order.photoUrl}
+                        alt={order.photoAlt}
+                        className="h-full w-full object-cover" /> :
 
 
-                  <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
+                      <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
                         <span className="text-[11px] font-medium text-gray-500 text-center leading-tight">
                           {order.photoAlt}
                         </span>
                       </div>
-                  }
+                    }
                   </div>
 
                   <div className="flex-1 flex flex-col justify-between min-h-[80px]">
@@ -399,11 +406,11 @@ function CancelledOrders({ onSelectOrder }) {
 
                       <div className="flex flex-col items-end gap-1">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${order.cancelledBy === 'user' ?
-                      'border-orange-500 text-orange-600' :
-                      'border-red-500 text-red-600'}`
-                      }>
+                          'border-orange-500 text-orange-600' :
+                          'border-red-500 text-red-600'}`
+                        }>
                           <span className={`h-1.5 w-1.5 rounded-full ${order.cancelledBy === 'user' ? 'bg-orange-500' : 'bg-red-500'}`
-                        } />
+                          } />
                           {cancelledByText}
                         </span>
                         <span className="text-[11px] text-gray-500 text-right">
@@ -417,10 +424,10 @@ function CancelledOrders({ onSelectOrder }) {
                         {order.itemsSummary}
                       </p>
                       {order.cancellationReason &&
-                    <p className="text-[10px] text-red-600 mt-1 line-clamp-1">
+                        <p className="text-[10px] text-red-600 mt-1 line-clamp-1">
                           Reason: {order.cancellationReason}
                         </p>
-                    }
+                      }
                     </div>
 
                     <div className="mt-2 flex items-end justify-between gap-2">
@@ -440,7 +447,7 @@ function CancelledOrders({ onSelectOrder }) {
                 </button>
               </div>);
 
-        })}
+          })}
         </div>
       }
     </div>);
@@ -489,12 +496,12 @@ export default function OrdersMain() {
   const { newOrder, clearNewOrder, isConnected } = useRestaurantNotifications();
 
   const rejectReasons = [
-  "Restaurant is too busy",
-  "Item not available",
-  "Outside delivery area",
-  "Kitchen closing soon",
-  "Technical issue",
-  "Other reason"];
+    "Restaurant is too busy",
+    "Item not available",
+    "Outside delivery area",
+    "Kitchen closing soon",
+    "Technical issue",
+    "Other reason"];
 
 
   // Fetch restaurant verification status
@@ -654,7 +661,7 @@ export default function OrdersMain() {
           // Find confirmed orders that haven't been shown yet
           const confirmedOrders = response.data.data.orders.filter(
             (order) => order.status === 'confirmed' &&
-            !shownOrdersRef.current.has(order.orderId || order._id)
+              !shownOrdersRef.current.has(order.orderId || order._id)
           );
 
           // Show the most recent confirmed order in popup (double-check state)
@@ -697,13 +704,19 @@ export default function OrdersMain() {
     };
 
     // Check every 5 seconds for new confirmed orders (fallback mechanism)
-    const interval = setInterval(checkConfirmedOrders, 5000);
+    const interval = setInterval(() => {
+      if (restaurantStatus.isActive === true) {
+        checkConfirmedOrders();
+      }
+    }, 5000);
 
-    // Check immediately on mount
-    checkConfirmedOrders();
+    // Check immediately on mount if already known to be active
+    if (restaurantStatus.isActive === true) {
+      checkConfirmedOrders();
+    }
 
     return () => clearInterval(interval);
-  }, []); // Empty dependency array - check runs independently
+  }, [restaurantStatus.isActive]); // Add dependency on restaurantStatus.isActive
 
   // Play audio when popup opens
   useEffect(() => {
@@ -755,8 +768,8 @@ export default function OrdersMain() {
       } catch (error) {
         console.error('❌ Error accepting order:', error);
         const errorMessage = error.response?.data?.message ||
-        error.message ||
-        'Failed to accept order. Please try again.';
+          error.message ||
+          'Failed to accept order. Please try again.';
 
         // Show specific error message
         if (error.response?.status === 400) {
@@ -896,14 +909,14 @@ export default function OrdersMain() {
       doc.setFont('helvetica', 'normal');
 
       const orderDate = orderToPrint.createdAt ?
-      new Date(orderToPrint.createdAt).toLocaleString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) :
-      new Date().toLocaleString('en-GB');
+        new Date(orderToPrint.createdAt).toLocaleString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) :
+        new Date().toLocaleString('en-GB');
 
       doc.text(`Date: ${orderDate}`, 20, 52);
 
@@ -913,10 +926,10 @@ export default function OrdersMain() {
         doc.text('Delivery Address:', 20, 62);
         doc.setFont('helvetica', 'normal');
         const addressText = [
-        orderToPrint.customerAddress.street,
-        orderToPrint.customerAddress.city,
-        orderToPrint.customerAddress.state].
-        filter(Boolean).join(', ') || 'Address not available';
+          orderToPrint.customerAddress.street,
+          orderToPrint.customerAddress.city,
+          orderToPrint.customerAddress.state].
+          filter(Boolean).join(', ') || 'Address not available';
         const addressLines = doc.splitTextToSize(addressText, 170);
         doc.text(addressLines, 20, 69);
       }
@@ -930,10 +943,10 @@ export default function OrdersMain() {
 
         // Prepare table data
         const tableData = orderToPrint.items.map((item) => [
-        item.name || 'Item',
-        item.quantity || 1,
-        `₹${(item.price || 0).toFixed(2)}`,
-        `₹${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`]
+          item.name || 'Item',
+          item.quantity || 1,
+          `₹${(item.price || 0).toFixed(2)}`,
+          `₹${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`]
         );
 
         autoTable(doc, {
@@ -1120,17 +1133,17 @@ export default function OrdersMain() {
   const renderContent = () => {
     switch (activeFilter) {
       case "preparing":
-        return <PreparingOrders onSelectOrder={handleSelectOrder} onCancel={handleCancelClick} />;
+        return <PreparingOrders onSelectOrder={handleSelectOrder} onCancel={handleCancelClick} isActive={restaurantStatus.isActive} />;
       case "ready":
-        return <ReadyOrders onSelectOrder={handleSelectOrder} />;
+        return <ReadyOrders onSelectOrder={handleSelectOrder} isActive={restaurantStatus.isActive} />;
       case "out-for-delivery":
-        return <OutForDeliveryOrders onSelectOrder={handleSelectOrder} />;
+        return <OutForDeliveryOrders onSelectOrder={handleSelectOrder} isActive={restaurantStatus.isActive} />;
       case "scheduled":
         return <EmptyState message="Scheduled orders will appear here" />;
       case "completed":
-        return <CompletedOrders onSelectOrder={handleSelectOrder} />;
+        return <CompletedOrders onSelectOrder={handleSelectOrder} isActive={restaurantStatus.isActive} />;
       case "cancelled":
-        return <CancelledOrders onSelectOrder={handleSelectOrder} />;
+        return <CancelledOrders onSelectOrder={handleSelectOrder} isActive={restaurantStatus.isActive} />;
       default:
         return <EmptyState />;
     }
@@ -1153,7 +1166,7 @@ export default function OrdersMain() {
             msOverflowStyle: 'none',
             WebkitOverflowScrolling: 'touch'
           }}>
-          
+
           <style>{`
             .scrollbar-hide::-webkit-scrollbar {
               display: none;
@@ -1174,8 +1187,8 @@ export default function OrdersMain() {
                   }
                 }}
                 className={`shrink-0 px-6 py-3.5 rounded-full font-medium text-sm whitespace-nowrap relative overflow-hidden ${isActive ?
-                'text-white' :
-                'bg-white text-black'}`
+                  'text-white' :
+                  'bg-white text-black'}`
                 }
                 animate={{
                   scale: isActive ? 1.05 : 1,
@@ -1186,17 +1199,17 @@ export default function OrdersMain() {
                   ease: [0.25, 0.1, 0.25, 1]
                 }}
                 whileTap={{ scale: 0.95 }}>
-                
+
                 {isActive &&
-                <motion.div
-                  layoutId="activeFilterBackground"
-                  className="absolute inset-0 bg-black rounded-full -z-10"
-                  initial={false}
-                  transition={{
-                    type: "spring",
-                    stiffness: 500,
-                    damping: 30
-                  }} />
+                  <motion.div
+                    layoutId="activeFilterBackground"
+                    className="absolute inset-0 bg-black rounded-full -z-10"
+                    initial={false}
+                    transition={{
+                      type: "spring",
+                      stiffness: 500,
+                      damping: 30
+                    }} />
 
                 }
                 <span className="relative z-10">{tab.label}</span>
@@ -1267,7 +1280,7 @@ export default function OrdersMain() {
           isMouseDown.current = false;
           isSwiping.current = false;
         }}>
-        
+
         <style>{`
           .content-scroll {
             scrollbar-width: none;
@@ -1280,68 +1293,68 @@ export default function OrdersMain() {
 
         {/* Verification Pending Card - Show if onboarding is complete (all 4 steps) and restaurant is not active */}
         {!restaurantStatus.isLoading &&
-        !restaurantStatus.isActive &&
-        restaurantStatus.onboarding?.completedSteps === 4 &&
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className={`mt-4 mb-4 rounded-2xl shadow-sm px-6 py-4 ${restaurantStatus.rejectionReason ?
-          'bg-white border border-red-200' :
-          'bg-white border border-yellow-200'}`
-          }>
-          
-              {restaurantStatus.rejectionReason ?
-          <>
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="flex-shrink-0 rounded-full p-2 bg-red-100">
-                      <AlertCircle className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold text-red-600 mb-2">Denied Verification</h3>
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                        <p className="text-xs font-semibold text-red-800 mb-2">Reason for Rejection:</p>
-                        <div className="text-xs text-red-700 space-y-1">
-                          {restaurantStatus.rejectionReason.split('\n').filter((line) => line.trim()).length > 1 ?
-                    <ul className="space-y-1 list-disc list-inside">
-                              {restaurantStatus.rejectionReason.split('\n').map((point, index) =>
-                      point.trim() &&
-                      <li key={index}>{point.trim()}</li>
+          !restaurantStatus.isActive &&
+          restaurantStatus.onboarding?.completedSteps === 4 &&
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className={`mt-4 mb-4 rounded-2xl shadow-sm px-6 py-4 ${restaurantStatus.rejectionReason ?
+              'bg-white border border-red-200' :
+              'bg-white border border-yellow-200'}`
+            }>
 
-                      )}
-                            </ul> :
+            {restaurantStatus.rejectionReason ?
+              <>
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="flex-shrink-0 rounded-full p-2 bg-red-100">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold text-red-600 mb-2">Denied Verification</h3>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-xs font-semibold text-red-800 mb-2">Reason for Rejection:</p>
+                      <div className="text-xs text-red-700 space-y-1">
+                        {restaurantStatus.rejectionReason.split('\n').filter((line) => line.trim()).length > 1 ?
+                          <ul className="space-y-1 list-disc list-inside">
+                            {restaurantStatus.rejectionReason.split('\n').map((point, index) =>
+                              point.trim() &&
+                              <li key={index}>{point.trim()}</li>
 
-                    <p className="text-red-700">{restaurantStatus.rejectionReason}</p>
-                    }
-                        </div>
+                            )}
+                          </ul> :
+
+                          <p className="text-red-700">{restaurantStatus.rejectionReason}</p>
+                        }
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-700 mb-3">
-                    Please correct the above issues and click "Reverify" to resubmit your request for approval.
-                  </p>
-                  <button
-              onClick={handleReverify}
-              disabled={isReverifying}
-              className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              
-                    {isReverifying ?
+                </div>
+                <p className="text-sm text-gray-700 mb-3">
+                  Please correct the above issues and click "Reverify" to resubmit your request for approval.
+                </p>
+                <button
+                  onClick={handleReverify}
+                  disabled={isReverifying}
+                  className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+
+                  {isReverifying ?
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Submitting...
+                    </> :
+
+                    "Reverify"
+                  }
+                </button>
+              </> :
+
               <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Submitting...
-                      </> :
-
-              "Reverify"
-              }
-                  </button>
-                </> :
-
-          <>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">Verification Done in 24 Hours</h3>
-                  <p className="text-sm text-gray-600">Your account is under verification. You'll be notified once approved.</p>
-                </>
-          }
-            </motion.div>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Verification Done in 24 Hours</h3>
+                <p className="text-sm text-gray-600">Your account is under verification. You'll be notified once approved.</p>
+              </>
+            }
+          </motion.div>
         }
 
         <AnimatePresence mode="wait">
@@ -1351,7 +1364,7 @@ export default function OrdersMain() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}>
-            
+
             {renderContent()}
           </motion.div>
         </AnimatePresence>
@@ -1363,21 +1376,21 @@ export default function OrdersMain() {
       {/* New Order Popup */}
       <AnimatePresence>
         {showNewOrderPopup &&
-        <>
+          <>
             <motion.div
-            className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}>
-            
+              className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}>
+
               <motion.div
-              className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}>
-              
+                className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}>
+
                 {/* Header */}
                 <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
                   <div className="flex-1">
@@ -1390,22 +1403,22 @@ export default function OrdersMain() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                    onClick={handlePrint}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    aria-label="Print">
-                    
+                      onClick={handlePrint}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      aria-label="Print">
+
                       <Printer className="w-5 h-5 text-gray-700" />
                     </button>
                     <button
-                    onClick={toggleMute}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    aria-label={isMuted ? "Unmute" : "Mute"}>
-                    
-                      {isMuted ?
-                    <VolumeX className="w-5 h-5 text-gray-700" /> :
+                      onClick={toggleMute}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      aria-label={isMuted ? "Unmute" : "Mute"}>
 
-                    <Volume2 className="w-5 h-5 text-gray-700" />
-                    }
+                      {isMuted ?
+                        <VolumeX className="w-5 h-5 text-gray-700" /> :
+
+                        <Volume2 className="w-5 h-5 text-gray-700" />
+                      }
                     </button>
                   </div>
                 </div>
@@ -1419,17 +1432,17 @@ export default function OrdersMain() {
                     </h4>
                     <p className="text-xs text-gray-500 mt-1">
                       {(popupOrder || newOrder)?.createdAt ?
-                    new Date((popupOrder || newOrder).createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) :
-                    'Just now'}
+                        new Date((popupOrder || newOrder).createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) :
+                        'Just now'}
                     </p>
                   </div>
 
                   {/* Details Accordion */}
                   <div className="mb-4">
                     <button
-                    onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
-                    className="w-full flex items-center justify-between py-2 border-b border-gray-200">
-                    
+                      onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
+                      className="w-full flex items-center justify-between py-2 border-b border-gray-200">
+
                       <div className="flex items-center gap-2">
                         <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1440,24 +1453,24 @@ export default function OrdersMain() {
                         </span>
                       </div>
                       {isDetailsExpanded ?
-                    <ChevronUp className="w-4 h-4 text-gray-600" /> :
+                        <ChevronUp className="w-4 h-4 text-gray-600" /> :
 
-                    <ChevronDown className="w-4 h-4 text-gray-600" />
-                    }
+                        <ChevronDown className="w-4 h-4 text-gray-600" />
+                      }
                     </button>
 
                     <AnimatePresence>
                       {isDetailsExpanded &&
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden">
-                      
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden">
+
                           <div className="py-3 space-y-3">
                             {(popupOrder || newOrder)?.items?.map((item, index) =>
-                        <div key={index} className="flex items-start gap-3">
+                              <div key={index} className="flex items-start gap-3">
                                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${item.isVeg ? 'bg-green-500' : 'bg-red-500'}`}></div>
                                 <div className="flex-1">
                                   <div className="flex items-start justify-between">
@@ -1470,24 +1483,24 @@ export default function OrdersMain() {
                                   </div>
                                 </div>
                               </div>
-                        ) ||
-                        <p className="text-sm text-gray-500">No items</p>
-                        }
+                            ) ||
+                              <p className="text-sm text-gray-500">No items</p>
+                            }
                           </div>
                         </motion.div>
-                    }
+                      }
                     </AnimatePresence>
                   </div>
 
                   {/* Send cutlery */}
                   {(popupOrder || newOrder)?.sendCutlery &&
-                <div className="mb-4 flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <div className="mb-4 flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                       <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
                       <span className="text-sm text-gray-700">Send cutlery</span>
                     </div>
-                }
+                  }
 
                   {/* Total bill */}
                   <div className="mb-4 flex items-center justify-between py-3 border-y border-gray-200">
@@ -1504,18 +1517,18 @@ export default function OrdersMain() {
 
                   {/* Payment method: treat cash/cod (any case) as COD */}
                   {(() => {
-                  const raw = (popupOrder || newOrder)?.paymentMethod ?? (popupOrder || newOrder)?.payment?.method;
-                  const m = raw != null ? String(raw).toLowerCase().trim() : '';
-                  const isCod = m === 'cash' || m === 'cod';
-                  return (
-                    <div className="mb-4 flex items-center justify-between py-2">
+                    const raw = (popupOrder || newOrder)?.paymentMethod ?? (popupOrder || newOrder)?.payment?.method;
+                    const m = raw != null ? String(raw).toLowerCase().trim() : '';
+                    const isCod = m === 'cash' || m === 'cod';
+                    return (
+                      <div className="mb-4 flex items-center justify-between py-2">
                         <span className="text-sm font-medium text-gray-700">Payment</span>
                         <span className={`text-sm font-semibold ${isCod ? 'text-amber-600' : 'text-green-600'}`}>
                           {isCod ? 'Cash on Delivery' : 'Online'}
                         </span>
                       </div>);
 
-                })()}
+                  })()}
 
                   {/* Preparation time */}
                   <div className="mb-4">
@@ -1523,18 +1536,18 @@ export default function OrdersMain() {
                       <span className="text-sm font-medium text-gray-700">Preparation time</span>
                       <div className="flex items-center gap-2">
                         <button
-                        onClick={() => setPrepTime(Math.max(1, prepTime - 1))}
-                        className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
-                        
+                          onClick={() => setPrepTime(Math.max(1, prepTime - 1))}
+                          className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
+
                           <Minus className="w-4 h-4 text-gray-700" />
                         </button>
                         <span className="text-base font-semibold text-gray-900 min-w-[60px] text-center">
                           {prepTime} mins
                         </span>
                         <button
-                        onClick={() => setPrepTime(prepTime + 1)}
-                        className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
-                        
+                          onClick={() => setPrepTime(prepTime + 1)}
+                          className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
+
                           <Plus className="w-4 h-4 text-gray-700" />
                         </button>
                       </div>
@@ -1546,25 +1559,25 @@ export default function OrdersMain() {
                     {/* Accept button with countdown */}
                     <div className="relative">
                       <button
-                      onClick={handleAcceptOrder}
-                      className="w-full bg-black text-white py-3.5 rounded-lg font-semibold text-sm hover:bg-gray-800 transition-colors relative overflow-hidden">
-                      
+                        onClick={handleAcceptOrder}
+                        className="w-full bg-black text-white py-3.5 rounded-lg font-semibold text-sm hover:bg-gray-800 transition-colors relative overflow-hidden">
+
                         {/* Loading background */}
                         <motion.div
-                        className="absolute inset-0 bg-blue-600"
-                        initial={{ width: "100%" }}
-                        animate={{ width: `${countdown / 240 * 100}%` }}
-                        transition={{ duration: 1, ease: "linear" }} />
-                      
+                          className="absolute inset-0 bg-blue-600"
+                          initial={{ width: "100%" }}
+                          animate={{ width: `${countdown / 240 * 100}%` }}
+                          transition={{ duration: 1, ease: "linear" }} />
+
                         <span className="relative z-10">Accept ({formatTime(countdown)})</span>
                       </button>
                     </div>
 
                     {/* Reject button */}
                     <button
-                    onClick={handleRejectClick}
-                    className="w-full bg-white border-2 border-red-500 text-red-600 py-3 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors">
-                    
+                      onClick={handleRejectClick}
+                      className="w-full bg-white border-2 border-red-500 text-red-600 py-3 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors">
+
                       Reject Order
                     </button>
                   </div>
@@ -1585,22 +1598,22 @@ export default function OrdersMain() {
       {/* Reject Order Popup */}
       <AnimatePresence>
         {showRejectPopup &&
-        <>
+          <>
             <motion.div
-            className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleRejectCancel}>
-            
+              className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleRejectCancel}>
+
               <motion.div
-              className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}>
-              
+                className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}>
+
                 {/* Header */}
                 <div className="px-4 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-bold text-gray-900">
@@ -1613,48 +1626,48 @@ export default function OrdersMain() {
                 <div className="px-4 py-4 max-h-[60vh] overflow-y-auto">
                   <div className="space-y-2">
                     {rejectReasons.map((reason) =>
-                  <button
-                    key={reason}
-                    onClick={() => setRejectReason(reason)}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${rejectReason === reason ?
-                    "border-black bg-black/5" :
-                    "border-gray-200 bg-white hover:border-gray-300"}`
-                    }>
-                    
+                      <button
+                        key={reason}
+                        onClick={() => setRejectReason(reason)}
+                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${rejectReason === reason ?
+                          "border-black bg-black/5" :
+                          "border-gray-200 bg-white hover:border-gray-300"}`
+                        }>
+
                         <div className="flex items-center justify-between">
                           <span className={`text-sm font-medium ${rejectReason === reason ? "text-black" : "text-gray-900"}`
-                      }>
+                          }>
                             {reason}
                           </span>
                           {rejectReason === reason &&
-                      <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
                               <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                               </svg>
                             </div>
-                      }
+                          }
                         </div>
                       </button>
-                  )}
+                    )}
                   </div>
                 </div>
 
                 {/* Footer */}
                 <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
                   <button
-                  onClick={handleRejectCancel}
-                  className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
-                  
+                    onClick={handleRejectCancel}
+                    className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
+
                     Cancel
                   </button>
                   <button
-                  onClick={handleRejectConfirm}
-                  disabled={!rejectReason}
-                  className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${rejectReason ?
-                  "!bg-black !text-white" :
-                  "bg-gray-200 text-gray-400 cursor-not-allowed"}`
-                  }>
-                  
+                    onClick={handleRejectConfirm}
+                    disabled={!rejectReason}
+                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${rejectReason ?
+                      "!bg-black !text-white" :
+                      "bg-gray-200 text-gray-400 cursor-not-allowed"}`
+                    }>
+
                     Confirm Rejection
                   </button>
                 </div>
@@ -1667,22 +1680,22 @@ export default function OrdersMain() {
       {/* Cancel Order Popup */}
       <AnimatePresence>
         {showCancelPopup && orderToCancel &&
-        <>
+          <>
             <motion.div
-            className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleCancelPopupClose}>
-            
+              className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCancelPopupClose}>
+
               <motion.div
-              className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}>
-              
+                className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}>
+
                 {/* Header */}
                 <div className="px-4 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-bold text-gray-900">
@@ -1695,54 +1708,54 @@ export default function OrdersMain() {
                 <div className="px-4 py-4">
                   <div className="space-y-3">
                     {rejectReasons.map((reason) =>
-                  <button
-                    key={reason}
-                    type="button"
-                    onClick={() => setCancelReason(reason)}
-                    className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${cancelReason === reason ?
-                    "border-red-500 bg-red-50" :
-                    "border-gray-200 hover:border-gray-300"}`
-                    }>
-                    
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => setCancelReason(reason)}
+                        className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${cancelReason === reason ?
+                          "border-red-500 bg-red-50" :
+                          "border-gray-200 hover:border-gray-300"}`
+                        }>
+
                         <div className="flex items-center gap-3">
                           <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${cancelReason === reason ?
-                        "border-red-500 bg-red-500" :
-                        "border-gray-300"}`
-                        }>
-                        
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${cancelReason === reason ?
+                              "border-red-500 bg-red-500" :
+                              "border-gray-300"}`
+                            }>
+
                             {cancelReason === reason &&
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                               </svg>
-                        }
+                            }
                           </div>
                           <span className={`text-sm font-medium ${cancelReason === reason ? "text-red-700" : "text-gray-700"}`
-                      }>
+                          }>
                             {reason}
                           </span>
                         </div>
                       </button>
-                  )}
+                    )}
                   </div>
                 </div>
 
                 {/* Footer */}
                 <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
                   <button
-                  onClick={handleCancelPopupClose}
-                  className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
-                  
+                    onClick={handleCancelPopupClose}
+                    className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
+
                     Cancel
                   </button>
                   <button
-                  onClick={handleCancelConfirm}
-                  disabled={!cancelReason}
-                  className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${cancelReason ?
-                  "!bg-red-600 !text-white hover:bg-red-700" :
-                  "bg-gray-200 text-gray-400 cursor-not-allowed"}`
-                  }>
-                  
+                    onClick={handleCancelConfirm}
+                    disabled={!cancelReason}
+                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${cancelReason ?
+                      "!bg-red-600 !text-white hover:bg-red-700" :
+                      "bg-gray-200 text-gray-400 cursor-not-allowed"}`
+                    }>
+
                     Confirm Cancellation
                   </button>
                 </div>
@@ -1755,21 +1768,21 @@ export default function OrdersMain() {
       {/* Bottom Sheet for Order Details */}
       <AnimatePresence>
         {isSheetOpen && selectedOrder &&
-        <motion.div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setIsSheetOpen(false)}>
-          
+          <motion.div
+            className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSheetOpen(false)}>
+
             <motion.div
-            className="w-full max-w-md mx-auto bg-white rounded-t-3xl p-4 pb-6 shadow-lg"
-            initial={{ y: 80 }}
-            animate={{ y: 0 }}
-            exit={{ y: 80 }}
-            transition={{ duration: 0.25 }}
-            onClick={(e) => e.stopPropagation()}>
-            
+              className="w-full max-w-md mx-auto bg-white rounded-t-3xl p-4 pb-6 shadow-lg"
+              initial={{ y: 80 }}
+              animate={{ y: 0 }}
+              exit={{ y: 80 }}
+              transition={{ duration: 0.25 }}
+              onClick={(e) => e.stopPropagation()}>
+
               {/* Drag handle */}
               <div className="flex justify-center mb-3">
                 <div className="h-1 w-10 rounded-full bg-gray-300" />
@@ -1786,23 +1799,23 @@ export default function OrdersMain() {
                   <p className="text-[11px] text-gray-500 mt-1">
                     {selectedOrder.type}
                     {selectedOrder.tableOrToken ?
-                  ` • ${selectedOrder.tableOrToken}` :
-                  ""}
+                      ` • ${selectedOrder.tableOrToken}` :
+                      ""}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${selectedOrder.status === "Ready" ?
-                  "border-green-500 text-green-600" :
-                  "border-gray-800 text-gray-900"}`
-                  }>
-                  
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${selectedOrder.status === "Ready" ?
+                      "border-green-500 text-green-600" :
+                      "border-gray-800 text-gray-900"}`
+                    }>
+
                     <span
-                    className={`h-1.5 w-1.5 rounded-full ${selectedOrder.status === "Ready" ?
-                    "bg-green-500" :
-                    "bg-gray-800"}`
-                    } />
-                  
+                      className={`h-1.5 w-1.5 rounded-full ${selectedOrder.status === "Ready" ?
+                        "bg-green-500" :
+                        "bg-gray-800"}`
+                      } />
+
                     {selectedOrder.status}
                   </span>
                   <span className="text-[11px] text-gray-500">
@@ -1825,15 +1838,15 @@ export default function OrdersMain() {
               <div className="flex items-center justify-between text-[11px] text-gray-500 mb-4">
                 {/* Hide ETA for ready orders */}
                 {selectedOrder.status !== 'ready' && selectedOrder.eta &&
-              <span>ETA: <span className="font-medium text-black">{selectedOrder.eta}</span></span>
-              }
+                  <span>ETA: <span className="font-medium text-black">{selectedOrder.eta}</span></span>
+                }
                 <span>Payment: <span className="font-medium text-black">Paid online</span></span>
               </div>
 
               <button
-              className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
-              onClick={() => setIsSheetOpen(false)}>
-              
+                className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
+                onClick={() => setIsSheetOpen(false)}>
+
                 Close
               </button>
             </motion.div>
@@ -1886,14 +1899,14 @@ function ResendNotificationButton({ orderId, mongoId, onSuccess }) {
       disabled={loading}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       title="Resend notification to delivery partners">
-      
+
       {loading ?
-      <>
+        <>
           <Loader2 className="w-3 h-3 animate-spin" />
           <span>Sending...</span>
         </> :
 
-      <>
+        <>
           <Volume2 className="w-3 h-3" />
           <span>Resend</span>
         </>
@@ -1925,43 +1938,43 @@ function OrderCard({
     <div className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative">
       {/* Cancel button - only show for preparing orders */}
       {status === 'preparing' && onCancel &&
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onCancel({ orderId, mongoId, customerName });
-        }}
-        className="absolute top-2 right-2 p-1.5 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors z-10"
-        title="Cancel Order">
-        
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCancel({ orderId, mongoId, customerName });
+          }}
+          className="absolute top-2 right-2 p-1.5 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors z-10"
+          title="Cancel Order">
+
           <X className="w-4 h-4" />
         </button>
       }
       <div
         onClick={() =>
-        onSelect?.({
-          orderId,
-          status,
-          customerName,
-          type,
-          tableOrToken,
-          timePlaced,
-          eta,
-          itemsSummary
-        })
+          onSelect?.({
+            orderId,
+            status,
+            customerName,
+            type,
+            tableOrToken,
+            timePlaced,
+            eta,
+            itemsSummary
+          })
         }
         className="w-full text-left flex gap-3 items-stretch cursor-pointer">
-        
+
         {/* Photo */}
         <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
           {photoUrl ?
-          <img
-            src={photoUrl}
-            alt={photoAlt}
-            className="h-full w-full object-cover" /> :
+            <img
+              src={photoUrl}
+              alt={photoAlt}
+              className="h-full w-full object-cover" /> :
 
 
-          <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
+            <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center px-2">
               <span className="text-[11px] font-medium text-gray-500 text-center leading-tight">
                 {photoAlt}
               </span>
@@ -1985,14 +1998,14 @@ function OrderCard({
             <div className="flex flex-col items-end gap-1">
               <span
                 className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${isReady ?
-                "border-green-500 text-green-600" :
-                "border-gray-800 text-gray-900"}`
+                  "border-green-500 text-green-600" :
+                  "border-gray-800 text-gray-900"}`
                 }>
-                
+
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${isReady ? "bg-green-500" : "bg-gray-800"}`
                   } />
-                
+
                 {status}
               </span>
               <span className="text-[11px] text-gray-500 text-right">
@@ -2017,24 +2030,24 @@ function OrderCard({
               </p>
               {/* Delivery Assignment Status - Only show for preparing orders */}
               {status === 'preparing' &&
-              <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${deliveryPartnerId ?
-                'bg-green-100 text-green-700 border border-green-300' :
-                'bg-orange-100 text-orange-700 border border-orange-300'}`
-                }>
+                    'bg-green-100 text-green-700 border border-green-300' :
+                    'bg-orange-100 text-orange-700 border border-orange-300'}`
+                  }>
                     <span className={`h-1.5 w-1.5 rounded-full ${deliveryPartnerId ? 'bg-green-500' : 'bg-orange-500'}`
-                  } />
+                    } />
                     {deliveryPartnerId ? 'Assigned' : 'Not Assigned'}
                   </span>
                   {!deliveryPartnerId &&
-                <ResendNotificationButton orderId={orderId} mongoId={mongoId} onSuccess={onSelect} />
-                }
+                    <ResendNotificationButton orderId={orderId} mongoId={mongoId} onSuccess={onSelect} />
+                  }
                 </div>
               }
             </div>
             {/* Hide ETA for ready orders */}
             {status !== 'ready' && eta &&
-            <div className="flex items-baseline gap-1">
+              <div className="flex items-baseline gap-1">
                 <span className="text-[11px] text-gray-500">ETA</span>
                 <span className="text-xs font-medium text-black">
                   {eta}
@@ -2049,7 +2062,7 @@ function OrderCard({
 }
 
 // Preparing Orders List
-function PreparingOrders({ onSelectOrder, onCancel }) {
+function PreparingOrders({ onSelectOrder, onCancel, isActive }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -2060,6 +2073,10 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
     let countdownIntervalId = null;
 
     const fetchOrders = async () => {
+      if (isActive !== true) {
+        setLoading(false);
+        return;
+      }
       try {
         // Fetch all orders and filter for 'preparing' status on frontend
         const response = await restaurantAPI.getOrders();
@@ -2077,8 +2094,8 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
           const transformedOrders = preparingOrders.map((order) => {
             const initialETA = order.estimatedDeliveryTime || 30; // in minutes
             const preparingTimestamp = order.tracking?.preparing?.timestamp ?
-            new Date(order.tracking.preparing.timestamp) :
-            new Date(order.createdAt); // Fallback to createdAt if preparing timestamp not available
+              new Date(order.tracking.preparing.timestamp) :
+              new Date(order.createdAt); // Fallback to createdAt if preparing timestamp not available
 
             return {
               orderId: order.orderId || order._id,
@@ -2150,7 +2167,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
         clearInterval(countdownIntervalId);
       }
     };
-  }, []); // Empty dependency array is correct here - we want this to run once on mount
+  }, [isActive]); // Add isActive to dependencies
 
   // Track which orders have been marked as ready to avoid duplicate API calls
   const markedReadyOrdersRef = useRef(new Set());
@@ -2195,7 +2212,8 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
 
 
                 // Keep in markedReadyOrdersRef so we don't retry; order will disappear on next fetch
-              } else {console.error(`❌ Failed to auto-mark order ${order.orderId} as ready:`, error);markedReadyOrdersRef.current.delete(orderKey);
+              } else {
+                console.error(`❌ Failed to auto-mark order ${order.orderId} as ready:`, error); markedReadyOrdersRef.current.delete(orderKey);
               }
               // Don't show error toast - it will retry on next check (for non-idempotent errors)
             }
@@ -2244,50 +2262,50 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
         <span className="text-xs text-gray-500">{orders.length} active</span>
       </div>
       {orders.length === 0 ?
-      <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-gray-500 text-sm">
           No orders in preparation
         </div> :
 
-      <div>
+        <div>
           {orders.map((order) => {
-          // Calculate remaining ETA (countdown)
-          const elapsedMs = currentTime - order.preparingTimestamp;
-          const elapsedMinutes = Math.floor(elapsedMs / 60000);
-          const remainingMinutes = Math.max(0, order.initialETA - elapsedMinutes);
+            // Calculate remaining ETA (countdown)
+            const elapsedMs = currentTime - order.preparingTimestamp;
+            const elapsedMinutes = Math.floor(elapsedMs / 60000);
+            const remainingMinutes = Math.max(0, order.initialETA - elapsedMinutes);
 
-          // Format ETA display
-          let etaDisplay = '';
-          if (remainingMinutes <= 0) {
-            const remainingSeconds = Math.max(0, Math.floor(order.initialETA * 60 - elapsedMs / 1000));
-            if (remainingSeconds > 0) {
-              etaDisplay = `${remainingSeconds} secs`;
+            // Format ETA display
+            let etaDisplay = '';
+            if (remainingMinutes <= 0) {
+              const remainingSeconds = Math.max(0, Math.floor(order.initialETA * 60 - elapsedMs / 1000));
+              if (remainingSeconds > 0) {
+                etaDisplay = `${remainingSeconds} secs`;
+              } else {
+                etaDisplay = '0 mins';
+              }
             } else {
-              etaDisplay = '0 mins';
+              etaDisplay = `${remainingMinutes} mins`;
             }
-          } else {
-            etaDisplay = `${remainingMinutes} mins`;
-          }
 
-          return (
-            <OrderCard
-              key={order.orderId || order.mongoId}
-              orderId={order.orderId}
-              mongoId={order.mongoId}
-              status={order.status}
-              customerName={order.customerName}
-              type={order.type}
-              tableOrToken={order.tableOrToken}
-              timePlaced={order.timePlaced}
-              eta={etaDisplay}
-              itemsSummary={order.itemsSummary}
-              photoUrl={order.photoUrl}
-              photoAlt={order.photoAlt}
-              deliveryPartnerId={order.deliveryPartnerId}
-              onSelect={onSelectOrder}
-              onCancel={onCancel} />);
+            return (
+              <OrderCard
+                key={order.orderId || order.mongoId}
+                orderId={order.orderId}
+                mongoId={order.mongoId}
+                status={order.status}
+                customerName={order.customerName}
+                type={order.type}
+                tableOrToken={order.tableOrToken}
+                timePlaced={order.timePlaced}
+                eta={etaDisplay}
+                itemsSummary={order.itemsSummary}
+                photoUrl={order.photoUrl}
+                photoAlt={order.photoAlt}
+                deliveryPartnerId={order.deliveryPartnerId}
+                onSelect={onSelectOrder}
+                onCancel={onCancel} />);
 
 
-        })}
+          })}
         </div>
       }
     </div>);
@@ -2295,7 +2313,7 @@ function PreparingOrders({ onSelectOrder, onCancel }) {
 }
 
 // Ready Orders List
-function ReadyOrders({ onSelectOrder }) {
+function ReadyOrders({ onSelectOrder, isActive }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -2304,6 +2322,10 @@ function ReadyOrders({ onSelectOrder }) {
     let intervalId = null;
 
     const fetchOrders = async () => {
+      if (isActive !== true) {
+        setLoading(false);
+        return;
+      }
       try {
         // Fetch all orders and filter for 'ready' status on frontend
         const response = await restaurantAPI.getOrders();
@@ -2370,7 +2392,7 @@ function ReadyOrders({ onSelectOrder }) {
         clearInterval(intervalId);
       }
     };
-  }, []); // Empty dependency array is correct here - we want this to run once on mount
+  }, [isActive]);
 
   if (loading) {
     return (
@@ -2393,18 +2415,18 @@ function ReadyOrders({ onSelectOrder }) {
         <span className="text-xs text-gray-500">{orders.length} active</span>
       </div>
       {orders.length === 0 ?
-      <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-gray-500 text-sm">
           No orders ready for pickup
         </div> :
 
-      <div>
+        <div>
           {orders.map((order) =>
-        <OrderCard
-          key={order.orderId || order.mongoId}
-          {...order}
-          onSelect={onSelectOrder} />
+            <OrderCard
+              key={order.orderId || order.mongoId}
+              {...order}
+              onSelect={onSelectOrder} />
 
-        )}
+          )}
         </div>
       }
     </div>);
@@ -2412,7 +2434,7 @@ function ReadyOrders({ onSelectOrder }) {
 }
 
 // Out for Delivery Orders List
-const OutForDeliveryOrders = ({ onSelectOrder }) => {
+const OutForDeliveryOrders = ({ onSelectOrder, isActive }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -2421,6 +2443,10 @@ const OutForDeliveryOrders = ({ onSelectOrder }) => {
     let intervalId = null;
 
     const fetchOrders = async () => {
+      if (isActive !== true) {
+        setLoading(false);
+        return;
+      }
       try {
         // Fetch all orders and filter for 'out_for_delivery' status on frontend
         const response = await restaurantAPI.getOrders();
@@ -2487,7 +2513,7 @@ const OutForDeliveryOrders = ({ onSelectOrder }) => {
         clearInterval(intervalId);
       }
     };
-  }, []); // Empty dependency array is correct here - we want this to run once on mount
+  }, [isActive]);
 
   if (loading) {
     return (
@@ -2510,18 +2536,18 @@ const OutForDeliveryOrders = ({ onSelectOrder }) => {
         <span className="text-xs text-gray-500">{orders.length} active</span>
       </div>
       {orders.length === 0 ?
-      <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-gray-500 text-sm">
           No orders out for delivery
         </div> :
 
-      <div>
+        <div>
           {orders.map((order) =>
-        <OrderCard
-          key={order.orderId || order.mongoId}
-          {...order}
-          onSelect={onSelectOrder} />
+            <OrderCard
+              key={order.orderId || order.mongoId}
+              {...order}
+              onSelect={onSelectOrder} />
 
-        )}
+          )}
         </div>
       }
     </div>);
@@ -2541,7 +2567,7 @@ function EmptyState({ message = "Temporarily closed" }) {
           className="text-gray-300"
           fill="none"
           xmlns="http://www.w3.org/2000/svg">
-          
+
           {/* Storefront */}
           <rect x="40" y="80" width="120" height="80" stroke="currentColor" strokeWidth="2" fill="white" />
           {/* Awning */}

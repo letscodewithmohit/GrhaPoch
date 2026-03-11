@@ -15,6 +15,7 @@ export const useRestaurantNotifications = () => {
   const audioRef = useRef(null);
   const userInteractedRef = useRef(false); // Track user interaction for autoplay policy
   const [restaurantId, setRestaurantId] = useState(null);
+  const [isActive, setIsActive] = useState(true); // Default to true to allow initial check
   const lastConnectErrorLogRef = useRef(0);
   const CONNECT_ERROR_LOG_THROTTLE_MS = 10000;
 
@@ -26,6 +27,7 @@ export const useRestaurantNotifications = () => {
         if (response.data?.success && response.data.data?.restaurant) {
           const restaurant = response.data.data.restaurant;
           const id = restaurant._id?.toString() || restaurant.restaurantId;
+          setIsActive(restaurant.isActive !== false);
           setRestaurantId(id);
         }
       } catch (error) {
@@ -36,8 +38,11 @@ export const useRestaurantNotifications = () => {
   }, []);
 
   useEffect(() => {
-    if (!restaurantId) {
-
+    if (!restaurantId || !isActive) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
       return;
     }
 
@@ -82,13 +87,13 @@ export const useRestaurantNotifications = () => {
     // Detect production environment more reliably
     const frontendHostname = window.location.hostname;
     const isLocalhost = frontendHostname === 'localhost' ||
-    frontendHostname === '127.0.0.1' ||
-    frontendHostname === '';
+      frontendHostname === '127.0.0.1' ||
+      frontendHostname === '';
     const isProductionBuild = import.meta.env.MODE === 'production' || import.meta.env.PROD;
     // Production deployment: not localhost AND (HTTPS OR has domain name with dots)
     const isProductionDeployment = !isLocalhost && (
-    window.location.protocol === 'https:' ||
-    frontendHostname.includes('.') && !frontendHostname.startsWith('192.168.') && !frontendHostname.startsWith('10.'));
+      window.location.protocol === 'https:' ||
+      frontendHostname.includes('.') && !frontendHostname.startsWith('192.168.') && !frontendHostname.startsWith('10.'));
 
 
     // If backend URL is localhost but we're not running locally, BLOCK connection
@@ -244,8 +249,8 @@ export const useRestaurantNotifications = () => {
         console.warn(
           'Restaurant Socket:',
           isTransportError ?
-          `Cannot reach backend at ${backendUrl}. Ensure the backend is running (e.g. npm run dev in backend).` :
-          error.message
+            `Cannot reach backend at ${backendUrl}. Ensure the backend is running (e.g. npm run dev in backend).` :
+            error.message
         );
         if (!isTransportError) {
           console.warn('Details:', { type: error.type, socketUrl, backendUrl });
