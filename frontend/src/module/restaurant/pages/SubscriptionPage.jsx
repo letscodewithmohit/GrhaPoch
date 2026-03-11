@@ -154,7 +154,7 @@ export default function SubscriptionPage() {
 
         // Restriction: Cannot switch plans if one is already active (unless it's nearing expiry)
         const isNearExpiry = subscriptionMeta.showWarning;
-        if (currentSubscription && currentSubscription.status === 'active' && !isNearExpiry) {
+        if (currentSubscription && (currentSubscription.status === 'active' || currentSubscription.status === 'cancelled') && !isNearExpiry) {
             const endDate = currentSubscription.endDate
                 ? new Date(currentSubscription.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
                 : null;
@@ -180,11 +180,11 @@ export default function SubscriptionPage() {
 
         setSubmittingPlanId(plan.id);
         try {
-            // 1. Create Order on Backend
+            // 1. Create Subscription on Backend
             const orderRes = await restaurantAPI.createSubscriptionOrder(plan.id);
             const { subscriptionId, amount, currency, keyId } = orderRes.data.data;
 
-            // 2. Open Razorpay Checkout
+            // 2. Open Razorpay Checkout (Subscription style)
             const options = {
                 key: keyId,
                 amount: amount,
@@ -192,9 +192,17 @@ export default function SubscriptionPage() {
                 name: "GrhaPoch Partner",
                 description: `${plan.name} Subscription`,
                 image: "/logo.png",
-                subscription_id: subscriptionId,
+                subscription_id: subscriptionId, // Changed from order_id to subscription_id
                 handler: async function (response) {
                     // 3. Verify Payment on Backend
+                    console.log('Razorpay payment response:', response);
+
+                    if (!response.razorpay_signature) {
+                        toast.error('Payment signature missing. Please contact support.');
+                        setSubmittingPlanId(null);
+                        return;
+                    }
+
                     try {
                         const verifyRes = await restaurantAPI.verifyPayment({
                             razorpay_payment_id: response.razorpay_payment_id,
@@ -204,6 +212,9 @@ export default function SubscriptionPage() {
                         });
 
                         toast.success('Subscription activated successfully!');
+
+                        // Update UI status after activation
+                        await fetchStatus();
                         setSubmittingPlanId(null);
 
                         // Navigate to success page with data
@@ -215,8 +226,8 @@ export default function SubscriptionPage() {
                             }
                         });
                     } catch (error) {
-                        console.error('Payment verification failed:', error);
-                        toast.error('Payment verification failed. Please contact support.');
+                        console.error('Payment verification failed details:', error.response?.data || error.message);
+                        toast.error(error.response?.data?.message || 'Payment verification failed.');
                         setSubmittingPlanId(null);
                     }
                 },
@@ -226,7 +237,7 @@ export default function SubscriptionPage() {
                     contact: restaurantData?.phone || ""
                 },
                 theme: {
-                    color: "#4F46E5" // Indigo primary color
+                    color: "#111827" // Keep black color to match advertisements
                 },
                 modal: {
                     ondismiss: function () {
@@ -247,7 +258,12 @@ export default function SubscriptionPage() {
     };
 
     const handleCancelSubscription = async () => {
-        if (!currentSubscription || currentSubscription.status !== 'active') return;
+        if (!currentSubscription || (currentSubscription.status !== 'active' && currentSubscription.status !== 'cancelled')) return;
+
+        if (currentSubscription.status === 'cancelled' || currentSubscription.cancelAtPeriodEnd) {
+            toast.info('Auto-renewal is already disabled for this subscription');
+            return;
+        }
 
         const confirm = window.confirm('Are you sure you want to cancel your current subscription and stop auto-pay?');
         if (!confirm) return;
@@ -341,7 +357,7 @@ export default function SubscriptionPage() {
                                 const isCurrentPlan = currentSubscription?.planId?.toString() === plan.id?.toString();
                                 const status = currentSubscription?.status;
                                 const isPending = status === 'pending_approval';
-                                const isActive = status === 'active';
+                                const isActive = status === 'active' || status === 'cancelled';
                                 const isDisabled = submittingPlanId !== null || (isCurrentPlan && isPending);
                                 const isPopular = plan.isPopular;
                                 const featureList = getPlanFeatureList(plan);
@@ -449,7 +465,7 @@ export default function SubscriptionPage() {
 
 
                 {/* My Subscriptions Section — only shows when there is an active plan OR real history */}
-                {(currentSubscription?.status === 'active' || subscriptionHistory.length > 0) && (
+                {(currentSubscription?.status === 'active' || currentSubscription?.status === 'cancelled' || subscriptionHistory.length > 0) && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -468,7 +484,7 @@ export default function SubscriptionPage() {
 
                         <div className="space-y-3">
                             {/* Current Active Plan — only shown when actually active */}
-                            {currentSubscription?.status === 'active' && currentSubscription?.planId && (
+                            {(currentSubscription?.status === 'active' || currentSubscription?.status === 'cancelled') && currentSubscription?.planId && (
                                 <div className="bg-white rounded-2xl border-2 border-green-200 shadow-sm p-5 flex flex-col gap-4">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
@@ -477,15 +493,15 @@ export default function SubscriptionPage() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-2 mb-1">
                                                 <span className="font-bold text-slate-900 text-sm">{currentSubscription.planName || 'Current Plan'}</span>
-                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${currentSubscription.status === 'active'
+                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${(currentSubscription.status === 'active' || currentSubscription.status === 'cancelled')
                                                     ? 'bg-green-100 text-green-700'
                                                     : currentSubscription.status === 'expired'
                                                         ? 'bg-red-100 text-red-700'
                                                         : 'bg-slate-100 text-slate-600'
                                                     }`}>
-                                                    {currentSubscription.status === 'active' ? '✓ Active' : currentSubscription.status}
+                                                    {(currentSubscription.status === 'active' || currentSubscription.status === 'cancelled') ? '✓ Active' : currentSubscription.status}
                                                 </span>
-                                                {subscriptionMeta.daysRemaining !== null && currentSubscription.status === 'active' && (
+                                                {subscriptionMeta.daysRemaining !== null && (currentSubscription.status === 'active' || currentSubscription.status === 'cancelled') && (
                                                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${subscriptionMeta.showWarning ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'
                                                         }`}>
                                                         {subscriptionMeta.daysRemaining} day{subscriptionMeta.daysRemaining !== 1 ? 's' : ''} remaining
@@ -511,15 +527,28 @@ export default function SubscriptionPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex flex-wrap gap-2 justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={handleCancelSubscription}
-                                            disabled={cancelling}
-                                            className="px-4 py-2 text-xs font-semibold rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                                        >
-                                            {cancelling ? 'Cancelling...' : 'Cancel Subscription'}
-                                        </button>
+                                    <div className="mt-2 flex justify-end">
+                                        {currentSubscription.status === "cancelled" || currentSubscription.cancelAtPeriodEnd ? (
+                                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-col gap-1 text-left">
+                                                <p className="text-amber-800 text-xs font-bold flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" /> Auto-renew disabled
+                                                </p>
+                                                <p className="text-amber-700 text-[10px] font-medium leading-tight ml-4">
+                                                    Your subscription will expire on {currentSubscription.endDate
+                                                        ? new Date(currentSubscription.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+                                                        : "end of period"}.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={handleCancelSubscription}
+                                                disabled={cancelling}
+                                                className="px-4 py-2 text-xs font-semibold rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                {cancelling ? "Cancelling..." : "Cancel Subscription"}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}

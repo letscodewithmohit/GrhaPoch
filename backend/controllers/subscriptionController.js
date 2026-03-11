@@ -4,7 +4,10 @@ import { successResponse, errorResponse } from '../utils/response.js';
 import {
   createSubscription,
   verifySubscriptionPayment,
-  cancelSubscription as cancelRazorpaySubscription
+  cancelSubscription as cancelRazorpaySubscription,
+  createCustomer,
+  createOrder,
+  verifyPayment
 } from '../services/razorpayService.js';
 import crypto from 'crypto';
 import AuditLog from '../models/AuditLog.js';
@@ -54,8 +57,8 @@ const buildSubscriptionDates = ({ restaurant, plan, now = new Date() }) => {
   let endDate = new Date(now);
 
   const isRenewing = restaurant.businessModel === 'Subscription Base' &&
-  restaurant.subscription?.status === 'active' &&
-  restaurant.subscription?.endDate;
+    ['active', 'cancelled'].includes(restaurant.subscription?.status) &&
+    restaurant.subscription?.endDate;
 
   if (isRenewing) {
     startDate = new Date(restaurant.subscription.endDate);
@@ -100,10 +103,12 @@ const cancelSubscriptionCore = async ({
     throw new Error('No active subscription found to cancel');
   }
 
+  const currentStatus = restaurant.subscription.status;
   if (
-    restaurant.subscription.status === 'expired' ||
-    restaurant.subscription.status === 'inactive' ||
-    // Already processed cancellation / auto-renew disabled
+    currentStatus === 'expired' ||
+    currentStatus === 'inactive' ||
+    currentStatus === 'rejected' ||
+    currentStatus === 'cancelled' ||
     restaurant.subscription.cancelAtPeriodEnd === true
   ) {
     return { restaurant, wasAlreadyCancelled: true };
@@ -114,28 +119,36 @@ const cancelSubscriptionCore = async ({
     throw new Error('Razorpay subscription ID missing for cancellation');
   }
 
-  // Cancel on Razorpay side so that no future auto-debits are attempted.
-  // If Razorpay returns "not cancellable in completed status", the subscription has
-  // already ended (all cycles done) - no more auto-debits will occur. Update our DB only.
+  // Step 1: Cancel on Razorpay (stops future billing)
   try {
+    console.log(`[SubscriptionCancel] Initiating Razorpay cancel for ${subscriptionId} (Source: ${source})`);
     await cancelRazorpaySubscription(subscriptionId);
+    console.log(`[SubscriptionCancel] Razorpay cancel successful for ${subscriptionId}`);
   } catch (razorpayError) {
     const msg = String(razorpayError?.message || '');
     const isCompletedNotCancellable =
       msg.toLowerCase().includes('not cancellable') &&
       msg.toLowerCase().includes('completed');
+
     if (isCompletedNotCancellable) {
-      // Subscription is completed in Razorpay = no future charges. Update local state only.
+      console.log(`[SubscriptionCancel] Subscription ${subscriptionId} already completed or not cancellable in Razorpay. Updating local DB only.`);
     } else {
+      console.error(`[SubscriptionCancel] Razorpay API error for ${subscriptionId}:`, razorpayError);
       throw razorpayError;
     }
   }
 
-  // Mark subscription to end gracefully at period end. Keep it active until endDate
-  // so that benefits (0% commission) continue for the current billing cycle.
+  // Step 2: Update Restaurant Document
+  // We mark it as 'cancelled' immediately so the UI shows it's cancelled,
+  // but RestaurantCommission logic now allows 'cancelled' status to keep 0% commission
+  // until the endDate is actually reached.
+  restaurant.subscription.status = 'cancelled';
   restaurant.subscription.cancelAtPeriodEnd = true;
   restaurant.subscription.autoRenew = false;
+  restaurant.subscription.cancelledAt = new Date();
+
   await restaurant.save({ session });
+  console.log(`[SubscriptionCancel] MongoDB updated for restaurant ${restaurant._id}. Status set to cancelled.`);
 
   const paymentFilter = buildSubscriptionPaymentFilter({
     razorpaySubscriptionId: subscriptionId
@@ -163,14 +176,14 @@ const cancelSubscriptionCore = async ({
             source === 'admin'
               ? 'admin'
               : source === 'webhook'
-              ? 'system'
-              : restaurant._id,
+                ? 'system'
+                : restaurant._id,
           name:
             source === 'admin'
               ? 'Admin'
               : source === 'webhook'
-              ? 'Razorpay Webhook'
-              : restaurant.name
+                ? 'Razorpay Webhook'
+                : restaurant.name
         },
         description: 'Subscription auto-renew disabled; subscription will remain active until end of period',
         metadata: {
@@ -213,45 +226,64 @@ export const activateSubscriptionTx = async ({
   const normalizedSubscriptionId = String(razorpaySubscriptionId || '').trim();
   const normalizedOrderId = String(razorpayOrderId || '').trim();
   const normalizedPaymentId = String(razorpayPaymentId || '').trim();
+  const normalizedInvoiceId = String(razorpayInvoiceId || '').trim();
+
   if (!normalizedSubscriptionId && !normalizedOrderId) {
     throw new Error('Razorpay subscription or order ID is required');
   }
 
-  // Strong idempotency: never process the same Razorpay order twice.
-  const idempotencyFilter = buildSubscriptionPaymentFilter({
-    razorpaySubscriptionId: normalizedSubscriptionId,
-    razorpayOrderId: normalizedOrderId,
-    razorpayPaymentId: normalizedPaymentId
-  });
+  // Idempotency: If we have a payment ID, only block if THIS payment was already processed.
+  // This allows multiple payments (renewals) under the same subscription ID.
+  if (normalizedPaymentId) {
+    const existingPayment = await SubscriptionPayment.findOne({
+      razorpayPaymentId: normalizedPaymentId,
+      status: 'success'
+    }).session(session);
 
-  const existingSuccessfulOrder = idempotencyFilter ? await SubscriptionPayment.findOne({
-    ...idempotencyFilter,
-    status: 'success'
-  }).session(session) : null;
-  if (existingSuccessfulOrder) {
-    const sameRestaurant = String(existingSuccessfulOrder.restaurantId || '') === String(restaurant._id || '');
-    const samePlan = String(existingSuccessfulOrder.planId || '') === String(plan._id || '');
-
-    if (!sameRestaurant || !samePlan) {
-      throw new Error('This order is already mapped to a different subscription transaction');
+    if (existingPayment) {
+      return {
+        subscription: restaurant.subscription,
+        plan,
+        isAlreadyActive: true,
+        paymentStatus: 'success'
+      };
     }
+  } else {
+    // If no payment ID yet, check if the subscription/order already has any success
+    // This handles the 'first activation' stage before a payment ID is assigned.
+    const idempotencyFilter = buildSubscriptionPaymentFilter({
+      razorpaySubscriptionId: normalizedSubscriptionId,
+      razorpayOrderId: normalizedOrderId
+    });
 
+    const existingSuccessfulOrder = idempotencyFilter ? await SubscriptionPayment.findOne({
+      ...idempotencyFilter,
+      status: 'success'
+    }).session(session) : null;
+
+    if (existingSuccessfulOrder) {
+      return { subscription: restaurant.subscription, plan, isAlreadyActive: true };
+    }
+  }
+
+  // Check if this EXACT payment is already active on the restaurant
+  const isThisPaymentReflected =
+    normalizedPaymentId &&
+    String(restaurant.subscription?.paymentId || '').trim() === normalizedPaymentId;
+
+  if (restaurant.subscription?.status === 'active' && isThisPaymentReflected) {
     return { subscription: restaurant.subscription, plan, isAlreadyActive: true };
   }
 
+  // If we have an active subscription with the SAME subscriptionId/orderId but a NEW paymentId,
+  // it means this is a renewal. We proceed to update the dates.
+  // We ONLY block if both ID matches AND we don't have a new payment to process.
   if (
-  restaurant.subscription?.status === 'active' &&
-  ((normalizedOrderId && String(restaurant.subscription.orderId || '').trim() === normalizedOrderId) ||
-  (normalizedSubscriptionId && String(restaurant.subscription.subscriptionId || '').trim() === normalizedSubscriptionId)))
-  {
-    return { subscription: restaurant.subscription, plan, isAlreadyActive: true };
-  }
-
-  if (
-  restaurant.subscription?.status === 'active' &&
-  normalizedPaymentId &&
-  String(restaurant.subscription.paymentId || '').trim() === normalizedPaymentId)
-  {
+    restaurant.subscription?.status === 'active' &&
+    !normalizedPaymentId &&
+    ((normalizedOrderId && String(restaurant.subscription.orderId || '').trim() === normalizedOrderId) ||
+      (normalizedSubscriptionId && String(restaurant.subscription.subscriptionId || '').trim() === normalizedSubscriptionId))
+  ) {
     return { subscription: restaurant.subscription, plan, isAlreadyActive: true };
   }
 
@@ -295,38 +327,45 @@ export const activateSubscriptionTx = async ({
   );
 
   const paymentFilter = razorpayPaymentId ?
-  buildSubscriptionPaymentFilter({ razorpayPaymentId, razorpayOrderId, razorpaySubscriptionId }) :
-  buildSubscriptionPaymentFilter({ razorpayOrderId, razorpaySubscriptionId });
+    buildSubscriptionPaymentFilter({ razorpayPaymentId, razorpayOrderId, razorpaySubscriptionId }) :
+    buildSubscriptionPaymentFilter({ razorpayOrderId, razorpaySubscriptionId });
 
   if (!paymentFilter) {
     throw new Error('Unable to build payment filter for activation');
   }
 
-  await SubscriptionPayment.findOneAndUpdate(
-    paymentFilter,
-    {
-      $set: {
-        restaurantId: restaurant._id,
-        planId: plan._id,
-        planName: plan.name,
-        razorpayPlanId: plan.razorpayPlanId || '',
-        amount: plan.price,
-        currency: plan.currency || 'INR',
-        razorpayPaymentId: razorpayPaymentId || null,
-        razorpayOrderId: razorpayOrderId || null,
-        razorpaySubscriptionId: razorpaySubscriptionId || null,
-        razorpayInvoiceId: razorpayInvoiceId || null,
-        status: 'success',
-        paymentDate: now,
-        startDate,
-        endDate,
-        renewalType: isRenewing ? 'renewal' : 'new',
-        source,
-        lastError: ''
-      }
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true, session }
-  );
+  // Find existing payment record to update, or create a new one
+  // Note: MongoDB doesn't allow upsert with $or filters. We'll handle this manually.
+  let paymentRecord = await SubscriptionPayment.findOne(paymentFilter).session(session);
+
+  const updateData = {
+    restaurantId: restaurant._id,
+    planId: plan._id,
+    planName: plan.name,
+    razorpayPlanId: plan.razorpayPlanId || '',
+    amount: plan.price,
+    currency: plan.currency || 'INR',
+    razorpayPaymentId: razorpayPaymentId || null,
+    razorpayOrderId: razorpayOrderId || null,
+    razorpaySubscriptionId: razorpaySubscriptionId || null,
+    razorpayInvoiceId: razorpayInvoiceId || null,
+    status: 'success',
+    paymentDate: now,
+    startDate,
+    endDate,
+    renewalType: isRenewing ? 'renewal' : 'new',
+    source,
+    lastError: ''
+  };
+
+  if (paymentRecord) {
+    // Update existing
+    Object.assign(paymentRecord, updateData);
+    await paymentRecord.save({ session });
+  } else {
+    // Create new
+    await SubscriptionPayment.create([updateData], { session });
+  }
 
   await AuditLog.create([{
     entityType: 'restaurant',
@@ -471,11 +510,35 @@ export const createSubscriptionOrder = async (req, res) => {
       return errorResponse(res, 500, 'Payment gateway key is not configured');
     }
 
-    // Create Razorpay subscription using centralized service
+    // 1. Ensure restaurant has a Razorpay Customer ID
+    let razorpayCustomerId = restaurant.razorpayCustomerId;
+    if (!razorpayCustomerId) {
+      try {
+        const customer = await createCustomer({
+          name: restaurant.name || restaurant.ownerName,
+          email: restaurant.email || restaurant.ownerEmail,
+          contact: restaurant.phone || restaurant.ownerPhone,
+          notes: {
+            restaurantId: restaurantId.toString(),
+            internalId: restaurant.restaurantId
+          }
+        });
+        razorpayCustomerId = customer.id;
+        restaurant.razorpayCustomerId = razorpayCustomerId;
+        await restaurant.save();
+      } catch (custError) {
+        console.error('Failed to create Razorpay customer:', custError);
+        // Continue without customer_id if failed (optional, or throw error)
+      }
+    }
+
+    // 2. Create Razorpay subscription using centralized service
+    // Using Subscriptions API ensures status becomes 'Active' in Razorpay dashboard
     const subscription = await createSubscription({
       plan_id: planRazorpayId,
-      total_count: 1,
+      total_count: 12, // For 1 month access with monthly billing, or adjust based on plan duration
       customer_notify: 1,
+      customer_id: razorpayCustomerId || undefined,
       notes: {
         restaurantId: restaurantId.toString(),
         planId: planId.toString(),
@@ -486,23 +549,12 @@ export const createSubscriptionOrder = async (req, res) => {
       }
     });
 
-    // NOTE: We intentionally do NOT create a SubscriptionPayment record here.
-    // Razorpay creates a new subscription ID every time the user opens the
-    // subscription checkout. If we stored a "pending" record for each open,
-    // we would quickly end up with many unused rows when users close the
-    // payment window without completing payment.
-    //
-    // Instead, we only create/update SubscriptionPayment records when:
-    // - Payment is successfully verified (activateSubscriptionTx), or
-    // - Reconciliation / webhook logic processes a real payment event.
-
     return successResponse(res, 200, 'Subscription created successfully', {
       subscriptionId: subscription.id,
       status: subscription.status,
       amount: Math.round(plan.price * 100),
       currency: plan.currency || 'INR',
       razorpayPlanId: planRazorpayId,
-      shortUrl: subscription.short_url || null,
       keyId
     });
   } catch (error) {
@@ -516,9 +568,16 @@ export const createSubscriptionOrder = async (req, res) => {
 export const verifyPaymentAndActivate = async (req, res) => {
   try {
     const restaurantId = req.restaurant._id;
-    const { razorpay_subscription_id, razorpay_payment_id, razorpay_signature, planId } = req.body;
+    // Extracting to local variables to ensure they are available in closure scope
+    const {
+      razorpay_subscription_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      planId,
+      razorpay_order_id // Optional for subscriptions, but might be sent
+    } = req.body;
 
-    if (!razorpay_subscription_id || !razorpay_payment_id || !razorpay_signature || !planId) {
+    if (!razorpay_payment_id || !razorpay_signature || !planId || !razorpay_subscription_id) {
       return errorResponse(
         res,
         400,
@@ -526,13 +585,17 @@ export const verifyPaymentAndActivate = async (req, res) => {
       );
     }
 
+    const orderIdForFilter = razorpay_order_id || '__none__';
+
     const existingSuccess = await SubscriptionPayment.findOne({
       $or: [
         { razorpaySubscriptionId: razorpay_subscription_id },
+        { razorpayOrderId: orderIdForFilter },
         { razorpayPaymentId: razorpay_payment_id }
       ],
       status: 'success'
     });
+
     if (existingSuccess) {
       const sameRestaurant = String(existingSuccess.restaurantId) === String(restaurantId);
       const samePlan = String(existingSuccess.planId) === String(planId);
@@ -546,6 +609,7 @@ export const verifyPaymentAndActivate = async (req, res) => {
       });
     }
 
+    // Verify Subscription Payment Signature (payment_id | subscription_id)
     const isValid = await verifySubscriptionPayment(
       razorpay_subscription_id,
       razorpay_payment_id,
@@ -555,6 +619,7 @@ export const verifyPaymentAndActivate = async (req, res) => {
     if (!isValid) {
       await markSubscriptionPaymentFailed({
         razorpaySubscriptionId: razorpay_subscription_id,
+        razorpayOrderId: razorpay_order_id || null,
         razorpayPaymentId: razorpay_payment_id,
         message: 'Invalid payment signature',
         source: 'verify_api'
@@ -562,28 +627,23 @@ export const verifyPaymentAndActivate = async (req, res) => {
       return errorResponse(res, 400, 'Invalid payment signature');
     }
 
-    // Fetch plan to determine duration
     const plan = await SubscriptionPlan.findById(planId);
-    if (!plan) {
-      return errorResponse(res, 404, 'Subscription plan not found');
-    }
+    if (!plan) return errorResponse(res, 404, 'Subscription plan not found');
 
-    // Payment verified, activate subscription
     const restaurant = await Restaurant.findById(restaurantId);
-    if (!restaurant) {
-      return errorResponse(res, 404, 'Restaurant not found');
-    }
+    if (!restaurant) return errorResponse(res, 404, 'Restaurant not found');
 
     const activationDate = new Date();
-
     const session = await mongoose.startSession();
     let activationResult = null;
+
     try {
       await session.withTransaction(async () => {
         activationResult = await activateSubscriptionTx({
           restaurantId: restaurant._id,
           planId: plan._id,
           razorpaySubscriptionId: razorpay_subscription_id,
+          razorpayOrderId: razorpay_order_id || null,
           razorpayPaymentId: razorpay_payment_id,
           paymentDate: activationDate,
           source: 'verify_api',
@@ -594,18 +654,12 @@ export const verifyPaymentAndActivate = async (req, res) => {
       await session.endSession();
     }
 
-    const activatedSubscription = activationResult?.subscription || restaurant.subscription;
-    const pendingApproval = activatedSubscription?.status === 'pending_approval';
-    const successMessage = pendingApproval ?
-      'Subscription payment verified. Waiting for admin approval.' :
-      'Subscription activated successfully';
-
-    return successResponse(res, 200, successMessage, {
+    return successResponse(res, 200, 'Subscription activated successfully', {
       subscription: activationResult?.subscription || restaurant.subscription
     });
   } catch (error) {
     console.error('Payment verification error:', error);
-    return errorResponse(res, 500, 'Failed to verify payment');
+    return errorResponse(res, 500, 'Failed to verify payment: ' + (error.message || 'Unknown error'));
   }
 };
 
@@ -616,10 +670,10 @@ export const handleSubscriptionWebhook = async (req, res) => {
   const incomingEventId = String(req.headers['x-razorpay-event-id'] || '').trim();
 
   const fallbackEventId = [
-  eventType || 'unknown',
-  req.body?.payload?.payment?.entity?.id || req.body?.payload?.order?.entity?.id || 'na',
-  req.body?.created_at || Date.now()].
-  join(':');
+    eventType || 'unknown',
+    req.body?.payload?.payment?.entity?.id || req.body?.payload?.order?.entity?.id || 'na',
+    req.body?.created_at || Date.now()].
+    join(':');
   const eventId = incomingEventId || fallbackEventId;
 
   let webhookEvent = null;
@@ -653,14 +707,14 @@ export const handleSubscriptionWebhook = async (req, res) => {
     }
 
     const expectedSignature = crypto.
-    createHmac('sha256', webhookSecret).
-    update(rawBody).
-    digest('hex');
+      createHmac('sha256', webhookSecret).
+      update(rawBody).
+      digest('hex');
 
     const signatureBuffer = Buffer.from(signature);
     const expectedBuffer = Buffer.from(expectedSignature);
     const isSignatureValid = signatureBuffer.length === expectedBuffer.length &&
-    crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+      crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
 
     if (!isSignatureValid) {
       webhookEvent.status = 'failed';
@@ -778,6 +832,24 @@ export const handleSubscriptionWebhook = async (req, res) => {
       webhookEvent.processedAt = new Date();
       await webhookEvent.save();
       return successResponse(res, 200, 'Webhook processed (subscription completed)');
+    }
+
+    if (eventType === 'subscription.charged' || eventType === 'subscription.activated') {
+      console.log(`[SubscriptionWebhook] Handling ${eventType} for ${context.subscriptionId || context.orderId}. Payment: ${context.paymentId}`);
+
+      // If notes are missing in payload, try to find them from existing records
+      if (!restaurantId || !planId) {
+        const lookupFilter = context.subscriptionId ?
+          { 'subscription.subscriptionId': context.subscriptionId } :
+          { 'subscription.orderId': context.orderId };
+
+        const existingRest = await Restaurant.findOne(lookupFilter).select('_id subscription');
+        if (existingRest) {
+          restaurantId = existingRest._id.toString();
+          planId = existingRest.subscription?.planId;
+          console.log(`[SubscriptionWebhook] Resolved missing context from existing restaurant: ${restaurantId}`);
+        }
+      }
     }
 
     const restaurantObjectId = toObjectIdOrNull(restaurantId);
@@ -920,7 +992,7 @@ export const adminCancelSubscription = async (req, res) => {
  * @returns {Promise<Object>} - Updated restaurant document
  */
 export const checkSubscriptionExpiry = async (restaurant) => {
-  if (restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
+  if (restaurant.businessModel === 'Subscription Base' && ['active', 'cancelled'].includes(restaurant.subscription?.status)) {
     const now = new Date();
     const endDate = new Date(restaurant.subscription.endDate);
 
@@ -1023,7 +1095,7 @@ export const getSubscriptionStatus = async (req, res) => {
     const settings = await BusinessSettings.getSettings();
     const warningDays = settings?.subscriptionExpiryWarningDays || 5;
 
-    if (restaurant.businessModel === 'Subscription Base' && restaurant.subscription?.status === 'active') {
+    if (restaurant.businessModel === 'Subscription Base' && ['active', 'cancelled'].includes(restaurant.subscription?.status)) {
       const now = new Date();
       const endDate = new Date(restaurant.subscription.endDate);
       const diffTime = endDate - now;
@@ -1036,8 +1108,8 @@ export const getSubscriptionStatus = async (req, res) => {
 
     // Return history in reverse chronological order (latest first)
     const subscriptionHistory = (restaurant.subscriptionHistory || []).
-    slice().
-    reverse();
+      slice().
+      reverse();
 
     // Prevent browser/proxy caching so UI always reflects current DB state
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -1047,7 +1119,7 @@ export const getSubscriptionStatus = async (req, res) => {
     // Only return subscription when it is a real active/pending plan; otherwise null so UI does not show "Active"
     const sub = restaurant.subscription;
     const effectiveSubscription =
-      sub && (sub.status === 'active' || sub.status === 'pending_approval') && sub.planId
+      sub && (['active', 'pending_approval', 'cancelled'].includes(sub.status)) && sub.planId
         ? sub
         : null;
 
@@ -1076,23 +1148,23 @@ export const getAllSubscriptions = async (req, res) => {
 
     const query = {
       $and: [
-      {
-        $or: [
-        { businessModel: 'Subscription Base' },
-        { 'subscription.status': 'pending_approval' }]
+        {
+          $or: [
+            { businessModel: 'Subscription Base' },
+            { 'subscription.status': 'pending_approval' }]
 
-      },
-      { 'subscription.planId': { $exists: true, $ne: null } },
-      { 'subscription.status': { $ne: 'inactive' } }]
+        },
+        { 'subscription.planId': { $exists: true, $ne: null } },
+        { 'subscription.status': { $ne: 'inactive' } }]
 
     };
 
     if (search) {
       query.$and.push({
         $or: [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }]
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }]
 
       });
     }
@@ -1100,16 +1172,16 @@ export const getAllSubscriptions = async (req, res) => {
     const total = await Restaurant.countDocuments(query);
 
     const restaurants = await Restaurant.find(query).
-    select('name email phone subscription subscriptionHistory isActive createdAt businessModel').
-    sort({ createdAt: -1 }).
-    skip(skip).
-    limit(limit).
-    lean();
+      select('name email phone subscription subscriptionHistory isActive createdAt businessModel').
+      sort({ createdAt: -1 }).
+      skip(skip).
+      limit(limit).
+      lean();
 
     // Get all unique plan IDs
     const planIds = [...new Set(restaurants.
-    map((r) => r.subscription?.planId).
-    filter((id) => id && id.match(/^[0-9a-fA-F]{24}$/)) // Only valid ObjectIds
+      map((r) => r.subscription?.planId).
+      filter((id) => id && id.match(/^[0-9a-fA-F]{24}$/)) // Only valid ObjectIds
     )];
 
     // Fetch plans

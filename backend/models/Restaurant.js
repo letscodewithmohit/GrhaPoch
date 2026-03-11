@@ -348,7 +348,7 @@ const restaurantSchema = new mongoose.Schema(
       },
       status: {
         type: String,
-        enum: ['active', 'expired', 'pending_approval', 'inactive', 'rejected'],
+        enum: ['active', 'expired', 'pending_approval', 'inactive', 'rejected', 'cancelled'],
         default: 'inactive'
       },
       // Human-readable plan name
@@ -358,6 +358,8 @@ const restaurantSchema = new mongoose.Schema(
       endDate: Date,
       // When subscription was requested (for pending_approval)
       requestedAt: Date,
+      // When subscription was cancelled
+      cancelledAt: Date,
       // Razorpay identifiers for the latest successful payment
       paymentId: String,
       orderId: String,
@@ -400,6 +402,11 @@ const restaurantSchema = new mongoose.Schema(
     fcmTokensMobile: {
       type: [String],
       default: []
+    },
+    razorpayCustomerId: {
+      type: String,
+      default: '',
+      trim: true
     }
 
   },

@@ -20,7 +20,7 @@ export async function processSubscriptionExpiries() {
     // Only fetch restaurants that are active and overdue
     const restaurants = await Restaurant.find({
       businessModel: 'Subscription Base',
-      'subscription.status': 'active',
+      'subscription.status': { $in: ['active', 'cancelled'] },
       'subscription.endDate': { $lt: now }
     });
 
@@ -128,7 +128,7 @@ export async function processSubscriptionWarnings() {
 
     const restaurants = await Restaurant.find({
       businessModel: 'Subscription Base',
-      'subscription.status': 'active',
+      'subscription.status': { $in: ['active', 'cancelled'] },
       'subscription.endDate': { $gt: now, $lte: warningCutoff }
     });
 

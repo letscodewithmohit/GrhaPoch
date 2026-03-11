@@ -3,19 +3,19 @@ export const FIXED_SUBSCRIPTION_PLANS = [
     name: 'Basic',
     key: 'basic',
     order: 1,
-    razorpayPlanId: 'plan_SNWKBmWBVuFCk8'
+    razorpayPlanId: 'plan_SP1VGNPX9qkAKu'
   },
   {
     name: 'Growth',
     key: 'growth',
     order: 2,
-    razorpayPlanId: 'plan_SNWNrk3t6xGoSW'
+    razorpayPlanId: 'plan_SP1XLeF7NEsysC'
   },
   {
     name: 'Premium',
     key: 'premium',
     order: 3,
-    razorpayPlanId: 'plan_SNWOkUVwMyVDmL'
+    razorpayPlanId: 'plan_SP1aaguOlgYzN4'
   }
 ];
 

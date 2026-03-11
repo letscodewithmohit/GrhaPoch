@@ -88,6 +88,7 @@ const createOrder = async (options) => {
       amount: options.amount, // Amount in paise
       currency: options.currency || 'INR',
       receipt: options.receipt || `receipt_${Date.now()}`,
+      customer_id: options.customer_id,
       notes: options.notes || {}
     };
 
@@ -413,6 +414,7 @@ const createSubscription = async (options) => {
       customer_notify: options.customer_notify ?? 1,
       quantity: options.quantity,
       start_at: options.start_at,
+      customer_id: options.customer_id,
       notes: options.notes || {}
     };
 
@@ -535,11 +537,12 @@ const cancelSubscription = async (subscriptionId) => {
       };
     }
 
-    const cancelled = await razorpay.subscriptions.cancel(subscriptionId);
+    const cancelled = await razorpay.subscriptions.cancel(subscriptionId, { cancel_at_cycle_end: 1 });
 
-    logger.info(`Razorpay subscription cancelled successfully: ${cancelled.id}`, {
+    logger.info(`Razorpay subscription cancelled (auto-renew stopped): ${cancelled.id}`, {
       subscriptionId: cancelled.id,
-      status: cancelled.status
+      status: cancelled.status,
+      cancelAtPeriodEnd: !!cancelled.cancel_at_cycle_end
     });
 
     return cancelled;
@@ -599,6 +602,35 @@ const createRefund = async (paymentId, amount = null, notes = {}) => {
   }
 };
 
+/**
+ * Create a Razorpay customer
+ * @param {Object} options - Customer options
+ * @param {String} options.name - Customer name
+ * @param {String} options.email - Customer email
+ * @param {String} options.contact - Customer contact number
+ * @param {Object} options.notes - Optional notes
+ * @returns {Promise<Object>} Razorpay customer object
+ */
+const createCustomer = async (options) => {
+  const razorpay = await getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay is not initialized');
+  }
+
+  try {
+    const customer = await razorpay.customers.create({
+      name: options.name,
+      email: options.email,
+      contact: options.contact,
+      notes: options.notes || {}
+    });
+    return customer;
+  } catch (error) {
+    logger.error(`Error creating Razorpay customer: ${error.message}`);
+    throw error;
+  }
+};
+
 export {
   initializeRazorpay,
   getRazorpayInstance,
@@ -613,6 +645,7 @@ export {
   fetchSubscription,
   fetchSubscriptionPayments,
   cancelSubscription,
-  createRefund
+  createRefund,
+  createCustomer
 };
 
