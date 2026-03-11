@@ -103,48 +103,60 @@ export default function Dining() {
   }, [])
 
   useEffect(() => {
-    const fetchDiningHeroBanner = async () => {
+    const fetchInitialData = async () => {
       try {
-        const response = await api.get('/hero-banners/dining/public')
-        if (response.data.success && response.data.data.banners && response.data.data.banners.length > 0) {
-          setDiningHeroBanner(response.data.data.banners[0])
-        } else {
-          setDiningHeroBanner(diningBanner)
-        }
-      } catch (error) {
-        console.error("Failed to fetch dining hero banner", error)
-        setDiningHeroBanner(diningBanner)
-      }
-    }
-    fetchDiningHeroBanner()
-  }, [])
-
-  useEffect(() => {
-    const fetchDiningData = async () => {
-      try {
-        const [cats, limes, tries, rests, offers] = await Promise.all([
+        setLoading(true);
+        const results = await Promise.allSettled([
+          api.get('/hero-banners/dining/public'),
           diningAPI.getCategories(),
           diningAPI.getOfferBanners(),
           diningAPI.getStories(),
           diningAPI.getRestaurants(location?.city ? { city: location.city } : {}),
           diningAPI.getBankOffers()
-        ])
+        ]);
 
-        if (cats.data.success && cats.data.data.length > 0) setCategories(cats.data.data)
-        if (limes.data.success && limes.data.data.length > 0) {
-          setLimelightItems(limes.data.data)
+        // 0: Banner
+        if (results[0].status === 'fulfilled' && results[0].value.data.success) {
+          const bannerData = results[0].value.data.data;
+          setDiningHeroBanner(bannerData.banners?.[0] || diningBanner);
+        } else {
+          setDiningHeroBanner(diningBanner);
         }
-        if (tries.data.success && tries.data.data.length > 0) setMustTryItems(tries.data.data)
-        if (rests.data.success && rests.data.data.length > 0) setRestaurantList(rests.data.data)
-        if (offers.data.success && offers.data.data.length > 0) setBankOfferItems(offers.data.data)
+
+        // 1: Categories
+        if (results[1].status === 'fulfilled' && results[1].value.data.success) {
+          setCategories(results[1].value.data.data || []);
+        }
+
+        // 2: Limelight/Offer Banners
+        if (results[2].status === 'fulfilled' && results[2].value.data.success) {
+          setLimelightItems(results[2].value.data.data || []);
+        }
+
+        // 3: Must Tries/Stories
+        if (results[3].status === 'fulfilled' && results[3].value.data.success) {
+          setMustTryItems(results[3].value.data.data || []);
+        }
+
+        // 4: Restaurants
+        if (results[4].status === 'fulfilled' && results[4].value.data.success) {
+          setRestaurantList(results[4].value.data.data || []);
+        }
+
+        // 5: Bank Offers
+        if (results[5].status === 'fulfilled' && results[5].value.data.success) {
+          setBankOfferItems(results[5].value.data.data || []);
+        }
+
       } catch (error) {
-        console.error("Failed to fetch dining data", error)
+        console.error("Failed to fetch initial dining data", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchDiningData()
-  }, [location?.city])
+    };
+
+    fetchInitialData();
+  }, [location?.city]);
 
   useEffect(() => {
     syncDiningBookings()

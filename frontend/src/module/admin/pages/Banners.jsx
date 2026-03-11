@@ -31,11 +31,11 @@ export default function Banners() {
   });
 
   const languageTabs = [
-  { key: "default", label: "Default" },
-  { key: "en", label: "English(EN)" },
-  { key: "bn", label: "Bengali - বাংলা(BN)" },
-  { key: "ar", label: "Arabic - العربية (AR)" },
-  { key: "es", label: "Spanish - español(ES)" }];
+    { key: "default", label: "Default" },
+    { key: "en", label: "English(EN)" },
+    { key: "bn", label: "Bengali - বাংলা(BN)" },
+    { key: "ar", label: "Arabic - العربية (AR)" },
+    { key: "es", label: "Spanish - español(ES)" }];
 
 
   const filteredBanners = useMemo(() => {
@@ -52,7 +52,7 @@ export default function Banners() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter((banner) =>
-      banner.title.toLowerCase().includes(query)
+        banner.title.toLowerCase().includes(query)
       );
     }
 
@@ -80,7 +80,7 @@ export default function Banners() {
 
   const handleToggleStatus = (sl) => {
     setBanners(banners.map((banner) =>
-    banner.sl === sl ? { ...banner, status: !banner.status } : banner
+      banner.sl === sl ? { ...banner, status: !banner.status } : banner
     ));
   };
 
@@ -103,15 +103,14 @@ export default function Banners() {
           {/* Language Tabs */}
           <div className="flex items-center gap-2 border-b border-slate-200 mb-6">
             {languageTabs.map((tab) =>
-            <button
-              key={tab.key}
-              onClick={() => setActiveLanguage(tab.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeLanguage === tab.key ?
-              "border-blue-600 text-blue-600" :
-              "border-transparent text-slate-600 hover:text-slate-900"}`
-              }>
-              
+              <button
+                key={tab.key}
+                onClick={() => setActiveLanguage(tab.key)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeLanguage === tab.key ?
+                    "border-blue-600 text-blue-600" :
+                    "border-transparent text-slate-600 hover:text-slate-900"}`
+                }>
+
                 {tab.label}
               </button>
             )}
@@ -129,7 +128,7 @@ export default function Banners() {
                   onChange={(e) => handleInputChange("title", e.target.value)}
                   placeholder="New banner"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
-                
+
               </div>
 
               <div>
@@ -140,7 +139,7 @@ export default function Banners() {
                   value={formData.zone}
                   onChange={(e) => handleInputChange("zone", e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                  
+
                   <option value="">---Select---</option>
                   <option value="asia">Asia</option>
                   <option value="europe">Europe</option>
@@ -155,7 +154,7 @@ export default function Banners() {
                   value={formData.bannerType}
                   onChange={(e) => handleInputChange("bannerType", e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                  
+
                   <option value="Restaurant wise">Restaurant wise</option>
                   <option value="Zone wise">Zone wise</option>
                 </select>
@@ -169,7 +168,7 @@ export default function Banners() {
                   value={formData.restaurant}
                   onChange={(e) => handleInputChange("restaurant", e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                  
+
                   <option value="">Select</option>
                   <option value="cafe-monarch">Café Monarch</option>
                   <option value="hungry-puppets">Hungry Puppets</option>
@@ -196,13 +195,13 @@ export default function Banners() {
                 type="button"
                 onClick={handleReset}
                 className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
-                
+
                 Reset
               </button>
               <button
                 type="submit"
                 className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">
-                
+
                 Submit
               </button>
             </div>
@@ -224,7 +223,7 @@ export default function Banners() {
                 value={bannerType}
                 onChange={(e) => setBannerType(e.target.value)}
                 className="px-4 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-400">
-                
+
                 <option value="all">All Banner</option>
                 <option value="Restaurant wise">Restaurant wise</option>
                 <option value="Zone wise">Zone wise</option>
@@ -237,7 +236,7 @@ export default function Banners() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
-                
+
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
             </div>
@@ -258,7 +257,7 @@ export default function Banners() {
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
                 {filteredBanners.map((banner) =>
-                <tr key={banner.sl} className="hover:bg-slate-50 transition-colors">
+                  <tr key={banner.sl} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-slate-700">{banner.sl}</span>
                     </td>
@@ -266,13 +265,13 @@ export default function Banners() {
                       <div className="flex items-center gap-3">
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
                           <img
-                          src={bannerImages[banner.sl] || bannerImage1}
-                          alt={banner.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.src = bannerImage1;
-                          }} />
-                        
+                            src={bannerImages[banner.sl] || bannerImage1}
+                            alt={banner.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.src = bannerImage1;
+                            }} />
+
                         </div>
                         <span className="text-sm font-medium text-slate-900">{banner.title}</span>
                       </div>
@@ -285,31 +284,29 @@ export default function Banners() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                      onClick={() => handleToggleStatus(banner.sl)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      banner.status ? "bg-blue-600" : "bg-slate-300"}`
-                      }>
-                      
+                        onClick={() => handleToggleStatus(banner.sl)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${banner.status ? "bg-blue-600" : "bg-slate-300"}`
+                        }>
+
                         <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        banner.status ? "translate-x-6" : "translate-x-1"}`
-                        } />
-                      
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${banner.status ? "translate-x-6" : "translate-x-1"}`
+                          } />
+
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                        className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                        title="Edit">
-                        
+                          className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
+                          title="Edit">
+
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                        onClick={() => handleDelete(banner.sl)}
-                        className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
-                        title="Delete">
-                        
+                          onClick={() => handleDelete(banner.sl)}
+                          className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete">
+
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

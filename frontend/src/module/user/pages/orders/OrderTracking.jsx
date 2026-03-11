@@ -241,11 +241,33 @@ export default function OrderTracking() {
   const defaultAddress = getDefaultAddress();
 
   // Poll for order updates (especially when delivery partner accepts)
-  // Only poll if delivery partner is not yet assigned to avoid unnecessary updates
   useEffect(() => {
     if (!orderId || !order) return;
 
-    // Skip polling if delivery partner is already assigned and accepted
+    // Fetch restaurant details once if needed, then store them
+    const fetchRestaurantOnce = async () => {
+      if (typeof order.restaurantId === 'string' && !order.restaurantLocation?.coordinates) {
+        try {
+          const restaurantResponse = await restaurantAPI.getRestaurantById(order.restaurantId);
+          if (restaurantResponse?.data?.success && restaurantResponse.data.data?.restaurant) {
+            const restaurant = restaurantResponse.data.data.restaurant;
+            const phone = extractPhone(restaurant);
+            if (phone) setRestaurantPhone(phone);
+            
+            if (restaurant.location?.coordinates && Array.isArray(restaurant.location.coordinates)) {
+              setOrder(prev => ({
+                ...prev,
+                restaurantLocation: { coordinates: restaurant.location.coordinates }
+              }));
+            }
+          }
+        } catch (err) {
+          console.error('❌ Error fetching restaurant details:', err);
+        }
+      }
+    };
+    fetchRestaurantOnce();
+
     const currentDeliveryStatus = order?.deliveryState?.status;
     const currentPhase = order?.deliveryState?.currentPhase;
     const hasDeliveryPartner = currentDeliveryStatus === 'accepted' ||
@@ -253,76 +275,44 @@ export default function OrderTracking() {
       currentPhase === 'at_pickup' ||
       currentPhase === 'en_route_to_delivery';
 
-    // If delivery partner is assigned, reduce polling frequency to 30 seconds
-    // If not assigned, poll every 5 seconds to detect assignment
     const pollInterval = hasDeliveryPartner ? 30000 : 5000;
 
     const interval = setInterval(async () => {
+      // Don't poll if the tab is not visible
+      if (document.visibilityState !== 'visible') return;
+
       try {
         const response = await orderAPI.getOrderDetails(orderId);
         if (response.data?.success && response.data.data?.order) {
           const apiOrder = response.data.data.order;
-
-          // Check if delivery state changed (e.g., status became 'accepted')
           const newDeliveryStatus = apiOrder.deliveryState?.status;
           const newPhase = apiOrder.deliveryState?.currentPhase;
           const newOrderStatus = apiOrder.status;
           const currentOrderStatus = order?.status;
 
-          // Check if order was cancelled
           if (newOrderStatus === 'cancelled' && currentOrderStatus !== 'cancelled') {
             setOrderStatus('cancelled');
           }
 
-          // Only update if status actually changed
-          if (newDeliveryStatus === 'accepted' ||
-            newDeliveryStatus !== currentDeliveryStatus ||
+          if (newDeliveryStatus !== currentDeliveryStatus ||
             newPhase !== currentPhase ||
             newOrderStatus !== currentOrderStatus) {
 
-
-
-
-
-
-
-            // Re-fetch and update order (same logic as initial fetch)
-            let restaurantCoords = null;
-            if (apiOrder.restaurantId?.location?.coordinates &&
-              Array.isArray(apiOrder.restaurantId.location.coordinates) &&
-              apiOrder.restaurantId.location.coordinates.length >= 2) {
-              restaurantCoords = apiOrder.restaurantId.location.coordinates;
-            } else if (typeof apiOrder.restaurantId === 'string') {
-              try {
-                const restaurantResponse = await restaurantAPI.getRestaurantById(apiOrder.restaurantId);
-                if (restaurantResponse?.data?.success && restaurantResponse.data.data?.restaurant) {
-                  const restaurant = restaurantResponse.data.data.restaurant;
-                  if (restaurant.location?.coordinates && Array.isArray(restaurant.location.coordinates) && restaurant.location.coordinates.length >= 2) {
-                    restaurantCoords = restaurant.location.coordinates;
-                  }
-                }
-              } catch (err) {
-                console.error('❌ Error fetching restaurant details:', err);
-              }
-            }
-
+            // Minimal transformation, keep existing restaurantLocation if we have it
             const transformedOrder = {
               ...apiOrder,
-              restaurantLocation: restaurantCoords ? {
-                coordinates: restaurantCoords
-              } : order.restaurantLocation,
+              restaurantLocation: order.restaurantLocation || (apiOrder.restaurantId?.location?.coordinates ? {
+                coordinates: apiOrder.restaurantId.location.coordinates
+              } : null),
               deliveryPartnerId: apiOrder.deliveryPartnerId?._id || apiOrder.deliveryPartnerId || apiOrder.assignmentInfo?.deliveryPartnerId || null,
               assignmentInfo: apiOrder.assignmentInfo || null,
               deliveryState: apiOrder.deliveryState || null,
               realtimeTracking: apiOrder.realtimeTracking || null,
-              restaurantPhone: extractPhone(apiOrder.restaurantId),
+              restaurantPhone: extractPhone(apiOrder.restaurantId) || restaurantPhone,
             };
 
-            if (transformedOrder.restaurantPhone) {
-              setRestaurantPhone(transformedOrder.restaurantPhone);
-            }
-
             setOrder(transformedOrder);
+            if (transformedOrder.restaurantPhone) setRestaurantPhone(transformedOrder.restaurantPhone);
           }
         }
       } catch (err) {
@@ -331,7 +321,7 @@ export default function OrderTracking() {
     }, pollInterval);
 
     return () => clearInterval(interval);
-  }, [orderId, order?.deliveryState?.status, order?.deliveryState?.currentPhase]);
+  }, [orderId, order?.deliveryState?.status, order?.deliveryState?.currentPhase, restaurantPhone]);
 
   // Fetch order from API if not found in context
   useEffect(() => {

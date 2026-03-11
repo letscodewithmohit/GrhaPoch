@@ -15,6 +15,7 @@ export default function Orders() {
   const [feedbackText, setFeedbackText] = useState("");
   const [submittingRating, setSubmittingRating] = useState(false);
   const [countdowns, setCountdowns] = useState({});
+  const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
   // Track orders that have shown rating popup - persist in localStorage
   const [shownRatingForOrders, setShownRatingForOrders] = useState(() => {
     try {
@@ -172,9 +173,9 @@ export default function Orders() {
 
   // Fetch orders from backend API
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchOrders = async (isInitial = false) => {
       try {
-        setLoading(true);
+        if (isInitial) setLoading(true);
 
         const response = await orderAPI.getOrders({
           limit: 100, // Get all orders
@@ -304,16 +305,27 @@ export default function Orders() {
       }
     };
 
-    fetchOrders();
+    fetchOrders(!hasLoadedInitially);
+    if (!hasLoadedInitially) setHasLoadedInitially(true);
+    
+    // Only poll if there are active orders (not delivered/cancelled)
+    // or if we haven't loaded orders yet
+    const hasActiveOrders = orders.some(order => 
+      !['delivered', 'cancelled', 'restaurant_cancelled', 'completed'].includes(order.status)
+    );
 
-    // Poll for order updates every 20 seconds to detect delivered orders
-    // This ensures rating popup shows quickly when order is delivered
-    const pollInterval = setInterval(() => {
-      fetchOrders();
-    }, 20000); // Poll every 20 seconds
+    let pollInterval = null;
+    if (orders.length === 0 || hasActiveOrders) {
+      // Poll for order updates every 30 seconds to detect status changes
+      pollInterval = setInterval(() => {
+        fetchOrders();
+      }, 30000); // Poll every 30 seconds (increased from 20s for better performance)
+    }
 
-    return () => clearInterval(pollInterval);
-  }, []);
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [orders.length]); // Added orders.length to dependency to re-evaluate when orders are loaded/changed
 
   // Format date helper
   const formatDate = (dateString) => {

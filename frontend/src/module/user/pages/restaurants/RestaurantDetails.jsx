@@ -461,32 +461,28 @@ export default function RestaurantDetails() {
 
           if (restaurantIdForMenu) {
             try {
+              const [menuRes, invRes] = await Promise.allSettled([
+                restaurantAPI.getMenuByRestaurantId(restaurantIdForMenu),
+                restaurantAPI.getInventoryByRestaurantId(restaurantIdForMenu)
+              ]);
 
-              const menuResponse = await restaurantAPI.getMenuByRestaurantId(restaurantIdForMenu);
-              if (menuResponse.data && menuResponse.data.success && menuResponse.data.data && menuResponse.data.data.menu) {
-                const menuSections = menuResponse.data.data.menu.sections || [];
-
-                // Collect all recommended items from all sections
-                // Only include items that are both recommended (isRecommended === true) AND available (isAvailable !== false)
+              // Handle Menu Response
+              if (menuRes.status === 'fulfilled' && menuRes.value.data?.success && menuRes.value.data?.data?.menu) {
+                const menuSections = menuRes.value.data.data.menu.sections || [];
                 const recommendedItems = [];
+                
                 menuSections.forEach((section) => {
-                  // Check direct items - only include if isRecommended is explicitly true (strict check) AND item is available
                   if (section.items && Array.isArray(section.items)) {
                     section.items.forEach((item) => {
-                      // Strict check: isRecommended must be exactly boolean true
-                      // This will exclude: false, undefined, null, 0, "", and any other falsy values
                       if (item.isRecommended === true && typeof item.isRecommended === 'boolean' && item.isAvailable !== false) {
                         recommendedItems.push(item);
                       }
                     });
                   }
-                  // Check subsection items - only include if isRecommended is explicitly true (strict check) AND item is available
                   if (section.subsections && Array.isArray(section.subsections)) {
                     section.subsections.forEach((subsection) => {
                       if (subsection.items && Array.isArray(subsection.items)) {
                         subsection.items.forEach((item) => {
-                          // Strict check: isRecommended must be exactly boolean true
-                          // This will exclude: false, undefined, null, 0, "", and any other falsy values
                           if (item.isRecommended === true && typeof item.isRecommended === 'boolean' && item.isAvailable !== false) {
                             recommendedItems.push(item);
                           }
@@ -496,52 +492,14 @@ export default function RestaurantDetails() {
                   }
                 });
 
-                // Debug log to verify recommended items and their isRecommended values
-
-
-
-
-
-
-
-                // Debug log to check preparationTime in menu sections
-
-
-
-
-
-
-
-
-                // Always create recommended section (even if empty) - will show "No dish Yet" if empty
                 const finalMenuSections = [{ name: "Recommended for you", items: recommendedItems, subsections: [] }, ...menuSections];
-
-                setRestaurant((prev) => ({
-                  ...prev,
-                  menuSections: finalMenuSections
-                }));
-
-                // Set first 3 sections (Recommended, Starters, Main Course) as expanded by default
-                const defaultExpandedSections = new Set([0, 1, 2]); // Index 0, 1, 2
-                setExpandedSections(defaultExpandedSections);
-
-
+                setRestaurant((prev) => ({ ...prev, menuSections: finalMenuSections }));
+                setExpandedSections(new Set([0, 1, 2]));
               }
-            } catch (menuError) {
-              if (menuError.response && menuError.response.status === 404) {
 
-              } else {
-                console.error('❌ Error fetching menu:', menuError);
-              }
-            }
-
-            try {
-
-              const inventoryResponse = await restaurantAPI.getInventoryByRestaurantId(restaurantIdForMenu);
-              if (inventoryResponse.data && inventoryResponse.data.success && inventoryResponse.data.data && inventoryResponse.data.data.inventory) {
-                const inventoryCategories = inventoryResponse.data.data.inventory.categories || [];
-
-                // Normalize inventory categories to ensure proper structure
+              // Handle Inventory Response
+              if (invRes.status === 'fulfilled' && invRes.value.data?.success && invRes.value.data?.data?.inventory) {
+                const inventoryCategories = invRes.value.data.data.inventory.categories || [];
                 const normalizedInventory = inventoryCategories.map((category, index) => ({
                   id: category.id || `category-${index}`,
                   name: category.name || "Unnamed Category",
@@ -561,18 +519,10 @@ export default function RestaurantDetails() {
                   order: category.order !== undefined ? category.order : index
                 }));
 
-                setRestaurant((prev) => ({
-                  ...prev,
-                  inventory: normalizedInventory
-                }));
-
+                setRestaurant((prev) => ({ ...prev, inventory: normalizedInventory }));
               }
-            } catch (inventoryError) {
-              if (inventoryError.response && inventoryError.response.status === 404) {
-
-              } else {
-                console.error('❌ Error fetching inventory:', inventoryError);
-              }
+            } catch (innerError) {
+              console.error('❌ Error fetching restaurant details (menu/inventory):', innerError);
             }
           }
         } else {

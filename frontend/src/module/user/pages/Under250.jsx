@@ -132,98 +132,67 @@ export default function Under250() {
     } return filtered;
   }, [under250Restaurants, selectedSort, under30MinsFilter]);
 
-  // Fetch under 250 banners from API
+  // Consolidate initial data fetches (Banners, Restaurants, Categories)
   useEffect(() => {
-    const fetchBanners = async () => {
+    const fetchInitialData = async () => {
       try {
         setLoadingBanner(true);
-        const response = await api.get('/hero-banners/under-250/public');
-        if (response.data.success && response.data.data.banners && response.data.data.banners.length > 0) {
-          // Use the first valid banner
-          const firstValidBanner = response.data.data.banners.find((b) => typeof b === 'string' && b.trim() !== '');
+        setLoadingRestaurants(true);
+        setLoadingCategories(true);
+
+        const results = await Promise.allSettled([
+          api.get('/hero-banners/under-250/public'),
+          restaurantAPI.getRestaurantsUnder250(zoneId),
+          api.get('/categories/public')
+        ]);
+
+        // 0: Banners
+        if (results[0].status === 'fulfilled' && results[0].value.data.success && results[0].value.data.data.banners) {
+          const banners = results[0].value.data.data.banners;
+          const firstValidBanner = banners.find((b) => typeof b === 'string' && b.trim() !== '');
           setBannerImage(firstValidBanner || null);
         } else {
           setBannerImage(null);
         }
-      } catch (error) {
-        console.error('Error fetching under 250 banners:', error);
-        setBannerImage(null);
-      } finally {
-        setLoadingBanner(false);
-      }
-    };
 
-    fetchBanners();
-  }, []);
-
-  // Fetch restaurants with dishes under ₹250 from backend
-  useEffect(() => {
-    const fetchRestaurantsUnder250 = async () => {
-      try {
-        setLoadingRestaurants(true);
-        // Optional: Add zoneId if available (for sorting/filtering, but show all restaurants)
-        const response = await restaurantAPI.getRestaurantsUnder250(zoneId);
-        if (response.data.success && response.data.data.restaurants) {
-          // Filter out inactive restaurants (safety check)
-          const activeRestaurants = response.data.data.restaurants.filter((restaurant) => {
+        // 1: Restaurants
+        if (results[1].status === 'fulfilled' && results[1].value.data.success && results[1].value.data.data.restaurants) {
+          const activeRestaurants = results[1].value.data.data.restaurants.filter((restaurant) => {
             return restaurant.isActive !== false && restaurant.isActive !== undefined;
           });
-
           setUnder250Restaurants(activeRestaurants);
         } else {
           setUnder250Restaurants([]);
         }
-      } catch (error) {
-        console.error('Error fetching restaurants under 250:', error);
-        setUnder250Restaurants([]);
-      } finally {
-        setLoadingRestaurants(false);
-      }
-    };
 
-    fetchRestaurantsUnder250();
-  }, [zoneId, isOutOfService]);
-
-  // Fetch categories from admin API
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoadingCategories(true);
-        const response = await api.get('/categories/public');
-        if (response.data.success && response.data.data.categories) {
-          const adminCategories = response.data.data.categories.map((cat) => ({
+        // 2: Categories
+        if (results[2].status === 'fulfilled' && results[2].value.data.success && results[2].value.data.data.categories) {
+          const adminCategories = results[2].value.data.data.categories.map((cat) => ({
             id: cat.id,
             name: cat.name,
-            image: cat.image || foodImages[0], // Fallback to default image if not provided
+            image: cat.image || foodImages[0],
             slug: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-')
           }));
           setCategories(adminCategories);
         } else {
-          // Fallback to default categories if API fails
-          const defaultCategories = [
+          // Fallback to default categories
+          setCategories([
             { id: 1, name: "Biryani", image: foodImages[0] },
             { id: 2, name: "Cake", image: foodImages[1] },
-            { id: 3, name: "Chhole Bhature", image: foodImages[2] },
-            { id: 4, name: "Chicken Tanduri", image: foodImages[3] }];
-
-          setCategories(defaultCategories);
+            { id: 3, name: "Chhole Bhature", image: foodImages[2] }
+          ]);
         }
       } catch (error) {
-        console.error('Error fetching categories:', error);
-        // Fallback to default categories on error
-        const defaultCategories = [
-          { id: 1, name: "Biryani", image: foodImages[0] },
-          { id: 2, name: "Cake", image: foodImages[1] },
-          { id: 3, name: "Chhole Bhature", image: foodImages[2] }];
-
-        setCategories(defaultCategories);
+        console.error('Error fetching initial Under250 data:', error);
       } finally {
+        setLoadingBanner(false);
+        setLoadingRestaurants(false);
         setLoadingCategories(false);
       }
     };
 
-    fetchCategories();
-  }, []);
+    fetchInitialData();
+  }, [zoneId, isOutOfService]);
 
   // Sync quantities from cart on mount
   useEffect(() => {
