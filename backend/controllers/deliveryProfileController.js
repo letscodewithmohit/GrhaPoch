@@ -75,7 +75,12 @@ const updateProfileSchema = Joi.object({
       accountNumber: Joi.string().trim().min(9).max(18).optional().allow(null, ''),
       ifscCode: Joi.string().trim().length(11).uppercase().optional().allow(null, ''),
       bankName: Joi.string().trim().min(2).max(100).optional().allow(null, '')
-    }).optional()
+    }).optional(),
+    upiId: Joi.string().trim().optional().allow(null, ''),
+    qrCode: Joi.object({
+      url: Joi.string().uri().optional().allow(null, ''),
+      publicId: Joi.string().trim().optional().allow(null, '')
+    }).optional().allow(null)
   }).optional()
 });
 
@@ -90,14 +95,22 @@ export const updateProfile = asyncHandler(async (req, res) => {
       return errorResponse(res, 400, error.details[0].message);
     }
 
-    // Handle nested documents.bankDetails update properly
+    // Handle nested documents updates properly
     const setData = { ...updateData };
-    if (updateData.documents?.bankDetails) {
-      // Merge bankDetails with existing documents
-      setData['documents.bankDetails'] = {
-        ...delivery.documents?.bankDetails,
-        ...updateData.documents.bankDetails
-      };
+    if (updateData.documents) {
+      if (updateData.documents.bankDetails) {
+        // Merge bankDetails with existing documents
+        setData['documents.bankDetails'] = {
+          ...delivery.documents?.bankDetails,
+          ...updateData.documents.bankDetails
+        };
+      }
+      if (updateData.documents.upiId !== undefined) {
+        setData['documents.upiId'] = updateData.documents.upiId;
+      }
+      if (updateData.documents.qrCode !== undefined) {
+        setData['documents.qrCode'] = updateData.documents.qrCode;
+      }
       // Remove the nested documents object to avoid conflicts
       delete setData.documents;
     }

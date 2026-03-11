@@ -169,8 +169,18 @@ export const approveBankDeposit = asyncHandler(async (req, res) => {
 
   const wallet = await DeliveryWallet.findOrCreateByDeliveryId(deposit.deliveryId);
   const cashInHand = Number(wallet.cashInHand) || 0;
+  const depositAmount = Number(deposit.amount) || 0;
+  if (depositAmount < 1) {
+    return errorResponse(res, 400, 'Invalid deposit amount.');
+  }
   if (cashInHand < 1) {
     return errorResponse(res, 400, 'No cash in hand to settle.');
+  }
+  if (cashInHand + 0.01 < depositAmount) {
+    return errorResponse(res, 400, 'Cash in hand is less than deposited amount. Please submit a fresh deposit.');
+  }
+  if (Math.abs(cashInHand - depositAmount) > 0.01) {
+    return errorResponse(res, 400, 'Cash in hand has changed since submission. Please submit a fresh deposit for full cash in hand.');
   }
 
   if (!deposit.transactionId) {
@@ -191,14 +201,17 @@ export const approveBankDeposit = asyncHandler(async (req, res) => {
     }
   }
 
+  let didUpdateTx = false;
   if (deposit.transactionId) {
     try {
       wallet.updateTransactionStatus(deposit.transactionId, 'Completed');
+      didUpdateTx = true;
     } catch (_) {
       // fallback below
     }
-  } else {
-    wallet.addTransaction({
+  }
+  if (!didUpdateTx) {
+    const tx = wallet.addTransaction({
       amount: deposit.amount,
       type: 'deposit',
       status: 'Completed',
@@ -207,9 +220,10 @@ export const approveBankDeposit = asyncHandler(async (req, res) => {
       processedAt: new Date(),
       processedBy: adminId
     });
+    if (tx?._id) {
+      deposit.transactionId = tx._id;
+    }
   }
-
-  wallet.cashInHand = 0;
   wallet.markModified('transactions');
   await wallet.save();
 

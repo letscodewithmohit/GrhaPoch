@@ -31,6 +31,8 @@ export default function PocketBalancePage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+  const [payoutProfile, setPayoutProfile] = useState(null);
+  const [payoutLoading, setPayoutLoading] = useState(false);
 
   // Fetch wallet data from API (cashInHand = Cash collected from backend)
   const fetchWalletData = async () => {
@@ -99,12 +101,15 @@ export default function PocketBalancePage() {
   // Calculate total withdrawn (needed for pocket balance calculation)
   const totalWithdrawn = balances.totalWithdrawn || 0;
 
+  const cashInHand = Number(walletState?.cashInHand ?? balances.cashInHand ?? 0);
+  const hasPocketBalance = walletState?.pocketBalance !== undefined && walletState?.pocketBalance !== null;
+
   // Pocket balance = total balance (includes bonus + tips + earnings)
   // Formula: Pocket Balance = Earnings + Bonus + Tips - Withdrawals
   // Use walletState.pocketBalance if available, otherwise calculate from totalBalance
-  let pocketBalance = walletState?.pocketBalance !== undefined ?
-  walletState.pocketBalance :
-  walletState?.totalBalance || balances.totalBalance || 0;
+  let pocketBalance = hasPocketBalance ?
+  Number(walletState.pocketBalance) || 0 :
+  (Number(walletState?.totalBalance ?? balances.totalBalance ?? 0) - cashInHand);
 
   // Calculate total earnings (all-time, not just weekly)
   const totalEarnings = walletState?.transactions?.
@@ -114,21 +119,23 @@ export default function PocketBalancePage() {
   // IMPORTANT: Ensure pocket balance includes bonus and tips
   // If backend totalBalance is 0 but we have bonus/tips/earnings, calculate it manually
   // This ensures bonus, tips, and earnings are always reflected in pocket balance and withdrawable amount
-  if (pocketBalance === 0 && (totalBonus > 0 || totalTips > 0 || totalEarnings > 0)) {
-    // If totalBalance is 0 but we have earnings/bonus/tips, pocket balance = earnings + bonus + tips
-    pocketBalance = totalEarnings + totalBonus + totalTips - totalWithdrawn;
-  } else if (pocketBalance > 0 && (totalBonus > 0 || totalTips > 0 || totalEarnings > 0)) {
-    // Verify pocket balance includes bonus, tips, and all earnings
-    // Calculate expected: Total Earnings (all-time) + Bonus + Tips - Withdrawals
-    const expectedBalance = totalEarnings + totalBonus + totalTips - totalWithdrawn;
-    // Use the higher value to ensure bonus, tips, and all earnings are included
-    if (expectedBalance > pocketBalance) {
-      pocketBalance = expectedBalance;
+  if (!hasPocketBalance) {
+    if (pocketBalance === 0 && (totalBonus > 0 || totalTips > 0 || totalEarnings > 0)) {
+      // If totalBalance is 0 but we have earnings/bonus/tips, pocket balance = earnings + bonus + tips
+      pocketBalance = totalEarnings + totalBonus + totalTips - totalWithdrawn - cashInHand;
+    } else if (pocketBalance > 0 && (totalBonus > 0 || totalTips > 0 || totalEarnings > 0)) {
+      // Verify pocket balance includes bonus, tips, and all earnings
+      // Calculate expected: Total Earnings (all-time) + Bonus + Tips - Withdrawals
+      const expectedBalance = totalEarnings + totalBonus + totalTips - totalWithdrawn - cashInHand;
+      // Use the higher value to ensure bonus, tips, and all earnings are included
+      if (expectedBalance > pocketBalance) {
+        pocketBalance = expectedBalance;
+      }
     }
   }
 
   // Calculate cash collected (cash in hand)
-  const cashCollected = balances.cashInHand || 0;
+  const cashCollected = cashInHand;
 
   // Deductions = actual deductions only (fees, penalties). Pending withdrawal is NOT a deduction.
   const deductions = 0;
@@ -139,11 +146,25 @@ export default function PocketBalancePage() {
   // Withdrawal limit from admin (min amount above which withdrawal is allowed)
   const withdrawalLimit = Number(walletState?.deliveryWithdrawalLimit) || 100;
 
+  const payoutDocs = payoutProfile?.documents || {};
+  const payoutBank = payoutDocs.bankDetails;
+  const payoutUpiId = payoutDocs.upiId;
+  const payoutQr = payoutDocs.qrCode;
+  const hasPayoutBank =
+    payoutBank?.accountHolderName?.trim() &&
+    payoutBank?.accountNumber?.trim() &&
+    payoutBank?.ifscCode?.trim() &&
+    payoutBank?.bankName?.trim();
+  const hasPayoutUpi = !!(payoutUpiId && String(payoutUpiId).trim());
+  const hasPayoutQr = !!(payoutQr?.url);
+  const payoutMethodCount = [hasPayoutBank, hasPayoutUpi, hasPayoutQr].filter(Boolean).length;
+
   // Withdrawable amount = pocket balance (includes bonus + earnings)
   const withdrawableAmount = pocketBalance > 0 ? pocketBalance : 0;
+  const hasCashInHand = cashInHand > 0.01;
 
   // Withdrawal allowed only when withdrawable amount >= withdrawal limit
-  const canWithdraw = withdrawableAmount >= withdrawalLimit && withdrawableAmount > 0;
+  const canWithdraw = withdrawableAmount >= withdrawalLimit && withdrawableAmount > 0 && !hasCashInHand;
 
   // Debug logging (cashInHand = Cash collected from backend)
 
@@ -180,8 +201,22 @@ export default function PocketBalancePage() {
     return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
   };
 
+  const loadPayoutProfile = async () => {
+    try {
+      setPayoutLoading(true);
+      const res = await deliveryAPI.getProfile();
+      const profile = res?.data?.data?.profile ?? res?.data?.profile ?? null;
+      setPayoutProfile(profile);
+    } catch (e) {
+      setPayoutProfile(null);
+    } finally {
+      setPayoutLoading(false);
+    }
+  };
+
   const openWithdrawModal = () => {
     setWithdrawAmount("");
+    loadPayoutProfile();
     setShowWithdrawModal(true);
   };
 
@@ -189,6 +224,10 @@ export default function PocketBalancePage() {
     const num = Number(withdrawAmount);
     if (!Number.isFinite(num) || num <= 0) {
       toast.error("Enter a valid amount");
+      return;
+    }
+    if (hasCashInHand) {
+      toast.error(`Please deposit cash in hand (${formatCurrency(cashInHand)}) before requesting withdrawal.`);
       return;
     }
     if (num < withdrawalLimit) {
@@ -200,23 +239,31 @@ export default function PocketBalancePage() {
       return;
     }
 
-    let profile;
-    try {
-      const res = await deliveryAPI.getProfile();
-      profile = res?.data?.data?.profile ?? res?.data?.profile;
-    } catch (e) {
-      toast.error("Failed to load profile");
-      return;
+    let profile = payoutProfile;
+    if (!profile) {
+      try {
+        const res = await deliveryAPI.getProfile();
+        profile = res?.data?.data?.profile ?? res?.data?.profile;
+      } catch (e) {
+        toast.error("Failed to load profile");
+        return;
+      }
     }
 
-    const b = profile?.documents?.bankDetails;
+    const docs = profile?.documents || {};
+    const b = docs.bankDetails;
+    const upiId = docs.upiId;
+    const qrCode = docs.qrCode;
     const hasBank =
     b?.accountHolderName?.trim() &&
     b?.accountNumber?.trim() &&
     b?.ifscCode?.trim() &&
     b?.bankName?.trim();
-    if (!hasBank) {
-      toast.error("Add bank details first");
+    const hasUpi = !!(upiId && String(upiId).trim());
+    const hasQr = !!(qrCode?.url);
+
+    if (!hasBank && !hasUpi && !hasQr) {
+      toast.error("Add payout details (bank/UPI/QR) first");
       setShowWithdrawModal(false);
       navigate("/delivery/profile/details");
       return;
@@ -224,16 +271,12 @@ export default function PocketBalancePage() {
 
     setWithdrawSubmitting(true);
     try {
-      const res = await deliveryAPI.createWithdrawalRequest({
+      const payload = {
         amount: num,
-        paymentMethod: "bank_transfer",
-        bankDetails: {
-          accountHolderName: b.accountHolderName.trim(),
-          accountNumber: b.accountNumber.trim(),
-          ifscCode: b.ifscCode.trim(),
-          bankName: b.bankName.trim()
-        }
-      });
+        paymentMethod: "admin_select"
+      };
+
+      const res = await deliveryAPI.createWithdrawalRequest(payload, { skipErrorToast: true });
       if (res?.data?.success) {
         toast.success("Withdrawal request submitted");
         setShowWithdrawModal(false);
@@ -266,9 +309,11 @@ export default function PocketBalancePage() {
           <div className="text-sm leading-tight">
             <p className="font-semibold">Withdraw currently disabled</p>
             <p className="text-xs">
-              {withdrawableAmount <= 0 ?
-            "Withdrawable amount is ₹0" :
-            `Withdrawable amount is minimum (${formatCurrency(withdrawalLimit)}).`}
+              {hasCashInHand ?
+            `Please deposit cash in hand (${formatCurrency(cashInHand)}) before requesting withdrawal.` :
+            withdrawableAmount <= 0 ?
+              `Withdrawable amount is ${formatCurrency(0)}` :
+              `Minimum withdrawable amount is ${formatCurrency(withdrawalLimit)}.`}
             </p>
           </div>
         </div>
@@ -298,6 +343,74 @@ export default function PocketBalancePage() {
             <DialogTitle className="text-lg font-semibold text-black">Withdraw amount</DialogTitle>
           </DialogHeader>
           <div className="px-5 pb-5 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payout details</label>
+              <p className="text-xs text-gray-500">Admin will choose the payout method using your saved details.</p>
+              {payoutLoading && (
+                <p className="text-xs text-gray-500 mt-2">Loading payout details...</p>
+              )}
+              {!payoutLoading && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-xs text-gray-600">
+                    <span>Saved methods: {payoutMethodCount || 0}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowWithdrawModal(false)
+                        navigate("/delivery/profile/details")
+                      }}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Update payout details
+                    </button>
+                  </div>
+                  <details className="mt-2 rounded-lg border border-gray-200 p-2">
+                    <summary className="cursor-pointer text-xs font-medium text-gray-700">
+                      View saved payout details
+                    </summary>
+                    <div className="mt-2 space-y-2 text-xs">
+                      <div className="border border-gray-200 rounded-lg p-2">
+                        <p className="font-semibold text-gray-700">Bank transfer</p>
+                        {hasPayoutBank ? (
+                          <div className="text-gray-600 mt-1 space-y-1">
+                            <p>Account Holder: {payoutBank?.accountHolderName || "-"}</p>
+                            <p>Account: {payoutBank?.accountNumber ? `****${payoutBank.accountNumber.slice(-4)}` : "-"}</p>
+                            <p>IFSC: {payoutBank?.ifscCode || "-"}</p>
+                            <p>Bank: {payoutBank?.bankName || "-"}</p>
+                          </div>
+                        ) : (
+                          <p className="text-rose-600 mt-1">Not added</p>
+                        )}
+                      </div>
+                      <div className="border border-gray-200 rounded-lg p-2">
+                        <p className="font-semibold text-gray-700">UPI</p>
+                        {hasPayoutUpi ? (
+                          <p className="text-gray-600 mt-1">UPI ID: {payoutUpiId}</p>
+                        ) : (
+                          <p className="text-rose-600 mt-1">Not added</p>
+                        )}
+                      </div>
+                      <div className="border border-gray-200 rounded-lg p-2">
+                        <p className="font-semibold text-gray-700">QR Code</p>
+                        {hasPayoutQr ? (
+                          <a
+                            href={payoutQr?.url}
+                            download
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:text-blue-700 mt-1 inline-flex"
+                          >
+                            Download QR code
+                          </a>
+                        ) : (
+                          <p className="text-rose-600 mt-1">Not added</p>
+                        )}
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              )}
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
               <input

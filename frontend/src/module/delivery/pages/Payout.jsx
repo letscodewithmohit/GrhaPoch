@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { 
+import {
   ArrowLeft,
   Loader2,
   CheckCircle2,
@@ -8,7 +8,7 @@ import {
   XCircle
 } from "lucide-react"
 import { formatCurrency } from "../../restaurant/utils/currency"
-import { fetchWalletTransactions } from "../utils/deliveryWalletState"
+import { deliveryAPI } from "@/lib/api"
 
 export default function Payout() {
   const navigate = useNavigate()
@@ -21,34 +21,36 @@ export default function Payout() {
       try {
         setLoading(true)
         
-        // Fetch only withdrawal transactions
-        const fetchedTransactions = await fetchWalletTransactions({
-          type: "withdrawal",
+        const response = await deliveryAPI.getWithdrawalRequests({
           limit: 1000
         })
+        const fetchedRequests = response?.data?.data?.requests || []
         
-        // Format transactions for display
-        const formattedTransactions = fetchedTransactions.map(t => ({
-          id: t._id || t.id,
-          amount: t.amount || 0,
-          status: t.status || 'Pending',
-          description: t.description || 'Withdrawal request',
-          date: t.date || t.createdAt ? new Date(t.date || t.createdAt).toLocaleDateString('en-IN', {
+        // Format requests for display
+        const formattedTransactions = fetchedRequests.map(r => ({
+          id: r.id || r._id,
+          amount: r.amount || 0,
+          status: r.status || 'Pending',
+          date: r.requestedAt || r.createdAt ? new Date(r.requestedAt || r.createdAt).toLocaleDateString('en-IN', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
           }) : 'N/A',
-          processedAt: t.processedAt ? new Date(t.processedAt).toLocaleDateString('en-IN', {
+          processedAt: r.processedAt ? new Date(r.processedAt).toLocaleDateString('en-IN', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
           }) : null,
-          failureReason: t.failureReason || null,
-          paymentMethod: t.paymentMethod || 'bank_transfer'
+          rejectionReason: r.rejectionReason || null,
+          paymentMethod: r.paymentMethod || 'admin_select',
+          bankDetails: r.bankDetails || null,
+          upiId: r.upiId || null,
+          qrCode: r.qrCode || null,
+          paymentScreenshot: r.paymentScreenshot || null
         }))
         
         // Sort by date (newest first)
@@ -88,6 +90,7 @@ export default function Payout() {
     switch (status?.toLowerCase()) {
       case 'completed':
       case 'approved':
+      case 'processed':
         return {
           icon: CheckCircle2,
           color: 'text-green-600',
@@ -117,6 +120,18 @@ export default function Payout() {
           borderColor: 'border-gray-200'
         }
     }
+  }
+
+  const formatMethod = (method) => {
+    if (!method) return "N/A"
+    const map = {
+      admin_select: "Admin Will Select",
+      bank_transfer: "Bank Transfer",
+      upi: "UPI",
+      qr_code: "QR Code",
+      card: "Card"
+    }
+    return map[method] || String(method).replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
   }
 
   return (
@@ -162,8 +177,34 @@ export default function Payout() {
                         {formatCurrency(withdrawal.amount)}
                       </p>
                       <p className="text-gray-600 text-sm mb-1">
-                        {withdrawal.description}
+                        Payout method: {formatMethod(withdrawal.paymentMethod)}
                       </p>
+                      {withdrawal.paymentMethod === "admin_select" && (
+                        <p className="text-gray-500 text-xs mb-1">
+                          Admin will choose the payout method.
+                        </p>
+                      )}
+                      {withdrawal.paymentMethod === "bank_transfer" && withdrawal.bankDetails && (
+                        <p className="text-gray-500 text-xs mb-1">
+                          Bank: {withdrawal.bankDetails.bankName || "-"} · A/C: {withdrawal.bankDetails.accountNumber ? `****${withdrawal.bankDetails.accountNumber.slice(-4)}` : "-"}
+                        </p>
+                      )}
+                      {withdrawal.paymentMethod === "upi" && withdrawal.upiId && (
+                        <p className="text-gray-500 text-xs mb-1">
+                          UPI: {withdrawal.upiId}
+                        </p>
+                      )}
+                      {withdrawal.paymentMethod === "qr_code" && withdrawal.qrCode?.url && (
+                        <a
+                          href={withdrawal.qrCode.url}
+                          download
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          Download QR Code
+                        </a>
+                      )}
                       <p className="text-gray-500 text-xs">
                         Requested: {withdrawal.date}
                       </p>
@@ -172,10 +213,24 @@ export default function Payout() {
                           Processed: {withdrawal.processedAt}
                         </p>
                       )}
-                      {withdrawal.failureReason && (
+                      {withdrawal.rejectionReason && (
                         <p className="text-red-600 text-xs mt-2 font-medium">
-                          Reason: {withdrawal.failureReason}
+                          Reason: {withdrawal.rejectionReason}
                         </p>
+                      )}
+                      {withdrawal.paymentScreenshot?.url && (
+                        <div className="mt-2">
+                          <p className="text-gray-500 text-xs mb-1">Payment screenshot:</p>
+                          <a
+                            href={withdrawal.paymentScreenshot.url}
+                            download
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+                          >
+                            Download payment screenshot
+                          </a>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -184,8 +239,8 @@ export default function Payout() {
                   {withdrawal.paymentMethod && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <span className="text-xs text-gray-500 capitalize">
-                        Payment Method: {withdrawal.paymentMethod.replace('_', ' ')}
-                </span>
+                        Payment Method: {formatMethod(withdrawal.paymentMethod)}
+                      </span>
                     </div>
                   )}
                 </div>

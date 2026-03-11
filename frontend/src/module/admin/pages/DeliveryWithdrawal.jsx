@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { Search, Wallet, Eye, CheckCircle, XCircle, Loader2, Package } from "lucide-react"
-import { adminAPI } from "@/lib/api"
+import { adminAPI, uploadAPI } from "@/lib/api"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -26,6 +26,10 @@ export default function DeliveryWithdrawal() {
   const [processingAction, setProcessingAction] = useState(null)
   const [rejectionReason, setRejectionReason] = useState("")
   const [showRejectModal, setShowRejectModal] = useState(false)
+  const [showApproveModal, setShowApproveModal] = useState(false)
+  const [approveScreenshot, setApproveScreenshot] = useState(null)
+  const [approveUploading, setApproveUploading] = useState(false)
+  const [approveMethod, setApproveMethod] = useState("")
 
   useEffect(() => {
     fetchRequests()
@@ -86,13 +90,76 @@ export default function DeliveryWithdrawal() {
     setIsViewOpen(true)
   }
 
-  const handleApprove = async (id) => {
-    if (!confirm("Are you sure you want to approve this withdrawal request?")) return
+  const openApproveModal = (req) => {
+    setSelectedRequest(req)
+    setApproveScreenshot(null)
+    const bank = req?.bankDetails
+    const hasBank = !!(
+      bank?.accountHolderName &&
+      bank?.accountNumber &&
+      bank?.ifscCode &&
+      bank?.bankName
+    )
+    const hasUpi = !!(req?.upiId && String(req?.upiId).trim())
+    const hasQr = !!(req?.qrCode?.url)
+    const preferred = req?.paymentMethod ? String(req.paymentMethod).toLowerCase() : ""
+    let initial = ""
+    if (preferred === "bank_transfer" && hasBank) initial = "bank_transfer"
+    else if (preferred === "upi" && hasUpi) initial = "upi"
+    else if (preferred === "qr_code" && hasQr) initial = "qr_code"
+    else if (hasBank) initial = "bank_transfer"
+    else if (hasUpi) initial = "upi"
+    else if (hasQr) initial = "qr_code"
+    setApproveMethod(initial)
+    setShowApproveModal(true)
+  }
+
+  const handleApproveScreenshotChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type?.startsWith("image/")) {
+      toast.error("Please upload an image file")
+      return
+    }
+    setApproveUploading(true)
     try {
-      setProcessingAction(id)
-      const response = await adminAPI.approveDeliveryWithdrawal(id)
+      const res = await uploadAPI.uploadMedia(file, { folder: "delivery/withdrawal-screenshots" })
+      const data = res?.data?.data
+      if (!data?.url) {
+        throw new Error("Upload failed")
+      }
+      setApproveScreenshot({ url: data.url, publicId: data.publicId })
+      toast.success("Payment screenshot uploaded")
+    } catch (error) {
+      console.error("Error uploading payment screenshot:", error)
+      toast.error(error?.response?.data?.message || error.message || "Failed to upload screenshot")
+    } finally {
+      setApproveUploading(false)
+    }
+  }
+
+  const handleApprove = async () => {
+    if (!selectedRequest?.id) return
+    if (!approveMethod) {
+      toast.error("Select payout method to approve")
+      return
+    }
+    if (!approveScreenshot?.url) {
+      toast.error("Upload payment screenshot to approve")
+      return
+    }
+    try {
+      setProcessingAction(selectedRequest.id)
+      const response = await adminAPI.approveDeliveryWithdrawal(selectedRequest.id, {
+        paymentMethod: approveMethod,
+        paymentScreenshot: approveScreenshot
+      })
       if (response?.data?.success) {
         toast.success("Withdrawal request approved successfully")
+        setShowApproveModal(false)
+        setApproveScreenshot(null)
+        setApproveMethod("")
+        setSelectedRequest(null)
         fetchRequests()
       } else {
         toast.error(response?.data?.message || "Failed to approve")
@@ -147,6 +214,44 @@ export default function DeliveryWithdrawal() {
     if (amount == null) return "₹0.00"
     return `₹${Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
+
+  const formatMethod = (method) => {
+    if (!method) return "N/A"
+    const map = {
+      admin_select: "Admin Select",
+      bank_transfer: "Bank Transfer",
+      upi: "UPI",
+      qr_code: "QR Code",
+      card: "Card"
+    }
+    return map[method] || String(method).replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
+  }
+
+  const getMethodAvailability = (req) => {
+    const bank = req?.bankDetails || null
+    const hasBank = !!(
+      bank?.accountHolderName &&
+      bank?.accountNumber &&
+      bank?.ifscCode &&
+      bank?.bankName
+    )
+    const bankLast4 = bank?.accountNumber ? String(bank.accountNumber).slice(-4) : ""
+    const bankLabel = hasBank
+      ? `A/C ****${bankLast4} · ${bank.bankName || "Bank"}`
+      : "Bank details not provided"
+
+    const upiId = req?.upiId ? String(req.upiId).trim() : ""
+    const hasUpi = !!upiId
+    const upiLabel = hasUpi ? `UPI ID: ${upiId}` : "UPI ID not provided"
+
+    const qrUrl = req?.qrCode?.url || ""
+    const hasQr = !!qrUrl
+    const qrLabel = hasQr ? "QR code uploaded" : "QR code not provided"
+
+    return { hasBank, bankLabel, hasUpi, upiLabel, hasQr, qrLabel, qrUrl }
+  }
+
+  const payoutAvailability = getMethodAvailability(selectedRequest)
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -211,6 +316,7 @@ export default function DeliveryWithdrawal() {
                   <tr>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">#</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Payout Method</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Delivery Boy</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">ID</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Request Time</th>
@@ -221,7 +327,7 @@ export default function DeliveryWithdrawal() {
                 <tbody className="bg-white divide-y divide-slate-100">
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-20 text-center">
+                      <td colSpan={8} className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <Package className="w-16 h-16 text-slate-400 mb-4" />
                           <p className="text-lg font-semibold text-slate-700">No requests</p>
@@ -236,6 +342,7 @@ export default function DeliveryWithdrawal() {
                       <tr key={req.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{index + 1}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{formatCurrency(req.amount)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{formatMethod(req.paymentMethod)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{req.deliveryName || "N/A"}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{req.deliveryIdString || "N/A"}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{formatDate(req.requestedAt || req.createdAt)}</td>
@@ -256,7 +363,7 @@ export default function DeliveryWithdrawal() {
                             {req.status === "Pending" && (
                               <>
                                 <button
-                                  onClick={() => handleApprove(req.id)}
+                                  onClick={() => openApproveModal(req)}
                                   disabled={processingAction === req.id}
                                   className="p-2 rounded-lg bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Approve"
@@ -293,62 +400,128 @@ export default function DeliveryWithdrawal() {
 
         {/* View details dialog */}
         <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-          <DialogContent className="max-w-md bg-white p-0">
-            <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogContent className="max-w-3xl bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
               <DialogTitle>Withdrawal request details</DialogTitle>
             </DialogHeader>
             {selectedRequest && (
-              <div className="px-6 pb-6 space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Amount</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{formatCurrency(selectedRequest.amount)}</p>
+              <div className="px-6 pb-6 pt-4 space-y-6 max-h-[75vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Amount</p>
+                    <p className="text-base font-semibold text-slate-900 mt-1">{formatCurrency(selectedRequest.amount)}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Status</p>
+                    <div className="mt-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(selectedRequest.status)}`}>
+                        {selectedRequest.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Request time</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedRequest.requestedAt || selectedRequest.createdAt)}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Processed time</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">
+                      {selectedRequest.processedAt ? formatDate(selectedRequest.processedAt) : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Delivery boy</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.deliveryName || "N/A"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Delivery ID</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.deliveryIdString || "N/A"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Phone</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.deliveryPhone || "N/A"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Payout method</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{formatMethod(selectedRequest.paymentMethod)}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Delivery boy</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.deliveryName || "N/A"}</p>
+
+                <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">Payout details</p>
+                    {selectedRequest.paymentMethod === "admin_select" && (
+                      <span className="text-xs text-slate-500">Admin selects method</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-md border border-slate-200 p-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase">Bank transfer</p>
+                      {selectedRequest.bankDetails?.accountNumber ? (
+                        <div className="text-xs text-slate-700 mt-2 space-y-1">
+                          <p>{selectedRequest.bankDetails.accountHolderName || "N/A"}</p>
+                          <p>
+                            A/C ****{String(selectedRequest.bankDetails.accountNumber).slice(-4)} · {selectedRequest.bankDetails.bankName || "N/A"}
+                          </p>
+                          <p>IFSC: {selectedRequest.bankDetails.ifscCode || "N/A"}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-rose-600 mt-2">Not provided</p>
+                      )}
+                    </div>
+                    <div className="rounded-md border border-slate-200 p-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase">UPI</p>
+                      {selectedRequest.upiId ? (
+                        <p className="text-xs text-slate-700 mt-2">{selectedRequest.upiId}</p>
+                      ) : (
+                        <p className="text-xs text-rose-600 mt-2">Not provided</p>
+                      )}
+                    </div>
+                    <div className="rounded-md border border-slate-200 p-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase">QR Code</p>
+                      {selectedRequest.qrCode?.url ? (
+                        <a
+                          href={selectedRequest.qrCode.url}
+                          download
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-flex"
+                        >
+                          Download QR code
+                        </a>
+                      ) : (
+                        <p className="text-xs text-rose-600 mt-2">Not provided</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Delivery ID</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.deliveryIdString || "N/A"}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Phone</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.deliveryPhone || "N/A"}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Request time</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedRequest.requestedAt || selectedRequest.createdAt)}</p>
-                </div>
-                {(selectedRequest.status === "Approved" || selectedRequest.status === "Processed") && selectedRequest.processedAt && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Processed at</label>
-                    <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedRequest.processedAt)}</p>
+
+                {selectedRequest.paymentScreenshot?.url && (
+                  <div className="rounded-lg border border-slate-200 p-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Payment screenshot</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <a
+                        href={selectedRequest.paymentScreenshot.url}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                      >
+                        Download screenshot
+                      </a>
+                      <img
+                        src={selectedRequest.paymentScreenshot.url}
+                        alt="Payment screenshot"
+                        className="h-16 w-16 rounded-md border border-slate-200 object-cover"
+                      />
+                    </div>
                   </div>
                 )}
-                {selectedRequest.status === "Rejected" && selectedRequest.processedAt && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Rejected at</label>
-                    <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedRequest.processedAt)}</p>
-                  </div>
-                )}
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
-                  <p className="mt-1">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(selectedRequest.status)}`}>
-                      {selectedRequest.status}
-                    </span>
-                  </p>
-                </div>
+
                 {selectedRequest.rejectionReason && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Rejection reason</label>
-                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.rejectionReason}</p>
-                  </div>
-                )}
-                {selectedRequest.upiId && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase">UPI ID</label>
-                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRequest.upiId}</p>
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                    <p className="text-xs font-semibold text-red-600 uppercase">Rejection reason</p>
+                    <p className="text-sm font-medium text-red-700 mt-2">{selectedRequest.rejectionReason}</p>
                   </div>
                 )}
               </div>
@@ -364,6 +537,116 @@ export default function DeliveryWithdrawal() {
           </DialogContent>
         </Dialog>
 
+
+        {/* Approve modal */}
+        <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
+          <DialogContent className="max-w-lg bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4">
+              <DialogTitle>Approve withdrawal request</DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Select payout method <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { value: "bank_transfer", label: "Bank transfer", available: payoutAvailability.hasBank, description: payoutAvailability.bankLabel },
+                    { value: "upi", label: "UPI", available: payoutAvailability.hasUpi, description: payoutAvailability.upiLabel },
+                    { value: "qr_code", label: "QR Code", available: payoutAvailability.hasQr, description: payoutAvailability.qrLabel }
+                  ].map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${opt.available ? "border-slate-200 hover:border-emerald-300" : "border-slate-100 opacity-60"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="approveMethod"
+                        value={opt.value}
+                        checked={approveMethod === opt.value}
+                        onChange={() => setApproveMethod(opt.value)}
+                        disabled={!opt.available}
+                        className="mt-1"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{opt.label}</p>
+                        <p className="text-xs text-slate-500">{opt.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {!payoutAvailability.hasBank && !payoutAvailability.hasUpi && !payoutAvailability.hasQr && (
+                  <p className="text-xs text-rose-600 mt-2">
+                    No payout details available. Ask the delivery partner to update profile.
+                  </p>
+                )}
+                {payoutAvailability.qrUrl && (
+                  <a
+                    href={payoutAvailability.qrUrl}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-flex"
+                  >
+                    Download QR code
+                  </a>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Payment screenshot <span className="text-red-500">*</span></label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleApproveScreenshotChange}
+                  className="w-full text-sm"
+                />
+                {approveUploading && (
+                  <p className="text-xs text-slate-500 mt-2">Uploading…</p>
+                )}
+                {approveScreenshot?.url && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="h-20 w-20 rounded-md border border-slate-200 overflow-hidden bg-slate-50">
+                      <img
+                        src={approveScreenshot.url}
+                        alt="Payment screenshot"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <a
+                      href={approveScreenshot.url}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                    >
+                      Download screenshot
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="px-6 pb-6 flex gap-2">
+              <button
+                onClick={() => {
+                  setShowApproveModal(false)
+                  setApproveScreenshot(null)
+                  setApproveMethod("")
+                  setSelectedRequest(null)
+                }}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={processingAction === selectedRequest?.id || approveUploading || !approveMethod}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processingAction === selectedRequest?.id ? "Approving…" : "Approve"}
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         {/* Reject modal */}
         <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
           <DialogContent className="max-w-md bg-white p-0">

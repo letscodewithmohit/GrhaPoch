@@ -623,7 +623,8 @@ apiClient.interceptors.response.use(
     }
 
     // Show error toast in development mode only
-    if (import.meta.env.DEV) {
+    const skipErrorToast = !!error?.config?.skipErrorToast;
+    if (import.meta.env.DEV && !skipErrorToast) {
       // Extract error messages from various possible locations
       const errorData = error.response?.data;
 

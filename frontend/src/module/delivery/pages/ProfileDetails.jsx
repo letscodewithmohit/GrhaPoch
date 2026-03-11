@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Plus, Edit2, ChevronRight, FileText, CheckCircle, XCircle, Eye, X } from "lucide-react"
 import BottomPopup from "../components/BottomPopup"
 import { toast } from "sonner"
-import { deliveryAPI } from "@/lib/api"
+import { deliveryAPI, uploadAPI } from "@/lib/api"
 
 export default function ProfileDetails() {
   const navigate = useNavigate()
@@ -23,6 +23,13 @@ export default function ProfileDetails() {
   })
   const [bankDetailsErrors, setBankDetailsErrors] = useState({})
   const [isUpdatingBankDetails, setIsUpdatingBankDetails] = useState(false)
+  const [showPayoutDetailsPopup, setShowPayoutDetailsPopup] = useState(false)
+  const [payoutDetails, setPayoutDetails] = useState({
+    upiId: "",
+    qrCode: null
+  })
+  const [isUpdatingPayoutDetails, setIsUpdatingPayoutDetails] = useState(false)
+  const [qrUploading, setQrUploading] = useState(false)
   const [vehicleError, setVehicleError] = useState("")
 
   // Note: All alternate phone related code has been removed
@@ -44,6 +51,10 @@ export default function ProfileDetails() {
             accountNumber: profileData?.documents?.bankDetails?.accountNumber || "",
             ifscCode: profileData?.documents?.bankDetails?.ifscCode || "",
             bankName: profileData?.documents?.bankDetails?.bankName || ""
+          })
+          setPayoutDetails({
+            upiId: profileData?.documents?.upiId || "",
+            qrCode: profileData?.documents?.qrCode || null
           })
         }
       } catch (error) {
@@ -68,6 +79,53 @@ export default function ProfileDetails() {
 
     fetchProfile()
   }, [navigate])
+
+  const handleQrUpload = async (file) => {
+    if (!file) return
+    if (!file.type?.startsWith("image/")) {
+      toast.error("Please upload a valid image")
+      return
+    }
+    setQrUploading(true)
+    try {
+      const res = await uploadAPI.uploadMedia(file, { folder: "delivery/qr-codes" })
+      const data = res?.data?.data
+      if (!data?.url) throw new Error("Upload failed")
+      setPayoutDetails((prev) => ({
+        ...prev,
+        qrCode: { url: data.url, publicId: data.publicId }
+      }))
+      toast.success("QR code uploaded")
+    } catch (error) {
+      console.error("Error uploading QR code:", error)
+      toast.error(error?.response?.data?.message || error.message || "Failed to upload QR code")
+    } finally {
+      setQrUploading(false)
+    }
+  }
+
+  const savePayoutDetails = async () => {
+    setIsUpdatingPayoutDetails(true)
+    try {
+      await deliveryAPI.updateProfile({
+        documents: {
+          upiId: payoutDetails.upiId?.trim() || "",
+          qrCode: payoutDetails.qrCode || null
+        }
+      })
+      toast.success("Payout details updated successfully")
+      setShowPayoutDetailsPopup(false)
+      const response = await deliveryAPI.getProfile()
+      if (response?.data?.success && response?.data?.data?.profile) {
+        setProfile(response.data.data.profile)
+      }
+    } catch (error) {
+      console.error("Error updating payout details:", error)
+      toast.error(error?.response?.data?.message || "Failed to update payout details")
+    } finally {
+      setIsUpdatingPayoutDetails(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -350,6 +408,49 @@ export default function ProfileDetails() {
             </div>
           </div>
         </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-gray-900">Payout methods</h2>
+            <button
+              onClick={() => {
+                setShowPayoutDetailsPopup(true)
+                setPayoutDetails({
+                  upiId: profile?.documents?.upiId || "",
+                  qrCode: profile?.documents?.qrCode || null
+                })
+              }}
+              className="text-green-600 font-medium text-sm flex items-center gap-1 hover:text-green-700"
+            >
+              <Edit2 className="w-4 h-4" />
+              <span>Edit</span>
+            </button>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm divide-y divide-gray-200">
+            <div className="p-2 px-3 flex items-center justify-between">
+              <div className="w-full align-center flex content-center justify-between">
+                <p className="text-sm text-gray-900 mb-1">UPI ID</p>
+                <p className="text-base text-gray-900">
+                  {profile?.documents?.upiId || "-"}
+                </p>
+              </div>
+            </div>
+            <div className="p-2 px-3 flex items-center justify-between">
+              <div className="w-full align-center flex content-center justify-between">
+                <p className="text-sm text-gray-900 mb-1">QR Code</p>
+                {profile?.documents?.qrCode?.url ? (
+                  <img
+                    src={profile.documents.qrCode.url}
+                    alt="QR Code"
+                    className="h-16 w-16 object-contain rounded border border-gray-200"
+                  />
+                ) : (
+                  <p className="text-base text-gray-900">-</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Vehicle Number Popup */}
@@ -612,6 +713,58 @@ export default function ProfileDetails() {
               }`}
           >
             {isUpdatingBankDetails ? "Updating..." : "Save Bank Details"}
+          </button>
+        </div>
+      </BottomPopup>
+
+      {/* Payout Details Popup */}
+      <BottomPopup
+        isOpen={showPayoutDetailsPopup}
+        onClose={() => setShowPayoutDetailsPopup(false)}
+        title="Edit Payout Details"
+        showCloseButton={true}
+        closeOnBackdropClick={true}
+        maxHeight="70vh"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID</label>
+            <input
+              type="text"
+              value={payoutDetails.upiId}
+              onChange={(e) => setPayoutDetails(prev => ({ ...prev, upiId: e.target.value }))}
+              placeholder="Enter UPI ID"
+              className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 border-gray-300"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">QR Code</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleQrUpload(e.target.files?.[0])}
+              className="w-full text-sm"
+            />
+            {qrUploading && (
+              <p className="text-xs text-gray-500 mt-2">Uploading...</p>
+            )}
+            {payoutDetails.qrCode?.url && (
+              <img
+                src={payoutDetails.qrCode.url}
+                alt="QR Code"
+                className="mt-3 h-24 w-24 object-contain rounded border border-gray-200"
+              />
+            )}
+          </div>
+          <button
+            onClick={savePayoutDetails}
+            disabled={isUpdatingPayoutDetails || qrUploading}
+            className={`w-full py-3 rounded-lg font-medium text-white transition-colors ${isUpdatingPayoutDetails || qrUploading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-[#00B761] hover:bg-[#00A055]"
+              }`}
+          >
+            {isUpdatingPayoutDetails ? "Updating..." : "Save Payout Details"}
           </button>
         </div>
       </BottomPopup>

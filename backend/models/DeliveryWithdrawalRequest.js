@@ -20,8 +20,9 @@ const deliveryWithdrawalRequestSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['bank_transfer', 'upi', 'card'],
-    required: true
+    enum: ['admin_select', 'bank_transfer', 'upi', 'qr_code', 'card'],
+    required: true,
+    default: 'admin_select'
   },
   bankDetails: {
     accountNumber: String,
@@ -30,6 +31,14 @@ const deliveryWithdrawalRequestSchema = new mongoose.Schema({
     bankName: String
   },
   upiId: String,
+  qrCode: {
+    url: String,
+    publicId: String
+  },
+  paymentScreenshot: {
+    url: String,
+    publicId: String
+  },
   requestedAt: {
     type: Date,
     default: Date.now

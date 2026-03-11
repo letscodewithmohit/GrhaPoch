@@ -740,11 +740,14 @@ export const deliveryAPI = {
   getWalletTransactions: (params = {}) => {
     return apiClient.get(API_ENDPOINTS.DELIVERY.WALLET_TRANSACTIONS, { params });
   },
+  getWithdrawalRequests: (params = {}) => {
+    return apiClient.get(API_ENDPOINTS.DELIVERY.WALLET_WITHDRAWAL_REQUESTS, { params });
+  },
   getWalletStats: (params = {}) => {
     return apiClient.get(API_ENDPOINTS.DELIVERY.WALLET_STATS, { params });
   },
-  createWithdrawalRequest: (data) => {
-    return apiClient.post(API_ENDPOINTS.DELIVERY.WALLET_WITHDRAW, data);
+  createWithdrawalRequest: (data, config = {}) => {
+    return apiClient.post(API_ENDPOINTS.DELIVERY.WALLET_WITHDRAW, data, config);
   },
   addEarning: (data) => {
     return apiClient.post(API_ENDPOINTS.DELIVERY.WALLET_EARNINGS, data);
@@ -1505,9 +1508,9 @@ export const adminAPI = {
   getDeliveryWithdrawalRequests: (params = {}) => {
     return apiClient.get(API_ENDPOINTS.ADMIN.DELIVERY_WITHDRAWAL_REQUESTS, { params });
   },
-  approveDeliveryWithdrawal: (id) => {
+  approveDeliveryWithdrawal: (id, data = {}) => {
     const sid = id != null ? String(id) : '';
-    return apiClient.post(API_ENDPOINTS.ADMIN.DELIVERY_WITHDRAWAL_APPROVE.replace(':id', sid));
+    return apiClient.post(API_ENDPOINTS.ADMIN.DELIVERY_WITHDRAWAL_APPROVE.replace(':id', sid), data);
   },
   rejectDeliveryWithdrawal: (id, rejectionReason = '') => {
     const sid = id != null ? String(id) : '';

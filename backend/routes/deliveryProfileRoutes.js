@@ -46,7 +46,12 @@ router.put('/profile', validate(Joi.object({
       accountNumber: Joi.string().trim().min(9).max(18).optional().allow(null, ''),
       ifscCode: Joi.string().trim().length(11).uppercase().optional().allow(null, ''),
       bankName: Joi.string().trim().min(2).max(100).optional().allow(null, '')
-    }).optional()
+    }).optional(),
+    upiId: Joi.string().trim().optional().allow(null, ''),
+    qrCode: Joi.object({
+      url: Joi.string().uri().optional().allow(null, ''),
+      publicId: Joi.string().trim().optional().allow(null, '')
+    }).optional().allow(null)
   }).optional()
 })), updateProfile);
 

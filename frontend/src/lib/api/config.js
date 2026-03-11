@@ -229,6 +229,7 @@ export const API_ENDPOINTS = {
     WALLET_TRANSACTIONS: '/delivery/wallet/transactions',
     WALLET_STATS: '/delivery/wallet/stats',
     WALLET_WITHDRAW: '/delivery/wallet/withdraw',
+    WALLET_WITHDRAWAL_REQUESTS: '/delivery/wallet/withdrawal/requests',
     WALLET_EARNINGS: '/delivery/wallet/earnings',
     WALLET_COLLECT_PAYMENT: '/delivery/wallet/collect-payment',
     CLAIM_JOINING_BONUS: '/delivery/wallet/claim-joining-bonus',

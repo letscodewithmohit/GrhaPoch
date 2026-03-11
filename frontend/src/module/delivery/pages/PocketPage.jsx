@@ -336,28 +336,33 @@ export default function PocketPage() {
     filter((t) => t.type === 'tip' && t.status === 'Completed').
     reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
+  const cashInHand = Number(walletState?.cashInHand ?? balances.cashInHand ?? 0);
+  const hasPocketBalance = walletState?.pocketBalance !== undefined && walletState?.pocketBalance !== null;
+
   // Pocket balance - shows total balance (includes bonus + tips)
   // Total balance = all earnings + bonus + tips - withdrawals
   // This is what delivery partner can withdraw
   // IMPORTANT: Use walletState.pocketBalance if available (from API), otherwise use totalBalance
-  let pocketBalance = walletState?.pocketBalance !== undefined ?
-    walletState.pocketBalance :
-    walletState?.totalBalance || balances.totalBalance || 0;
+  let pocketBalance = hasPocketBalance ?
+    Number(walletState.pocketBalance) || 0 :
+    (Number(walletState?.totalBalance ?? balances.totalBalance ?? 0) - cashInHand);
 
   // IMPORTANT: Ensure pocket balance includes bonus and tips
   // If backend totalBalance is 0 but we have bonus/tips, calculate it manually
   // This ensures bonus and tips are always reflected in pocket balance
-  if (pocketBalance === 0 && (totalBonus > 0 || totalTips > 0)) {
-    // If totalBalance is 0 but we have bonus/tips, pocket balance = bonus + tips
-    pocketBalance = totalBonus + totalTips;
-  } else if (pocketBalance > 0 && (totalBonus > 0 || totalTips > 0)) {
-    // Verify pocket balance includes bonus and tips
-    // Calculate expected: Earnings + Bonus + Tips - Withdrawals
-    const totalWithdrawn = balances.totalWithdrawn || 0;
-    const expectedBalance = weeklyEarnings + totalBonus + totalTips - totalWithdrawn;
-    // Use the higher value to ensure bonus and tips are included
-    if (expectedBalance > pocketBalance) {
-      pocketBalance = expectedBalance;
+  if (!hasPocketBalance) {
+    if (pocketBalance === 0 && (totalBonus > 0 || totalTips > 0)) {
+      // If totalBalance is 0 but we have bonus/tips, pocket balance = bonus + tips
+      pocketBalance = totalBonus + totalTips - cashInHand;
+    } else if (pocketBalance > 0 && (totalBonus > 0 || totalTips > 0)) {
+      // Verify pocket balance includes bonus and tips
+      // Calculate expected: Earnings + Bonus + Tips - Withdrawals
+      const totalWithdrawn = balances.totalWithdrawn || 0;
+      const expectedBalance = weeklyEarnings + totalBonus + totalTips - totalWithdrawn - cashInHand;
+      // Use the higher value to ensure bonus and tips are included
+      if (expectedBalance > pocketBalance) {
+        pocketBalance = expectedBalance;
+      }
     }
   }
 

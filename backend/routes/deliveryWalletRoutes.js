@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getWallet,
   getTransactions,
+  getWithdrawalRequests,
   createWithdrawalRequest,
   addEarning,
   collectPayment,
@@ -25,6 +26,7 @@ router.use(authenticate);
 // Wallet routes
 router.get('/', getWallet); // GET /api/delivery/wallet
 router.get('/transactions', getTransactions); // GET /api/delivery/wallet/transactions
+router.get('/withdrawal/requests', getWithdrawalRequests); // GET /api/delivery/wallet/withdrawal/requests
 router.get('/stats', getWalletStats); // GET /api/delivery/wallet/stats
 router.post('/withdraw', createWithdrawalRequest); // POST /api/delivery/wallet/withdraw
 router.post('/earnings', addEarning); // POST /api/delivery/wallet/earnings

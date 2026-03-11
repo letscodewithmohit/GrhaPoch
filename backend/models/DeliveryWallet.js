@@ -29,7 +29,7 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['bank_transfer', 'upi', 'card', 'cash', 'other'],
+    enum: ['admin_select', 'bank_transfer', 'upi', 'qr_code', 'card', 'cash', 'other'],
     sparse: true // Optional field
   },
   paymentCollected: {
@@ -66,8 +66,9 @@ const withdrawalRequestSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['bank_transfer', 'upi', 'card'],
-    required: true
+    enum: ['admin_select', 'bank_transfer', 'upi', 'qr_code', 'card'],
+    required: true,
+    default: 'admin_select'
   },
   bankDetails: {
     accountNumber: String,

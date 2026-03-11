@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, X } from "lucide-react";
+import { Check, Download, Eye, X, XCircle } from "lucide-react";
 import { adminAPI } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -19,6 +19,27 @@ export default function DeliveryBankDeposits() {
   const [selectedDeposit, setSelectedDeposit] = useState(null);
   const [rejectingDeposit, setRejectingDeposit] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+  const formatMoney = (value) => `\u20B9 ${Number(value || 0).toFixed(2)}`;
+  const formatDateTime = (value) => new Date(value).toLocaleString();
+  const getSlipList = (deposit) => {
+    if (Array.isArray(deposit?.slips) && deposit.slips.length) {
+      return deposit.slips.filter((s) => s?.url);
+    }
+    if (deposit?.slip?.url) return [deposit.slip];
+    return [];
+  };
+  const getStatusMeta = (status) => {
+    switch (status) {
+      case "approved":
+        return { label: "Approved", className: "bg-emerald-50 text-emerald-700 border border-emerald-200" };
+      case "rejected":
+        return { label: "Rejected", className: "bg-rose-50 text-rose-700 border border-rose-200" };
+      case "pending":
+        return { label: "Pending", className: "bg-amber-50 text-amber-700 border border-amber-200" };
+      default:
+        return { label: status || "Unknown", className: "bg-slate-100 text-slate-700 border border-slate-200" };
+    }
+  };
 
   const loadDeposits = async () => {
     try {
@@ -181,7 +202,6 @@ export default function DeliveryBankDeposits() {
             <tr>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Delivery Boy</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Amount</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Cash In Hand</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Status</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Submitted</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Txn</th>
@@ -192,74 +212,101 @@ export default function DeliveryBankDeposits() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan="8" className="px-4 py-6 text-center text-slate-500">Loading...</td>
+                <td colSpan="7" className="px-4 py-6 text-center text-slate-500">Loading...</td>
               </tr>
             )}
             {!loading && deposits.length === 0 && (
               <tr>
-                <td colSpan="8" className="px-4 py-6 text-center text-slate-500">No deposits found.</td>
+                <td colSpan="7" className="px-4 py-6 text-center text-slate-500">No deposits found.</td>
               </tr>
             )}
-            {!loading && deposits.map((d) => (
-              <tr key={d._id} className="border-t">
-                <td className="px-4 py-3">
-                  <div className="font-medium text-slate-900">{d.deliveryId?.name || "Unknown"}</div>
-                  <div className="text-xs text-slate-500">{d.deliveryId?.phone || d.deliveryId?.email || ""}</div>
-                </td>
-                <td className="px-4 py-3">₹ {Number(d.amount || 0).toFixed(2)}</td>
-                <td className="px-4 py-3">
-                  ₹ {Number(d.metadata?.cashInHandAtSubmit || d.metadata?.get?.("cashInHandAtSubmit") || 0).toFixed(2)}
-                </td>
-                <td className="px-4 py-3 capitalize">
-                  <div className="font-medium">{d.status}</div>
-                  {d.status === "rejected" && d.rejectionReason ? (
-                    <div className="text-xs text-rose-600 mt-0.5">{d.rejectionReason}</div>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3">{new Date(d.submittedAt || d.createdAt).toLocaleString()}</td>
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDeposit(d)}
-                    className="inline-flex items-center gap-1 text-blue-600 text-xs hover:underline"
-                  >
-                    <Eye className="w-4 h-4" />
-                    View
-                  </button>
-                </td>
-                <td className="px-4 py-3">
-                  {d.slips?.length || d.slip?.url ? (
+            {!loading && deposits.map((d) => {
+              const slips = getSlipList(d);
+              const statusMeta = getStatusMeta(d.status);
+              return (
+                <tr key={d._id} className="border-t">
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-slate-900">{d.deliveryId?.name || "Unknown"}</div>
+                    <div className="text-xs text-slate-500">{d.deliveryId?.phone || d.deliveryId?.email || ""}</div>
+                  </td>
+                  <td className="px-4 py-3">{formatMoney(d.amount)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${statusMeta.className}`}>
+                      {statusMeta.label}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">{formatDateTime(d.submittedAt || d.createdAt)}</td>
+                  <td className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => setSelectedDeposit(d)}
-                      className="text-blue-600 text-xs hover:underline"
+                      className="inline-flex items-center gap-1 text-blue-600 text-xs hover:underline"
                     >
-                      {d.slips?.length || (d.slip?.url ? 1 : 0)} file(s)
+                      <Eye className="w-4 h-4" />
+                      View
                     </button>
-                  ) : "-"}
-                </td>
-                <td className="px-4 py-3">
-                  {d.status === "pending" ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApprove(d._id)} className="px-3 py-1 text-xs rounded bg-emerald-600 text-white">Approve</button>
-                      <button onClick={() => handleReject(d)} className="px-3 py-1 text-xs rounded bg-rose-600 text-white">Reject</button>
-                    </div>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-4 py-3">
+                    {slips.length ? (
+                      <div className="flex flex-col gap-1">
+                        {slips.map((s, idx) => (
+                          <a
+                            key={`${s.url || idx}`}
+                            href={s.url}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 text-xs hover:underline"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Slip {idx + 1}
+                          </a>
+                        ))}
+                      </div>
+                    ) : "-"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {d.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(d._id)}
+                          title="Approve"
+                          aria-label="Approve"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded bg-emerald-600 text-white"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReject(d)}
+                          title="Reject"
+                          aria-label="Reject"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded bg-rose-600 text-white"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : d.status === "approved" ? (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Completed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        Closed
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {selectedDeposit && (() => {
-        const slips = selectedDeposit.slips?.length
-          ? selectedDeposit.slips
-          : selectedDeposit.slip?.url
-            ? [selectedDeposit.slip]
-            : [];
+        const slips = getSlipList(selectedDeposit);
+        const statusMeta = getStatusMeta(selectedDeposit.status);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
             <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
@@ -285,28 +332,26 @@ export default function DeliveryBankDeposits() {
                   </div>
                   <div>
                     <div className="text-xs text-slate-500">Amount</div>
-                    <div className="font-medium">â‚¹ {Number(selectedDeposit.amount || 0).toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500">Cash In Hand (submit)</div>
-                    <div className="font-medium">â‚¹ {Number(selectedDeposit.metadata?.cashInHandAtSubmit || selectedDeposit.metadata?.get?.("cashInHandAtSubmit") || 0).toFixed(2)}</div>
+                    <div className="font-medium">{formatMoney(selectedDeposit.amount)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500">Status</div>
-                    <div className="font-medium capitalize">{selectedDeposit.status}</div>
+                    <div className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${statusMeta.className}`}>{statusMeta.label}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500">Submitted</div>
-                    <div className="font-medium">{new Date(selectedDeposit.submittedAt || selectedDeposit.createdAt).toLocaleString()}</div>
+                    <div className="font-medium">{formatDateTime(selectedDeposit.submittedAt || selectedDeposit.createdAt)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500">Txn</div>
                     <div className="font-medium">{selectedDeposit.transactionId ? String(selectedDeposit.transactionId) : "-"}</div>
                   </div>
-                  <div>
-                    <div className="text-xs text-slate-500">Rejection Reason</div>
-                    <div className="font-medium text-rose-600">{selectedDeposit.rejectionReason || "-"}</div>
-                  </div>
+                  {selectedDeposit.status === "rejected" ? (
+                    <div>
+                      <div className="text-xs text-slate-500">Rejection Reason</div>
+                      <div className="font-medium text-rose-600">{selectedDeposit.rejectionReason || "-"}</div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div>
@@ -317,11 +362,15 @@ export default function DeliveryBankDeposits() {
                         <a
                           key={`${s.url || idx}`}
                           href={s.url}
+                          download
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block rounded border overflow-hidden hover:shadow"
+                          className="group relative block rounded border overflow-hidden hover:shadow"
                         >
                           <img src={s.url} alt={`Slip ${idx + 1}`} className="w-full h-28 object-cover" />
+                          <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                            Download
+                          </span>
                         </a>
                       ))}
                     </div>

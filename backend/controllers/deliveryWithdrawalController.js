@@ -45,6 +45,8 @@ export const getDeliveryWithdrawalRequests = asyncHandler(async (req, res) => {
       paymentMethod: r.paymentMethod,
       bankDetails: r.bankDetails,
       upiId: r.upiId,
+      qrCode: r.qrCode,
+      paymentScreenshot: r.paymentScreenshot,
       requestedAt: r.requestedAt,
       processedAt: r.processedAt,
       processedBy: r.processedBy ? { name: r.processedBy.name, email: r.processedBy.email } : null,
@@ -76,6 +78,7 @@ export const approveDeliveryWithdrawal = asyncHandler(async (req, res) => {
   try {
     const admin = req.admin;
     const { id } = req.params;
+    const { paymentScreenshot, paymentMethod } = req.body || {};
 
     if (!admin?._id) {
       return errorResponse(res, 401, 'Admin authentication required');
@@ -121,14 +124,59 @@ export const approveDeliveryWithdrawal = asyncHandler(async (req, res) => {
       return errorResponse(res, 400, 'Transaction not found or invalid. Reject this request and ask the delivery boy to create a new withdrawal.');
     }
 
+    const allowedMethods = ['bank_transfer', 'upi', 'qr_code'];
+    const inputMethod = typeof paymentMethod === 'string' ? paymentMethod.trim().toLowerCase() : '';
+    let selectedMethod = allowedMethods.includes(inputMethod) ? inputMethod : null;
+    const storedMethod = request.paymentMethod ? String(request.paymentMethod).toLowerCase() : '';
+    if (!selectedMethod && allowedMethods.includes(storedMethod)) {
+      selectedMethod = storedMethod;
+    }
+    if (!selectedMethod) {
+      return errorResponse(res, 400, 'Select payout method to approve the withdrawal');
+    }
+
+    const hasBankDetails = !!(
+      request.bankDetails?.accountHolderName &&
+      request.bankDetails?.accountNumber &&
+      request.bankDetails?.ifscCode &&
+      request.bankDetails?.bankName
+    );
+    if (selectedMethod === 'bank_transfer' && !hasBankDetails) {
+      return errorResponse(res, 400, 'Bank details are missing for this request');
+    }
+    if (selectedMethod === 'upi' && !request.upiId) {
+      return errorResponse(res, 400, 'UPI ID is missing for this request');
+    }
+    if (selectedMethod === 'qr_code' && !request.qrCode?.url) {
+      return errorResponse(res, 400, 'QR code is missing for this request');
+    }
+
+    let screenshotData = null;
+    if (paymentScreenshot) {
+      if (typeof paymentScreenshot === 'string') {
+        screenshotData = { url: paymentScreenshot };
+      } else if (paymentScreenshot?.url) {
+        screenshotData = {
+          url: paymentScreenshot.url,
+          publicId: paymentScreenshot.publicId || ''
+        };
+      }
+    }
+    if (!screenshotData?.url) {
+      return errorResponse(res, 400, 'Payment screenshot is required to approve the withdrawal');
+    }
+
     request.status = 'Approved';
     request.processedAt = new Date();
     request.processedBy = admin._id;
+    request.paymentScreenshot = screenshotData;
+    request.paymentMethod = selectedMethod;
     await request.save();
 
     t.status = 'Completed';
     t.processedAt = new Date();
     t.processedBy = admin._id;
+    t.paymentMethod = selectedMethod;
     wallet.totalWithdrawn = (wallet.totalWithdrawn || 0) + request.amount;
     wallet.markModified('transactions');
     await wallet.save();

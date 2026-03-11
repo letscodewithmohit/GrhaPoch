@@ -97,6 +97,31 @@ export default function LimitSettlement() {
     }
   }
 
+  const getStatusMessage = (tx) => {
+    const status = tx.status?.toLowerCase()
+    if (status === "pending") {
+      return "Bank deposit pending approval"
+    }
+    if (status === "completed" || status === "approved") {
+      return "Deposit approved. Available limit updated."
+    }
+    if (status === "failed" || status === "rejected" || status === "denied") {
+      return "Bank deposit rejected"
+    }
+    return tx.description || "Available limit settlement"
+  }
+
+  const getNextStep = (tx) => {
+    const status = tx.status?.toLowerCase()
+    if (status === "failed" || status === "rejected" || status === "denied") {
+      return "Next step: Submit a new bank deposit with a clear slip and full cash-in-hand amount."
+    }
+    if (status === "pending") {
+      return "Next step: Wait for admin approval."
+    }
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden pb-24 md:pb-6">
       {/* Header */}
@@ -144,11 +169,16 @@ export default function LimitSettlement() {
                         {formatCurrency(tx.amount)}
                       </p>
                       <p className="text-gray-600 text-sm mb-1">
-                        {tx.description}
+                        {getStatusMessage(tx)}
                       </p>
-                      {tx.failureReason ? (
+                      {tx.failureReason && ["failed", "rejected", "denied"].includes(tx.status?.toLowerCase()) ? (
                         <p className="text-rose-600 text-xs mb-1">
                           Reason: {tx.failureReason}
+                        </p>
+                      ) : null}
+                      {getNextStep(tx) ? (
+                        <p className="text-slate-500 text-xs mb-1">
+                          {getNextStep(tx)}
                         </p>
                       ) : null}
                       <p className="text-gray-500 text-xs">Date: {tx.date}</p>

@@ -243,7 +243,7 @@ export const fetchWalletTransactions = async (params = {}) => {
 /**
  * Create withdrawal request
  * @param {number} amount - Withdrawal amount
- * @param {string} paymentMethod - Payment method (bank_transfer, upi, card)
+ * @param {string} paymentMethod - Payment method (bank_transfer, upi, qr_code, card)
  * @param {Object} details - Additional details (bankDetails, upiId, etc.)
  * @returns {Promise<Object>} - Created transaction
  */

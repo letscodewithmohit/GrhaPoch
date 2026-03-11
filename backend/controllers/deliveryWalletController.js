@@ -174,8 +174,8 @@ export const getWallet = asyncHandler(async (req, res) => {
       totalCashLimit: totalCashLimit,
       availableCashLimit: Math.max(0, totalCashLimit - cashInHandForLimit),
       deliveryWithdrawalLimit: withdrawalLimit,
-      // Pocket balance = total balance (includes bonus, earnings, etc.)
-      pocketBalance: wallet.totalBalance || 0,
+      // Pocket balance = total balance - cash in hand (withdrawable amount)
+      pocketBalance: Math.max(0, (wallet.totalBalance || 0) - cashInHandForLimit),
       pendingWithdrawals: pendingWithdrawals,
       joiningBonusClaimed: wallet.joiningBonusClaimed || false,
       joiningBonusAmount: wallet.joiningBonusAmount || 0,
@@ -279,40 +279,83 @@ export const getTransactions = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Get Delivery Withdrawal Requests (for delivery partner)
+ * GET /api/delivery/wallet/withdrawal/requests
+ */
+export const getWithdrawalRequests = asyncHandler(async (req, res) => {
+  try {
+    const delivery = req.delivery;
+    const { status, page = 1, limit = 50 } = req.query;
+
+    const query = { deliveryId: delivery._id };
+    if (status && ['Pending', 'Approved', 'Rejected', 'Processed'].includes(status)) {
+      query.status = status;
+    }
+
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const requests = await DeliveryWithdrawalRequest.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit, 10))
+      .lean();
+
+    const total = await DeliveryWithdrawalRequest.countDocuments(query);
+
+    const list = requests.map((r) => ({
+      id: r._id,
+      amount: r.amount,
+      status: r.status,
+      paymentMethod: r.paymentMethod,
+      bankDetails: r.bankDetails,
+      upiId: r.upiId,
+      qrCode: r.qrCode,
+      paymentScreenshot: r.paymentScreenshot,
+      rejectionReason: r.rejectionReason,
+      requestedAt: r.requestedAt,
+      processedAt: r.processedAt,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt
+    }));
+
+    return successResponse(res, 200, 'Withdrawal requests retrieved successfully', {
+      requests: list,
+      pagination: {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        total,
+        pages: Math.ceil(total / parseInt(limit, 10))
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching withdrawal requests:', error);
+    return errorResponse(res, 500, 'Failed to fetch withdrawal requests');
+  }
+});
+
+/**
  * Create Withdrawal Request
  * POST /api/delivery/wallet/withdraw
  */
 const createWithdrawalSchema = Joi.object({
   amount: Joi.number().positive().required(),
-  paymentMethod: Joi.string().valid('bank_transfer', 'upi', 'card').required(),
+  paymentMethod: Joi.string().valid('admin_select', 'bank_transfer', 'upi', 'qr_code', 'card').optional(),
   bankDetails: Joi.object({
-    accountNumber: Joi.string().when('paymentMethod', {
-      is: 'bank_transfer',
-      then: Joi.required()
-    }),
-    ifscCode: Joi.string().when('paymentMethod', {
-      is: 'bank_transfer',
-      then: Joi.required()
-    }),
-    accountHolderName: Joi.string().when('paymentMethod', {
-      is: 'bank_transfer',
-      then: Joi.required()
-    }),
-    bankName: Joi.string().when('paymentMethod', {
-      is: 'bank_transfer',
-      then: Joi.required()
-    })
-  }).optional(),
-  upiId: Joi.string().when('paymentMethod', {
-    is: 'upi',
-    then: Joi.required()
-  }).optional()
-});
+    accountNumber: Joi.string().allow('', null),
+    ifscCode: Joi.string().allow('', null),
+    accountHolderName: Joi.string().allow('', null),
+    bankName: Joi.string().allow('', null)
+  }).optional().allow(null),
+  upiId: Joi.string().allow('', null).optional(),
+  qrCode: Joi.object({
+    url: Joi.string().uri().allow('', null),
+    publicId: Joi.string().optional().allow(null, '')
+  }).optional().allow(null)
+}).unknown(true);
 
 export const createWithdrawalRequest = asyncHandler(async (req, res) => {
   try {
     const delivery = req.delivery;
-    const { amount, paymentMethod, bankDetails, upiId } = req.body;
+    const { amount, bankDetails, upiId, qrCode } = req.body;
 
     // Validation
     const { error: validationError } = createWithdrawalSchema.validate(req.body);
@@ -322,6 +365,11 @@ export const createWithdrawalRequest = asyncHandler(async (req, res) => {
 
     // Find or create wallet
     let wallet = await DeliveryWallet.findOrCreateByDeliveryId(delivery._id);
+
+    const cashInHand = Number(wallet.cashInHand) || 0;
+    if (cashInHand > 0.01) {
+      return errorResponse(res, 400, `Please deposit cash in hand (â‚¹${cashInHand.toFixed(2)}) before requesting withdrawal.`);
+    }
 
     // Check minimum withdrawal amount (from BusinessSettings)
     let minWithdrawalAmount = 100;
@@ -341,16 +389,49 @@ export const createWithdrawalRequest = asyncHandler(async (req, res) => {
     }
     // Withdrawal allowed only when withdrawable >= limit (enforced via min amount check above)
 
+    const profileDocs = delivery?.documents || {};
+    const resolvedBankDetails = profileDocs.bankDetails || bankDetails || null;
+    const resolvedUpiId = profileDocs.upiId || upiId || null;
+    const resolvedQrCode = profileDocs.qrCode || qrCode || null;
+
+    const bankCandidate = resolvedBankDetails || {};
+    const accountHolderName = bankCandidate.accountHolderName ? String(bankCandidate.accountHolderName).trim() : '';
+    const accountNumber = bankCandidate.accountNumber ? String(bankCandidate.accountNumber).trim() : '';
+    const ifscCode = bankCandidate.ifscCode ? String(bankCandidate.ifscCode).trim() : '';
+    const bankName = bankCandidate.bankName ? String(bankCandidate.bankName).trim() : '';
+    const hasBankDetails = !!(accountHolderName && accountNumber && ifscCode && bankName);
+    const normalizedBankDetails = hasBankDetails ? {
+      accountHolderName,
+      accountNumber,
+      ifscCode,
+      bankName
+    } : null;
+
+    const normalizedUpiId = resolvedUpiId && String(resolvedUpiId).trim()
+      ? String(resolvedUpiId).trim()
+      : null;
+
+    const qrUrl = resolvedQrCode?.url ? String(resolvedQrCode.url).trim() : '';
+    const normalizedQrCode = qrUrl ? {
+      url: qrUrl,
+      publicId: resolvedQrCode.publicId || ''
+    } : null;
+
+    if (!normalizedBankDetails && !normalizedUpiId && !normalizedQrCode) {
+      return errorResponse(res, 400, 'Add payout details (bank/UPI/QR) in profile before requesting withdrawal');
+    }
+
     // Create withdrawal transaction (Pending)
     wallet.addTransaction({
       amount: amount,
       type: 'withdrawal',
       status: 'Pending',
-      description: `Withdrawal request via ${paymentMethod}`,
-      paymentMethod: paymentMethod,
+      description: 'Withdrawal request created',
+      paymentMethod: 'admin_select',
       metadata: {
-        bankDetails: bankDetails || null,
-        upiId: upiId || null
+        bankDetails: normalizedBankDetails || null,
+        upiId: normalizedUpiId || null,
+        qrCode: normalizedQrCode || null
       }
     });
 
@@ -372,9 +453,10 @@ export const createWithdrawalRequest = asyncHandler(async (req, res) => {
       deliveryId: delivery._id,
       amount,
       status: 'Pending',
-      paymentMethod,
-      bankDetails: paymentMethod === 'bank_transfer' ? bankDetails : undefined,
-      upiId: paymentMethod === 'upi' ? upiId : undefined,
+      paymentMethod: 'admin_select',
+      bankDetails: normalizedBankDetails || undefined,
+      upiId: normalizedUpiId || undefined,
+      qrCode: normalizedQrCode || undefined,
       transactionId,
       walletId: wallet._id,
       deliveryName,
@@ -384,7 +466,7 @@ export const createWithdrawalRequest = asyncHandler(async (req, res) => {
     logger.info(`Withdrawal request created for delivery: ${delivery._id}`, {
       deliveryId: delivery.deliveryId,
       amount,
-      paymentMethod,
+      paymentMethod: 'admin_select',
       transactionId,
       requestId: withdrawalRequest._id
     });

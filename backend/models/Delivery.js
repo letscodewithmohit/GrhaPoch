@@ -64,6 +64,11 @@ const documentsSchema = new mongoose.Schema({
     ifscCode: String,
     accountHolderName: String,
     bankName: String
+  },
+  upiId: String,
+  qrCode: {
+    url: String,
+    publicId: String
   }
 }, { _id: false });
 
