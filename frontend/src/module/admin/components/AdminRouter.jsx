@@ -58,6 +58,7 @@ import DeliveryWithdrawal from "../pages/DeliveryWithdrawal";
 import DeliveryBoyWallet from "../pages/DeliveryBoyWallet";
 import DeliveryEmergencyHelp from "../pages/DeliveryEmergencyHelp";
 import DeliverySupportTickets from "../pages/DeliverySupportTickets";
+import DeliveryBankDeposits from "../pages/delivery/DeliveryBankDeposits";
 import JoinRequest from "../pages/delivery-partners/JoinRequest";
 import AddDeliveryman from "../pages/delivery-partners/AddDeliveryman";
 import DeliverymanList from "../pages/delivery-partners/DeliverymanList";
@@ -241,6 +242,7 @@ export default function AdminRouter() {
         <Route path="delivery-partners/earning-addon" element={<EarningAddon />} />
         <Route path="delivery-partners/earning-addon-history" element={<EarningAddonHistory />} />
         <Route path="delivery-partners/earnings" element={<DeliveryEarnings />} />
+        <Route path="delivery-bank-deposits" element={<DeliveryBankDeposits />} />
 
         {/* DISBURSEMENT MANAGEMENT */}
         <Route path="restaurant-disbursement" element={<RestaurantDisbursement />} />

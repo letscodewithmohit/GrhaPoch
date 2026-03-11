@@ -110,6 +110,37 @@ const businessSettingsSchema = new mongoose.Schema(
       default: 0,
       min: 0
     },
+    // Bank deposit details for delivery cash deposits
+    bankName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    accountHolder: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    accountNumber: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    ifsc: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    branch: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    approvalTime: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',

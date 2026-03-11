@@ -252,6 +252,8 @@ deliveryWalletSchema.methods.updateTransactionStatus = function (transactionId, 
       if (transaction.paymentCollected) {
         this.cashInHand += oldAmount;
       }
+    } else if (transaction.type === 'deposit') {
+      this.cashInHand = Math.max(0, (this.cashInHand || 0) - oldAmount);
     } else if (transaction.type === 'withdrawal') {
       this.totalBalance -= oldAmount;
       this.totalWithdrawn += oldAmount;

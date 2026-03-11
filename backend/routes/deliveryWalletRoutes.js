@@ -10,6 +10,11 @@ import {
   createDepositOrder,
   verifyDepositPayment
 } from '../controllers/deliveryWalletController.js';
+import {
+  getBankDepositDetails,
+  createBankDeposit
+} from '../controllers/deliveryBankDepositController.js';
+import { uploadMiddleware } from '../utils/cloudinaryService.js';
 import { authenticate } from '../middleware/delivery.auth.js';
 
 const router = express.Router();
@@ -27,6 +32,15 @@ router.post('/collect-payment', collectPayment); // POST /api/delivery/wallet/co
 router.post('/claim-joining-bonus', claimJoiningBonus); // POST /api/delivery/wallet/claim-joining-bonus
 router.post('/deposit/create-order', createDepositOrder); // POST /api/delivery/wallet/deposit/create-order
 router.post('/deposit/verify', verifyDepositPayment); // POST /api/delivery/wallet/deposit/verify
+router.get('/deposit/bank/details', getBankDepositDetails); // GET /api/delivery/wallet/deposit/bank/details
+router.post(
+  '/deposit/bank',
+  uploadMiddleware.fields([
+    { name: 'slips', maxCount: 5 },
+    { name: 'slip', maxCount: 1 }
+  ]),
+  createBankDeposit
+); // POST /api/delivery/wallet/deposit/bank
 
 export default router;
 

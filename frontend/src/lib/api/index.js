@@ -761,6 +761,12 @@ export const deliveryAPI = {
   verifyDepositPayment: (data) => {
     return apiClient.post(API_ENDPOINTS.DELIVERY.WALLET_DEPOSIT_VERIFY, data);
   },
+  getBankDepositDetails: () => {
+    return apiClient.get(API_ENDPOINTS.DELIVERY.WALLET_DEPOSIT_BANK_DETAILS);
+  },
+  submitBankDeposit: (data, config = {}) => {
+    return apiClient.post(API_ENDPOINTS.DELIVERY.WALLET_DEPOSIT_BANK_SUBMIT, data, config);
+  },
   getOrderStats: (period = 'all') => {
     return apiClient.get(API_ENDPOINTS.DELIVERY.ORDER_STATS, { params: { period } });
   },
@@ -1158,6 +1164,15 @@ export const adminAPI = {
   // Get all delivery partners
   getDeliveryEarnings: (params = {}) => {
     return apiClient.get('/admin/delivery-partners/earnings', { params });
+  },
+  getDeliveryBankDeposits: (params = {}) => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.DELIVERY_BANK_DEPOSITS, { params });
+  },
+  approveDeliveryBankDeposit: (id) => {
+    return apiClient.post(API_ENDPOINTS.ADMIN.DELIVERY_BANK_DEPOSIT_APPROVE.replace(':id', id));
+  },
+  rejectDeliveryBankDeposit: (id, reason = '') => {
+    return apiClient.post(API_ENDPOINTS.ADMIN.DELIVERY_BANK_DEPOSIT_REJECT.replace(':id', id), { reason });
   },
 
   getDeliveryPartners: (params = {}) => {

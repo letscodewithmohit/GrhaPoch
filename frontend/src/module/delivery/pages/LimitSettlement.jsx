@@ -31,6 +31,7 @@ export default function LimitSettlement() {
           amount: t.amount || 0,
           status: t.status || "Pending",
           description: t.description || "Available limit settlement",
+          failureReason: t.failureReason || "",
           date:
             t.date || t.createdAt
               ? new Date(t.date || t.createdAt).toLocaleDateString("en-IN", {
@@ -145,6 +146,11 @@ export default function LimitSettlement() {
                       <p className="text-gray-600 text-sm mb-1">
                         {tx.description}
                       </p>
+                      {tx.failureReason ? (
+                        <p className="text-rose-600 text-xs mb-1">
+                          Reason: {tx.failureReason}
+                        </p>
+                      ) : null}
                       <p className="text-gray-500 text-xs">Date: {tx.date}</p>
                     </div>
                   </div>

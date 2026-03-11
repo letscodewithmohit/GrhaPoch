@@ -4,6 +4,7 @@ import DeliveryWallet from '../models/DeliveryWallet.js';
 import DeliveryWithdrawalRequest from '../models/DeliveryWithdrawalRequest.js';
 import Order from '../models/Order.js';
 import BusinessSettings from '../models/BusinessSettings.js';
+import DeliveryBankDeposit from '../models/DeliveryBankDeposit.js';
 import { validate } from '../middleware/validate.js';
 import Joi from 'joi';
 import winston from 'winston';
@@ -748,6 +749,22 @@ export const createDepositOrder = asyncHandler(async (req, res) => {
     return errorResponse(res, 400, 'Maximum deposit amount is ₹5,00,000');
   }
 
+  const latestBank = await DeliveryBankDeposit.findOne({
+    deliveryId: delivery._id
+  }).sort({ createdAt: -1 }).lean();
+  if (latestBank && latestBank.status !== 'approved') {
+    return errorResponse(res, 400, 'Bank deposit is pending or rejected. Please complete bank deposit first.');
+  }
+
+  const wallet = await DeliveryWallet.findOrCreateByDeliveryId(delivery._id);
+  const cashInHand = Number(wallet.cashInHand) || 0;
+  if (cashInHand < 1) {
+    return errorResponse(res, 400, 'No cash in hand to deposit');
+  }
+  if (Math.abs(cashInHand - amount) > 0.01) {
+    return errorResponse(res, 400, `Deposit must be full cash-in-hand amount (₹${cashInHand.toFixed(2)}).`);
+  }
+
   let credentials;
   try {
     credentials = await getRazorpayCredentials();
@@ -815,10 +832,20 @@ export const verifyDepositPayment = asyncHandler(async (req, res) => {
     return errorResponse(res, 400, 'Invalid payment signature');
   }
 
+  const latestBank = await DeliveryBankDeposit.findOne({
+    deliveryId: delivery._id
+  }).sort({ createdAt: -1 }).lean();
+  if (latestBank && latestBank.status !== 'approved') {
+    return errorResponse(res, 400, 'Bank deposit is pending or rejected. Please complete bank deposit first.');
+  }
+
   const wallet = await DeliveryWallet.findOrCreateByDeliveryId(delivery._id);
   const cashInHand = Number(wallet.cashInHand) || 0;
-  if (cashInHand < amt) {
-    return errorResponse(res, 400, `Insufficient cash in hand (₹${cashInHand.toFixed(2)}). Deposit amount cannot exceed cash in hand.`);
+  if (cashInHand < 1) {
+    return errorResponse(res, 400, 'No cash in hand to deposit');
+  }
+  if (Math.abs(cashInHand - amt) > 0.01) {
+    return errorResponse(res, 400, `Deposit must be full cash-in-hand amount (₹${cashInHand.toFixed(2)}).`);
   }
 
   const pid = (t) => t.metadata?.get ? t.metadata.get('razorpayPaymentId') : t.metadata?.razorpayPaymentId;
@@ -859,3 +886,7 @@ export const verifyDepositPayment = asyncHandler(async (req, res) => {
     availableCashLimit
   });
 });
+
+
+
+

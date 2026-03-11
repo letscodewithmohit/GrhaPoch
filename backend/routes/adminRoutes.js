@@ -233,6 +233,11 @@ import zoneRoutes from './zoneRoutes.js';
 import { authenticateAdmin } from '../middleware/admin.auth.js';
 import { getAllDonations, getAllTips } from '../controllers/donationController.js';
 import { uploadMiddleware } from '../utils/cloudinaryService.js';
+import {
+  listBankDeposits,
+  approveBankDeposit,
+  rejectBankDeposit
+} from '../controllers/deliveryBankDepositController.js';
 
 const router = express.Router();
 
@@ -246,6 +251,9 @@ router.get('/dashboard/stats', getDashboardStats);
 router.get('/delivery-cash-limit', getDeliveryCashLimit);
 router.put('/delivery-cash-limit', updateDeliveryCashLimit);
 router.get('/cash-limit-settlement', getCashLimitSettlements);
+router.get('/delivery-bank-deposits', listBankDeposits);
+router.post('/delivery-bank-deposits/:id/approve', approveBankDeposit);
+router.post('/delivery-bank-deposits/:id/reject', rejectBankDeposit);
 
 // Delivery withdrawal requests (admin)
 router.get('/delivery-withdrawal/requests', getDeliveryWithdrawalRequests);

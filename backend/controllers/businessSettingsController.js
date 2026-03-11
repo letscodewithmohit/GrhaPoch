@@ -64,7 +64,13 @@ export const updateBusinessSettings = asyncHandler(async (req, res) => {
       maintenanceMode,
       donationAmounts,
       deliveryTipAmounts,
-      subscriptionExpiryWarningDays
+      subscriptionExpiryWarningDays,
+      bankName,
+      accountHolder,
+      accountNumber,
+      ifsc,
+      branch,
+      approvalTime
     } = req.body;
 
     // Get existing settings
@@ -117,6 +123,12 @@ export const updateBusinessSettings = asyncHandler(async (req, res) => {
     if (subscriptionExpiryWarningDays !== undefined) {
       settings.subscriptionExpiryWarningDays = Number(subscriptionExpiryWarningDays) || 5;
     }
+    if (bankName !== undefined) settings.bankName = bankName;
+    if (accountHolder !== undefined) settings.accountHolder = accountHolder;
+    if (accountNumber !== undefined) settings.accountNumber = accountNumber;
+    if (ifsc !== undefined) settings.ifsc = ifsc;
+    if (branch !== undefined) settings.branch = branch;
+    if (approvalTime !== undefined) settings.approvalTime = approvalTime;
 
     // Handle logo upload
     if (req.files && req.files.logo && req.files.logo.length > 0) {
