@@ -263,6 +263,9 @@ const createQrCode = async (options) => {
           username: keyId,
           password: keySecret
         },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         timeout: 15000
       }
     );
@@ -272,17 +275,33 @@ const createQrCode = async (options) => {
       throw new Error('Invalid QR response from Razorpay');
     }
 
-    logger.info(`Razorpay QR created successfully: ${qr.id}`);
+    const requestId = qrResponse?.headers?.['x-razorpay-request-id'];
+    logger.info(`Razorpay QR created successfully: ${qr.id}`, {
+      requestId
+    });
     return qr;
   } catch (error) {
     const statusCode = error?.response?.status || error?.statusCode;
     const responseData = error?.response?.data;
+    const requestId = error?.response?.headers?.['x-razorpay-request-id'];
+    const requestUrl = error?.config?.url;
+    const requestMethod = error?.config?.method;
+    let requestPayload = null;
+    try {
+      requestPayload = error?.config?.data ? JSON.parse(error.config.data) : null;
+    } catch {
+      requestPayload = error?.config?.data || null;
+    }
     logger.error(`Error creating Razorpay QR:`, {
       message: error.message,
       error: error.error || error.description || error,
       statusCode: statusCode,
       status: error.status,
-      responseData
+      responseData,
+      requestId,
+      requestUrl,
+      requestMethod,
+      requestPayload
     });
 
     const razorpayMessage =
