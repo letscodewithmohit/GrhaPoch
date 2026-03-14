@@ -224,18 +224,12 @@ export default function SubscriptionPage() {
                         await fetchStatus();
                         setSubmittingPlanId(null);
 
-                        // Navigate to success page with data
-                        const subData = verifyRes.data.data.subscription;
-                        navigate('/restaurant/subscription-success', {
-                            state: {
-                                planName: plan.name,
-                                endDate: subData.endDate
-                            }
-                        });
+                        // Directly take restaurant to dashboard (no back to onboarding)
+                        navigate('/restaurant/to-hub', { replace: true });
                     } catch (error) {
-                        console.error('Payment verification failed details:', error.response?.data || error.message);
-                        toast.error(error.response?.data?.message || 'Payment verification failed.');
-                        setSubmittingPlanId(null);
+                      console.error('Payment verification failed details:', error.response?.data || error.message);
+                      toast.error(error.response?.data?.message || 'Payment verification failed.');
+                      setSubmittingPlanId(null);
                     }
                 },
                 prefill: {

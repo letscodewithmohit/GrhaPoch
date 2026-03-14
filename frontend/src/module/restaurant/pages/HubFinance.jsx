@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Menu, ChevronDown, Calendar, Download, ArrowRight, FileText, Wallet, X } from "lucide-react";
+import { Bell, Menu, ChevronDown, Calendar, Download, ArrowRight, FileText, Wallet, X, Check, CreditCard, Smartphone } from "lucide-react";
 import BottomNavOrders from "../components/BottomNavOrders";
 import { restaurantAPI } from "@/lib/api";
 
@@ -26,6 +26,7 @@ export default function HubFinance() {
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false);
+  const [showPayoutDetails, setShowPayoutDetails] = useState(false);
 
   // Fetch finance data on mount
   useEffect(() => {
@@ -683,20 +684,32 @@ export default function HubFinance() {
                       {financeData?.currentCycle?.totalOrders || 0} {financeData?.currentCycle?.totalOrders === 1 ? 'order' : 'orders'}
                     </p>
                     {(financeData?.currentCycle?.estimatedPayout || 0) > 0 &&
-                <button
-                  onClick={() => setShowWithdrawalModal(true)}
-                  className="w-full bg-black text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors mt-4">
-                  
-                        <Wallet className="h-5 w-5" />
-                        Withdraw
+                      <div className="flex flex-col gap-2 mt-4">
+                        <button
+                          onClick={() => setShowWithdrawalModal(true)}
+                          className="w-full bg-black text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors">
+                          <Wallet className="h-5 w-5" />
+                          Withdraw
+                        </button>
+                        <button
+                          onClick={() => navigate("/restaurant/withdrawal-history")}
+                          className="w-full bg-white text-black border border-black py-2.5 px-4 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                          View Withdrawal History
+                        </button>
+                      </div>
+                    }
+                    {(financeData?.currentCycle?.estimatedPayout || 0) <= 0 &&
+                      <button
+                        onClick={() => navigate("/restaurant/withdrawal-history")}
+                        className="w-full bg-white text-gray-700 border border-gray-300 py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors mt-4">
+                        View Withdrawal History
                       </button>
-                }
+                    }
                   </>
-              }
+                }
               </div>
             </div>
 
-            {/* Past cycles */}
             <div>
               <h2 className="text-base font-bold text-gray-900 mb-3">Past cycles</h2>
               <div className="space-y-3">
@@ -997,22 +1010,115 @@ export default function HubFinance() {
                   <p className="text-sm text-gray-600 mb-2">
                     Available Balance: <span className="font-semibold text-gray-900">₹{(financeData?.currentCycle?.estimatedPayout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </p>
+
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700">Payout details</label>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mb-2">Admin will choose the payout method using your saved details.</p>
+                    
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] text-gray-600">
+                        Saved methods: {
+                          (() => {
+                            let count = 0;
+                            if (financeData?.restaurant?.onboarding?.step3?.bank?.accountNumber) count++;
+                            if (financeData?.restaurant?.onboarding?.step3?.bank?.upiId) count++;
+                            if (financeData?.restaurant?.onboarding?.step3?.bank?.qrCode?.url) count++;
+                            return count;
+                          })()
+                        }
+                      </span>
+                      <button 
+                        onClick={() => navigate('/restaurant/update-bank-details')}
+                        className="text-[10px] font-medium text-blue-600 hover:text-blue-700"
+                      >
+                        Update payout details
+                      </button>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200">
+                      <button
+                        onClick={() => setShowPayoutDetails(!showPayoutDetails)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <span>View saved payout details</span>
+                        <ChevronDown className={`w-3 h-3 transition-transform ${showPayoutDetails ? 'rotate-180' : ''}`} />
+                      </button>
+                      <AnimatePresence>
+                        {showPayoutDetails && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden border-t border-gray-100"
+                          >
+                            <div className="p-3 space-y-3">
+                              {/* Bank Details */}
+                              <div className="bg-gray-50 rounded-md p-2">
+                                <p className="text-[10px] font-bold text-gray-800 uppercase mb-1">Bank Transfer</p>
+                                {financeData?.restaurant?.onboarding?.step3?.bank?.accountNumber ? (
+                                  <div className="text-[10px] text-gray-600 space-y-0.5">
+                                    <p>{financeData.restaurant.onboarding.step3.bank.accountHolderName}</p>
+                                    <p>A/C {financeData.restaurant.onboarding.step3.bank.accountNumber}</p>
+                                    <p>{financeData.restaurant.onboarding.step3.bank.ifscCode}</p>
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-red-500 italic">Not provided</p>
+                                )}
+                              </div>
+                              {/* UPI Details */}
+                              <div className="bg-gray-50 rounded-md p-2">
+                                <p className="text-[10px] font-bold text-gray-800 uppercase mb-1">UPI</p>
+                                {financeData?.restaurant?.onboarding?.step3?.bank?.upiId ? (
+                                  <p className="text-[10px] text-gray-600">ID: {financeData.restaurant.onboarding.step3.bank.upiId}</p>
+                                ) : (
+                                  <p className="text-[10px] text-red-500 italic">Not provided</p>
+                                )}
+                              </div>
+                              {/* QR Code */}
+                              <div className="bg-gray-50 rounded-md p-2">
+                                <p className="text-[10px] font-bold text-gray-800 uppercase mb-1">QR Code</p>
+                                {financeData?.restaurant?.onboarding?.step3?.bank?.qrCode?.url ? (
+                                  <p className="text-[10px] text-emerald-600 flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> QR code uploaded
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-red-500 italic">Not provided</p>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Enter Amount to Withdraw
                   </label>
                   <input
-                  type="number"
-                  min="0.01"
-                  max={financeData?.currentCycle?.estimatedPayout || 0}
-                  step="0.01"
-                  value={withdrawalAmount}
-                  onChange={(e) => setWithdrawalAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none" />
+                    type="number"
+                    min="1"
+                    max={financeData?.currentCycle?.estimatedPayout || 0}
+                    step="1"
+                    value={withdrawalAmount}
+                    onChange={(e) => setWithdrawalAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none mb-3"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setWithdrawalAmount(String(financeData?.currentCycle?.estimatedPayout || 0))}
+                    className="w-full py-2.5 text-xs font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Use full amount (₹{(financeData?.currentCycle?.estimatedPayout || 0).toLocaleString('en-IN')})
+                  </button>
                 
-                  {withdrawalAmount && parseFloat(withdrawalAmount) > (financeData?.currentCycle?.estimatedPayout || 0) &&
-                <p className="text-sm text-red-600 mt-1">Amount cannot exceed available balance</p>
-                }
+                  {withdrawalAmount && parseFloat(withdrawalAmount) > (financeData?.currentCycle?.estimatedPayout || 0) && (
+                    <p className="text-sm text-red-600 mt-1 mb-3">Amount cannot exceed available balance</p>
+                  )}
                 </div>
 
                 <div className="flex gap-3">

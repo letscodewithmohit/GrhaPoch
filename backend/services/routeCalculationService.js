@@ -95,9 +95,28 @@ function dijkstra(nodes, edges, startId, endId) {
  * @returns {Promise<Object>} {coordinates: [[lat, lng]], distance: number, duration: number}
  */
 export async function calculateRouteOSRM(startLat, startLng, endLat, endLng) {
+  // Optional kill switch: skip OSRM completely unless explicitly enabled.
+  if (process.env.ENABLE_OSRM !== 'true') {
+    const distance = haversineDistance(startLat, startLng, endLat, endLng);
+    return {
+      success: true,
+      coordinates: [[startLat, startLng], [endLat, endLng]],
+      distance,
+      duration: distance / 30 * 60, // assume 30 km/h
+      method: 'haversine_disabled_osrm'
+    };
+  }
+
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
-    const response = await fetch(url);
+
+    // Guard against hanging network calls (common on locked-down or offline networks).
+    const controller = new AbortController();
+    const timeoutMs = 4000; // 4s is enough for OSRM; after that we fall back to haversine.
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
     const data = await response.json();
     
     if (data.code === 'Ok' && data.routes && data.routes.length > 0) {

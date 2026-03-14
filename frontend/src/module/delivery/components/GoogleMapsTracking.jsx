@@ -1,6 +1,8 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, Polyline } from '@react-google-maps/api';
 import { motion } from 'framer-motion';
+import { useEffectOnce } from '@/hooks/useEffectOnce';
+import { getGoogleMapsApiKey } from '@/lib/utils/googleMapsApiKey';
 
 /**
  * GoogleMapsTracking Component
@@ -61,7 +63,7 @@ export default function GoogleMapsTracking({
   onRouteInfoUpdate,
   lastUpdate
 }) {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '');
   const mapRef = useRef(null);
   const directionsServiceRef = useRef(null);
   const directionsRendererRef = useRef(null);
@@ -92,6 +94,14 @@ export default function GoogleMapsTracking({
       onRouteInfoUpdate(routeInfo);
     }
   }, [routeInfo, onRouteInfoUpdate]);
+
+  // Fetch runtime key from backend (handles admin-updated key)
+  useEffectOnce(() => {
+    (async () => {
+      const key = (await getGoogleMapsApiKey()) || '';
+      if (key) setApiKey(key);
+    })();
+  });
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',

@@ -303,9 +303,9 @@ export default function DeliverySettings() {
             >
               <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
                 <div className="flex justify-center mb-4">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${ndingStatus ? "bg-orange-100" : "bg-red-100"
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${pendingStatus ? "bg-orange-100" : "bg-red-100"
                     }`}>
-                    <AlertCircle className={`w-10 h-10 ${ndingStatus ? "text-orange-600" : "text-red-600"
+                    <AlertCircle className={`w-10 h-10 ${pendingStatus ? "text-orange-600" : "text-red-600"
                       }`} />
                   </div>
                 </div>
@@ -335,7 +335,7 @@ export default function DeliverySettings() {
                   </button>
                   <button
                     onClick={handleConfirmStatusChange}
-                    className={`flex-1 px-4 py-3 font-semibold rounded-lg transition-colors ${ndingStatus
+                    className={`flex-1 px-4 py-3 font-semibold rounded-lg transition-colors ${pendingStatus
                       ? "bg-green-600 hover:bg-green-700 text-white"
                       : "bg-red-600 hover:bg-red-700 text-white"
                       }`}

@@ -237,7 +237,7 @@ export default function DeliveryWithdrawal() {
     )
     const bankLast4 = bank?.accountNumber ? String(bank.accountNumber).slice(-4) : ""
     const bankLabel = hasBank
-      ? `A/C ****${bankLast4} · ${bank.bankName || "Bank"}`
+      ? `A/C ${bank.accountNumber} · ${bank.bankName || "Bank"}`
       : "Bank details not provided"
 
     const upiId = req?.upiId ? String(req.upiId).trim() : ""
@@ -461,7 +461,7 @@ export default function DeliveryWithdrawal() {
                         <div className="text-xs text-slate-700 mt-2 space-y-1">
                           <p>{selectedRequest.bankDetails.accountHolderName || "N/A"}</p>
                           <p>
-                            A/C ****{String(selectedRequest.bankDetails.accountNumber).slice(-4)} · {selectedRequest.bankDetails.bankName || "N/A"}
+                            A/C {selectedRequest.bankDetails.accountNumber} · {selectedRequest.bankDetails.bankName || "N/A"}
                           </p>
                           <p>IFSC: {selectedRequest.bankDetails.ifscCode || "N/A"}</p>
                         </div>

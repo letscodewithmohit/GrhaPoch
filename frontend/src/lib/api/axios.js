@@ -193,6 +193,7 @@ apiClient.interceptors.request.use(
       !normalizedRequestUrl.includes('/restaurant/categories') &&
       !normalizedRequestUrl.includes('/restaurant/onboarding') &&
       !normalizedRequestUrl.includes('/restaurant/delivery-status') &&
+      !normalizedRequestUrl.includes('/restaurant/payout-details') &&
       !normalizedRequestUrl.includes('/restaurant/dining-settings') &&
       !normalizedRequestUrl.includes('/restaurant/finance') &&
       !normalizedRequestUrl.includes('/restaurant/wallet') &&

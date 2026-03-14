@@ -71,18 +71,24 @@ class FirebaseAuthService {
       }
 
       try {
-        admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId,
-            clientEmail,
-            privateKey
-          })
-        });
+        // Use getApps() if available, otherwise fallback to admin.apps
+        const apps = admin.apps || [];
+        const defaultApp = apps.find(app => (app && app.name === '[DEFAULT]') || !app || app.name === undefined);
+
+        if (!defaultApp) {
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId,
+              clientEmail,
+              privateKey
+            })
+          });
+        }
 
         this.initialized = true;
       } catch (error) {
         // If already initialized, ignore the "app exists" error
-        if (error?.code === 'app/duplicate-app') {
+        if (error?.code === 'app/duplicate-app' || error?.message?.includes('already exists')) {
           this.initialized = true;
           logger.warn('Firebase Admin already initialized, reusing existing instance');
           return;

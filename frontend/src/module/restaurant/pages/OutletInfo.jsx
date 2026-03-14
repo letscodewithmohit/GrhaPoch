@@ -14,6 +14,7 @@ import {
   ChevronRight,
   X,
   Trash2,
+  CreditCard,
 } from "lucide-react"
 import {
   Dialog,
@@ -32,7 +33,7 @@ const CUISINES_STORAGE_KEY = "restaurant_cuisines"
 
 export default function OutletInfo() {
   const navigate = useNavigate()
-  
+
   // State management
   const [restaurantData, setRestaurantData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -55,7 +56,7 @@ export default function OutletInfo() {
   // Format address from location object
   const formatAddress = (location) => {
     if (!location) return ""
-    
+
     const parts = []
     if (location.addressLine1) parts.push(location.addressLine1.trim())
     if (location.addressLine2) parts.push(location.addressLine2.trim())
@@ -68,7 +69,7 @@ export default function OutletInfo() {
       }
     }
     if (location.landmark) parts.push(location.landmark.trim())
-    
+
     return parts.join(", ") || ""
   }
 
@@ -81,10 +82,10 @@ export default function OutletInfo() {
         const data = response?.data?.data?.restaurant || response?.data?.restaurant
         if (data) {
           setRestaurantData(data)
-          
+
           // Set restaurant name
           setRestaurantName(data.name || "")
-          
+
           // Set restaurant ID
           setRestaurantId(data.restaurantId || data.id || "")
           // Set MongoDB _id for last 5 digits display
@@ -92,11 +93,11 @@ export default function OutletInfo() {
           // Convert to string to ensure we can slice it
           const mongoId = String(data.id || data._id || "")
           setRestaurantMongoId(mongoId)
-          
+
           // Format and set address
           const formattedAddress = formatAddress(data.location)
           setAddress(formattedAddress)
-          
+
           // Format cuisines
           if (data.cuisines && Array.isArray(data.cuisines) && data.cuisines.length > 0) {
             setCuisineTags(data.cuisines.join(", "))
@@ -114,7 +115,7 @@ export default function OutletInfo() {
               console.error("Error loading cuisines from storage:", error)
             }
           }
-          
+
           // Set images
           if (data.profileImage?.url) {
             setThumbnailImage(data.profileImage.url)
@@ -163,7 +164,7 @@ export default function OutletInfo() {
 
     window.addEventListener("cuisinesUpdated", handleCuisinesUpdate)
     window.addEventListener("addressUpdated", handleAddressUpdate)
-    
+
     return () => {
       window.removeEventListener("cuisinesUpdated", handleCuisinesUpdate)
       window.removeEventListener("addressUpdated", handleAddressUpdate)
@@ -234,7 +235,7 @@ export default function OutletInfo() {
         if (uploadedImage.url) {
           setThumbnailImage(uploadedImage.url)
         }
-        
+
         // Refresh restaurant data to get latest from backend
         const response = await restaurantAPI.getCurrentRestaurant()
         const data = response?.data?.data?.restaurant || response?.data?.restaurant
@@ -279,9 +280,9 @@ export default function OutletInfo() {
       const currentData = currentResponse?.data?.data?.restaurant || currentResponse?.data?.restaurant
       const existingImages = currentData?.menuImages && Array.isArray(currentData.menuImages)
         ? currentData.menuImages.map(img => ({
-            url: img.url,
-            publicId: img.publicId
-          }))
+          url: img.url,
+          publicId: img.publicId
+        }))
         : []
 
       // Upload all images and collect their URLs
@@ -289,11 +290,11 @@ export default function OutletInfo() {
       // and then update profile with complete array
       const uploadedImageData = []
       const failedUploads = []
-      
+
       for (let i = 0; i < files.length; i++) {
         try {
           const uploadResponse = await restaurantAPI.uploadMenuImage(files[i])
-          
+
           // Extract uploaded image URL and publicId
           const uploadedImage = uploadResponse?.data?.data?.menuImage
           if (uploadedImage?.url) {
@@ -485,7 +486,7 @@ export default function OutletInfo() {
         response: error.response?.data,
         status: error.response?.status
       })
-      
+
       let errorMessage = "Failed to delete image. Please try again."
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message
@@ -497,7 +498,7 @@ export default function OutletInfo() {
         }
       }
       alert(errorMessage)
-      
+
       // Revert local state on error
       setCoverImages(originalImages)
       if (originalImages.length > 0) {
@@ -554,13 +555,13 @@ export default function OutletInfo() {
     try {
       // Update restaurant name via API
       const response = await restaurantAPI.updateProfile({ name: newName })
-      
+
       if (response?.data?.data?.restaurant) {
         // Update local state
         setRestaurantName(newName)
         setRestaurantData(prev => prev ? { ...prev, name: newName } : null)
         setShowEditNameDialog(false)
-        
+
         // Refresh restaurant data to get latest from backend
         const refreshResponse = await restaurantAPI.getCurrentRestaurant()
         const data = refreshResponse?.data?.data?.restaurant || refreshResponse?.data?.restaurant
@@ -615,12 +616,12 @@ export default function OutletInfo() {
 
       {/* Main Image Section */}
       <div className="relative w-full h-[200px] overflow-visible">
-        <img 
+        <img
           src={mainImage}
           alt="Restaurant banner"
           className="w-full h-full object-cover"
         />
-        
+
         {/* Add Image Button - Black background with white text */}
         <button
           onClick={() => menuImageInputRef.current?.click()}
@@ -629,8 +630,8 @@ export default function OutletInfo() {
         >
           <Plus className="w-4 h-4" />
           <span>
-            {uploadingImage && imageType === 'menu' 
-              ? `Uploading ${uploadingCount} image${uploadingCount > 1 ? 's' : ''}...` 
+            {uploadingImage && imageType === 'menu'
+              ? `Uploading ${uploadingCount} image${uploadingCount > 1 ? 's' : ''}...`
               : 'Add image'}
           </span>
         </button>
@@ -642,7 +643,7 @@ export default function OutletInfo() {
           className="hidden"
           onChange={handleCoverImageAdd}
         />
-        
+
         {/* Cover Images Gallery - Show all cover images with delete buttons */}
         {coverImages.length > 0 && (
           <div className="absolute bottom-2 right-4 flex gap-1.5 z-10">
@@ -682,7 +683,7 @@ export default function OutletInfo() {
         {/* Thumbnail Section - Overlapping bottom edge */}
         <div className="absolute bottom-0 left-4 -mb-[45px] flex flex-col gap-2 shrink-0 z-10">
           <div className="relative w-[70px] h-[70px] rounded overflow-hidden">
-            <img 
+            <img
               src={thumbnailImage}
               alt="Restaurant thumbnail"
               className="w-full h-full rounded-xl object-cover"
@@ -708,7 +709,7 @@ export default function OutletInfo() {
       {/* Thumbnail and Reviews Section */}
       <div className="px-4 pt-[50px] pb-4 bg-white">
         <div className="flex items-start gap-4">
-     
+
           {/* Reviews Section - Left Aligned */}
           <div className="flex flex-col gap-2">
             {/* Delivery Reviews */}
@@ -846,6 +847,18 @@ export default function OutletInfo() {
             <div className="flex items-center gap-3">
               <Phone className="w-5 h-5 text-blue-600" />
               <span className="text-base font-semibold text-gray-900">Contact Details</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-blue-600" />
+          </button>
+
+          {/* Bank & Payout Details Card */}
+          <button
+            onClick={() => navigate("/restaurant/update-bank-details")}
+            className="w-full bg-blue-100/50 rounded-lg p-4 border border-blue-300 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-5 h-5 text-blue-600" />
+              <span className="text-base font-semibold text-gray-900">Bank & Payout Details</span>
             </div>
             <ChevronRight className="w-5 h-5 text-blue-600" />
           </button>

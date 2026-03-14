@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import {
   fetchDeliveryWallet,
   calculateDeliveryBalances,
-  calculatePeriodEarnings } from
-"../utils/deliveryWalletState";
+  calculatePeriodEarnings
+} from
+  "../utils/deliveryWalletState";
 import { formatCurrency } from "../../restaurant/utils/currency";
 import { deliveryAPI } from "@/lib/api";
 import { toast } from "sonner";
@@ -14,8 +15,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter } from
-"@/components/ui/dialog";
+  DialogFooter
+} from
+  "@/components/ui/dialog";
 
 export default function PocketBalancePage() {
   const navigate = useNavigate();
@@ -90,13 +92,29 @@ export default function PocketBalancePage() {
 
   // Calculate total bonus amount from all bonus transactions
   const totalBonus = walletState?.transactions?.
-  filter((t) => t.type === 'bonus' && t.status === 'Completed').
-  reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    filter((t) => t.type === 'bonus' && t.status === 'Completed').
+    reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
-  // Calculate total tips from transactions
-  const totalTips = walletState?.transactions?.
-  filter((t) => t.type === 'tip' && t.status === 'Completed').
-  reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+  // Tips + earnings breakdown (avoid double-counting tip if payment already includes it)
+  const tipByOrder = new Map();
+  const tipTransactions = walletState?.transactions?.
+    filter((t) => t.type === 'tip' && t.status === 'Completed') || [];
+  tipTransactions.forEach((t) => {
+    const orderId = t.orderId ? String(t.orderId) : '';
+    if (!orderId) return;
+    tipByOrder.set(orderId, (tipByOrder.get(orderId) || 0) + (t.amount || 0));
+  });
+  const paymentTransactions = walletState?.transactions?.
+    filter((t) => t.type === 'payment' && t.status === 'Completed') || [];
+  const tipFromPayments = paymentTransactions.reduce((sum, t) => {
+    const orderId = t.orderId ? String(t.orderId) : '';
+    if (!orderId || tipByOrder.has(orderId)) return sum;
+    const tipFromPayment = Number(t?.metadata?.tip ?? t?.metadata?.tipAmount ?? 0) || 0;
+    return sum + tipFromPayment;
+  }, 0);
+  const totalTips =
+    (tipTransactions.reduce((sum, t) => sum + (t.amount || 0), 0) || 0) +
+    (tipFromPayments || 0);
 
   // Calculate total withdrawn (needed for pocket balance calculation)
   const totalWithdrawn = balances.totalWithdrawn || 0;
@@ -108,13 +126,19 @@ export default function PocketBalancePage() {
   // Formula: Pocket Balance = Earnings + Bonus + Tips - Withdrawals
   // Use walletState.pocketBalance if available, otherwise calculate from totalBalance
   let pocketBalance = hasPocketBalance ?
-  Number(walletState.pocketBalance) || 0 :
-  (Number(walletState?.totalBalance ?? balances.totalBalance ?? 0) - cashInHand);
+    Number(walletState.pocketBalance) || 0 :
+    (Number(walletState?.totalBalance ?? balances.totalBalance ?? 0) - cashInHand);
 
-  // Calculate total earnings (all-time, not just weekly)
-  const totalEarnings = walletState?.transactions?.
-  filter((t) => t.type === 'payment' && t.status === 'Completed').
-  reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+  // Calculate total earnings (all-time, not just weekly) - exclude tips if they are separate transactions
+  const totalEarnings = paymentTransactions.
+    reduce((sum, t) => {
+      const amount = Number(t.amount) || 0;
+      const orderId = t.orderId ? String(t.orderId) : '';
+      const tipFromTxn = orderId && tipByOrder.has(orderId) ? (tipByOrder.get(orderId) || 0) : 0;
+      const tipFromPayment = Number(t?.metadata?.tip ?? t?.metadata?.tipAmount ?? 0) || 0;
+      const tipForOrder = tipFromTxn > 0 ? tipFromTxn : tipFromPayment;
+      return sum + Math.max(0, amount - tipForOrder);
+    }, 0) || 0;
 
   // IMPORTANT: Ensure pocket balance includes bonus and tips
   // If backend totalBalance is 0 but we have bonus/tips/earnings, calculate it manually
@@ -158,31 +182,17 @@ export default function PocketBalancePage() {
   const hasPayoutUpi = !!(payoutUpiId && String(payoutUpiId).trim());
   const hasPayoutQr = !!(payoutQr?.url);
   const payoutMethodCount = [hasPayoutBank, hasPayoutUpi, hasPayoutQr].filter(Boolean).length;
-
+  const hasCashInHand = cashInHand > 0.01;
   // Withdrawable amount = pocket balance (includes bonus + earnings)
   const withdrawableAmount = pocketBalance > 0 ? pocketBalance : 0;
-  const hasCashInHand = cashInHand > 0.01;
+  // Show potential withdrawable after depositing cash-in-hand
+  const displayWithdrawAmount = hasCashInHand ?
+    Math.max(0, pocketBalance + cashInHand) :
+    withdrawableAmount;
 
-  // Withdrawal allowed only when withdrawable amount >= withdrawal limit
-  const canWithdraw = withdrawableAmount >= withdrawalLimit && withdrawableAmount > 0 && !hasCashInHand;
-
-  // Debug logging (cashInHand = Cash collected from backend)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  // Withdrawal allowed only when withdrawable amount >= withdrawal limit AND no pending requests exist
+  const hasPendingWithdrawal = (balances.pendingWithdrawals || 0) > 0;
+  const canWithdraw = withdrawableAmount >= withdrawalLimit && withdrawableAmount > 0 && !hasCashInHand && !hasPendingWithdrawal;
   // Get current week date range
   const getCurrentWeekRange = () => {
     const now = new Date();
@@ -255,10 +265,10 @@ export default function PocketBalancePage() {
     const upiId = docs.upiId;
     const qrCode = docs.qrCode;
     const hasBank =
-    b?.accountHolderName?.trim() &&
-    b?.accountNumber?.trim() &&
-    b?.ifscCode?.trim() &&
-    b?.bankName?.trim();
+      b?.accountHolderName?.trim() &&
+      b?.accountNumber?.trim() &&
+      b?.ifscCode?.trim() &&
+      b?.bankName?.trim();
     const hasUpi = !!(upiId && String(upiId).trim());
     const hasQr = !!(qrCode?.url);
 
@@ -304,16 +314,18 @@ export default function PocketBalancePage() {
 
       {/* Warning Banner – when withdraw disabled */}
       {!canWithdraw &&
-      <div className="bg-yellow-400 p-4 flex items-start gap-3 text-black">
+        <div className="bg-yellow-400 p-4 flex items-start gap-3 text-black">
           <AlertTriangle size={20} />
           <div className="text-sm leading-tight">
             <p className="font-semibold">Withdraw currently disabled</p>
             <p className="text-xs">
-              {hasCashInHand ?
-            `Please deposit cash in hand (${formatCurrency(cashInHand)}) before requesting withdrawal.` :
-            withdrawableAmount <= 0 ?
-              `Withdrawable amount is ${formatCurrency(0)}` :
-              `Minimum withdrawable amount is ${formatCurrency(withdrawalLimit)}.`}
+              {hasPendingWithdrawal ?
+                "You already have a pending withdrawal request. Please wait until it is processed." :
+                hasCashInHand ?
+                  `Please deposit cash in hand (${formatCurrency(cashInHand)}) before requesting withdrawal.` :
+                  withdrawableAmount <= 0 ?
+                    `Withdrawable amount is ${formatCurrency(0)}` :
+                    `Minimum withdrawable amount is ${formatCurrency(withdrawalLimit)}.`}
             </p>
           </div>
         </div>
@@ -322,16 +334,19 @@ export default function PocketBalancePage() {
       {/* Withdraw Section */}
       <div className="px-5 py-6 flex flex-col items-center text-center">
         <p className="text-sm text-gray-600 mb-1">Withdraw amount</p>
-        <p className="text-4xl font-bold mb-5">{formatCurrency(withdrawableAmount)}</p>
+        <p className="text-4xl font-bold mb-2">{formatCurrency(displayWithdrawAmount)}</p>
+        {hasCashInHand && (
+          <p className="text-xs text-amber-700 mb-4">You need to deposit cash first</p>
+        )}
 
         <button
           disabled={!canWithdraw}
           onClick={() => canWithdraw && openWithdrawModal()}
           className={`w-full font-medium py-3 rounded-lg ${canWithdraw ?
-          "bg-black text-white hover:bg-gray-800" :
-          "bg-gray-200 text-gray-500 cursor-not-allowed"}`
+            "bg-black text-white hover:bg-gray-800" :
+            "bg-gray-200 text-gray-500 cursor-not-allowed"}`
           }>
-          
+
           Withdraw
         </button>
       </div>
@@ -422,7 +437,7 @@ export default function PocketBalancePage() {
                 onChange={(e) => setWithdrawAmount(e.target.value)}
                 placeholder="Enter amount"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-black" />
-              
+
               <p className="text-xs text-gray-500 mt-1">
                 Min {formatCurrency(withdrawalLimit)} · Max {formatCurrency(withdrawableAmount)}
               </p>
@@ -431,7 +446,7 @@ export default function PocketBalancePage() {
               type="button"
               onClick={() => setWithdrawAmount(String(withdrawableAmount))}
               className="w-full py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
-              
+
               Use full amount ({formatCurrency(withdrawableAmount)})
             </button>
           </div>
@@ -439,14 +454,14 @@ export default function PocketBalancePage() {
             <button
               onClick={() => setShowWithdrawModal(false)}
               className="flex-1 py-2.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-              
+
               Cancel
             </button>
             <button
               onClick={handleWithdrawSubmit}
               disabled={withdrawSubmitting}
               className="flex-1 py-2.5 text-sm font-medium rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              
+
               {withdrawSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {withdrawSubmitting ? "Submitting…" : "Withdraw"}
             </button>
@@ -472,7 +487,7 @@ export default function PocketBalancePage() {
 
         <DetailRow
           label={
-          <div>
+            <div>
               Min. withdrawal amount
               <p className="text-xs text-gray-500">
                 Withdrawal allowed only when withdrawable amount ≥ this
@@ -481,7 +496,7 @@ export default function PocketBalancePage() {
           }
           value={formatCurrency(withdrawalLimit)}
           multiline />
-        
+
 
         <DetailRow label="Withdrawable amount" value={formatCurrency(withdrawableAmount)} />
 

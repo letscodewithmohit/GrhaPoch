@@ -38,49 +38,50 @@ if (process.env.DEBUG_SOCKET_LOGS !== 'true') {
   };
 }
 
-  // Import configurations
-  import { connectDB } from './config/database.js';
-  import { connectRedis } from './config/redis.js';
-  import { initializeFirebaseRealtime } from './config/firebaseRealtime.js';
-  import { printStartupStatus } from './config/startupStatus.js';
-  import firebaseAuthService from './services/firebaseAuthService.js';
+// Import configurations
+import { connectDB } from './config/database.js';
+import { connectRedis } from './config/redis.js';
+import { initializeFirebaseRealtime } from './config/firebaseRealtime.js';
+import { printStartupStatus } from './config/startupStatus.js';
+import firebaseAuthService from './services/firebaseAuthService.js';
 
-  // Import middleware
-  import { errorHandler } from './middleware/errorHandler.js';
+// Import middleware
+import { errorHandler } from './middleware/errorHandler.js';
 
-  // Import routes
-  import authRoutes from './routes/auth.index.js';
-  import userRoutes from './routes/user.index.js';
-  import restaurantRoutes from './routes/restaurant.index.js';
-  import deliveryRoutes from './routes/delivery.index.js';
-  import orderRoutes from './routes/order.index.js';
-  import paymentRoutes from './routes/payment.index.js';
-  import menuRoutes from './routes/menu.index.js';
-  import campaignRoutes from './routes/campaign.index.js';
-  import advertisementPublicRoutes from './routes/campaign.public.routes.js';
-  import userAdvertisementRoutes from './routes/userAdvertisement.routes.js';
-  import notificationRoutes from './routes/notification.index.js';
-  import analyticsRoutes from './routes/analytics.index.js';
-  import adminRoutes from './routes/admin.index.js';
-  import categoryPublicRoutes from './routes/categoryPublicRoutes.js';
-  import feeSettingsPublicRoutes from './routes/feeSettingsPublicRoutes.js';
-  import envPublicRoutes from './routes/envPublicRoutes.js';
-  import aboutPublicRoutes from './routes/aboutPublicRoutes.js';
-  import businessSettingsPublicRoutes from './routes/businessSettingsPublicRoutes.js';
-  import termsPublicRoutes from './routes/termsPublicRoutes.js';
-  import privacyPublicRoutes from './routes/privacyPublicRoutes.js';
-  import refundPublicRoutes from './routes/refundPublicRoutes.js';
-  import shippingPublicRoutes from './routes/shippingPublicRoutes.js';
-  import cancellationPublicRoutes from './routes/cancellationPublicRoutes.js';
-  import feedbackPublicRoutes from './routes/feedbackPublicRoutes.js';
-  import feedbackExperiencePublicRoutes from './routes/feedbackExperiencePublicRoutes.js';
-  import safetyEmergencyPublicRoutes from './routes/safetyEmergencyPublicRoutes.js';
-  import zonePublicRoutes from './routes/zonePublicRoutes.js';
-  import subscriptionRoutes from './routes/subscription.index.js';
-  import uploadModuleRoutes from './routes/upload.index.js';
-  import locationRoutes from './routes/location.routes.js';
-  import heroBannerRoutes from './routes/heroBanner.index.js';
-  import diningRoutes from './routes/diningRoutes.js';
+// Import routes
+import authRoutes from './routes/auth.index.js';
+import userRoutes from './routes/user.index.js';
+import restaurantRoutes from './routes/restaurant.index.js';
+import deliveryRoutes from './routes/delivery.index.js';
+import orderRoutes from './routes/order.index.js';
+import paymentRoutes from './routes/payment.index.js';
+import razorpayWebhookRoutes from './routes/razorpayWebhookRoutes.js';
+import menuRoutes from './routes/menu.index.js';
+import campaignRoutes from './routes/campaign.index.js';
+import advertisementPublicRoutes from './routes/campaign.public.routes.js';
+import userAdvertisementRoutes from './routes/userAdvertisement.routes.js';
+import notificationRoutes from './routes/notification.index.js';
+import analyticsRoutes from './routes/analytics.index.js';
+import adminRoutes from './routes/admin.index.js';
+import categoryPublicRoutes from './routes/categoryPublicRoutes.js';
+import feeSettingsPublicRoutes from './routes/feeSettingsPublicRoutes.js';
+import envPublicRoutes from './routes/envPublicRoutes.js';
+import aboutPublicRoutes from './routes/aboutPublicRoutes.js';
+import businessSettingsPublicRoutes from './routes/businessSettingsPublicRoutes.js';
+import termsPublicRoutes from './routes/termsPublicRoutes.js';
+import privacyPublicRoutes from './routes/privacyPublicRoutes.js';
+import refundPublicRoutes from './routes/refundPublicRoutes.js';
+import shippingPublicRoutes from './routes/shippingPublicRoutes.js';
+import cancellationPublicRoutes from './routes/cancellationPublicRoutes.js';
+import feedbackPublicRoutes from './routes/feedbackPublicRoutes.js';
+import feedbackExperiencePublicRoutes from './routes/feedbackExperiencePublicRoutes.js';
+import safetyEmergencyPublicRoutes from './routes/safetyEmergencyPublicRoutes.js';
+import zonePublicRoutes from './routes/zonePublicRoutes.js';
+import subscriptionRoutes from './routes/subscription.index.js';
+import uploadModuleRoutes from './routes/upload.index.js';
+import locationRoutes from './routes/location.routes.js';
+import heroBannerRoutes from './routes/heroBanner.index.js';
+import diningRoutes from './routes/diningRoutes.js';
 
 
 // Validate required environment variables
@@ -408,6 +409,7 @@ app.use('/api/restaurant', restaurantRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/order', orderRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/razorpay', razorpayWebhookRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/campaign', campaignRoutes);
 app.use('/api/advertisements', advertisementPublicRoutes);
@@ -437,35 +439,31 @@ app.use('/api/dining', diningRoutes);
 
 // 404 handler - but skip Socket.IO paths
 app.use((req, res, next) => {
+  const fullPath = req.originalUrl || req.url;
+  console.log(`🔍 [404] Request: ${req.method} ${fullPath}`);
+
   // Skip Socket.IO paths - Socket.IO handles its own routing
-  if (req.path.startsWith('/socket.io/') || req.path.startsWith('/restaurant') || req.path.startsWith('/delivery')) {
-    return next();
+  if (fullPath.startsWith('/socket.io/') || fullPath.includes('/restaurant') || fullPath.includes('/delivery')) {
+    // If it reached here, it means no route matched, but we might want to pass it
+    // to another handler or just respond 404 here differently.
   }
 
   // Log 404 errors for debugging (especially for admin routes)
-  if (req.path.includes('/admin') || req.path.includes('refund')) {
-    console.error('❌ [404 HANDLER] Route not found:', {
+  if (fullPath.includes('/admin') || fullPath.includes('payout-details')) {
+    console.error('❌ [404 HANDLER] Persistent Route not found:', {
       method: req.method,
-      path: req.path,
-      url: req.url,
-      originalUrl: req.originalUrl,
-      baseUrl: req.baseUrl,
-      route: req.route?.path,
-      registeredRoutes: 'Check server startup logs for route registration'
+      path: fullPath,
+      method: req.method,
+      authHeader: !!req.headers.authorization
     });
-    console.error('💡 [404 HANDLER] Expected route: POST /api/admin/refund-requests/:orderId/process');
-    console.error('💡 [404 HANDLER] Make sure:');
-    console.error('   1. Backend server has been restarted');
-    console.error('   2. Route is registered (check startup logs)');
-    console.error('   3. Authentication token is valid');
   }
 
   res.status(404).json({
     success: false,
     message: 'Route not found',
-    path: req.path,
+    path: fullPath,
     method: req.method,
-    expectedRoute: req.path.includes('refund') ? 'POST /api/admin/refund-requests/:orderId/process' : undefined
+    debug: 'Reached top-level 404 handler'
   });
 });
 
@@ -529,10 +527,7 @@ io.on('connection', (socket) => {
         const order = await Order.findOne(query).
           populate({
             path: 'deliveryPartnerId',
-            select: 'availability',
-            populate: {
-              path: 'availability.currentLocation'
-            }
+            select: 'availability'
           }).
           lean();
 

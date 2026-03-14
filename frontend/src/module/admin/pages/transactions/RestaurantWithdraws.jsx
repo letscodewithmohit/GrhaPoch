@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect } from "react"
-import { Search, Download, ChevronDown, Eye, Settings, Building, ArrowUpDown, FileText, FileSpreadsheet, Code, Check, Columns, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { useState, useEffect, useMemo } from "react"
+import { Search, Download, ChevronDown, Eye, Settings, Building, ArrowUpDown, FileText, FileSpreadsheet, Code, Check, Columns, CheckCircle, XCircle, Loader2, Wallet } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { exportTransactionsToExcel, exportTransactionsToPDF } from "../../components/transactions/transactionsExportUtils"
-import { adminAPI } from "@/lib/api"
+import { adminAPI, uploadAPI } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function RestaurantWithdraws() {
@@ -17,6 +17,10 @@ export default function RestaurantWithdraws() {
   const [processingAction, setProcessingAction] = useState(null)
   const [rejectionReason, setRejectionReason] = useState("")
   const [showRejectModal, setShowRejectModal] = useState(false)
+  const [showApproveModal, setShowApproveModal] = useState(false)
+  const [approveScreenshot, setApproveScreenshot] = useState(null)
+  const [approveUploading, setApproveUploading] = useState(false)
+  const [approveMethod, setApproveMethod] = useState("")
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     amount: true,
@@ -24,6 +28,7 @@ export default function RestaurantWithdraws() {
     restaurantId: true,
     restaurantAddress: false,
     requestTime: true,
+    payoutMethod: true,
     status: true,
     actions: true,
   })
@@ -64,7 +69,7 @@ export default function RestaurantWithdraws() {
 
   const filteredWithdraws = useMemo(() => {
     let result = [...withdraws]
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       result = result.filter(w =>
@@ -73,7 +78,7 @@ export default function RestaurantWithdraws() {
         w.amount?.toString().includes(query)
       )
     }
-    
+
     return result
   }, [withdraws, searchQuery])
 
@@ -95,25 +100,71 @@ export default function RestaurantWithdraws() {
     setIsViewOpen(true)
   }
 
-  const handleApprove = async (id) => {
-    if (!confirm('Are you sure you want to approve this withdrawal request?')) {
+  const handleApprove = async () => {
+    if (!selectedWithdraw?.id) return
+    if (!approveMethod) {
+      toast.error("Select payout method to approve")
       return
     }
-    
+    if (!approveScreenshot?.url) {
+      toast.error("Upload payment screenshot to approve")
+      return
+    }
     try {
-      setProcessingAction(id)
-      const response = await adminAPI.approveWithdrawalRequest(id)
-      if (response.data?.success) {
-        toast.success('Withdrawal request approved successfully')
+      setProcessingAction(selectedWithdraw.id)
+      const response = await adminAPI.approveWithdrawalRequest(selectedWithdraw.id, {
+        paymentMethod: approveMethod,
+        paymentScreenshot: approveScreenshot
+      })
+      if (response?.data?.success) {
+        toast.success("Withdrawal request approved successfully")
+        setShowApproveModal(false)
+        setApproveScreenshot(null)
+        setApproveMethod("")
+        setSelectedWithdraw(null)
         fetchWithdrawals()
       } else {
-        toast.error(response.data?.message || 'Failed to approve withdrawal request')
+        toast.error(response?.data?.message || "Failed to approve")
       }
     } catch (error) {
-      console.error('Error approving withdrawal:', error)
-      toast.error(error.response?.data?.message || 'Failed to approve withdrawal request')
+      toast.error(error.response?.data?.message || "Failed to approve withdrawal request")
     } finally {
       setProcessingAction(null)
+    }
+  }
+
+  const openApproveModal = (withdraw) => {
+    setSelectedWithdraw(withdraw)
+    setApproveScreenshot(null)
+    const bank = withdraw?.bankDetails
+    const hasBank = !!(bank?.accountHolderName && bank?.accountNumber && bank?.ifscCode)
+    const hasUpi = !!(withdraw?.upiId)
+    const hasQr = !!(withdraw?.qrCode?.url)
+
+    let initial = ""
+    if (hasBank) initial = "bank_transfer"
+    else if (hasUpi) initial = "upi"
+    else if (hasQr) initial = "qr_code"
+
+    setApproveMethod(initial)
+    setShowApproveModal(true)
+  }
+
+  const handleApproveScreenshotChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setApproveUploading(true)
+    try {
+      const res = await uploadAPI.uploadMedia(file, { folder: "restaurant/withdrawal-screenshots" })
+      const data = res?.data?.data
+      if (data?.url) {
+        setApproveScreenshot({ url: data.url, publicId: data.publicId })
+        toast.success("Payment screenshot uploaded")
+      }
+    } catch (error) {
+      toast.error("Failed to upload screenshot")
+    } finally {
+      setApproveUploading(false)
     }
   }
 
@@ -122,7 +173,7 @@ export default function RestaurantWithdraws() {
       alert('Please provide a rejection reason')
       return
     }
-    
+
     try {
       setProcessingAction(id)
       const response = await adminAPI.rejectWithdrawalRequest(id, rejectionReason)
@@ -141,6 +192,28 @@ export default function RestaurantWithdraws() {
       setProcessingAction(null)
     }
   }
+
+  const getMethodAvailability = (withdraw) => {
+    if (!withdraw) return {}
+    const bank = withdraw.bankDetails
+    const hasBank = !!(bank?.accountHolderName && bank?.accountNumber && bank?.ifscCode)
+    const bankLast4 = bank?.accountNumber ? String(bank.accountNumber).slice(-4) : ""
+    const bankLabel = hasBank
+      ? `A/C ${bank.accountNumber} · ${bank.bankName || "Bank"}`
+      : "Bank details not provided"
+
+    const upiId = withdraw.upiId ? String(withdraw.upiId).trim() : ""
+    const hasUpi = !!upiId
+    const upiLabel = hasUpi ? `UPI ID: ${upiId}` : "UPI ID not provided"
+
+    const qrUrl = withdraw.qrCode?.url || ""
+    const hasQr = !!qrUrl
+    const qrLabel = hasQr ? "QR code uploaded" : "QR code not provided"
+
+    return { hasBank, bankLabel, hasUpi, upiLabel, hasQr, qrLabel, qrUrl }
+  }
+
+  const payoutAvailability = getMethodAvailability(selectedWithdraw)
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
@@ -167,6 +240,18 @@ export default function RestaurantWithdraws() {
     })}`
   }
 
+  const formatMethod = (method) => {
+    if (!method) return "N/A"
+    const map = {
+      admin_select: "Admin Select",
+      bank_transfer: "Bank Transfer",
+      upi: "UPI",
+      qr_code: "QR Code",
+      card: "Card"
+    }
+    return map[method] || String(method).replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
+  }
+
   const handleExport = async (format) => {
     if (filteredWithdraws.length === 0) {
       toast.error("No data to export.")
@@ -178,6 +263,7 @@ export default function RestaurantWithdraws() {
       { key: "restaurantName", label: "Restaurant Name" },
       { key: "restaurantIdString", label: "Restaurant ID" },
       { key: "requestTime", label: "Request Time" },
+      { key: "payoutMethod", label: "Payout Method" },
       { key: "processedTime", label: "Approved/Rejected Time" },
       { key: "processedBy", label: "Processed By" },
       { key: "status", label: "Status" },
@@ -189,6 +275,7 @@ export default function RestaurantWithdraws() {
       restaurantName: w.restaurantName || 'N/A',
       restaurantIdString: w.restaurantIdString || 'N/A',
       requestTime: formatDate(w.requestedAt || w.createdAt),
+      payoutMethod: formatMethod(w.paymentMethod),
       processedTime: w.processedAt ? formatDate(w.processedAt) : '',
       processedBy: w.processedBy?.name ? `${w.processedBy.name}${w.processedBy.email ? ` (${w.processedBy.email})` : ''}` : '',
       status: w.status,
@@ -217,6 +304,7 @@ export default function RestaurantWithdraws() {
       restaurantId: true,
       restaurantAddress: false,
       requestTime: true,
+      payoutMethod: true,
       status: true,
       actions: true,
     })
@@ -240,11 +328,10 @@ export default function RestaurantWithdraws() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                  activeTab === tab
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-600 hover:text-slate-900"
-                }`}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === tab
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-slate-600 hover:text-slate-900"
+                  }`}
               >
                 {tab}
               </button>
@@ -323,6 +410,7 @@ export default function RestaurantWithdraws() {
                     {visibleColumns.restaurant && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Restaurant Name</th>}
                     {visibleColumns.restaurantId && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Restaurant ID</th>}
                     {visibleColumns.requestTime && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Request Time</th>}
+                    {visibleColumns.payoutMethod && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Payout Method</th>}
                     {visibleColumns.status && <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Status</th>}
                     {visibleColumns.actions && <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>}
                   </tr>
@@ -358,6 +446,9 @@ export default function RestaurantWithdraws() {
                         {visibleColumns.requestTime && <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-slate-700">{formatDate(withdraw.requestedAt || withdraw.createdAt)}</span>
                         </td>}
+                        {visibleColumns.payoutMethod && <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-700">{formatMethod(withdraw.paymentMethod)}</span>
+                        </td>}
                         {visibleColumns.status && <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(withdraw.status)}`}>
                             {withdraw.status}
@@ -375,7 +466,7 @@ export default function RestaurantWithdraws() {
                             {withdraw.status === 'Pending' && (
                               <>
                                 <button
-                                  onClick={() => handleApprove(withdraw.id)}
+                                  onClick={() => openApproveModal(withdraw)}
                                   disabled={processingAction === withdraw.id}
                                   className="p-2 rounded-lg bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Approve"
@@ -410,66 +501,226 @@ export default function RestaurantWithdraws() {
           )}
         </div>
 
-        {/* View Withdraw Dialog */}
         <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-          <DialogContent className="max-w-md bg-white p-0">
-            <DialogHeader className="px-6 pt-6 pb-4">
-              <DialogTitle>Withdraw Request Details</DialogTitle>
+          <DialogContent className="max-w-3xl bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+              <DialogTitle>Withdrawal request details</DialogTitle>
             </DialogHeader>
             {selectedWithdraw && (
-              <div className="px-6 pb-6 space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Amount</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">
-                    {formatCurrency(selectedWithdraw.amount)}
-                  </p>
+              <div className="px-6 pb-6 pt-4 space-y-6 max-h-[75vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Amount</p>
+                    <p className="text-base font-semibold text-slate-900 mt-1">{formatCurrency(selectedWithdraw.amount)}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Status</p>
+                    <div className="mt-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(selectedWithdraw.status)}`}>
+                        {selectedWithdraw.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Request time</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedWithdraw.requestedAt || selectedWithdraw.createdAt)}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Processed time</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">
+                      {selectedWithdraw.processedAt ? formatDate(selectedWithdraw.processedAt) : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Restaurant Name</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedWithdraw.restaurantName || "N/A"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Restaurant ID</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedWithdraw.restaurantIdString || "N/A"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 p-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Payout method</p>
+                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedWithdraw.paymentMethod || "Admin Select"}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Restaurant Name</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{selectedWithdraw.restaurantName || 'N/A'}</p>
+
+                <div className="rounded-lg border border-slate-200 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">Payout details</p>
+                    {selectedWithdraw.paymentMethod === "admin_select" && (
+                      <span className="text-xs text-slate-500">Admin selects method</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-md border border-slate-200 p-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase">Bank transfer</p>
+                      {selectedWithdraw.bankDetails?.accountNumber ? (
+                        <div className="text-xs text-slate-700 mt-2 space-y-1">
+                          <p>{selectedWithdraw.bankDetails.accountHolderName || "N/A"}</p>
+                          <p>
+                            A/C {selectedWithdraw.bankDetails.accountNumber} · {selectedWithdraw.bankDetails.bankName || "N/A"}
+                          </p>
+                          <p>IFSC: {selectedWithdraw.bankDetails.ifscCode || "N/A"}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-rose-600 mt-2">Not provided</p>
+                      )}
+                    </div>
+                    <div className="rounded-md border border-slate-200 p-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase">UPI</p>
+                      {selectedWithdraw.upiId ? (
+                        <p className="text-xs text-slate-700 mt-2">{selectedWithdraw.upiId}</p>
+                      ) : (
+                        <p className="text-xs text-rose-600 mt-2">Not provided</p>
+                      )}
+                    </div>
+                    <div className="rounded-md border border-slate-200 p-3">
+                      <p className="text-xs font-semibold text-slate-500 uppercase">QR Code</p>
+                      {selectedWithdraw.qrCode?.url ? (
+                        <a
+                          href={selectedWithdraw.qrCode.url}
+                          download
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-flex"
+                        >
+                          Download QR code
+                        </a>
+                      ) : (
+                        <p className="text-xs text-rose-600 mt-2">Not provided</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Restaurant ID</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{selectedWithdraw.restaurantIdString || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Request Time</label>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedWithdraw.requestedAt || selectedWithdraw.createdAt)}</p>
-                </div>
-                {(selectedWithdraw.status === 'Approved' || selectedWithdraw.status === 'Processed') && selectedWithdraw.processedAt && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Approved Time</label>
-                    <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedWithdraw.processedAt)}</p>
+
+                {selectedWithdraw.paymentScreenshot?.url && (
+                  <div className="rounded-lg border border-slate-200 p-4">
+                    <p className="text-xs font-semibold text-slate-500 uppercase">Payment screenshot</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <a
+                        href={selectedWithdraw.paymentScreenshot.url}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                      >
+                        Download screenshot
+                      </a>
+                      <img
+                        src={selectedWithdraw.paymentScreenshot.url}
+                        alt="Payment screenshot"
+                        className="h-16 w-16 rounded-md border border-slate-200 object-cover"
+                      />
+                    </div>
                   </div>
                 )}
-                {selectedWithdraw.status === 'Rejected' && selectedWithdraw.processedAt && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Rejected Time</label>
-                    <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedWithdraw.processedAt)}</p>
-                  </div>
-                )}
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
-                  <p className="mt-1">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(selectedWithdraw.status)}`}>
-                      {selectedWithdraw.status}
-                    </span>
-                  </p>
-                </div>
+
                 {selectedWithdraw.rejectionReason && (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 uppercase">Rejection Reason</label>
-                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedWithdraw.rejectionReason}</p>
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                    <p className="text-xs font-semibold text-red-600 uppercase">Rejection reason</p>
+                    <p className="text-sm font-medium text-red-700 mt-2">{selectedWithdraw.rejectionReason}</p>
                   </div>
                 )}
               </div>
             )}
-            <DialogFooter className="px-6 pb-6">
+            <DialogFooter className="px-6 pb-6 border-t border-slate-100 pt-4">
               <button
                 onClick={() => setIsViewOpen(false)}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
               >
                 Close
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Approve Modal */}
+        <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
+          <DialogContent className="max-w-lg bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4">
+              <DialogTitle>Approve Withdrawal Request</DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Select Payout Method <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { value: "bank_transfer", label: "Bank Transfer", available: payoutAvailability.hasBank, description: payoutAvailability.bankLabel },
+                    { value: "upi", label: "UPI", available: payoutAvailability.hasUpi, description: payoutAvailability.upiLabel },
+                    { value: "qr_code", label: "QR Code", available: payoutAvailability.hasQr, description: payoutAvailability.qrLabel }
+                  ].map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${opt.available ? "border-slate-200 hover:border-blue-300" : "border-slate-100 opacity-60"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="approveMethod"
+                        value={opt.value}
+                        checked={approveMethod === opt.value}
+                        onChange={() => setApproveMethod(opt.value)}
+                        disabled={!opt.available}
+                        className="mt-1"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{opt.label}</p>
+                        <p className="text-xs text-slate-500">{opt.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {!payoutAvailability.hasBank && !payoutAvailability.hasUpi && !payoutAvailability.hasQr && (
+                  <p className="text-xs text-rose-600 mt-2">
+                    No payout details available. Ask the restaurant to update profile.
+                  </p>
+                )}
+                {payoutAvailability.qrUrl && (
+                  <a
+                    href={payoutAvailability.qrUrl}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-flex"
+                  >
+                    Download QR code
+                  </a>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Payment Screenshot <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleApproveScreenshotChange}
+                  className="w-full text-sm"
+                />
+                {approveUploading && <p className="text-xs text-slate-500 mt-1">Uploading...</p>}
+                {approveScreenshot?.url && (
+                  <div className="mt-2">
+                    <img src={approveScreenshot.url} className="h-20 w-20 object-cover rounded border" alt="Proof" />
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="px-6 pb-6 flex gap-2">
+              <button
+                onClick={() => setShowApproveModal(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={processingAction === selectedWithdraw?.id || approveUploading || !approveMethod || !approveScreenshot}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {processingAction === selectedWithdraw?.id ? "Approving..." : "Approve & Mark Paid"}
               </button>
             </DialogFooter>
           </DialogContent>

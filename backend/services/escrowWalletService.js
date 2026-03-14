@@ -216,6 +216,14 @@ const creditDeliveryWallet = async (deliveryId, orderId, amount, orderNumber) =>
     const tip = settlement?.deliveryPartnerEarning?.tip || 0;
     const baseEarning = amount - tip;
 
+    // Idempotency: avoid duplicate payment credits for the same order
+    const existingPayment = wallet.transactions?.find(
+      (t) => t.type === 'payment' && t.orderId && t.orderId.toString() === orderId.toString()
+    );
+    if (existingPayment) {
+      return;
+    }
+
     wallet.addTransaction({
       amount: amount,
       type: 'payment',

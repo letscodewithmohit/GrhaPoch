@@ -406,6 +406,44 @@ export const acceptOrder = asyncHandler(async (req, res) => {
               }
             } else {
               console.warn(`⚠️ No delivery partners available for order ${order.orderId}`);
+              // Fallback: broadcast to nearest riders so they can swipe/accept (old behaviour)
+              try {
+                const isCod = order.payment?.method === 'cash' || order.payment?.method === 'cod';
+                const codAmount = Number(order?.pricing?.total) || 0;
+                const priorityDeliveryBoys = await findNearestDeliveryBoys(
+                  restaurantLat,
+                  restaurantLng,
+                  restaurantId,
+                  20, // radius km
+                  10, // top N riders
+                  isCod,
+                  codAmount
+                );
+
+                if (priorityDeliveryBoys && priorityDeliveryBoys.length > 0) {
+                  const ids = priorityDeliveryBoys.map((db) => db.deliveryPartnerId);
+
+                  await Order.findByIdAndUpdate(freshOrder._id, {
+                    $set: {
+                      'assignmentInfo.priorityDeliveryPartnerIds': ids,
+                      'assignmentInfo.assignedBy': 'auto-fallback',
+                      'assignmentInfo.assignedAt': new Date()
+                    }
+                  });
+
+                  const populatedOrder = await Order.findById(freshOrder._id).
+                    populate('userId', 'name phone').
+                    populate('restaurantId', 'name location address phone ownerPhone').
+                    lean();
+
+                  if (populatedOrder) {
+                    await notifyMultipleDeliveryBoys(populatedOrder, ids, 'priority');
+                    console.warn(`⚠️ Auto-assign failed; broadcasted to ${ids.length} nearby delivery partners`);
+                  }
+                }
+              } catch (broadcastError) {
+                console.error('⚠️ Auto-assign fallback failed:', broadcastError.message || broadcastError);
+              }
             }
           }
         }
@@ -967,16 +1005,40 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
 
     const [restaurantLng, restaurantLat] = restaurantDoc.location.coordinates;
 
+    // Optional reassign: clear existing rider so new partners can accept
+    const shouldReassign = String(req.query.reassign || '').toLowerCase() === 'true';
+    if (shouldReassign && order.deliveryPartnerId) {
+      try {
+        await Order.findByIdAndUpdate(order._id, {
+          $set: {
+            deliveryPartnerId: null,
+            'deliveryState.currentPhase': 'assigned'
+          },
+          $unset: {
+            'assignmentInfo.deliveryPartnerId': '',
+            'assignmentInfo.assignedAt': '',
+            'assignmentInfo.assignedBy': ''
+          }
+        });
+        order.deliveryPartnerId = null;
+        order.assignmentInfo = {};
+        console.warn(`⚠️ [ResendNotification] Cleared previous rider for order ${order.orderId} before reassign`);
+      } catch (clearErr) {
+        console.error('⚠️ [ResendNotification] Failed to clear previous assignment:', clearErr);
+      }
+    }
 
     // Step 5: Find nearest delivery boys
     const isCod = order.payment?.method === 'cash' || order.payment?.method === 'cod';
+    const codAmount = Number(order?.pricing?.total) || 0;
     const priorityDeliveryBoys = await findNearestDeliveryBoys(
       restaurantLat,
       restaurantLng,
       restaurantId,
       20, // 20km radius for priority
       10, // Top 10 nearest
-      isCod
+      isCod,
+      codAmount
     );
 
     if (!priorityDeliveryBoys || priorityDeliveryBoys.length === 0) {
@@ -987,7 +1049,8 @@ export const resendDeliveryNotification = asyncHandler(async (req, res) => {
         restaurantId,
         50, // 50km radius
         20, // Top 20 nearest
-        isCod
+        isCod,
+        codAmount
       );
 
       if (!allDeliveryBoys || allDeliveryBoys.length === 0) {

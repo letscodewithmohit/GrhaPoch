@@ -289,6 +289,11 @@ const restaurantSchema = new mongoose.Schema(
           ifscCode: String,
           accountHolderName: String,
           accountType: String,
+          upiId: String,
+          qrCode: {
+            url: String,
+            publicId: String,
+          },
         },
       },
       step4: {
@@ -331,6 +336,10 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       enum: ['Commission Base', 'Subscription Base', 'None'],
       default: 'Commission Base',
+    },
+    onboardingCompleted: {
+      type: Boolean,
+      default: false
     },
     // Subscription details (current active/latest)
     subscription: {

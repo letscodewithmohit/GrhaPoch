@@ -29,12 +29,12 @@ export async function getGoogleMapsApiKey() {
       const response = await adminAPI.getPublicEnvVariables();
 
       if (response.data.success && response.data.data?.VITE_GOOGLE_MAPS_API_KEY) {
-        cachedApiKey = response.data.data.VITE_GOOGLE_MAPS_API_KEY;
+        cachedApiKey = String(response.data.data.VITE_GOOGLE_MAPS_API_KEY).trim();
         return cachedApiKey;
       }
 
       // No fallback - return empty if not in database
-      console.warn('⚠️ Google Maps API key not found in database. Please set it in Admin → System → Environment Variables');
+      console.warn('⚠️ Google Maps API key not found/empty. Please set it in Admin → System → Environment Variables (VITE_GOOGLE_MAPS_API_KEY)');
       return '';
     } catch (error) {
       console.warn('Failed to fetch Google Maps API key from backend:', error.message);

@@ -52,56 +52,6 @@ const transactionSchema = new mongoose.Schema({
   _id: true
 });
 
-// Withdrawal Request Schema
-const withdrawalRequestSchema = new mongoose.Schema({
-  amount: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  status: {
-    type: String,
-    enum: ['Pending', 'Approved', 'Rejected', 'Processed'],
-    default: 'Pending'
-  },
-  paymentMethod: {
-    type: String,
-    enum: ['admin_select', 'bank_transfer', 'upi', 'qr_code', 'card'],
-    required: true,
-    default: 'admin_select'
-  },
-  bankDetails: {
-    accountNumber: String,
-    ifscCode: String,
-    accountHolderName: String,
-    bankName: String
-  },
-  upiId: String,
-  cardDetails: {
-    last4Digits: String,
-    cardType: String
-  },
-  requestedAt: {
-    type: Date,
-    default: Date.now
-  },
-  processedAt: Date,
-  processedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin',
-    sparse: true
-  },
-  rejectionReason: String,
-  transactionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Transaction',
-    sparse: true
-  }
-}, {
-  timestamps: true,
-  _id: true
-});
-
 // Delivery Wallet Schema
 const deliveryWalletSchema = new mongoose.Schema({
   deliveryId: {
@@ -143,8 +93,6 @@ const deliveryWalletSchema = new mongoose.Schema({
   },
   // Transactions array
   transactions: [transactionSchema],
-  // Withdrawal requests
-  withdrawalRequests: [withdrawalRequestSchema],
   // Status
   isActive: {
     type: Boolean,
@@ -188,19 +136,8 @@ deliveryWalletSchema.methods.addTransaction = function (transactionData) {
   // Update balances based on transaction type and status
   if (transaction.status === 'Completed') {
     if (transaction.type === 'payment' || transaction.type === 'bonus' || transaction.type === 'refund' || transaction.type === 'earning_addon' || transaction.type === 'tip') {
-      const oldBalance = this.totalBalance || 0;
       this.totalBalance += transaction.amount;
       this.totalEarned += transaction.amount;
-
-      // Log bonus/earning_addon transaction for debugging
-
-
-
-
-
-
-
-
 
       // If payment is collected (COD), add to cash in hand
       if (transaction.paymentCollected) {
@@ -288,7 +225,7 @@ deliveryWalletSchema.methods.updateTransactionStatus = function (transactionId, 
   return transaction;
 };
 
-// Method to collect payment (mark payment as collected and update cashInHand)
+// Static method to collect payment
 deliveryWalletSchema.methods.collectPayment = function (orderId, amount) {
   const paymentTransaction = this.transactions.find(
     (t) => t.orderId && t.orderId.toString() === orderId.toString() &&

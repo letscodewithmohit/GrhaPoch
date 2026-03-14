@@ -94,7 +94,12 @@ export default function PocketDetails() {
         })
 
         // 5) Create pseudo-orders for any transactions that don't have a matching trip
-        const existingOrderIds = new Set(filteredTrips.map(o => String(o.orderId || o._id || o.id)))
+        const existingOrderIds = new Set()
+        filteredTrips.forEach((o) => {
+          if (o?.orderId) existingOrderIds.add(String(o.orderId))
+          if (o?._id) existingOrderIds.add(String(o._id))
+          if (o?.id) existingOrderIds.add(String(o.id))
+        })
         const allTransactions = [...filteredPayments, ...filteredBonuses, ...filteredTipsTransactions]
         
         const standaloneOrders = []
@@ -162,13 +167,32 @@ export default function PocketDetails() {
 
   // Compute summary for selected week
   const summary = useMemo(() => {
+    const normalizeId = (id) => (id ? String(id) : "")
+    const paymentTipFor = (payment) => Number(payment?.metadata?.tip ?? payment?.metadata?.tipAmount ?? 0) || 0
+    const tipByOrder = new Map()
+    tipTransactions.forEach((t) => {
+      const tipOrderId = t.orderId || t.metadata?.orderId
+      const key = normalizeId(tipOrderId)
+      if (!key) return
+      tipByOrder.set(key, (tipByOrder.get(key) || 0) + (t.amount || 0))
+    })
     let totalEarning = 0
     let totalBonus = 0
     let totalTip = 0
 
     // Calculate total earning from payment transactions
     paymentTransactions.forEach((p) => {
-      totalEarning += p.amount || 0
+      const amount = Number(p.amount) || 0
+      const orderId = normalizeId(p.orderId || p.metadata?.orderId)
+      const tipFromTxn = orderId ? (tipByOrder.get(orderId) || 0) : 0
+      const tipFromPayment = paymentTipFor(p)
+      const tipForOrder = tipFromTxn > 0 ? tipFromTxn : tipFromPayment
+      totalEarning += Math.max(0, amount - tipForOrder)
+
+      // If no tip transaction exists, but payment metadata has tip, count it once
+      if (tipFromTxn <= 0 && tipFromPayment > 0) {
+        totalTip += tipFromPayment
+      }
     })
 
     // Total bonus for this week
@@ -187,17 +211,29 @@ export default function PocketDetails() {
       totalTip,
       grandTotal: totalEarning + totalBonus + totalTip
     }
-  }, [paymentTransactions, bonusTransactions])
+  }, [paymentTransactions, bonusTransactions, tipTransactions])
 
   // Helper: Get earning for a specific order from payment transactions
   const getOrderEarning = (orderId) => {
     if (!orderId) return 0
+    const normalizeId = (id) => (id ? String(id) : "")
+    const paymentTipFor = (payment) => Number(payment?.metadata?.tip ?? payment?.metadata?.tipAmount ?? 0) || 0
     // Try to find payment transaction by orderId
     const payment = paymentTransactions.find((p) => {
       const paymentOrderId = p.orderId || p.metadata?.orderId
       return paymentOrderId && String(paymentOrderId) === String(orderId)
     })
-    if (payment) return payment.amount || 0
+    if (payment) {
+      const amount = Number(payment.amount) || 0
+      const tipTxn = tipTransactions.find((t) => {
+        const tipOrderId = t.orderId || t.metadata?.orderId
+        return tipOrderId && normalizeId(tipOrderId) === normalizeId(orderId)
+      })
+      const tipFromTxn = tipTxn ? (tipTxn.amount || 0) : 0
+      const tipFromPayment = paymentTipFor(payment)
+      const tipForOrder = tipFromTxn > 0 ? tipFromTxn : tipFromPayment
+      return Math.max(0, amount - tipForOrder)
+    }
 
     // Fallback: try to match by date (same day)
     const order = orders.find(o => {
@@ -260,12 +296,24 @@ export default function PocketDetails() {
   // Helper: Get tip for a specific order
   const getOrderTip = (orderId) => {
     if (!orderId) return 0
+    const normalizeId = (id) => (id ? String(id) : "")
+    const paymentTipFor = (payment) => Number(payment?.metadata?.tip ?? payment?.metadata?.tipAmount ?? 0) || 0
     // Try to find tip transaction by orderId
     const tip = tipTransactions.find((t) => {
       const tipOrderId = t.orderId || t.metadata?.orderId
       return tipOrderId && String(tipOrderId) === String(orderId)
     })
     if (tip) return tip.amount || 0
+
+    // Fallback: use tip from payment metadata if present
+    const payment = paymentTransactions.find((p) => {
+      const paymentOrderId = p.orderId || p.metadata?.orderId
+      return paymentOrderId && normalizeId(paymentOrderId) === normalizeId(orderId)
+    })
+    if (payment) {
+      const tipFromPayment = paymentTipFor(payment)
+      if (tipFromPayment > 0) return tipFromPayment
+    }
 
     // Fallback: try to match by date (same day)
     const order = orders.find(o => {

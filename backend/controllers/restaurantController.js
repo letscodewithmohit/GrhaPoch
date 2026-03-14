@@ -32,7 +32,7 @@ function isPointInZone(lat, lng, zoneCoordinates) {
     if (xi === null || yi === null || xj === null || yj === null) continue;
 
     const intersect = yi > lng !== yj > lng &&
-    lat < (xj - xi) * (lng - yi) / (yj - yi) + xi;
+      lat < (xj - xi) * (lng - yi) / (yj - yi) + xi;
     if (intersect) inside = !inside;
   }
   return inside;
@@ -194,11 +194,11 @@ export const getRestaurants = async (req, res) => {
 
     // Fetch restaurants - Show ALL restaurants regardless of zone
     let restaurants = await Restaurant.find(query).
-    select('-owner -createdAt -updatedAt -password').
-    sort(sortObj).
-    limit(parseInt(limit)).
-    skip(parseInt(offset)).
-    lean();
+      select('-owner -createdAt -updatedAt -password').
+      sort(sortObj).
+      limit(parseInt(limit)).
+      skip(parseInt(offset)).
+      lean();
 
     // Note: We show all restaurants regardless of zone. Zone-based filtering is removed.
     // Users in any zone will see all restaurants.
@@ -267,8 +267,8 @@ export const getRestaurantById = async (req, res) => {
     };
 
     const orConditions = [
-    { restaurantId: id },
-    { slug: id }];
+      { restaurantId: id },
+      { slug: id }];
 
 
     // Only add _id condition if the id is a valid ObjectId
@@ -279,8 +279,8 @@ export const getRestaurantById = async (req, res) => {
     queryConditions.$or = orConditions;
 
     const restaurant = await Restaurant.findOne(queryConditions).
-    select('-owner -createdAt -updatedAt').
-    lean();
+      select('-owner -createdAt -updatedAt').
+      lean();
 
     if (!restaurant) {
       return errorResponse(res, 404, 'Restaurant not found');
@@ -370,9 +370,9 @@ export const createRestaurantFromOnboarding = async (onboardingData, restaurantI
 
     // Generate slug from restaurant name
     let baseSlug = step1.restaurantName.
-    toLowerCase().
-    replace(/[^a-z0-9]+/g, '-').
-    replace(/(^-|-$)/g, '');
+      toLowerCase().
+      replace(/[^a-z0-9]+/g, '-').
+      replace(/(^-|-$)/g, '');
 
     // Check if slug needs to be unique (if it's different from existing)
     let slug = baseSlug;
@@ -504,9 +504,9 @@ export const updateRestaurantProfile = asyncHandler(async (req, res) => {
       // Regenerate slug if name changed
       if (name !== restaurant.name) {
         let baseSlug = name.
-        toLowerCase().
-        replace(/[^a-z0-9]+/g, '-').
-        replace(/(^-|-$)/g, '');
+          toLowerCase().
+          replace(/[^a-z0-9]+/g, '-').
+          replace(/(^-|-$)/g, '');
 
         // Check if slug already exists for another restaurant
         let slug = baseSlug;
@@ -587,6 +587,61 @@ export const updateRestaurantProfile = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Update restaurant payout details (Bank, UPI, QR)
+ * PUT /api/restaurant/payout-details
+ */
+export const updatePayoutDetails = asyncHandler(async (req, res) => {
+  console.log('🚀 [CONTROLLER] updatePayoutDetails called');
+  try {
+    const restaurantId = req.restaurant._id;
+    const { bank, upiId, qrCode } = req.body;
+
+    const restaurant = await Restaurant.findById(restaurantId);
+
+    if (!restaurant) {
+      return errorResponse(res, 404, 'Restaurant not found');
+    }
+
+    if (!restaurant.onboarding) {
+      restaurant.onboarding = { step1: {}, step2: {}, step3: {}, step4: {} };
+    }
+    if (!restaurant.onboarding.step3) {
+      restaurant.onboarding.step3 = {};
+    }
+    if (!restaurant.onboarding.step3.bank) {
+      restaurant.onboarding.step3.bank = {};
+    }
+
+    // Update bank details if provided
+    if (bank) {
+      if (bank.accountNumber) restaurant.onboarding.step3.bank.accountNumber = bank.accountNumber;
+      if (bank.ifscCode) restaurant.onboarding.step3.bank.ifscCode = bank.ifscCode;
+      if (bank.accountHolderName) restaurant.onboarding.step3.bank.accountHolderName = bank.accountHolderName;
+      if (bank.accountType) restaurant.onboarding.step3.bank.accountType = bank.accountType;
+    }
+
+    // Update UPI ID if provided
+    if (upiId !== undefined) {
+      restaurant.onboarding.step3.bank.upiId = upiId;
+    }
+
+    // Update QR Code if provided
+    if (qrCode) {
+      restaurant.onboarding.step3.bank.qrCode = qrCode;
+    }
+
+    await restaurant.save();
+
+    return successResponse(res, 200, 'Payout details updated successfully', {
+      payoutDetails: restaurant.onboarding.step3.bank
+    });
+  } catch (error) {
+    console.error('Error updating payout details:', error);
+    return errorResponse(res, 500, 'Failed to update payout details');
+  }
+});
+
+/**
  * Upload restaurant profile image
  * POST /api/restaurant/profile/image
  */
@@ -612,9 +667,9 @@ export const uploadProfileImage = asyncHandler(async (req, res) => {
       folder,
       resource_type: 'image',
       transformation: [
-      { width: 800, height: 800, crop: 'fill', gravity: 'auto' },
-      { quality: 'auto' }]
-
+        { width: 800, height: 800, crop: 'fill', gravity: 'auto' },
+        { quality: 'auto' }
+      ]
     });
 
     // Update restaurant profile image
@@ -670,23 +725,15 @@ export const uploadMenuImage = asyncHandler(async (req, res) => {
       return errorResponse(res, 404, 'Restaurant not found');
     }
 
-
-
-
-
-
-
-
-
     // Upload to Cloudinary
     const folder = 'appzeto/restaurant/menu';
     const result = await uploadToCloudinary(req.file.buffer, {
       folder,
       resource_type: 'image',
       transformation: [
-      { width: 1200, height: 800, crop: 'fill', gravity: 'auto' },
-      { quality: 'auto' }]
-
+        { width: 1200, height: 800, crop: 'fill', gravity: 'auto' },
+        { quality: 'auto' }
+      ]
     });
 
     // Replace first menu image (main banner) or add if none exists
@@ -798,7 +845,6 @@ export const deleteRestaurantAccount = asyncHandler(async (req, res) => {
           await deleteFromCloudinary(restaurant.profileImage.publicId);
         } catch (error) {
           console.error('Error deleting profile image from Cloudinary:', error);
-          // Continue with account deletion even if image deletion fails
         }
       }
 
@@ -810,23 +856,16 @@ export const deleteRestaurantAccount = asyncHandler(async (req, res) => {
               await deleteFromCloudinary(menuImage.publicId);
             } catch (error) {
               console.error('Error deleting menu image from Cloudinary:', error);
-              // Continue with account deletion even if image deletion fails
             }
           }
         }
       }
     } catch (error) {
       console.error('Error deleting images from Cloudinary:', error);
-      // Continue with account deletion even if image deletion fails
     }
 
     // Delete the restaurant from database
     await Restaurant.findByIdAndDelete(restaurantId);
-
-
-
-
-
 
     return successResponse(res, 200, 'Restaurant account deleted successfully');
   } catch (error) {
@@ -835,29 +874,17 @@ export const deleteRestaurantAccount = asyncHandler(async (req, res) => {
   }
 });
 
-// Get restaurants with dishes under ₹250
+/**
+ * Get restaurants with dishes under ₹250
+ */
 export const getRestaurantsWithDishesUnder250 = async (req, res) => {
   try {
-    const { zoneId } = req.query; // User's zone ID (optional - if provided, filters by zone)
-
-    // Optional: Zone-based filtering - if zoneId is provided, validate and filter by zone
-    let userZone = null;
-    if (zoneId) {
-      // Validate zone exists and is active
-      userZone = await Zone.findById(zoneId).lean();
-      if (!userZone || !userZone.isActive) {
-        return errorResponse(res, 400, 'Invalid or inactive zone. Please detect your zone again.');
-      }
-    }
+    const { zoneId } = req.query;
 
     const MAX_PRICE = 250;
 
-    // Helper function to calculate final price after discount
     const getFinalPrice = (item) => {
-      // price is typically the current/discounted price
-      // If discount exists, calculate from originalPrice, otherwise use price directly
       if (item.originalPrice && item.discountAmount && item.discountAmount > 0) {
-        // Calculate discounted price from originalPrice
         let discountedPrice = item.originalPrice;
         if (item.discountType === 'Percent') {
           discountedPrice = item.originalPrice - item.originalPrice * item.discountAmount / 100;
@@ -866,11 +893,9 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
         }
         return Math.max(0, discountedPrice);
       }
-      // Otherwise, use price as the final price
       return Math.max(0, item.price || 0);
     };
 
-    // Helper function to filter items under ₹250
     const filterItemsUnder250 = (items) => {
       return items.filter((item) => {
         if (item.isAvailable === false) return false;
@@ -879,33 +904,28 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
       });
     };
 
-    // Helper function to process a single restaurant
     const processRestaurant = async (restaurant) => {
       try {
-        // Get menu for this restaurant
         const menu = await Menu.findOne({
           restaurant: restaurant._id,
           isActive: true
         }).lean();
 
         if (!menu || !menu.sections || menu.sections.length === 0) {
-          return null; // Skip restaurants without menus
+          return null;
         }
 
-        // Collect all dishes under ₹250 from all sections
         const dishesUnder250 = [];
 
         menu.sections.forEach((section) => {
           if (section.isEnabled === false) return;
 
-          // Filter direct items in section
           const sectionItems = filterItemsUnder250(section.items || []);
           dishesUnder250.push(...sectionItems.map((item) => ({
             ...item,
             sectionName: section.name
           })));
 
-          // Filter items in subsections
           (section.subsections || []).forEach((subsection) => {
             const subsectionItems = filterItemsUnder250(subsection.items || []);
             dishesUnder250.push(...subsectionItems.map((item) => ({
@@ -916,7 +936,6 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
           });
         });
 
-        // Only include restaurant if it has at least one dish under ₹250
         if (dishesUnder250.length > 0) {
           return {
             id: restaurant._id.toString(),
@@ -929,8 +948,8 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
             deliveryTime: restaurant.estimatedDeliveryTime || "25-30 mins",
             distance: restaurant.distance || "1.2 km",
             cuisine: restaurant.cuisines && restaurant.cuisines.length > 0 ?
-            restaurant.cuisines.join(' • ') :
-            "Multi-cuisine",
+              restaurant.cuisines.join(' • ') :
+              "Multi-cuisine",
             price: restaurant.priceRange || "$$",
             image: restaurant.profileImage?.url || restaurant.menuImages?.[0]?.url || "",
             menuItems: dishesUnder250.map((item) => ({
@@ -953,17 +972,12 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
       }
     };
 
-    // Get all active restaurants - Show ALL restaurants regardless of zone
     let restaurants = await Restaurant.find({ isActive: true }).
-    select('-owner -createdAt -updatedAt').
-    lean().
-    limit(100); // Limit to first 100 restaurants for performance
+      select('-owner -createdAt -updatedAt').
+      lean().
+      limit(100);
 
-    // Note: We show all restaurants regardless of zone. Zone-based filtering is removed.
-    // Users in any zone will see all restaurants.
-
-    // Process restaurants in parallel (batch processing for better performance)
-    const batchSize = 10; // Process 10 restaurants at a time
+    const batchSize = 10;
     const restaurantsWithDishes = [];
 
     for (let i = 0; i < restaurants.length; i += batchSize) {
@@ -972,7 +986,6 @@ export const getRestaurantsWithDishesUnder250 = async (req, res) => {
       restaurantsWithDishes.push(...results.filter((r) => r !== null));
     }
 
-    // Sort by rating (highest first) or by number of dishes
     restaurantsWithDishes.sort((a, b) => {
       if (b.rating !== a.rating) {
         return b.rating - a.rating;
@@ -1014,7 +1027,7 @@ export const updateDiningSettings = asyncHandler(async (req, res) => {
     const isCommissionBased = String(restaurant.businessModel || '').toLowerCase().includes('commission');
     const isPaymentCompleted = restaurant.diningStatus === 'Payment Successful';
     const isTryingToEnableWithoutPayment =
-    isTryingToEnable && isCommissionBased && !restaurant.diningActivationPaid;
+      isTryingToEnable && isCommissionBased && !restaurant.diningActivationPaid;
 
     if (isTryingToEnableWithoutPayment) {
       return errorResponse(res, 403, 'Complete dining activation payment before enabling dining');
@@ -1035,3 +1048,4 @@ export const updateDiningSettings = asyncHandler(async (req, res) => {
     diningEnabled: restaurant.diningEnabled
   });
 });
+

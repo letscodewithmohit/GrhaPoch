@@ -116,6 +116,13 @@ export const checkOnboardingStatus = async () => {
   try {
     const res = await api.get("/restaurant/onboarding")
     const data = res?.data?.data?.onboarding
+    const onboardingCompleted = res?.data?.data?.onboardingCompleted
+    const subscriptionStatus = res?.data?.data?.subscription?.status
+
+    if (onboardingCompleted || subscriptionStatus === "active") {
+      return null
+    }
+
     if (data) {
       const stepToShow = determineStepToShow(data)
       return stepToShow

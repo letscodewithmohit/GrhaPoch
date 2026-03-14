@@ -869,7 +869,7 @@ export default function ExploreMore() {
           <Card className="bg-white border-gray-200 py-3 mb-6 rounded-lg shadow-0">
             <CardContent className="px-4">
               <button
-                onClick={() => navigate("/restaurant/switch-outlet")}
+                onClick={() => navigate("/restaurant/to-hub")}
                 className="w-full flex items-center justify-between">
                 
                 <div className="flex items-center gap-3 flex-1">

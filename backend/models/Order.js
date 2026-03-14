@@ -180,6 +180,17 @@ const orderSchema = new mongoose.Schema({
       type: String
     }
   },
+  // QR-based UPI payment (COD alternative)
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid']
+  },
+  qrCodeId: {
+    type: String
+  },
+  qrCodeUrl: {
+    type: String
+  },
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'],

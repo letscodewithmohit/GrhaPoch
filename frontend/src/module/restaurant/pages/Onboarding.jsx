@@ -324,6 +324,14 @@ export default function RestaurantOnboarding() {
       try {
         setLoading(true);
         const res = await api.get("/restaurant/onboarding");
+        const onboardingCompleted = res?.data?.data?.onboardingCompleted;
+        const subscriptionStatus = res?.data?.data?.subscription?.status;
+
+        if (onboardingCompleted || subscriptionStatus === "active") {
+          navigate("/restaurant/to-hub", { replace: true });
+          return;
+        }
+
         const data = res?.data?.data?.onboarding;
         if (data) {
           if (data.step1) {
@@ -992,7 +1000,7 @@ export default function RestaurantOnboarding() {
             navigate("/restaurant/subscription-plans", { replace: true });
           } else {
 
-            navigate("/restaurant", { replace: true });
+            navigate("/restaurant/to-hub", { replace: true });
           }
         }, 800);
       }

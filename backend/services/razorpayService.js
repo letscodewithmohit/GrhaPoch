@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import axios from 'axios';
 import crypto from 'crypto';
 import winston from 'winston';
 import { getRazorpayCredentials } from '../utils/envService.js';
@@ -15,7 +16,8 @@ const logger = winston.createLogger({
 
 // Initialize Razorpay instance
 let razorpayInstance = null;
-const isMockRazorpayEnabled = String(process.env.ENABLE_MOCK_RAZORPAY || '').toLowerCase() === 'true';
+const isMockRazorpayEnabled = () =>
+  String(process.env.ENABLE_MOCK_RAZORPAY || '').toLowerCase() === 'true';
 
 const initializeRazorpay = async () => {
   try {
@@ -95,7 +97,7 @@ const createOrder = async (options) => {
     logger.info('Calling Razorpay API to create order...');
 
     // Optional mock mode for local development only
-    if (isMockRazorpayEnabled) {
+    if (isMockRazorpayEnabled()) {
       logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock order for development.');
       return {
         id: `order_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -169,7 +171,7 @@ const verifyPayment = async (razorpayOrderId, razorpayPaymentId, razorpaySignatu
     const isValid = generatedSignature === razorpaySignature;
 
     // Allow mock payments only when explicit mock mode is enabled
-    if (!isValid && isMockRazorpayEnabled) {
+    if (!isValid && isMockRazorpayEnabled()) {
       if (razorpayOrderId && razorpayOrderId.startsWith('order_mock_')) {
         logger.warn('⚠️ Verifying mock payment because ENABLE_MOCK_RAZORPAY=true.');
         return true;
@@ -213,6 +215,87 @@ const fetchPayment = async (paymentId) => {
 };
 
 /**
+ * Create a Razorpay UPI QR code
+ * @param {Object} options - QR options
+ * @returns {Promise<Object>} Razorpay QR object
+ */
+const createQrCode = async (options) => {
+  try {
+    const qrOptions = {
+      type: options.type || 'upi_qr',
+      name: options.name || `Order QR ${Date.now()}`,
+      usage: options.usage || 'single_use',
+      fixed_amount: options.fixed_amount !== undefined ? options.fixed_amount : true,
+      payment_amount: options.payment_amount,
+      description: options.description,
+      notes: options.notes || {}
+    };
+
+    if (typeof qrOptions.payment_amount !== 'number' || qrOptions.payment_amount <= 0) {
+      throw new Error('QR payment_amount must be a positive number in paise');
+    }
+
+    if (isMockRazorpayEnabled()) {
+      logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock QR for development.');
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="100%" height="100%" fill="#fff"/><rect x="20" y="20" width="200" height="200" fill="#111"/><text x="120" y="125" font-size="14" fill="#fff" text-anchor="middle">MOCK QR</text></svg>`;
+      return {
+        id: `qr_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        image_url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+        payment_amount: qrOptions.payment_amount,
+        notes: qrOptions.notes
+      };
+    }
+
+    const credentials = await getRazorpayCredentials();
+    const keyId = credentials.keyId;
+    const keySecret = credentials.keySecret;
+
+    if (!keyId || !keySecret) {
+      logger.error('Razorpay credentials missing for QR creation');
+      throw new Error('Razorpay credentials not found. Please check your keys.');
+    }
+
+    const qrResponse = await axios.post(
+      'https://api.razorpay.com/v1/payments/qr_codes',
+      qrOptions,
+      {
+        auth: {
+          username: keyId,
+          password: keySecret
+        },
+        timeout: 15000
+      }
+    );
+
+    const qr = qrResponse?.data;
+    if (!qr?.id) {
+      throw new Error('Invalid QR response from Razorpay');
+    }
+
+    logger.info(`Razorpay QR created successfully: ${qr.id}`);
+    return qr;
+  } catch (error) {
+    const statusCode = error?.response?.status || error?.statusCode;
+    const responseData = error?.response?.data;
+    logger.error(`Error creating Razorpay QR:`, {
+      message: error.message,
+      error: error.error || error.description || error,
+      statusCode: statusCode,
+      status: error.status,
+      responseData
+    });
+
+    const razorpayMessage =
+      responseData?.error?.description ||
+      responseData?.error?.reason ||
+      responseData?.error?.code ||
+      error?.message ||
+      'Failed to create Razorpay QR';
+    throw new Error(razorpayMessage);
+  }
+};
+
+/**
  * Verify Razorpay subscription payment signature
  * @param {String} razorpaySubscriptionId - Razorpay subscription ID
  * @param {String} razorpayPaymentId - Razorpay payment ID
@@ -236,7 +319,7 @@ const verifySubscriptionPayment = async (razorpaySubscriptionId, razorpayPayment
 
     const isValid = generatedSignature === razorpaySignature;
 
-    if (!isValid && isMockRazorpayEnabled) {
+    if (!isValid && isMockRazorpayEnabled()) {
       if (razorpaySubscriptionId && razorpaySubscriptionId.startsWith('sub_mock_')) {
         logger.warn('⚠️ Verifying mock subscription payment because ENABLE_MOCK_RAZORPAY=true.');
         return true;
@@ -339,7 +422,7 @@ const createPlan = async (options) => {
     }
 
     // Optional mock mode for local development only
-    if (isMockRazorpayEnabled) {
+    if (isMockRazorpayEnabled()) {
       logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock plan for development.');
       return {
         id: `plan_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -426,7 +509,7 @@ const createSubscription = async (options) => {
     }
 
     // Optional mock mode for local development only
-    if (isMockRazorpayEnabled) {
+    if (isMockRazorpayEnabled()) {
       logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock subscription for development.');
       return {
         id: `sub_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -528,7 +611,7 @@ const cancelSubscription = async (subscriptionId) => {
     });
 
     // Optional mock mode for local development only
-    if (isMockRazorpayEnabled) {
+    if (isMockRazorpayEnabled()) {
       logger.warn('⚠️ ENABLE_MOCK_RAZORPAY=true detected. Returning mock cancelled subscription for development.');
       return {
         id: subscriptionId.startsWith('sub_mock_') ? subscriptionId : `sub_mock_${subscriptionId}`,
@@ -638,6 +721,7 @@ export {
   verifyPayment,
   verifySubscriptionPayment,
   fetchPayment,
+  createQrCode,
   fetchOrder,
   fetchOrderPayments,
   createPlan,

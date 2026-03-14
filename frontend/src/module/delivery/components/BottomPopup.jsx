@@ -289,7 +289,7 @@ export default function BottomPopup({
             style={{
               maxHeight: isCollapsed ? "120px" : maxHeight,
               height: isCollapsed ? "120px" : maxHeight,
-              touchAction: 'pan-y'
+              touchAction: 'auto'
             }}>
 
             {/* Top Drag Handle Bar - Always visible for dragging */}
@@ -358,7 +358,7 @@ export default function BottomPopup({
               <div
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-3 overscroll-contain"
                 style={{
-                  touchAction: "pan-y",
+                  touchAction: "auto",
                   WebkitOverflowScrolling: "touch",
                   paddingBottom: "calc(24px + env(safe-area-inset-bottom))"
                 }}>
