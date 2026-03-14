@@ -154,11 +154,7 @@ export default function App() {
       {/* Restaurant Protected Routes */}
       <Route
         path="/restaurant/onboarding"
-        element={
-          <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
-            <RestaurantOnboarding />
-          </ProtectedRoute>
-        }
+        element={<RestaurantOnboarding />}
       />
 
 

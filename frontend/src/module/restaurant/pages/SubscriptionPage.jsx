@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ArrowLeft, Crown, Sparkles, TrendingUp, Loader2, History, Calendar, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { restaurantAPI } from '@/lib/api';
+import { restaurantAPI, api } from '@/lib/api';
 import { loadRazorpayScript } from '@/lib/utils/razorpay';
+import { clearIDB } from '../utils/onboardingStorage';
 
 const ICONS = {
     'Starter': Crown,
@@ -218,6 +219,25 @@ export default function SubscriptionPage() {
                             planId: plan.id
                         });
 
+                        // 4. Finalize Onboarding if data is pending (New Requirement)
+                        const pendingOnboarding = localStorage.getItem("pending_subscription_onboarding");
+                        if (pendingOnboarding) {
+                            try {
+                                const onboardingData = JSON.parse(pendingOnboarding);
+                                // Set business model correctly just in case
+                                onboardingData.businessModel = 'Subscription Base';
+                                onboardingData.completedSteps = 5;
+                                
+                                await api.put("/restaurant/onboarding", onboardingData);
+                                localStorage.removeItem("pending_subscription_onboarding");
+                                localStorage.removeItem("restaurant_onboarding_data");
+                                await clearIDB();
+                            } catch (onbErr) {
+                                console.error("Failed to finalize onboarding after payment:", onbErr);
+                                // We don't block the user since payment was successful
+                            }
+                        }
+
                         toast.success('Subscription activated successfully!');
 
                         // Update UI status after activation
@@ -227,6 +247,7 @@ export default function SubscriptionPage() {
                         // Navigate to success page with data
                         const subData = verifyRes.data.data.subscription;
                         navigate('/restaurant/subscription-success', {
+                            replace: true,
                             state: {
                                 planName: plan.name,
                                 endDate: subData.endDate
@@ -333,6 +354,7 @@ export default function SubscriptionPage() {
                 {/* Hero Section */}
                 <div className="text-center mb-10 space-y-4">
                     {/* Active Plan Indicator for Commission Base */}
+                    {/* Active Plan Indicator for Commission Base */}
                     {(!currentSubscription || currentSubscription.status !== 'active') && !loading && (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
@@ -340,7 +362,7 @@ export default function SubscriptionPage() {
                             transition={{ delay: 0.3 }}
                             className="inline-flex items-center gap-2 bg-amber-50 text-amber-800 px-4 py-2 rounded-lg border border-amber-200"
                         >
-                            <span className="font-semibold">Current Plan:</span> Commission Based
+                            <span className="font-semibold">Current Plan:</span> Commission Base
                         </motion.div>
                     )}
 

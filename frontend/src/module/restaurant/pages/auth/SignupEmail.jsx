@@ -84,7 +84,7 @@ export default function RestaurantSignupEmail() {
 
   const handleOtpChange = (index, value) => {
     if (!/^\d*$/.test(value)) return
-    
+
     const newOtp = [...otp]
     newOtp[index] = value.slice(-1)
     setOtp(newOtp)
@@ -121,7 +121,7 @@ export default function RestaurantSignupEmail() {
   const handleOtpSubmit = async (e) => {
     e.preventDefault()
     setError("")
-    
+
     const otpCode = otp.join("")
     if (otpCode.length !== 6) {
       setError("Please enter the complete OTP")
@@ -140,13 +140,13 @@ export default function RestaurantSignupEmail() {
       )
 
       const data = response?.data?.data || response?.data
-      
+
       if (data.accessToken && data.restaurant) {
         // Replace old token with new one (handles cross-module login)
         setAuthData("restaurant", data.accessToken, data.restaurant)
-        
+
         window.dispatchEvent(new Event("restaurantAuthChanged"))
-        
+
         navigate("/restaurant", { replace: true })
       } else {
         throw new Error("Registration failed. Please try again.")
@@ -167,7 +167,7 @@ export default function RestaurantSignupEmail() {
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return
-    
+
     setIsLoading(true)
     setError("")
     try {
@@ -383,22 +383,20 @@ export default function RestaurantSignupEmail() {
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, businessModel: "Commission Base" })}
-                        className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                          formData.businessModel === "Commission Base"
+                        className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${formData.businessModel === "Commission Base"
                             ? "border-blue-600 bg-blue-50 text-blue-700"
                             : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                        }`}
+                          }`}
                       >
                         Commission Base
                       </button>
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, businessModel: "Subscription Base" })}
-                        className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                          formData.businessModel === "Subscription Base"
+                        className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${formData.businessModel === "Subscription Base"
                             ? "border-blue-600 bg-blue-50 text-blue-700"
                             : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                        }`}
+                          }`}
                       >
                         Subscription Base
                       </button>
