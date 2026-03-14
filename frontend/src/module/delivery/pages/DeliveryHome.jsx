@@ -610,6 +610,7 @@ export default function DeliveryHome() {
     qrCodeId: '',
     error: ''
   });
+  const [isQrPreviewOpen, setIsQrPreviewOpen] = useState(false);
   const [isQrPolling, setIsQrPolling] = useState(false);
   const [customerRating, setCustomerRating] = useState(0);
   const [customerReviewText, setCustomerReviewText] = useState("");
@@ -10189,11 +10190,23 @@ export default function DeliveryHome() {
               {(qrPaymentState.qrCodeUrl || qrPaymentState.error) && (
                 <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 text-center">
                   {qrPaymentState.qrCodeUrl && (
-                    <img
-                      src={qrPaymentState.qrCodeUrl}
-                      alt="UPI QR"
-                      className="mx-auto w-48 h-48 object-contain"
-                    />
+                    <div className="mx-auto">
+                      <button
+                        type="button"
+                        onClick={() => setIsQrPreviewOpen(true)}
+                        className="text-left"
+                        aria-label="Preview QR code"
+                      >
+                        <div className="h-44 w-44 overflow-hidden rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm">
+                          <img
+                            src={qrPaymentState.qrCodeUrl}
+                            alt="UPI QR"
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-gray-500 text-center">Tap to enlarge</p>
+                      </button>
+                    </div>
                   )}
                   <p className="text-sm text-gray-600 mt-3">
                     Customer can scan this QR to pay via UPI.
@@ -10207,6 +10220,33 @@ export default function DeliveryHome() {
                   {qrPaymentState.error && (
                     <p className="text-xs text-red-600 mt-1">{qrPaymentState.error}</p>
                   )}
+                </div>
+              )}
+
+              {isQrPreviewOpen && qrPaymentState.qrCodeUrl && (
+                <div
+                  className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
+                  onClick={() => setIsQrPreviewOpen(false)}
+                >
+                  <div
+                    className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="mx-auto h-72 w-72 overflow-hidden rounded-2xl bg-white ring-1 ring-gray-200">
+                      <img
+                        src={qrPaymentState.qrCodeUrl}
+                        alt="UPI QR"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsQrPreviewOpen(false)}
+                      className="mt-4 w-full rounded-lg bg-gray-900 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
