@@ -1,285 +1,110 @@
-/**
- * Wallet State Management Utility
- * Centralized management for wallet balances, transactions, and withdrawals
- */
+import { restaurantAPI } from '@/lib/api'
 
-import { usdToInr } from './currency'
-
-// Default wallet state structure (converted to INR)
-const DEFAULT_WALLET_STATE = {
-  // Balance values (in INR)
-  totalEarning: usdToInr(8845.23),
-  cashInHand: usdToInr(733.23),
-  balanceUnadjusted: usdToInr(3777.23),
-  withdrawalBalance: usdToInr(3044.00),
-  pendingWithdraw: usdToInr(68.00),
-  alreadyWithdraw: usdToInr(5000.00),
-  
-  // Transactions (in INR)
-  transactions: [
-    {
-      id: 1,
-      amount: usdToInr(68.00),
-      description: "Transferred to Card",
-      status: "Pending",
-      date: "01 Jun 2023",
-      type: "withdrawal"
-    },
-    {
-      id: 2,
-      amount: usdToInr(5000.00),
-      description: "Transferred to Account",
-      status: "Pending",
-      date: "07 Feb 2023",
-      type: "withdrawal"
-    }
-  ],
-  
-  // Withdraw requests
-  withdrawRequests: []
-}
-
-const WALLET_STORAGE_KEY = 'restaurant_wallet_state'
+// Empty wallet state structure
+const EMPTY_WALLET_STATE = {
+  totalBalance: 0,
+  totalWithdrawn: 0,
+  totalEarned: 0,
+  transactions: [],
+  pendingWithdrawals: 0,
+  withdrawalBalance: 0
+};
 
 /**
- * Get wallet state from localStorage
- * @returns {Object} - Wallet state object
+ * Fetch wallet data from API
+ * @returns {Promise<Object>} - Wallet state object
  */
-export const getWalletState = () => {
+export const fetchWalletData = async () => {
   try {
-    const saved = localStorage.getItem(WALLET_STORAGE_KEY)
-    if (saved) {
-      return JSON.parse(saved)
+    const response = await restaurantAPI.getWallet();
+    if (response?.data?.success && response?.data?.data?.wallet) {
+      const walletData = response.data.data.wallet;
+
+      // Calculate pending withdrawals from transactions
+      const transactions = walletData.transactions || [];
+      const pendingWithdrawals = transactions
+        .filter(t => t.type === 'withdrawal' && t.status === 'Pending')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      const transformedData = {
+        totalBalance: Number(walletData.totalBalance) || 0,
+        totalWithdrawn: Number(walletData.totalWithdrawn) || 0,
+        totalEarned: Number(walletData.totalEarned) || 0,
+        transactions: transactions,
+        pendingWithdrawals: pendingWithdrawals,
+        // Withdrawable amount is the current totalBalance
+        withdrawalBalance: Number(walletData.totalBalance) || 0
+      };
+
+      return transformedData;
     }
-    // Initialize with default state
-    setWalletState(DEFAULT_WALLET_STATE)
-    return DEFAULT_WALLET_STATE
+    return EMPTY_WALLET_STATE;
   } catch (error) {
-    console.error('Error reading wallet state from localStorage:', error)
-    return DEFAULT_WALLET_STATE
+    console.error('Error fetching restaurant wallet data:', error);
+    return EMPTY_WALLET_STATE;
   }
-}
+};
 
 /**
- * Save wallet state to localStorage
- * @param {Object} state - Wallet state object
- */
-export const setWalletState = (state) => {
-  try {
-    localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(state))
-    // Dispatch custom event for other components
-    window.dispatchEvent(new CustomEvent('walletStateUpdated'))
-  } catch (error) {
-    console.error('Error saving wallet state to localStorage:', error)
-  }
-}
-
-/**
- * Calculate withdrawable balance
+ * Calculate balances for display
  * @param {Object} state - Wallet state
- * @returns {number} - Withdrawable balance
- */
-export const calculateWithdrawableBalance = (state) => {
-  return state.totalEarning - state.alreadyWithdraw - state.pendingWithdraw
-}
-
-/**
- * Calculate all balances dynamically
- * @param {Object} state - Wallet state
- * @returns {Object} - Calculated balances
+ * @returns {Object} - Formatted balances
  */
 export const calculateBalances = (state) => {
-  const withdrawableBalance = calculateWithdrawableBalance(state)
-  
-  // Calculate pending withdraw from transactions
-  const pendingWithdrawFromTransactions = state.transactions
-    .filter(t => t.type === 'withdrawal' && t.status === 'Pending')
-    .reduce((sum, t) => sum + t.amount, 0)
-  
-  // Calculate already withdraw from transactions
-  const alreadyWithdrawFromTransactions = state.transactions
-    .filter(t => t.type === 'withdrawal' && t.status === 'Completed')
-    .reduce((sum, t) => sum + t.amount, 0)
-  
+  if (!state) return {
+    cashInHand: 0,
+    withdrawalBalance: 0,
+    pendingWithdraw: 0,
+    alreadyWithdraw: 0,
+    totalEarning: 0,
+    balanceUnadjusted: 0
+  };
+
   return {
-    totalEarning: state.totalEarning,
-    cashInHand: state.cashInHand,
-    balanceUnadjusted: state.balanceUnadjusted,
-    withdrawalBalance: withdrawableBalance,
-    pendingWithdraw: pendingWithdrawFromTransactions,
-    alreadyWithdraw: alreadyWithdrawFromTransactions
-  }
-}
+    cashInHand: 0, // Restaurants don't have "Cash in Hand" in this logic
+    withdrawalBalance: state.totalBalance || 0,
+    pendingWithdraw: state.pendingWithdrawals || 0,
+    alreadyWithdraw: state.totalWithdrawn || 0,
+    totalEarning: state.totalEarned || 0,
+    balanceUnadjusted: 0
+  };
+};
 
 /**
- * Add a transaction
- * @param {Object} transaction - Transaction object
- */
-export const addTransaction = (transaction) => {
-  const state = getWalletState()
-  const newTransaction = {
-    id: Date.now(),
-    ...transaction,
-    date: transaction.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  }
-  
-  state.transactions.unshift(newTransaction)
-  
-  // Update balances based on transaction
-  if (transaction.type === 'withdrawal' && transaction.status === 'Pending') {
-    state.pendingWithdraw = calculateBalances(state).pendingWithdraw
-    state.withdrawalBalance = calculateWithdrawableBalance(state)
-  } else if (transaction.type === 'withdrawal' && transaction.status === 'Completed') {
-    state.alreadyWithdraw = calculateBalances(state).alreadyWithdraw
-    state.withdrawalBalance = calculateWithdrawableBalance(state)
-    state.pendingWithdraw = calculateBalances(state).pendingWithdraw
-  } else if (transaction.type === 'payment' && transaction.status === 'Completed') {
-    state.totalEarning += transaction.amount
-    state.withdrawalBalance = calculateWithdrawableBalance(state)
-  }
-  
-  setWalletState(state)
-  return newTransaction
-}
-
-/**
- * Create a withdraw request
+ * Create a withdraw request via API
  * @param {number} amount - Withdrawal amount
  * @param {string} paymentMethod - Payment method
- * @returns {Object} - Created transaction
+ * @param {Object} details - Bank/UPI/QR details
+ * @returns {Promise<Object>} - API response
  */
-export const createWithdrawRequest = (amount, paymentMethod) => {
-  const transaction = {
-    amount: parseFloat(amount),
-    description: `Withdrawal via ${paymentMethod}`,
-    status: "Pending",
-    type: "withdrawal",
-    paymentMethod: paymentMethod
+export const createWithdrawRequest = async (amount, paymentMethod, details = {}) => {
+  try {
+    const payload = {
+      amount: parseFloat(amount),
+      paymentMethod: paymentMethod === 'Admin Select' ? 'admin_select' :
+        paymentMethod === 'Bank Transfer' ? 'bank_transfer' :
+          paymentMethod.toLowerCase().replace(' ', '_'),
+      ...details
+    };
+
+    const response = await restaurantAPI.createWithdrawalRequest(payload);
+    if (response?.data?.success) {
+      window.dispatchEvent(new CustomEvent('walletStateUpdated'));
+      return response.data;
+    }
+    throw new Error(response?.data?.message || 'Failed to create withdrawal request');
+  } catch (error) {
+    console.error('Error creating withdrawal request:', error);
+    throw error;
   }
-  
-  return addTransaction(transaction)
-}
+};
 
-/**
- * Update transaction status
- * @param {number} transactionId - Transaction ID
- * @param {string} newStatus - New status (Pending, Completed, Failed)
- */
-export const updateTransactionStatus = (transactionId, newStatus) => {
-  const state = getWalletState()
-  const transaction = state.transactions.find(t => t.id === transactionId)
-  
-  if (transaction) {
-    const oldStatus = transaction.status
-    transaction.status = newStatus
-    
-    // Recalculate balances
-    const balances = calculateBalances(state)
-    state.pendingWithdraw = balances.pendingWithdraw
-    state.alreadyWithdraw = balances.alreadyWithdraw
-    state.withdrawalBalance = balances.withdrawalBalance
-    
-    setWalletState(state)
-    return transaction
-  }
-  
-  return null
-}
+// Deprecated functions kept for compatibility during transition
+export const getWalletState = () => EMPTY_WALLET_STATE;
+export const getBalanceAdjusted = () => true;
+export const setBalanceAdjusted = () => { };
+export const getTransactionsByType = (type) => [];
+export const getTransactionsByStatus = (status) => [];
+export const getOrderPaymentAmount = (orderId) => 0;
 
-/**
- * Add payment from order
- * @param {number} amount - Payment amount
- * @param {string} orderId - Order ID
- * @param {string} description - Payment description
- */
-export const addOrderPayment = (amount, orderId, description) => {
-  const transaction = {
-    amount: parseFloat(amount),
-    description: description || `Payment received for Order #${orderId}`,
-    status: "Completed",
-    type: "payment",
-    orderId: orderId
-  }
-  
-  return addTransaction(transaction)
-}
-
-/**
- * Update balance adjustment status
- * @param {boolean} isAdjusted - Whether balance is adjusted
- */
-export const setBalanceAdjusted = (isAdjusted) => {
-  const state = getWalletState()
-  state.isBalanceAdjusted = isAdjusted
-  setWalletState(state)
-}
-
-/**
- * Get balance adjustment status
- * @returns {boolean} - Whether balance is adjusted
- */
-export const getBalanceAdjusted = () => {
-  const state = getWalletState()
-  return state.isBalanceAdjusted || false
-}
-
-/**
- * Get transactions by type
- * @param {string} type - Transaction type (withdrawal, payment, all)
- * @returns {Array} - Filtered transactions
- */
-export const getTransactionsByType = (type = 'all') => {
-  const state = getWalletState()
-  if (type === 'all') {
-    return state.transactions
-  }
-  return state.transactions.filter(t => t.type === type)
-}
-
-/**
- * Get transactions by status
- * @param {string} status - Transaction status (Pending, Completed, Failed)
- * @returns {Array} - Filtered transactions
- */
-export const getTransactionsByStatus = (status) => {
-  const state = getWalletState()
-  return state.transactions.filter(t => t.status === status)
-}
-
-/**
- * Get order payment amount from wallet transactions
- * @param {string|number} orderId - Order ID
- * @returns {number|null} - Payment amount if found, null otherwise
- */
-export const getOrderPaymentAmount = (orderId) => {
-  const state = getWalletState()
-  const paymentTransaction = state.transactions.find(
-    t => t.type === 'payment' && t.orderId === String(orderId)
-  )
-  return paymentTransaction ? paymentTransaction.amount : null
-}
-
-/**
- * Get payment status for an order
- * @param {string|number} orderId - Order ID
- * @returns {string} - Payment status ("Paid" or "Unpaid")
- */
-export const getOrderPaymentStatus = (orderId) => {
-  const state = getWalletState()
-  const paymentTransaction = state.transactions.find(
-    t => t.type === 'payment' && t.orderId === String(orderId) && t.status === 'Completed'
-  )
-  return paymentTransaction ? "Paid" : "Unpaid"
-}
-
-/**
- * Get all order IDs that have payments
- * @returns {Array} - Array of order IDs with payments
- */
-export const getPaidOrderIds = () => {
-  const state = getWalletState()
-  return state.transactions
-    .filter(t => t.type === 'payment' && t.status === 'Completed' && t.orderId)
-    .map(t => t.orderId)
-}
 

@@ -46,6 +46,14 @@ export const authenticate = async (req, res, next) => {
 
     // Check for onboarding routes (can be /onboarding or /api/restaurant/onboarding)
     const isOnboardingRoute = requestPath.includes('/onboarding') || reqPath === '/onboarding' || reqPath.includes('onboarding');
+    const hasActiveSubscription = restaurant.subscription?.status === 'active' &&
+      restaurant.subscription?.endDate &&
+      new Date(restaurant.subscription.endDate) > new Date();
+
+    // Block onboarding routes if already completed or has active subscription
+    if (isOnboardingRoute && (restaurant.onboardingCompleted || hasActiveSubscription)) {
+      return errorResponse(res, 403, 'Onboarding already completed');
+    }
 
     // Check for profile/auth routes
     // Note: /auth/me and /auth/reverify are handled by restaurantAuthRoutes mounted at /auth, so:

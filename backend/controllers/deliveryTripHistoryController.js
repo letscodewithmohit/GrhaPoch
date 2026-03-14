@@ -83,6 +83,9 @@ export const getTripHistory = asyncHandler(async (req, res) => {
       deliveryPartnerId: delivery._id
     };
 
+    // Show only accepted/handled trips (exclude unaccepted assignments)
+    query['deliveryState.status'] = { $ne: 'pending' };
+
     // Date range query - check createdAt, deliveredAt, or cancelledAt
     // This ensures orders delivered today show up in today's history even if created yesterday
     query.$or = [

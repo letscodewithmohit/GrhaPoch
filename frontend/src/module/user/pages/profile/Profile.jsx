@@ -23,13 +23,7 @@ import {
   ShoppingCart,
   Heart,
   CalendarDays,
-  Megaphone,
-  Bell,
-  BellOff,
-  Loader2,
-  BellRing,
-  CheckCircle2,
-  XCircle
+  Megaphone
 } from
   "lucide-react";
 
@@ -60,76 +54,6 @@ export default function Profile() {
   const [vegModeOpen, setVegModeOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  // Push notification test state
-  const [pushStatus, setPushStatus] = useState('idle'); // idle | requesting | sending | success | error | denied | no-token
-  const [pushMessage, setPushMessage] = useState('');
-  const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  );
-  const hasFCMToken = !!localStorage.getItem('fcm_token_user');
-
-  const handleTestPush = async () => {
-    if (pushStatus === 'requesting' || pushStatus === 'sending') return;
-
-    // Step 1 — ensure permission
-    if (notifPermission !== 'granted') {
-      setPushStatus('requesting');
-      setPushMessage('Requesting permission…');
-      try {
-        const perm = await Notification.requestPermission();
-        setNotifPermission(perm);
-        if (perm !== 'granted') {
-          setPushStatus('denied');
-          setPushMessage('Permission denied. Enable notifications in browser settings.');
-          setTimeout(() => { setPushStatus('idle'); setPushMessage(''); }, 4000);
-          return;
-        }
-      } catch {
-        setPushStatus('error');
-        setPushMessage('Could not request permission.');
-        setTimeout(() => { setPushStatus('idle'); setPushMessage(''); }, 3000);
-        return;
-      }
-    }
-
-    // Step 2 — register / refresh FCM token then fire a local notification
-    setPushStatus('sending');
-    setPushMessage('Registering token & sending…');
-
-    try {
-      const { registerFCMToken } = await import('@/lib/pushNotificationService');
-      const token = await registerFCMToken('user', false);
-
-      if (!token) {
-        // fallback: show a plain local browser notification
-        new Notification('GrhaPoch 🔔', {
-          body: 'Push system initialised but no FCM token yet (VAPID key may be missing).',
-          icon: '/favicon.ico',
-          tag: 'test-push-fallback'
-        });
-        setPushStatus('success');
-        setPushMessage('Local notification sent (FCM token pending).');
-      } else {
-        // Show a real foreground notification via the browser Notifications API
-        new Notification('GrhaPoch 🔔 Test Notification', {
-          body: `Hi ${userProfile?.name || 'there'}! Push notifications are working perfectly on your device.`,
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
-          tag: `test-push-${Date.now()}`,
-          requireInteraction: false
-        });
-        setPushStatus('success');
-        setPushMessage('Notification sent! Check your notification tray.');
-      }
-    } catch (err) {
-      setPushStatus('error');
-      setPushMessage(err?.message || 'Failed to send notification.');
-    }
-
-    setTimeout(() => { setPushStatus('idle'); setPushMessage(''); }, 4000);
-  };
-
 
   // Settings states
   const [appearance, setAppearance] = useState(() => {
@@ -751,109 +675,6 @@ export default function Profile() {
               </Card>
             </motion.div>
           </Link>
-        </div>
-
-        {/* Push Notification Test Section */}
-        <div className="mb-3">
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <div className="w-1 h-4 bg-green-600 rounded"></div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Notifications</h3>
-          </div>
-
-          <motion.div
-            whileHover={{ x: 4, scale: 1.01 }}
-            transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-
-            <Card
-              className={`bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer overflow-hidden ${pushStatus === 'success' ? 'ring-2 ring-green-400 ring-offset-1' :
-                pushStatus === 'error' || pushStatus === 'denied' ? 'ring-2 ring-red-400 ring-offset-1' : ''
-                }`}
-              onClick={handleTestPush}>
-
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    className={`rounded-full p-2 ${pushStatus === 'success' ? 'bg-green-100 dark:bg-green-900/40' :
-                      pushStatus === 'error' || pushStatus === 'denied' ? 'bg-red-100 dark:bg-red-900/40' :
-                        'bg-gray-100 dark:bg-gray-800'
-                      }`}
-                    animate={pushStatus === 'sending' ? { rotate: [0, -15, 15, -10, 10, 0] } : {}}
-                    transition={{ duration: 0.6, repeat: pushStatus === 'sending' ? Infinity : 0 }}>
-
-                    <AnimatePresence mode="wait">
-                      {pushStatus === 'idle' && (
-                        <motion.div key="idle" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
-                          <Bell className={`h-5 w-5 ${notifPermission === 'denied' ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`} />
-                        </motion.div>
-                      )}
-                      {(pushStatus === 'requesting' || pushStatus === 'sending') && (
-                        <motion.div key="loading" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
-                          <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                        </motion.div>
-                      )}
-                      {pushStatus === 'success' && (
-                        <motion.div key="ok" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        </motion.div>
-                      )}
-                      {(pushStatus === 'error' || pushStatus === 'denied') && (
-                        <motion.div key="err" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
-                          <XCircle className="h-5 w-5 text-red-500" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-
-                  <div className="flex flex-col">
-                    <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Test Push Notification
-                    </span>
-                    <AnimatePresence mode="wait">
-                      {pushMessage ? (
-                        <motion.span
-                          key={pushMessage}
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          className={`text-xs mt-0.5 ${pushStatus === 'success' ? 'text-green-600 dark:text-green-400' :
-                            pushStatus === 'error' || pushStatus === 'denied' ? 'text-red-500' :
-                              'text-blue-500'
-                            }`}>
-                          {pushMessage}
-                        </motion.span>
-                      ) : (
-                        <motion.span
-                          key="hint"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                          {notifPermission === 'granted'
-                            ? hasFCMToken ? 'Tap to fire a test notification' : 'Tap to register & test'
-                            : notifPermission === 'denied'
-                              ? 'Enable in browser settings'
-                              : 'Tap to enable notifications'}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                {/* Status badge */}
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${notifPermission === 'granted'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                    : notifPermission === 'denied'
-                      ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'
-                    }`}>
-                    {notifPermission === 'granted' ? 'ON' : notifPermission === 'denied' ? 'BLOCKED' : 'OFF'}
-                  </span>
-                  <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
 
         {/* More Section */}

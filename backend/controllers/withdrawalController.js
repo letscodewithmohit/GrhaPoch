@@ -22,7 +22,7 @@ const logger = winston.createLogger({
 export const createWithdrawalRequest = asyncHandler(async (req, res) => {
   try {
     const restaurant = req.restaurant;
-    const { amount } = req.body;
+    const { amount, paymentMethod = 'admin_select', upiId, qrCode } = req.body;
 
     if (!restaurant || !restaurant._id) {
       return errorResponse(res, 401, 'Restaurant authentication required');
@@ -34,11 +34,11 @@ export const createWithdrawalRequest = asyncHandler(async (req, res) => {
 
     // Get restaurant wallet
     const wallet = await RestaurantWallet.findOrCreateByRestaurantId(restaurant._id);
-    
+
     // Check if sufficient balance
     const availableBalance = wallet.totalBalance || 0;
     if (amount > availableBalance) {
-      return errorResponse(res, 400, 'Insufficient balance. Available balance: ₹' + availableBalance.toFixed(2));
+      return errorResponse(res, 400, `Insufficient balance. Available balance: ₹${availableBalance.toFixed(2)}`);
     }
 
     // Check for pending requests
@@ -48,49 +48,79 @@ export const createWithdrawalRequest = asyncHandler(async (req, res) => {
     });
 
     if (pendingRequest) {
-      return errorResponse(res, 400, 'You already have a pending withdrawal request');
+      return errorResponse(res, 400, 'You already have a pending withdrawal request. Please wait until it is processed.');
     }
 
-    // Get restaurant details
-    const restaurantDetails = await Restaurant.findById(restaurant._id).select('name restaurantId');
+    // Get restaurant details for payout info
+    const restaurantDetails = await Restaurant.findById(restaurant._id);
+    if (!restaurantDetails) {
+      return errorResponse(res, 404, 'Restaurant details not found');
+    }
+
+    // Extract payout details from profile
+    const onboardingBank = restaurantDetails.onboarding?.step3?.bank || {};
+    const normalizedBankDetails = onboardingBank.accountNumber ? {
+      accountHolderName: onboardingBank.accountHolderName,
+      accountNumber: onboardingBank.accountNumber,
+      ifscCode: onboardingBank.ifscCode,
+      bankName: onboardingBank.bankName || 'N/A'
+    } : null;
+
+    const normalizedUpiId = (upiId || onboardingBank.upiId || '').trim() || null;
+
+    let normalizedQrCode = null;
+    if (qrCode?.url) {
+      normalizedQrCode = { url: qrCode.url, publicId: qrCode.publicId || '' };
+    } else if (onboardingBank.qrCode?.url) {
+      normalizedQrCode = {
+        url: onboardingBank.qrCode.url,
+        publicId: onboardingBank.qrCode.publicId || ''
+      };
+    }
+
+    if (!normalizedBankDetails && !normalizedUpiId && !normalizedQrCode) {
+      return errorResponse(res, 400, 'Add payout details (Bank/UPI/QR) in profile before requesting withdrawal');
+    }
+    logger.info(`Withdrawal request creating for restaurant: ${restaurant._id}. Payout info found: Bank:${!!normalizedBankDetails}, UPI:${!!normalizedUpiId}, QR:${!!normalizedQrCode}`);
 
     // Create withdrawal request
     const withdrawalRequest = await WithdrawalRequest.create({
       restaurantId: restaurant._id,
       amount: parseFloat(amount),
       status: 'Pending',
-      restaurantName: restaurantDetails?.name || restaurant.name || 'Unknown',
-      restaurantIdString: restaurantDetails?.restaurantId || restaurant.restaurantId || restaurant._id.toString()
+      paymentMethod,
+      bankDetails: normalizedBankDetails || undefined,
+      upiId: normalizedUpiId || undefined,
+      qrCode: normalizedQrCode || undefined,
+      restaurantName: restaurantDetails.name || 'Unknown',
+      restaurantIdString: restaurantDetails.restaurantId || restaurant._id.toString(),
+      walletId: wallet._id
     });
 
-    // Deduct balance immediately when withdrawal request is created
-    // Create a pending withdrawal transaction
-    const withdrawalRequestId = withdrawalRequest._id.toString();
+    // Create a pending withdrawal transaction in wallet
     const transaction = wallet.addTransaction({
       amount: parseFloat(amount),
       type: 'withdrawal',
       status: 'Pending',
-      description: `Withdrawal request created - Request ID: ${withdrawalRequestId}`
+      description: `Withdrawal request created - Request ID: ${withdrawalRequest._id}`
     });
 
-    // Manually deduct from balance (since addTransaction only deducts when status is 'Completed')
+    // Deduct balance immediately
     wallet.totalBalance = Math.max(0, (wallet.totalBalance || 0) - parseFloat(amount));
-    wallet.totalWithdrawn = (wallet.totalWithdrawn || 0) + parseFloat(amount);
     await wallet.save();
 
-    // Link transaction ID to withdrawal request for easier tracking
+    // Link transaction ID to withdrawal request
     withdrawalRequest.transactionId = transaction._id;
     await withdrawalRequest.save();
 
-    logger.info(`Withdrawal request created: ${withdrawalRequest._id} for restaurant: ${restaurant._id}, amount: ${amount}. Balance deducted immediately.`);
+    logger.info(`Withdrawal request created: ${withdrawalRequest._id} for restaurant: ${restaurant._id}, amount: ${amount}.`);
 
     return successResponse(res, 201, 'Withdrawal request created successfully', {
       withdrawalRequest: {
         id: withdrawalRequest._id,
         amount: withdrawalRequest.amount,
         status: withdrawalRequest.status,
-        requestedAt: withdrawalRequest.requestedAt,
-        createdAt: withdrawalRequest.createdAt
+        requestedAt: withdrawalRequest.requestedAt
       }
     });
   } catch (error) {
@@ -135,6 +165,11 @@ export const getRestaurantWithdrawalRequests = asyncHandler(async (req, res) => 
         requestedAt: req.requestedAt,
         processedAt: req.processedAt,
         rejectionReason: req.rejectionReason,
+        bankDetails: req.bankDetails,
+        upiId: req.upiId,
+        qrCode: req.qrCode,
+        paymentScreenshot: req.paymentScreenshot,
+        paymentMethod: req.paymentMethod,
         createdAt: req.createdAt,
         updatedAt: req.updatedAt
       })),
@@ -177,31 +212,58 @@ export const getAllWithdrawalRequests = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('restaurantId', 'name restaurantId address')
+      .populate('restaurantId', 'name restaurantId address onboarding')
       .populate('processedBy', 'name email')
       .lean();
 
     const total = await WithdrawalRequest.countDocuments(query);
 
     return successResponse(res, 200, 'Withdrawal requests retrieved successfully', {
-      requests: requests.map(req => ({
-        id: req._id,
-        restaurantId: req.restaurantId?._id || req.restaurantId,
-        restaurantName: req.restaurantName || req.restaurantId?.name || 'Unknown',
-        restaurantIdString: req.restaurantIdString || req.restaurantId?.restaurantId || 'N/A',
-        restaurantAddress: req.restaurantId?.address || 'N/A',
-        amount: req.amount,
-        status: req.status,
-        requestedAt: req.requestedAt,
-        processedAt: req.processedAt,
-        processedBy: req.processedBy ? {
-          name: req.processedBy.name,
-          email: req.processedBy.email
-        } : null,
-        rejectionReason: req.rejectionReason,
-        createdAt: req.createdAt,
-        updatedAt: req.updatedAt
-      })),
+      requests: requests.map(w => {
+        // Find best bank details
+        let bank = w.bankDetails;
+        if (!bank || !bank.accountNumber) {
+          const restBank = w.restaurantId?.onboarding?.step3?.bank;
+          if (restBank?.accountNumber) {
+            bank = {
+              accountNumber: restBank.accountNumber,
+              ifscCode: restBank.ifscCode,
+              accountHolderName: restBank.accountHolderName,
+              bankName: restBank.bankName || 'N/A'
+            };
+          }
+        }
+
+        // Find best UPI
+        const upi = w.upiId || w.restaurantId?.onboarding?.step3?.bank?.upiId || null;
+
+        // Find best QR
+        const qr = w.qrCode?.url ? w.qrCode : (w.restaurantId?.onboarding?.step3?.bank?.qrCode || null);
+
+        return {
+          id: w._id,
+          restaurantId: w.restaurantId?._id || w.restaurantId,
+          restaurantName: w.restaurantName || w.restaurantId?.name || 'Unknown',
+          restaurantIdString: w.restaurantIdString || w.restaurantId?.restaurantId || 'N/A',
+          restaurantAddress: w.restaurantId?.address || 'N/A',
+          amount: w.amount,
+          status: w.status,
+          requestedAt: w.requestedAt,
+          processedAt: w.processedAt,
+          processedBy: w.processedBy ? {
+            name: w.processedBy.name,
+            email: w.processedBy.email
+          } : null,
+          bankDetails: bank,
+          upiId: upi,
+          qrCode: qr,
+          paymentScreenshot: w.paymentScreenshot,
+          paymentMethod: w.paymentMethod,
+          rejectionReason: w.rejectionReason,
+          createdAt: w.createdAt,
+          updatedAt: w.updatedAt
+        };
+      }),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -223,12 +285,13 @@ export const approveWithdrawalRequest = asyncHandler(async (req, res) => {
   try {
     const admin = req.admin;
     const { id } = req.params;
+    const { paymentScreenshot, paymentMethod } = req.body || {};
 
-    if (!admin || !admin._id) {
+    if (!admin?._id) {
       return errorResponse(res, 401, 'Admin authentication required');
     }
 
-    const withdrawalRequest = await WithdrawalRequest.findById(id).populate('restaurantId');
+    const withdrawalRequest = await WithdrawalRequest.findById(id);
 
     if (!withdrawalRequest) {
       return errorResponse(res, 404, 'Withdrawal request not found');
@@ -238,49 +301,64 @@ export const approveWithdrawalRequest = asyncHandler(async (req, res) => {
       return errorResponse(res, 400, `Withdrawal request is already ${withdrawalRequest.status}`);
     }
 
+    // Validate screenshot requirement
+    let screenshotData = null;
+    if (paymentScreenshot) {
+      if (typeof paymentScreenshot === 'string') {
+        screenshotData = { url: paymentScreenshot };
+      } else if (paymentScreenshot?.url) {
+        screenshotData = {
+          url: paymentScreenshot.url,
+          publicId: paymentScreenshot.publicId || ''
+        };
+      }
+    }
+
+    if (!screenshotData?.url) {
+      return errorResponse(res, 400, 'Payment screenshot is required to approve the withdrawal');
+    }
+
     // Get restaurant wallet
-    const wallet = await RestaurantWallet.findOrCreateByRestaurantId(withdrawalRequest.restaurantId._id);
+    const wallet = await RestaurantWallet.findById(withdrawalRequest.walletId ||
+      (await RestaurantWallet.findOne({ restaurantId: withdrawalRequest.restaurantId }))?._id);
+
+    if (!wallet) {
+      return errorResponse(res, 404, 'Restaurant wallet not found');
+    }
 
     // Update withdrawal request
     withdrawalRequest.status = 'Approved';
     withdrawalRequest.processedAt = new Date();
     withdrawalRequest.processedBy = admin._id;
+    withdrawalRequest.paymentScreenshot = screenshotData;
+    if (paymentMethod) withdrawalRequest.paymentMethod = paymentMethod;
     await withdrawalRequest.save();
 
     // Find and update the pending withdrawal transaction to Completed
-    // Balance was already deducted when request was created, so we just mark transaction as completed
-    let pendingTransaction = null;
-    
-    if (withdrawalRequest.transactionId) {
-      // Find transaction by ID if linked
-      pendingTransaction = wallet.transactions.id(withdrawalRequest.transactionId);
-    }
-    
-    if (!pendingTransaction) {
-      // Fallback: find by description
-      pendingTransaction = wallet.transactions.find(
-        t => t.type === 'withdrawal' && 
-             t.status === 'Pending' && 
-             t.description?.includes(withdrawalRequest._id.toString())
-      );
+    let t = wallet.transactions?.id?.(withdrawalRequest.transactionId) ?? null;
+    if (!t && Array.isArray(wallet.transactions)) {
+      const tid = (withdrawalRequest.transactionId?.toString?.() || String(withdrawalRequest.transactionId)).trim();
+      t = wallet.transactions.find(
+        (tx) => tx?._id && (tx._id.toString?.() || String(tx._id)) === tid
+      ) ?? null;
     }
 
-    if (pendingTransaction) {
-      // Update transaction status to Completed
-      pendingTransaction.status = 'Completed';
-      pendingTransaction.processedAt = new Date();
-      // Balance was already deducted, so no need to deduct again
+    if (t) {
+      t.status = 'Completed';
+      t.processedAt = new Date();
     } else {
-      // If transaction not found, create a new one (fallback)
+      // Fallback: create a new one if not found
       wallet.addTransaction({
         amount: withdrawalRequest.amount,
         type: 'withdrawal',
         status: 'Completed',
         description: `Withdrawal request approved - Request ID: ${withdrawalRequest._id}`
       });
-      // Balance already deducted, so we don't deduct again
     }
 
+    // Update totalWithdrawn only on approval
+    wallet.totalWithdrawn = (wallet.totalWithdrawn || 0) + withdrawalRequest.amount;
+    wallet.markModified('transactions');
     await wallet.save();
 
     logger.info(`Withdrawal request approved: ${id} by admin: ${admin._id}`);
@@ -309,7 +387,7 @@ export const rejectWithdrawalRequest = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { rejectionReason } = req.body;
 
-    if (!admin || !admin._id) {
+    if (!admin?._id) {
       return errorResponse(res, 401, 'Admin authentication required');
     }
 
@@ -324,7 +402,12 @@ export const rejectWithdrawalRequest = asyncHandler(async (req, res) => {
     }
 
     // Get restaurant wallet to refund the balance
-    const wallet = await RestaurantWallet.findOrCreateByRestaurantId(withdrawalRequest.restaurantId);
+    const wallet = await RestaurantWallet.findById(withdrawalRequest.walletId ||
+      (await RestaurantWallet.findOne({ restaurantId: withdrawalRequest.restaurantId }))?._id);
+
+    if (!wallet) {
+      return errorResponse(res, 404, 'Restaurant wallet not found');
+    }
 
     // Update withdrawal request
     withdrawalRequest.status = 'Rejected';
@@ -336,32 +419,20 @@ export const rejectWithdrawalRequest = asyncHandler(async (req, res) => {
     await withdrawalRequest.save();
 
     // Find and update the pending withdrawal transaction to Cancelled
-    // Refund the balance back
-    let pendingTransaction = null;
-    
-    if (withdrawalRequest.transactionId) {
-      // Find transaction by ID if linked
-      pendingTransaction = wallet.transactions.id(withdrawalRequest.transactionId);
-    }
-    
-    if (!pendingTransaction) {
-      // Fallback: find by description
-      pendingTransaction = wallet.transactions.find(
-        t => t.type === 'withdrawal' && 
-             t.status === 'Pending' && 
-             t.description?.includes(withdrawalRequest._id.toString())
-      );
+    let t = wallet.transactions?.id?.(withdrawalRequest.transactionId) ?? null;
+    if (!t && Array.isArray(wallet.transactions)) {
+      const tid = (withdrawalRequest.transactionId?.toString?.() || String(withdrawalRequest.transactionId)).trim();
+      t = wallet.transactions.find(
+        (tx) => tx?._id && (tx._id.toString?.() || String(tx._id)) === tid
+      ) ?? null;
     }
 
-    if (pendingTransaction) {
-      // Update transaction status to Cancelled
-      pendingTransaction.status = 'Cancelled';
-      pendingTransaction.processedAt = new Date();
-      
+    if (t && t.status === 'Pending') {
+      t.status = 'Cancelled';
+      t.processedAt = new Date();
       // Refund the balance back
       wallet.totalBalance = (wallet.totalBalance || 0) + withdrawalRequest.amount;
-      wallet.totalWithdrawn = Math.max(0, (wallet.totalWithdrawn || 0) - withdrawalRequest.amount);
-    } else {
+    } else if (!t) {
       // If transaction not found, create a refund transaction (fallback)
       wallet.addTransaction({
         amount: withdrawalRequest.amount,
@@ -369,11 +440,10 @@ export const rejectWithdrawalRequest = asyncHandler(async (req, res) => {
         status: 'Completed',
         description: `Withdrawal request rejected - Refund for Request ID: ${withdrawalRequest._id}`
       });
-      // Refund the balance
       wallet.totalBalance = (wallet.totalBalance || 0) + withdrawalRequest.amount;
-      wallet.totalWithdrawn = Math.max(0, (wallet.totalWithdrawn || 0) - withdrawalRequest.amount);
     }
 
+    wallet.markModified('transactions');
     await wallet.save();
 
     logger.info(`Withdrawal request rejected: ${id} by admin: ${admin._id}. Balance refunded.`);

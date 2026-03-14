@@ -16,9 +16,9 @@ const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
   transports: [
-  new winston.transports.Console({
-    format: winston.format.simple()
-  })]
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })]
 
 });
 
@@ -47,8 +47,8 @@ export const getWallet = asyncHandler(async (req, res) => {
 
     // Calculate pending withdrawals
     const pendingWithdrawals = wallet.transactions.
-    filter((t) => t.type === 'withdrawal' && t.status === 'Pending').
-    reduce((sum, t) => sum + t.amount, 0);
+      filter((t) => t.type === 'withdrawal' && t.status === 'Pending').
+      reduce((sum, t) => sum + t.amount, 0);
 
     // Global cash limit and withdrawal limit (same for all delivery partners)
     let totalCashLimit = 0;
@@ -73,61 +73,61 @@ export const getWallet = asyncHandler(async (req, res) => {
     try {
       const deliveryIdStr = delivery._id?.toString?.() || String(delivery._id);
       const codAgg = await Order.aggregate([
-      {
-        $match: {
-          $expr: {
-            $and: [
-            // deliveryPartnerId matches current delivery (handles ObjectId or string)
-            {
-              $eq: [
-              { $toString: { $ifNull: ['$deliveryPartnerId', ''] } },
-              deliveryIdStr]
+        {
+          $match: {
+            $expr: {
+              $and: [
+                // deliveryPartnerId matches current delivery (handles ObjectId or string)
+                {
+                  $eq: [
+                    { $toString: { $ifNull: ['$deliveryPartnerId', ''] } },
+                    deliveryIdStr]
 
-            },
-            // COD / Cash payment method (handles casing + some legacy values)
-            {
-              $in: [
-              {
-                $toLower: {
-                  $ifNull: ['$payment.method', '']
-                }
-              },
-              ['cash', 'cod', 'cash on delivery']]
+                },
+                // COD / Cash payment method (handles casing + some legacy values)
+                {
+                  $in: [
+                    {
+                      $toLower: {
+                        $ifNull: ['$payment.method', '']
+                      }
+                    },
+                    ['cash', 'cod', 'cash on delivery']]
 
-            },
-            // Delivered status can be in status or deliveryState fields
-            {
-              $or: [
-              {
-                $eq: [
-                { $toLower: { $ifNull: ['$status', ''] } },
-                'delivered']
+                },
+                // Delivered status can be in status or deliveryState fields
+                {
+                  $or: [
+                    {
+                      $eq: [
+                        { $toLower: { $ifNull: ['$status', ''] } },
+                        'delivered']
 
-              },
-              {
-                $eq: [
-                { $toLower: { $ifNull: ['$deliveryState.status', ''] } },
-                'delivered']
+                    },
+                    {
+                      $eq: [
+                        { $toLower: { $ifNull: ['$deliveryState.status', ''] } },
+                        'delivered']
 
-              },
-              {
-                $eq: [
-                { $toLower: { $ifNull: ['$deliveryState.currentPhase', ''] } },
-                'completed']
+                    },
+                    {
+                      $eq: [
+                        { $toLower: { $ifNull: ['$deliveryState.currentPhase', ''] } },
+                        'completed']
 
-              }]
+                    }]
 
-            }]
+                }]
 
+            }
           }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: { $ifNull: ['$pricing.total', 0] } }
-        }
-      }]
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: { $ifNull: ['$pricing.total', 0] } }
+          }
+        }]
       );
       codCollectedTotal = Number(codAgg?.[0]?.total) || 0;
     } catch (e) {
@@ -142,7 +142,7 @@ export const getWallet = asyncHandler(async (req, res) => {
     // Get all transactions (sorted by date, newest first)
     // Frontend needs all transactions to calculate weekly earnings and orders
     const allTransactions = wallet.transactions.
-    sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     // Get recent transactions (last 10) for display purposes
     const recentTransactions = allTransactions.slice(0, 10);
@@ -158,6 +158,7 @@ export const getWallet = asyncHandler(async (req, res) => {
       date: t.createdAt || t.date,
       createdAt: t.createdAt,
       orderId: t.orderId,
+      metadata: t.metadata ? Object.fromEntries(t.metadata) : undefined,
       paymentMethod: t.paymentMethod,
       paymentCollected: t.paymentCollected
     }));
@@ -260,6 +261,7 @@ export const getTransactions = asyncHandler(async (req, res) => {
         description: t.description,
         date: t.createdAt,
         orderId: t.orderId,
+        metadata: t.metadata ? Object.fromEntries(t.metadata) : undefined,
         paymentMethod: t.paymentMethod,
         paymentCollected: t.paymentCollected,
         processedAt: t.processedAt,
@@ -371,13 +373,23 @@ export const createWithdrawalRequest = asyncHandler(async (req, res) => {
       return errorResponse(res, 400, `Please deposit cash in hand (â‚¹${cashInHand.toFixed(2)}) before requesting withdrawal.`);
     }
 
+    // Check if there's already a pending withdrawal request
+    const pendingRequest = await DeliveryWithdrawalRequest.findOne({
+      deliveryId: delivery._id,
+      status: 'Pending'
+    });
+
+    if (pendingRequest) {
+      return errorResponse(res, 400, 'You already have a pending withdrawal request. Please wait until it is processed.');
+    }
+
     // Check minimum withdrawal amount (from BusinessSettings)
     let minWithdrawalAmount = 100;
     try {
       const settings = await BusinessSettings.getSettings();
       const wl = Number(settings?.deliveryWithdrawalLimit);
       if (Number.isFinite(wl) && wl >= 0) minWithdrawalAmount = wl;
-    } catch (e) {/* keep default */}
+    } catch (e) {/* keep default */ }
     if (amount < minWithdrawalAmount) {
       return errorResponse(res, 400, `Minimum withdrawal amount is ₹${minWithdrawalAmount}`);
     }
@@ -782,12 +794,12 @@ export const getWalletStats = asyncHandler(async (req, res) => {
 
     // Calculate statistics
     const earnings = periodTransactions.
-    filter((t) => (t.type === 'payment' || t.type === 'bonus') && t.status === 'Completed').
-    reduce((sum, t) => sum + t.amount, 0);
+      filter((t) => (t.type === 'payment' || t.type === 'bonus') && t.status === 'Completed').
+      reduce((sum, t) => sum + t.amount, 0);
 
     const withdrawals = periodTransactions.
-    filter((t) => t.type === 'withdrawal' && t.status === 'Completed').
-    reduce((sum, t) => sum + t.amount, 0);
+      filter((t) => t.type === 'withdrawal' && t.status === 'Completed').
+      reduce((sum, t) => sum + t.amount, 0);
 
     const transactions = periodTransactions.length;
 
@@ -958,7 +970,7 @@ export const verifyDepositPayment = asyncHandler(async (req, res) => {
   try {
     const settings = await BusinessSettings.getSettings();
     limit = Number(settings?.deliveryCashLimit) || 0;
-  } catch (_) {}
+  } catch (_) { }
   const cashInHandNow = Math.max(0, Number(wallet.cashInHand) || 0);
   const availableCashLimit = Math.max(0, limit - cashInHandNow);
 
@@ -968,7 +980,5 @@ export const verifyDepositPayment = asyncHandler(async (req, res) => {
     availableCashLimit
   });
 });
-
-
 
 

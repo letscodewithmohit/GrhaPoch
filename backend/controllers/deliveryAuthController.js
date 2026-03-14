@@ -113,11 +113,10 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       // Login (with optional auto-registration)
       delivery = await Delivery.findOne({ phone });
 
-      // If user exists but signup is incomplete, delete and force fresh start
+      // If user exists but signup is incomplete, we no longer delete the record.
+      // Instead, we will check if they need to complete their profile later in the flow.
       if (delivery && !delivery.isProfileComplete) {
-        logger.info(`Deleting incomplete signup record for: ${phone}`);
-        await Delivery.findByIdAndDelete(delivery._id);
-        delivery = null;
+        logger.info(`Existing delivery partner found with incomplete profile: ${phone}`);
       }
 
       // Verify OTP first (before creating user)
@@ -170,13 +169,19 @@ export const verifyOTP = asyncHandler(async (req, res) => {
       }
 
       // Check if signup needs to be completed (missing required fields)
-      const needsSignup = !delivery.location?.city ||
-        !delivery.vehicle?.number ||
-        !delivery.documents?.pan?.number ||
-        !delivery.documents?.aadhar?.number ||
-        !delivery.documents?.aadhar?.document ||
-        !delivery.documents?.pan?.document ||
-        !delivery.documents?.drivingLicense?.document;
+      // A user only needs onboarding if they are in 'pending' status and haven't finished the documents step
+      const isApproved = ['approved', 'active', 'suspended', 'blocked'].includes(delivery.status);
+      
+      const hasAllFields = delivery.location?.city &&
+        delivery.vehicle?.number &&
+        delivery.documents?.pan?.number &&
+        delivery.documents?.aadhar?.number &&
+        delivery.documents?.aadhar?.document &&
+        delivery.documents?.pan?.document &&
+        delivery.documents?.drivingLicense?.document;
+
+      // Only force onboarding for pending users who haven't completed their profile
+      const needsSignup = !isApproved && (!delivery.isProfileComplete || !hasAllFields);
 
       if (needsSignup) {
         // Generate tokens for signup flow

@@ -369,6 +369,9 @@ export default function DeliveryHome() {
     transactions: [],
     joiningBonusClaimed: false
   });
+  const [showCashLimitPopup, setShowCashLimitPopup] = useState(false);
+  const [cashLimitPopupData, setCashLimitPopupData] = useState(null);
+  const cashLimitBlockedOrderIdsRef = useRef(new Set());
   const [activeOrder, setActiveOrder] = useState(() => {
     const stored = localStorage.getItem('activeOrder');
     return stored ? JSON.parse(stored) : null;
@@ -599,6 +602,15 @@ export default function DeliveryHome() {
   const [showOrderDeliveredAnimation, setShowOrderDeliveredAnimation] = useState(false);
   const [showCustomerReviewPopup, setShowCustomerReviewPopup] = useState(false);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
+  const [codPaymentOption, setCodPaymentOption] = useState('cash'); // cash | qr
+  const [qrPaymentState, setQrPaymentState] = useState({
+    loading: false,
+    status: 'idle', // idle | pending | paid | error
+    qrCodeUrl: '',
+    qrCodeId: '',
+    error: ''
+  });
+  const [isQrPolling, setIsQrPolling] = useState(false);
   const [customerRating, setCustomerRating] = useState(0);
   const [customerReviewText, setCustomerReviewText] = useState("");
   const [orderEarnings, setOrderEarnings] = useState(0); // Store earnings from completed order
@@ -623,6 +635,61 @@ export default function DeliveryHome() {
   const orderIdConfirmSwipeStartX = useRef(0);
   const orderIdConfirmSwipeStartY = useRef(0);
   const orderIdConfirmIsSwiping = useRef(false);
+
+  const resolveOrderIdForApi = useCallback(() => {
+    return (
+      selectedRestaurant?.id ||
+      selectedRestaurant?.orderMongoId ||
+      newOrder?.orderMongoId ||
+      newOrder?._id ||
+      selectedRestaurant?.orderId ||
+      newOrder?.orderId ||
+      null
+    );
+  }, [selectedRestaurant, newOrder]);
+
+  // Sync QR payment state from selected order
+  useEffect(() => {
+    if (!selectedRestaurant) {
+      setCodPaymentOption('cash');
+      setQrPaymentState({
+        loading: false,
+        status: 'idle',
+        qrCodeUrl: '',
+        qrCodeId: '',
+        error: ''
+      });
+      setIsQrPolling(false);
+      return;
+    }
+
+    const paymentStatus =
+      selectedRestaurant.paymentStatus ||
+      (selectedRestaurant.payment?.status === 'completed' ? 'paid' : null);
+
+    if (selectedRestaurant.qrCodeUrl) {
+      setCodPaymentOption('qr');
+      setQrPaymentState((prev) => ({
+        ...prev,
+        loading: false,
+        status: paymentStatus === 'paid' ? 'paid' : 'pending',
+        qrCodeUrl: selectedRestaurant.qrCodeUrl,
+        qrCodeId: selectedRestaurant.qrCodeId || prev.qrCodeId,
+        error: ''
+      }));
+      setIsQrPolling(paymentStatus !== 'paid');
+    } else {
+      setQrPaymentState((prev) => ({
+        ...prev,
+        loading: false,
+        status: 'idle',
+        qrCodeUrl: '',
+        qrCodeId: '',
+        error: ''
+      }));
+      setIsQrPolling(false);
+    }
+  }, [selectedRestaurant?.id, selectedRestaurant?.qrCodeUrl, selectedRestaurant?.paymentStatus, selectedRestaurant?.payment?.status]);
   // Bill image upload state
   const [billImageUrl, setBillImageUrl] = useState(null);
   const [isUploadingBill, setIsUploadingBill] = useState(false);
@@ -1453,6 +1520,17 @@ export default function DeliveryHome() {
       alertAudioRef.current.pause();
       alertAudioRef.current.currentTime = 0;
     }
+    // Stop any pending auto-show/countdown timers so popup doesn't reopen
+    if (autoShowTimerRef.current) {
+      clearTimeout(autoShowTimerRef.current);
+      autoShowTimerRef.current = null;
+    }
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setCountdownSeconds(0);
+
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setIsNewOrderPopupMinimized(false); // Reset minimized state
@@ -2032,6 +2110,26 @@ export default function DeliveryHome() {
         if (!orderId) {
           console.error('❌ No order ID found to accept');
           toast.error('Order ID not found. Please try again.');
+          return;
+        }
+
+        const paymentMethod =
+          selectedRestaurant?.paymentMethod ||
+          selectedRestaurant?.payment?.method ||
+          newOrder?.paymentMethod ||
+          newOrder?.payment?.method ||
+          '';
+        const orderTotal =
+          selectedRestaurant?.total ??
+          selectedRestaurant?.pricing?.total ??
+          newOrder?.total ??
+          0;
+        const cashLimitStatus = getCashLimitStatus(orderTotal, paymentMethod);
+        if (cashLimitStatus.blocked) {
+          setCashLimitPopupData({ orderId, ...cashLimitStatus });
+          setShowCashLimitPopup(true);
+          setNewOrderIsAnimatingToComplete(false);
+          setNewOrderAcceptButtonProgress(0);
           return;
         }
 
@@ -3618,8 +3716,122 @@ export default function DeliveryHome() {
     });
   };
 
+  const handleSelectCashPayment = () => {
+    setCodPaymentOption('cash');
+    setQrPaymentState((prev) => ({
+      ...prev,
+      status: 'idle',
+      qrCodeUrl: '',
+      qrCodeId: '',
+      error: ''
+    }));
+    setIsQrPolling(false);
+  };
+
+  const handleGenerateQrPayment = async () => {
+    if (qrPaymentState.loading) return;
+    if (qrPaymentState.qrCodeUrl && qrPaymentState.status === 'pending') {
+      toast.info('QR payment already generated');
+      return;
+    }
+    const orderIdForApi = resolveOrderIdForApi();
+    if (!orderIdForApi) {
+      toast.error('Order ID not found. Please refresh and try again.');
+      return;
+    }
+
+    setCodPaymentOption('qr');
+    setQrPaymentState((prev) => ({
+      ...prev,
+      loading: true,
+      status: 'pending',
+      error: ''
+    }));
+
+    try {
+      const response = await deliveryAPI.generateOrderQr(orderIdForApi);
+      const payload = response.data?.data || {};
+      const qrCodeUrl = payload.qrCodeUrl || payload.qr_code_url || payload.qrCode || '';
+
+      if (!qrCodeUrl) {
+        throw new Error('QR code not available');
+      }
+
+      setQrPaymentState({
+        loading: false,
+        status: payload.paymentStatus || 'pending',
+        qrCodeUrl: qrCodeUrl,
+        qrCodeId: payload.qrCodeId || '',
+        error: ''
+      });
+      setIsQrPolling(true);
+    } catch (error) {
+      setQrPaymentState((prev) => ({
+        ...prev,
+        loading: false,
+        status: 'error',
+        error: error?.response?.data?.message || error?.message || 'Failed to generate QR'
+      }));
+      toast.error(error?.response?.data?.message || 'Failed to generate QR. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    if (!isQrPolling || qrPaymentState.status === 'paid') return;
+    const orderIdForApi = resolveOrderIdForApi();
+    if (!orderIdForApi) return;
+
+    let isActive = true;
+    const interval = setInterval(async () => {
+      try {
+        const response = await deliveryAPI.getOrderDetails(orderIdForApi);
+        const order = response.data?.data?.order;
+        if (!order || !isActive) return;
+
+        const paid =
+          order.paymentStatus === 'paid' ||
+          order.payment?.status === 'completed' ||
+          order.status === 'delivered';
+
+        if (paid) {
+          setQrPaymentState((prev) => ({
+            ...prev,
+            status: 'paid',
+            loading: false,
+            error: ''
+          }));
+          setIsQrPolling(false);
+          toast.success('UPI payment received');
+        }
+
+        setSelectedRestaurant((prev) => ({
+          ...prev,
+          paymentStatus: order.paymentStatus,
+          payment: order.payment,
+          status: order.status,
+          qrCodeUrl: order.qrCodeUrl || prev?.qrCodeUrl,
+          qrCodeId: order.qrCodeId || prev?.qrCodeId
+        }));
+      } catch (error) {
+        // silent retry
+      }
+    }, 5000);
+
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+    };
+  }, [isQrPolling, qrPaymentState.status, resolveOrderIdForApi]);
+
   // Handle Order Delivered button swipe
   const handleOrderDeliveredTouchStart = (e) => {
+    const paymentMethod = (selectedRestaurant?.paymentMethod || selectedRestaurant?.payment?.method || '').toLowerCase();
+    const isCodOrder = paymentMethod === 'cash' || paymentMethod === 'cod';
+    if (isCodOrder && qrPaymentState.qrCodeUrl && qrPaymentState.status !== 'paid') {
+      toast.info('Waiting for UPI payment. Please collect payment first.');
+      return;
+    }
+
     orderDeliveredSwipeStartX.current = e.touches[0].clientX;
     orderDeliveredSwipeStartY.current = e.touches[0].clientY;
     orderDeliveredIsSwiping.current = false;
@@ -3875,6 +4087,50 @@ export default function DeliveryHome() {
     return `${minutes} mins`;
   }, []);
 
+  const normalizePaymentMethod = useCallback((method) => {
+    return (method || '').toString().trim().toLowerCase();
+  }, []);
+
+  const getCashLimitStatus = useCallback((orderTotal, paymentMethod) => {
+    const normalizedMethod = normalizePaymentMethod(paymentMethod);
+    const isCash =
+      normalizedMethod === 'cash' ||
+      normalizedMethod === 'cod' ||
+      normalizedMethod === 'cash_on_delivery' ||
+      normalizedMethod === 'cash on delivery';
+
+    if (!isCash) {
+      return { blocked: false };
+    }
+
+    const total = Number(orderTotal) || 0;
+    const cashLimit = Number(
+      walletState?.totalCashLimit ??
+      walletState?.cashLimit ??
+      walletState?.availableCashLimit ??
+      0
+    );
+    const cashInHand = Number(walletState?.cashInHand) || 0;
+    const available = Number.isFinite(walletState?.availableCashLimit) && walletState.availableCashLimit > 0 ?
+      Number(walletState.availableCashLimit) :
+      Math.max(0, cashLimit - cashInHand);
+
+    if (cashLimit <= 0 && available <= 0) {
+      // If cash limit is not configured, don't block
+      return { blocked: false };
+    }
+
+    const blocked = total > 0 && total > available;
+    return {
+      blocked,
+      total,
+      available,
+      cashLimit,
+      cashInHand,
+      isCash
+    };
+  }, [normalizePaymentMethod, walletState]);
+
   // Show new order popup when order is received from Socket.IO
   useEffect(() => {
     if (newOrder) {
@@ -3901,6 +4157,22 @@ export default function DeliveryHome() {
       } catch (e) {
 
         // Ignore localStorage errors
+      }
+
+      const paymentMethodFromOrder = newOrder.paymentMethod || newOrder.payment?.method || newOrder.payment || '';
+      const orderTotal = newOrder.total ?? newOrder.pricing?.total ?? 0;
+      const cashLimitStatus = getCashLimitStatus(orderTotal, paymentMethodFromOrder);
+      if (cashLimitStatus.blocked) {
+        if (!cashLimitBlockedOrderIdsRef.current.has(orderId)) {
+          cashLimitBlockedOrderIdsRef.current.add(orderId);
+          setCashLimitPopupData({
+            orderId,
+            ...cashLimitStatus
+          });
+          setShowCashLimitPopup(true);
+        }
+        clearNewOrder();
+        return;
       }
 
       // Transform newOrder data to match selectedRestaurant format
@@ -3962,6 +4234,7 @@ export default function DeliveryHome() {
       const restaurantData = {
         id: newOrder.orderMongoId || newOrder.orderId,
         orderId: newOrder.orderId,
+        paymentMethod: paymentMethodFromOrder,
         name: newOrder.restaurantName,
         address: restaurantAddress,
         lat: newOrder.restaurantLocation?.latitude,
@@ -3985,7 +4258,7 @@ export default function DeliveryHome() {
       setShowNewOrderPopup(true);
       setCountdownSeconds(300); // Reset countdown to 5 minutes
     }
-  }, [newOrder, calculateTimeAway, riderLocation]);
+  }, [newOrder, calculateTimeAway, riderLocation, getCashLimitStatus, clearNewOrder]);
 
   // Recalculate distance when rider location becomes available
   useEffect(() => {
@@ -4278,10 +4551,34 @@ export default function DeliveryHome() {
           return true;
         });
 
-        if (pendingOrders.length > 0) {
+        const eligibleOrders = pendingOrders.filter((order) => {
+          const paymentMethod = order.payment?.method || '';
+          const orderTotal = order.pricing?.total ?? order.total ?? 0;
+          const status = getCashLimitStatus(orderTotal, paymentMethod);
+          return !status.blocked;
+        });
 
-          // Show the first pending order as a new order notification
-          const firstOrder = pendingOrders[0];
+        if (pendingOrders.length > 0 && eligibleOrders.length === 0) {
+          const firstBlocked = pendingOrders[0];
+          const orderId = firstBlocked.orderId || firstBlocked._id?.toString();
+          const paymentMethod = firstBlocked.payment?.method || '';
+          const orderTotal = firstBlocked.pricing?.total ?? firstBlocked.total ?? 0;
+          const cashLimitStatus = getCashLimitStatus(orderTotal, paymentMethod);
+          if (cashLimitStatus.blocked && orderId && !cashLimitBlockedOrderIdsRef.current.has(orderId)) {
+            cashLimitBlockedOrderIdsRef.current.add(orderId);
+            setCashLimitPopupData({
+              orderId,
+              ...cashLimitStatus
+            });
+            setShowCashLimitPopup(true);
+          }
+          return;
+        }
+
+        if (eligibleOrders.length > 0) {
+
+          // Show the first eligible order as a new order notification
+          const firstOrder = eligibleOrders[0];
           const orderId = firstOrder.orderId || firstOrder._id?.toString();
 
           // Check if this order is already being shown or accepted
@@ -4339,6 +4636,7 @@ export default function DeliveryHome() {
           const restaurantData = {
             id: firstOrder._id?.toString() || firstOrder.orderId,
             orderId: firstOrder.orderId,
+            paymentMethod: firstOrder.payment?.method || 'cash',
             name: firstOrder.restaurantId?.name || 'Restaurant',
             address: restaurantAddress,
             lat: firstOrder.restaurantId?.location?.coordinates?.[1],
@@ -4359,7 +4657,7 @@ export default function DeliveryHome() {
             customerLng: firstOrder.address?.location?.coordinates?.[0],
             items: firstOrder.items || [],
             total: firstOrder.pricing?.total || 0,
-            payment: firstOrder.payment?.method || 'COD',
+            payment: firstOrder.payment?.method || 'cash',
             amount: firstOrder.pricing?.total || 0
           };
 
@@ -4374,7 +4672,7 @@ export default function DeliveryHome() {
       console.error('❌ Error fetching assigned orders:', error);
       // Don't show error to user, just log it
     }
-  }, [isOnline, calculateTimeAway]);
+  }, [isOnline, calculateTimeAway, getCashLimitStatus]);
 
   // Fetch assigned orders when delivery person goes online
   useEffect(() => {
@@ -6631,12 +6929,22 @@ export default function DeliveryHome() {
       return;
     }
 
-    // Show "Reached Pickup" popup immediately when order is in pickup phase (no distance check)
-    if (!showreachedPickupPopup) {
-      setShowreachedPickupPopup(true);
+    // Distance check to avoid premature popup
+    const distanceToRestaurant = calculateDistanceInMeters(
+      riderLocation[0],
+      riderLocation[1],
+      selectedRestaurant.lat,
+      selectedRestaurant.lng
+    );
 
-      // Close directions map if open
-      setShowDirectionsMap(false);
+    // Only trigger when rider is actually near restaurant (<= 500m)
+    if (Number.isFinite(distanceToRestaurant) && distanceToRestaurant <= 500) {
+      if (!showreachedPickupPopup) {
+        setShowreachedPickupPopup(true);
+
+        // Close directions map if open
+        setShowDirectionsMap(false);
+      }
     }
   }, [
   riderLocation?.[0] ?? null,
@@ -6931,17 +7239,11 @@ export default function DeliveryHome() {
       selectedRestaurant.customerLng
     );
 
-    // Log distance check more frequently for debugging
-
-
-
-    // REMOVED: 500m distance check - Reached Drop popup now shows instantly after Order Picked Up
-    // This useEffect is kept for other monitoring but won't trigger Reached Drop popup
-    // The popup is now shown directly after Order Picked Up confirmation (see handleOrderIdConfirmTouchEnd)
-
-    // Log distance for debugging (but don't show popup based on distance)
-
-
+    // Show "Reached Drop" when rider is within 500m of customer
+    if (Number.isFinite(distanceInMeters) && distanceInMeters <= 500) {
+      setShowReachedDropPopup(true);
+      setShowDirectionsMap(false);
+    }
 
     // Live tracking polyline is already updated automatically via watchPosition callback
     // No need to recalculate route here - it's handled in handleOrderIdConfirmTouchEnd
@@ -7045,41 +7347,43 @@ export default function DeliveryHome() {
       return;
     }
 
+    // Validate coordinates before using them
+    if (typeof latitude !== 'number' || typeof longitude !== 'number' ||
+    isNaN(latitude) || isNaN(longitude) ||
+    latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      console.error('❌ Invalid coordinates for bike marker:', { latitude, longitude });
+      return;
+    }
+
     const position = new window.google.maps.LatLng(latitude, longitude);
     const map = window.deliveryMapInstance;
 
-    // Get rotated icon URL
-    const rotatedIconUrl = await getRotatedBikeIcon(heading || 0);
-
     if (!bikeMarkerRef.current) {
-      // Create bike marker with rotated icon - exact position
+      // Create marker immediately with base icon to avoid duplicate markers from concurrent calls
       const bikeIcon = {
-        url: rotatedIconUrl,
-        scaledSize: new window.google.maps.Size(60, 60), // Larger size for better visibility
-        anchor: new window.google.maps.Point(30, 30) // Center point
+        url: bikeLogo,
+        scaledSize: new window.google.maps.Size(60, 60),
+        anchor: new window.google.maps.Point(30, 30)
       };
 
       bikeMarkerRef.current = new window.google.maps.Marker({
         position: position,
         map: map,
         icon: bikeIcon,
-        optimized: false, // Disable optimization for exact positioning
-        animation: window.google.maps.Animation.DROP, // Drop animation on first appearance
-        zIndex: 1000 // High z-index to ensure it's above other markers
+        optimized: false,
+        animation: window.google.maps.Animation.DROP,
+        zIndex: 1000
       });
-
 
       // Center map on bike location initially - preserve current zoom if user has zoomed in
       if (shouldCenterMap) {
         const currentZoom = map.getZoom();
         map.setCenter(position);
-        // Only set zoom to 18 if current zoom is less than 18 (don't reduce user's zoom)
         if (currentZoom < 18) {
-          map.setZoom(18); // Full zoom in for better visibility
+          map.setZoom(18);
         }
       }
 
-      // Remove animation after drop completes
       setTimeout(() => {
         if (bikeMarkerRef.current) {
           bikeMarkerRef.current.setAnimation(null);
@@ -7096,43 +7400,29 @@ export default function DeliveryHome() {
         bikeMarkerRef.current.setMap(map);
       }
 
-      // Update position EXACTLY - use setPosition for precise location
-      // Verify coordinates are correct before setting
+      bikeMarkerRef.current.setPosition(position);
+    }
 
-      // Validate coordinates before setting
-      if (typeof latitude === 'number' && typeof longitude === 'number' &&
-      !isNaN(latitude) && !isNaN(longitude) &&
-      latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
-        bikeMarkerRef.current.setPosition(position);
-      } else {
-        console.error('❌ Invalid coordinates for bike marker:', { latitude, longitude });
-        return; // Don't update if coordinates are invalid
-      }
+    // Update icon with rotation (async) after marker exists to prevent duplicates
+    const currentHeading = heading !== null && heading !== undefined ? heading : 0;
+    const rotatedIconUrl = await getRotatedBikeIcon(currentHeading);
+    const bikeIcon = {
+      url: rotatedIconUrl,
+      scaledSize: new window.google.maps.Size(60, 60),
+      anchor: new window.google.maps.Point(30, 30)
+    };
+    bikeMarkerRef.current.setIcon(bikeIcon);
+    bikeMarkerRef.current.setZIndex(1000);
 
-      // Update icon with rotation for smooth movement
-      const currentHeading = heading !== null && heading !== undefined ? heading : 0;
-      const rotatedIconUrl = await getRotatedBikeIcon(currentHeading);
-      const bikeIcon = {
-        url: rotatedIconUrl,
-        scaledSize: new window.google.maps.Size(60, 60),
-        anchor: new window.google.maps.Point(30, 30)
-      };
-      bikeMarkerRef.current.setIcon(bikeIcon);
+    // Auto-center map on bike location (like Zomato) - only if user hasn't manually panned
+    if (shouldCenterMap && !isUserPanningRef.current) {
+      map.panTo(position);
+    }
 
-      // Ensure z-index is high
-      bikeMarkerRef.current.setZIndex(1000);
-
-      // Auto-center map on bike location (like Zomato) - only if user hasn't manually panned
-      if (shouldCenterMap && !isUserPanningRef.current) {
-        // Smooth pan to bike location
-        map.panTo(position);
-      }
-
-      // Double-check marker is still on map after update
-      if (bikeMarkerRef.current.getMap() === null) {
-        console.warn('⚠️ Bike marker lost map reference after update, re-adding...');
-        bikeMarkerRef.current.setMap(map);
-      }
+    // Double-check marker is still on map after update
+    if (bikeMarkerRef.current.getMap() === null) {
+      console.warn('⚠️ Bike marker lost map reference after update, re-adding...');
+      bikeMarkerRef.current.setMap(map);
     }
   };
 
@@ -7720,6 +8010,15 @@ export default function DeliveryHome() {
       fetchAndDrawNearbyZones();
     }
   }, [mapLoading, riderLocation]);
+
+  const deliveryPaymentMethod = (selectedRestaurant?.paymentMethod || selectedRestaurant?.payment?.method || '').toLowerCase();
+  const isCodPayment =
+    deliveryPaymentMethod === 'cash' ||
+    deliveryPaymentMethod === 'cod' ||
+    deliveryPaymentMethod === 'cash_on_delivery' ||
+    deliveryPaymentMethod === 'cash on delivery';
+  const rawOrderTotal = Number(selectedRestaurant?.total ?? selectedRestaurant?.pricing?.total ?? 0);
+  const deliveryOrderTotal = Number.isFinite(rawOrderTotal) ? rawOrderTotal : 0;
 
   // Render normal feed view when offline or no gig booked
   return (
@@ -8623,6 +8922,45 @@ export default function DeliveryHome() {
               <ArrowRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
             </button>
           )}
+        </div>
+      </BottomPopup>
+
+      {/* Cash Limit Reached Popup */}
+      <BottomPopup
+        isOpen={showCashLimitPopup}
+        onClose={() => setShowCashLimitPopup(false)}
+        title="Cash limit reached"
+        showCloseButton={true}
+        closeOnBackdropClick={true}
+        maxHeight="auto">
+
+        <div className="py-4 space-y-4">
+          <p className="text-sm text-gray-700">
+            You need to deposit cash first. Your cash limit is exhausted, so you can’t take COD orders right now.
+          </p>
+
+          {cashLimitPopupData && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 space-y-1">
+              <div>Order amount: {formatCurrency(cashLimitPopupData.total || 0)}</div>
+              <div>Available cash limit: {formatCurrency(cashLimitPopupData.available || 0)}</div>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setShowCashLimitPopup(false);
+                navigate("/delivery/pocket-balance");
+              }}
+              className="flex-1 bg-black hover:bg-gray-800 text-white font-semibold py-3 rounded-lg transition-colors">
+              Deposit now
+            </button>
+            <button
+              onClick={() => setShowCashLimitPopup(false)}
+              className="flex-1 border border-gray-300 text-gray-800 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-colors">
+              Later
+            </button>
+          </div>
         </div>
       </BottomPopup>
 
@@ -9669,10 +10007,6 @@ export default function DeliveryHome() {
               <Phone className="w-5 h-5 text-gray-700" />
               <span className="text-gray-700 font-medium">Call</span>
             </button>
-            <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <MapPin className="w-5 h-5 text-gray-700" />
-              <span className="text-gray-700 font-medium">Chat</span>
-            </button>
             <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
               <MapPin className="w-5 h-5 text-white" />
               <span className="text-white font-medium">Map</span>
@@ -9810,26 +10144,73 @@ export default function DeliveryHome() {
           </div>
 
           {/* Payment info: Online = amount paid, COD = collect from customer */}
-          {selectedRestaurant?.total != null && (() => {
-            const m = (selectedRestaurant.paymentMethod || '').toLowerCase();
-            const isCod = m === 'cash' || m === 'cod';
-            const total = Number(selectedRestaurant.total) || 0;
-            return (
-              <div className={`rounded-xl p-4 mb-6 ${isCod ? 'bg-amber-50 border border-amber-200' : 'bg-emerald-50 border border-emerald-200'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <IndianRupee className={`w-4 h-4 ${isCod ? 'text-amber-600' : 'text-emerald-600'}`} />
-                    <span className={`text-sm font-medium ${isCod ? 'text-amber-800' : 'text-emerald-800'}`}>
-                      {isCod ? 'Collect from customer (COD)' : 'Amount paid (Online)'}
-                    </span>
-                  </div>
-                  <span className={`text-lg font-bold ${isCod ? 'text-amber-700' : 'text-emerald-700'}`}>
-                    ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {selectedRestaurant?.total != null && (
+            <div className={`rounded-xl p-4 mb-6 ${isCodPayment ? 'bg-amber-50 border border-amber-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <IndianRupee className={`w-4 h-4 ${isCodPayment ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  <span className={`text-sm font-medium ${isCodPayment ? 'text-amber-800' : 'text-emerald-800'}`}>
+                    {isCodPayment ? 'Collect from customer (COD)' : 'Amount paid (Online)'}
                   </span>
                 </div>
-              </div>);
+                <span className={`text-lg font-bold ${isCodPayment ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  ₹{deliveryOrderTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          )}
 
-          })()}
+          {isCodPayment && (
+            <div className="mb-6">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleSelectCashPayment}
+                  className={`px-4 py-3 rounded-lg font-semibold border transition-colors ${
+                    codPaymentOption === 'cash'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Collect Cash
+                </button>
+                <button
+                  onClick={handleGenerateQrPayment}
+                  disabled={qrPaymentState.loading}
+                  className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                    qrPaymentState.loading
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {qrPaymentState.loading ? 'Generating...' : 'Generate QR Payment'}
+                </button>
+              </div>
+
+              {(qrPaymentState.qrCodeUrl || qrPaymentState.error) && (
+                <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 text-center">
+                  {qrPaymentState.qrCodeUrl && (
+                    <img
+                      src={qrPaymentState.qrCodeUrl}
+                      alt="UPI QR"
+                      className="mx-auto w-48 h-48 object-contain"
+                    />
+                  )}
+                  <p className="text-sm text-gray-600 mt-3">
+                    Customer can scan this QR to pay via UPI.
+                  </p>
+                  {qrPaymentState.status === 'pending' && (
+                    <p className="text-xs text-amber-600 mt-1">Waiting for payment confirmation...</p>
+                  )}
+                  {qrPaymentState.status === 'paid' && (
+                    <p className="text-xs text-green-600 mt-1">Payment received. Please confirm delivery.</p>
+                  )}
+                  {qrPaymentState.error && (
+                    <p className="text-xs text-red-600 mt-1">{qrPaymentState.error}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Order Delivered Button with Swipe */}
           <div className="relative w-full">

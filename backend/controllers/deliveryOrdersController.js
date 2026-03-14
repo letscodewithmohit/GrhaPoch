@@ -12,6 +12,7 @@ import AdminCommission from '../models/AdminCommission.js';
 import { calculateRoute } from '../services/routeCalculationService.js';
 import { calculateOrderSettlement } from '../services/orderSettlementService.js';
 import { calculateDistance, normalizeCoordinates } from '../services/orderCalculationService.js';
+import { createQrCode } from '../services/razorpayService.js';
 import {
   upsertActiveOrderRealtime,
   updateActiveOrderRiderLocationRealtime,
@@ -65,6 +66,16 @@ const normalizeRoutePointsForRealtime = (coordinates = []) => {
       return { lat, lng };
     }).
     filter(Boolean);
+};
+
+const isCashPaymentMethod = (method) => {
+  const normalized = (method || '').toString().toLowerCase().trim();
+  return (
+    normalized === 'cash' ||
+    normalized === 'cod' ||
+    normalized === 'cash_on_delivery' ||
+    normalized === 'cash on delivery'
+  );
 };
 
 /**
@@ -237,6 +248,138 @@ export const getOrderDetails = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Generate Razorpay QR for COD order
+ * POST /api/delivery/orders/:orderId/generate-qr
+ */
+export const generateOrderQr = asyncHandler(async (req, res) => {
+  try {
+    const delivery = req.delivery;
+    const { orderId } = req.params;
+
+    logger.info('📌 Generate QR request received', {
+      orderId,
+      deliveryId: delivery?._id?.toString()
+    });
+
+    if (!delivery || !delivery._id) {
+      return errorResponse(res, 401, 'Delivery partner authentication required');
+    }
+
+    if (!orderId) {
+      return errorResponse(res, 400, 'Order ID is required');
+    }
+
+    // Find order assigned to this delivery partner
+    let order = null;
+    if (mongoose.Types.ObjectId.isValid(orderId) && orderId.length === 24) {
+      order = await Order.findOne({ _id: orderId, deliveryPartnerId: delivery._id });
+    } else {
+      order = await Order.findOne({ orderId: orderId, deliveryPartnerId: delivery._id });
+    }
+
+    if (!order) {
+      return errorResponse(res, 404, 'Order not found or not assigned to you');
+    }
+
+    logger.info('✅ Order found for QR generation', {
+      orderMongoId: order._id?.toString(),
+      orderNumber: order.orderId,
+      paymentMethod: order.payment?.method,
+      paymentStatus: order.paymentStatus,
+      total: order.pricing?.total ?? order.total
+    });
+
+    // Allow QR only for COD orders
+    if (!isCashPaymentMethod(order.payment?.method)) {
+      return errorResponse(res, 400, 'QR payment is only available for COD orders');
+    }
+
+    // If already paid, do not generate a new QR
+    if (order.paymentStatus === 'paid' || order.payment?.status === 'completed') {
+      return errorResponse(res, 400, 'Payment already completed for this order');
+    }
+
+    // Reuse existing pending QR if present
+    if (order.qrCodeId && order.qrCodeUrl && order.paymentStatus === 'pending') {
+      return successResponse(res, 200, 'QR code already generated', {
+        qrCodeId: order.qrCodeId,
+        qrCodeUrl: order.qrCodeUrl,
+        qr_id: order.qrCodeId,
+        qr_image_url: order.qrCodeUrl,
+        paymentStatus: order.paymentStatus
+      });
+    }
+
+    const totalAmount = Number(order.pricing?.total ?? order.total ?? 0);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return errorResponse(res, 400, 'Invalid order amount for QR payment');
+    }
+
+    logger.info('🧾 QR payment amount', {
+      orderNumber: order.orderId,
+      amountRupees: totalAmount,
+      amountPaise: Math.round(totalAmount * 100)
+    });
+
+    const qrPayload = {
+      type: 'upi_qr',
+      usage: 'single_use',
+      fixed_amount: true,
+      payment_amount: Math.round(totalAmount * 100),
+      name: `Order ${order.orderId || order._id}`,
+      description: `Payment for Order ${order.orderId || order._id}`,
+      notes: {
+        orderId: order.orderId || '',
+        orderMongoId: order._id?.toString() || '',
+        deliveryPartnerId: delivery._id?.toString() || ''
+      }
+    };
+
+    const qr = await createQrCode(qrPayload);
+    logger.info('✅ Razorpay QR response', {
+      orderNumber: order.orderId,
+      qrId: qr?.id,
+      status: qr?.status,
+      responseKeys: Object.keys(qr || {})
+    });
+    const qrCodeUrl =
+      qr.image_url ||
+      qr.qr_image_url ||
+      qr.qr_url ||
+      qr.short_url ||
+      '';
+
+    if (!qrCodeUrl) {
+      return errorResponse(res, 500, 'Failed to generate QR image');
+    }
+
+    order.qrCodeId = qr.id;
+    order.qrCodeUrl = qrCodeUrl;
+    order.paymentStatus = 'pending';
+    await order.save();
+
+    return successResponse(res, 200, 'QR code generated successfully', {
+      qrCodeId: order.qrCodeId,
+      qrCodeUrl: order.qrCodeUrl,
+      qr_id: order.qrCodeId,
+      qr_image_url: order.qrCodeUrl,
+      paymentStatus: order.paymentStatus
+    });
+  } catch (error) {
+    const message =
+      error?.error?.description ||
+      error?.error?.reason ||
+      error?.message ||
+      'Failed to generate QR code';
+    logger.error('Error generating QR code:', {
+      message,
+      error: error?.error || error?.description || error
+    });
+    return errorResponse(res, 500, message);
+  }
+});
+
+/**
  * Accept Order (Delivery Boy accepts the assigned order)
  * PATCH /api/delivery/orders/:orderId/accept
  */
@@ -244,7 +387,11 @@ export const acceptOrder = asyncHandler(async (req, res) => {
   try {
     const delivery = req.delivery;
     const { orderId } = req.params;
-    const { currentLat, currentLng } = req.body; // Delivery boy's current location
+
+    // Delivery boy's current location (frontend sends either { currentLat, currentLng } or { lat, lng })
+    const { currentLat, currentLng, lat, lng } = req.body;
+    const deliveryLatFromClient = currentLat ?? lat;
+    const deliveryLngFromClient = currentLng ?? lng;
 
     // Validate orderId
     if (!orderId || typeof orderId !== 'string' && typeof orderId !== 'object') {
@@ -255,14 +402,18 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
 
 
-    // Find order - try both by _id and orderId
-    // First check if order exists (without deliveryPartnerId filter)
-    let order = await Order.findOne({
-      $or: [
-        { _id: orderId },
-        { orderId: orderId }]
+    // Find order - try _id only when payload is a valid ObjectId, otherwise search by orderId string.
+    // This prevents Mongoose CastError when mobile sends short alphanumeric order codes (e.g., "GP1234").
+    const orderLookup = mongoose.Types.ObjectId.isValid(orderId) && typeof orderId === 'string' && orderId.length === 24 ?
+      {
+        $or: [
+          { _id: orderId },
+          { orderId: orderId }]
+      } :
+      { orderId: orderId };
 
-    }).
+    // First check if order exists (without deliveryPartnerId filter)
+    let order = await Order.findOne(orderLookup).
       populate('restaurantId', 'name location address phone ownerPhone').
       populate('userId', 'name phone').
       lean();
@@ -339,12 +490,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       // Reload order as document (not lean) to update it
       let orderDoc;
       try {
-        orderDoc = await Order.findOne({
-          $or: [
-            { _id: orderId },
-            { orderId: orderId }]
-
-        });
+        orderDoc = await Order.findOne(orderLookup);
 
         if (!orderDoc) {
           console.error(`❌ Order document not found for ID: ${orderId}`);
@@ -367,6 +513,15 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
       // Assign order to this delivery partner
       try {
+        // Normalize deliveryState.currentPhase to a valid enum before saving
+        const validPhases = ['assigned', 'en_route_to_pickup', 'at_pickup', 'en_route_to_delivery', 'at_delivery', 'completed'];
+        if (!validPhases.includes(orderDoc.deliveryState?.currentPhase)) {
+          orderDoc.deliveryState = {
+            ...(orderDoc.deliveryState || {}),
+            currentPhase: 'assigned'
+          };
+        }
+
         orderDoc.deliveryPartnerId = delivery._id;
         orderDoc.assignmentInfo = {
           ...(orderDoc.assignmentInfo || {}),
@@ -394,12 +549,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       // Reload order with populated data (use orderDoc._id to ensure we get the updated order)
       const updatedOrderId = orderDoc._id || orderId;
       try {
-        order = await Order.findOne({
-          $or: [
-            { _id: updatedOrderId },
-            { orderId: orderId }]
-
-        }).
+        order = await Order.findOne(orderLookup).
           populate('restaurantId', 'name location address phone ownerPhone').
           populate('userId', 'name phone').
           lean();
@@ -436,26 +586,42 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
 
 
-    // Check for cash limit if order is COD (WARNING ONLY - NOT BLOCKING)
-    const orderPaymentMethod = order.payment?.method || 'razorpay';
-    if (orderPaymentMethod === 'cash') {
+    // Strict cash limit check for COD orders
+    let orderPaymentMethod = order.payment?.method || 'razorpay';
+    let isCashOrderForLimit = isCashPaymentMethod(orderPaymentMethod);
+    if (!isCashOrderForLimit) {
+      try {
+        const paymentRecord = await Payment.findOne({ orderId: order._id })
+          .select('method paymentMethod')
+          .lean();
+        const resolvedMethod = paymentRecord?.method || paymentRecord?.paymentMethod;
+        if (isCashPaymentMethod(resolvedMethod)) {
+          orderPaymentMethod = resolvedMethod;
+          isCashOrderForLimit = true;
+        }
+      } catch (e) {/* ignore */}
+    }
+
+    if (isCashOrderForLimit) {
       try {
         const BusinessSettings = (await import('../models/BusinessSettings.js')).default;
         const settings = await BusinessSettings.getSettings();
         const cashLimit = settings.deliveryCashLimit || 750;
 
         const wallet = await DeliveryWallet.findOne({ deliveryId: delivery._id });
-        const cashInHand = wallet?.cashInHand || 0;
+        const cashInHand = Number(wallet?.cashInHand) || 0;
+        const codAmount = Number(order.pricing?.total) || 0;
 
-        if (cashInHand >= cashLimit) {
-          console.warn(`⚠️ Delivery partner ${delivery._id} has reached cash limit (${cashInHand}/${cashLimit}). They should deposit cash soon, but allowing COD order acceptance.`);
-          // NOTE: We're not blocking the order acceptance anymore
-          // The delivery boy can still accept the order, but should deposit cash soon
-          // return errorResponse(res, 400, `You have reached your cash collection limit (₹${cashLimit}). Please deposit the collected cash to accept more COD orders.`);
+        if ((cashInHand + codAmount) > cashLimit) {
+          return errorResponse(
+            res,
+            400,
+            `Cash limit exceeded (₹${cashLimit}). Please deposit collected cash before accepting more COD orders.`
+          );
         }
       } catch (limitError) {
         console.error('Error checking cash limit:', limitError);
-        // Continue if check fails
+        return errorResponse(res, 500, 'Failed to validate cash limit. Please try again.');
       }
     }
 
@@ -505,11 +671,9 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       return errorResponse(res, 500, 'Error getting restaurant location. Please try again.');
     }
 
-    // Get delivery boy's current location
-    let deliveryLat = currentLat;
-    let deliveryLng = currentLng;
-
-
+    // Get delivery boy's current location (prefer location sent by client)
+    let deliveryLat = deliveryLatFromClient;
+    let deliveryLng = deliveryLngFromClient;
 
     if (!deliveryLat || !deliveryLng) {
 
@@ -533,19 +697,25 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     }
 
     // Validate coordinates before calculating route
-    if (!deliveryLat || !deliveryLng || isNaN(deliveryLat) || isNaN(deliveryLng) ||
-      !restaurantLat || !restaurantLng || isNaN(restaurantLat) || isNaN(restaurantLng)) {
-      console.error(`❌ Invalid coordinates for route calculation:`, {
+    // If coordinates are missing/invalid, fall back to restaurant coords so acceptance never blocks
+    const coordsValid = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng);
+    if (!coordsValid(deliveryLat, deliveryLng)) {
+      console.warn('⚠️ Delivery coordinates invalid/missing, falling back to restaurant coords for routing', {
         deliveryLat,
         deliveryLng,
         restaurantLat,
-        restaurantLng,
-        deliveryLatValid: !!(deliveryLat && !isNaN(deliveryLat)),
-        deliveryLngValid: !!(deliveryLng && !isNaN(deliveryLng)),
-        restaurantLatValid: !!(restaurantLat && !isNaN(restaurantLat)),
-        restaurantLngValid: !!(restaurantLng && !isNaN(restaurantLng))
+        restaurantLng
       });
-      return errorResponse(res, 400, 'Invalid location coordinates. Please ensure location services are enabled.');
+      deliveryLat = restaurantLat;
+      deliveryLng = restaurantLng;
+    }
+    if (!coordsValid(restaurantLat, restaurantLng)) {
+      console.error('❌ Restaurant coordinates invalid; using (0,0) placeholder to avoid blocking accept', {
+        restaurantLat,
+        restaurantLng
+      });
+      restaurantLat = 0;
+      restaurantLng = 0;
     }
 
 
@@ -615,7 +785,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
     }
 
-    // Final validation - ensure routeData is valid before using it
+    // Final validation - ensure routeData is usable; if not, downgrade to minimal stub
     if (!routeData ||
       !routeData.coordinates ||
       !Array.isArray(routeData.coordinates) ||
@@ -624,9 +794,13 @@ export const acceptOrder = asyncHandler(async (req, res) => {
       isNaN(routeData.distance) ||
       typeof routeData.duration !== 'number' ||
       isNaN(routeData.duration)) {
-      console.error('❌ Route data validation failed after all fallbacks');
-      console.error('❌ Route data:', JSON.stringify(routeData, null, 2));
-      return errorResponse(res, 500, 'Failed to calculate route. Please try again.');
+      console.warn('⚠️ Route data invalid after fallbacks; using minimal stub');
+      routeData = {
+        coordinates: [[deliveryLat, deliveryLng], [restaurantLat, restaurantLng]],
+        distance: 0,
+        duration: 0,
+        method: 'stub'
+      };
     }
 
 
@@ -658,11 +832,10 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
 
 
-    // Validate route coordinates before saving
+    // Validate route coordinates before saving (soft)
     if (!Array.isArray(routeToPickup.coordinates) || routeToPickup.coordinates.length === 0) {
-      console.error('❌ Invalid route coordinates');
-      console.error('❌ Route coordinates:', routeToPickup.coordinates);
-      return errorResponse(res, 500, 'Invalid route data. Please try again.');
+      console.warn('⚠️ Invalid route coordinates; saving without routeToPickup');
+      routeToPickup.coordinates = [];
     }
 
     // Preserve order-time pricing distance when available; fallback to on-the-fly calculation.
@@ -1720,18 +1893,28 @@ export const completeDelivery = asyncHandler(async (req, res) => {
       order.deliveryState?.status === 'delivered';
 
     if (isAlreadyDelivered) {
-
-
       // Return success with existing order data (idempotent operation)
-      // Still calculate earnings if not already calculated
+      // Still calculate earnings and ensure wallet update if missing
       let earnings = null;
       try {
-        // Check if earnings were already calculated
-        const wallet = await DeliveryWallet.findOne({ deliveryPartnerId: delivery._id });
-        const orderIdForTransaction = order._id?.toString ? order._id.toString() : order._id;
+        const orderMongoId = order._id;
+        const orderIdForLog = order.orderId || orderId;
+
+        // Release escrow safely (idempotent)
+        try {
+          const { releaseEscrow } = await import('../services/escrowWalletService.js');
+          await releaseEscrow(orderMongoId);
+        } catch (escrowError) {
+          console.error(`⚠️ Error releasing escrow for already delivered order ${orderIdForLog}:`, escrowError?.message);
+        }
+
+        // Find or create wallet for delivery boy
+        let wallet = await DeliveryWallet.findOrCreateByDeliveryId(delivery._id);
+        const orderIdForTransaction = orderMongoId?.toString ? orderMongoId.toString() : orderMongoId;
         const existingTransaction = wallet?.transactions?.find(
           (t) => t.orderId && t.orderId.toString() === orderIdForTransaction && t.type === 'payment'
         );
+        let paymentTxId = existingTransaction?._id || null;
 
         if (existingTransaction) {
           earnings = {
@@ -1747,12 +1930,104 @@ export const completeDelivery = asyncHandler(async (req, res) => {
             deliveryDistance = order.deliveryState.routeToDelivery.distance;
           }
 
-          if (deliveryDistance > 0) {
-            const commissionResult = await DeliveryBoyCommission.calculateCommission(deliveryDistance);
-            earnings = {
-              amount: commissionResult.commission,
-              breakdown: commissionResult.breakdown
-            };
+          let totalEarning = 0;
+          let commissionBreakdown = null;
+          try {
+            const settlement = await calculateOrderSettlement(orderMongoId);
+            if (settlement?.deliveryPartnerEarning) {
+              totalEarning = settlement.deliveryPartnerEarning.totalEarning || 0;
+              if (typeof settlement.deliveryPartnerEarning.distance === 'number') {
+                deliveryDistance = settlement.deliveryPartnerEarning.distance;
+              }
+              const tipAmount = Number(order.pricing?.tip) || 0;
+              totalEarning = (settlement.deliveryPartnerEarning.totalEarning || 0) - tipAmount;
+              commissionBreakdown = {
+                basePayout: settlement.deliveryPartnerEarning.basePayout || totalEarning,
+                distance: settlement.deliveryPartnerEarning.distance || deliveryDistance,
+                commissionPerKm: settlement.deliveryPartnerEarning.commissionPerKm || 0,
+                distanceCommission: settlement.deliveryPartnerEarning.distanceCommission || 0,
+                total: totalEarning
+              };
+            }
+          } catch (commissionError) {
+            console.error('⚠️ Error fetching earnings from settlement (already delivered):', commissionError.message);
+          }
+
+          if (!totalEarning || totalEarning <= 0) {
+            if (deliveryDistance > 0) {
+              const commissionResult = await DeliveryBoyCommission.calculateCommission(deliveryDistance);
+              totalEarning = Number(commissionResult.commission) || 0;
+              commissionBreakdown = commissionResult.breakdown;
+            }
+          }
+
+          const tipAmount = Number(order.pricing?.tip) || 0;
+          const walletTransaction = wallet.addTransaction({
+            amount: totalEarning,
+            type: 'payment',
+            status: 'Completed',
+            description: `Delivery earnings for Order #${orderIdForLog} (Distance: ${deliveryDistance.toFixed(2)} km)`,
+            orderId: orderMongoId || order._id,
+            paymentCollected: false,
+            metadata: {
+              baseEarning: totalEarning,
+              distance: deliveryDistance,
+              orderNumber: orderIdForLog
+            }
+          });
+
+          if (tipAmount > 0) {
+            wallet.addTransaction({
+              amount: tipAmount,
+              type: 'tip',
+              status: 'Completed',
+              description: `Customer tip for Order #${orderIdForLog}`,
+              orderId: orderMongoId || order._id,
+              paymentCollected: false,
+              metadata: {
+                tipAmount: tipAmount,
+                orderNumber: orderIdForLog
+              }
+            });
+          }
+
+          await wallet.save();
+          paymentTxId = walletTransaction?._id;
+
+          earnings = {
+            amount: totalEarning + tipAmount,
+            breakdown: commissionBreakdown,
+            transactionId: walletTransaction?._id?.toString() || walletTransaction?.id
+          };
+        }
+
+        const paymentMethod = (order.payment?.method || '').toString().toLowerCase();
+        let isCashOrder = isCashPaymentMethod(paymentMethod);
+        if (!isCashOrder) {
+          try {
+            const paymentRecord = await Payment.findOne({ orderId: orderMongoId })
+              .select('method paymentMethod')
+              .lean();
+            const resolvedMethod = paymentRecord?.method || paymentRecord?.paymentMethod;
+            if (isCashPaymentMethod(resolvedMethod)) isCashOrder = true;
+          } catch (e) {/* ignore */}
+        }
+        const codAmount = Number(order.pricing?.total) || 0;
+        if (isCashOrder && codAmount > 0 && paymentTxId) {
+          try {
+            await DeliveryWallet.updateOne(
+              {
+                deliveryId: delivery._id,
+                'transactions._id': paymentTxId,
+                'transactions.paymentCollected': { $ne: true }
+              },
+              {
+                $set: { 'transactions.$.paymentCollected': true },
+                $inc: { cashInHand: codAmount }
+              }
+            );
+          } catch (codErr) {
+            console.error('❌ Failed to add COD to cashInHand (already delivered):', codErr.message);
           }
         }
       } catch (earningsError) {
@@ -2020,9 +2295,15 @@ export const completeDelivery = asyncHandler(async (req, res) => {
       const existingTransaction = wallet.transactions?.find(
         (t) => t.orderId && t.orderId.toString() === orderIdForTransaction && t.type === 'payment'
       );
+      let paymentTxId = existingTransaction?._id || null;
 
       if (existingTransaction) {
         console.warn(`⚠️ Earning already added for order ${orderIdForLog}, skipping wallet update`);
+        const existingAmount = Number(existingTransaction.amount) || 0;
+        if (existingAmount > 0) {
+          totalEarning = existingAmount; // Ensure response shows total including tip if already credited
+        }
+        walletTransaction = existingTransaction;
       } else {
         // Add payment transaction (base earning)
         const tipAmount = Number(order.pricing?.tip) || 0;
@@ -2060,46 +2341,59 @@ export const completeDelivery = asyncHandler(async (req, res) => {
         }
 
         await wallet.save();
+        paymentTxId = walletTransaction?._id;
 
         // Include tip in the total earning returned to UI
         const finalTotalEarning = totalEarning + tipAmount;
         totalEarning = finalTotalEarning; // Update for responseData below
 
-        // COD: add cash collected (order total) to cashInHand so Pocket balance shows it
-        const codAmount = Number(order.pricing?.total) || 0;
-        const paymentMethod = (order.payment?.method || '').toString().toLowerCase();
-        const isCashOrder = paymentMethod === 'cash' || paymentMethod === 'cod';
-        if (isCashOrder && codAmount > 0) {
-          try {
-            const updateResult = await DeliveryWallet.updateOne(
-              { deliveryId: delivery._id },
-              { $inc: { cashInHand: codAmount } }
-            );
-            if (updateResult.modifiedCount > 0) {
-
-            } else {
-              console.warn(`⚠️ Wallet update for cashInHand had no effect (deliveryId: ${delivery._id})`);
-            }
-          } catch (codErr) {
-            console.error(`❌ Failed to add COD to cashInHand:`, codErr.message);
-          }
-        }
-
-        const cashCollectedThisOrder = isCashOrder ? codAmount : 0;
-        logger.info(`💰 Earning added to wallet for delivery: ${delivery._id}`, {
-          deliveryId: delivery.deliveryId || delivery._id.toString(),
-          orderId: orderIdForLog,
-          amount: totalEarning,
-          cashCollected: cashCollectedThisOrder,
-          distance: deliveryDistance,
-          transactionId: walletTransaction?._id || walletTransaction?.id,
-          walletBalance: wallet.totalBalance,
-          cashInHand: wallet.cashInHand
-        });
-
-
-
       }
+
+      // COD: mark payment collected + add cash collected (order total) to cashInHand
+      const codAmount = Number(order.pricing?.total) || 0;
+      const paymentMethod = (order.payment?.method || '').toString().toLowerCase();
+      let isCashOrder = isCashPaymentMethod(paymentMethod);
+      if (!isCashOrder) {
+        try {
+          const paymentRecord = await Payment.findOne({ orderId: orderMongoId })
+            .select('method paymentMethod')
+            .lean();
+          const resolvedMethod = paymentRecord?.method || paymentRecord?.paymentMethod;
+          if (isCashPaymentMethod(resolvedMethod)) isCashOrder = true;
+        } catch (e) {/* ignore */}
+      }
+      if (isCashOrder && codAmount > 0 && paymentTxId) {
+        try {
+          const updateResult = await DeliveryWallet.updateOne(
+            {
+              deliveryId: delivery._id,
+              'transactions._id': paymentTxId,
+              'transactions.paymentCollected': { $ne: true }
+            },
+            {
+              $set: { 'transactions.$.paymentCollected': true },
+              $inc: { cashInHand: codAmount }
+            }
+          );
+          if (updateResult.modifiedCount === 0) {
+            console.warn(`⚠️ Wallet update for cashInHand had no effect (deliveryId: ${delivery._id})`);
+          }
+        } catch (codErr) {
+          console.error(`❌ Failed to add COD to cashInHand:`, codErr.message);
+        }
+      }
+
+      const cashCollectedThisOrder = isCashOrder ? codAmount : 0;
+      logger.info(`💰 Earning added to wallet for delivery: ${delivery._id}`, {
+        deliveryId: delivery.deliveryId || delivery._id.toString(),
+        orderId: orderIdForLog,
+        amount: totalEarning,
+        cashCollected: cashCollectedThisOrder,
+        distance: deliveryDistance,
+        transactionId: walletTransaction?._id || walletTransaction?.id,
+        walletBalance: wallet.totalBalance,
+        cashInHand: wallet.cashInHand
+      });
     } catch (walletError) {
       logger.error('❌ Error adding earning to wallet:', walletError);
       console.error('❌ Error processing delivery wallet:', walletError);

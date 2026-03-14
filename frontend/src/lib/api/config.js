@@ -148,6 +148,7 @@ export const API_ENDPOINTS = {
       RESET_PASSWORD: '/restaurant/auth/reset-password'
     },
     PROFILE: '/restaurant/profile',
+    PAYOUT_DETAILS: '/restaurant/payout-details',
     DELIVERY_STATUS: '/restaurant/delivery-status',
     STAFF: '/restaurant/staff',
     MENU: '/restaurant/menu',
@@ -246,6 +247,7 @@ export const API_ENDPOINTS = {
     ORDER_CONFIRM_ID: '/delivery/orders/:orderId/confirm-order-id',
     ORDER_REACHED_DROP: '/delivery/orders/:orderId/reached-drop',
     ORDER_COMPLETE_DELIVERY: '/delivery/orders/:orderId/complete-delivery',
+    ORDER_GENERATE_QR: '/delivery/orders/:orderId/generate-qr',
     TRIP_HISTORY: '/delivery/trip-history',
     EARNINGS: '/delivery/earnings',
     EARNINGS_ACTIVE_OFFERS: '/delivery/earnings/active-offers',

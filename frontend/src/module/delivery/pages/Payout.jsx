@@ -176,73 +176,84 @@ export default function Payout() {
                       <p className="text-gray-900 text-xl font-bold mb-1">
                         {formatCurrency(withdrawal.amount)}
                       </p>
-                      <p className="text-gray-600 text-sm mb-1">
-                        Payout method: {formatMethod(withdrawal.paymentMethod)}
-                      </p>
-                      {withdrawal.paymentMethod === "admin_select" && (
-                        <p className="text-gray-500 text-xs mb-1">
-                          Admin will choose the payout method.
-                        </p>
-                      )}
-                      {withdrawal.paymentMethod === "bank_transfer" && withdrawal.bankDetails && (
-                        <p className="text-gray-500 text-xs mb-1">
-                          Bank: {withdrawal.bankDetails.bankName || "-"} · A/C: {withdrawal.bankDetails.accountNumber ? `****${withdrawal.bankDetails.accountNumber.slice(-4)}` : "-"}
-                        </p>
-                      )}
-                      {withdrawal.paymentMethod === "upi" && withdrawal.upiId && (
-                        <p className="text-gray-500 text-xs mb-1">
-                          UPI: {withdrawal.upiId}
-                        </p>
-                      )}
-                      {withdrawal.paymentMethod === "qr_code" && withdrawal.qrCode?.url && (
-                        <a
-                          href={withdrawal.qrCode.url}
-                          download
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
-                        >
-                          Download QR Code
-                        </a>
-                      )}
-                      <p className="text-gray-500 text-xs">
-                        Requested: {withdrawal.date}
-                      </p>
-                      {withdrawal.processedAt && (
-                        <p className="text-gray-500 text-xs mt-1">
-                          Processed: {withdrawal.processedAt}
-                        </p>
-                      )}
-                      {withdrawal.rejectionReason && (
-                        <p className="text-red-600 text-xs mt-2 font-medium">
-                          Reason: {withdrawal.rejectionReason}
-                        </p>
-                      )}
-                      {withdrawal.paymentScreenshot?.url && (
-                        <div className="mt-2">
-                          <p className="text-gray-500 text-xs mb-1">Payment screenshot:</p>
+                      
+                      <div className="flex flex-col gap-1 mb-4">
+                        <span className="text-[10px] uppercase text-gray-400 font-bold tracking-tight">Payout Mode</span>
+                        <span className="text-sm font-semibold capitalize text-gray-700">
+                           {withdrawal.paymentMethod && !['admin_select', 'pending', '', 'none'].includes(withdrawal.paymentMethod.toLowerCase().replace(/[^a-z]/g, ''))
+                             ? formatMethod(withdrawal.paymentMethod)
+                             : 'Standard Bank Selection'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-4 pt-4 border-t border-gray-100">
+                        {withdrawal.paymentMethod?.toLowerCase().includes('bank') && withdrawal.bankDetails && (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase text-gray-400 font-bold mb-1">Bank Account</span>
+                            <span className="text-sm font-medium text-gray-800">
+                              {withdrawal.bankDetails.bankName || "-"} · {withdrawal.bankDetails.accountNumber ? `****${withdrawal.bankDetails.accountNumber.slice(-4)}` : "-"}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {withdrawal.paymentMethod?.toLowerCase().includes('upi') && withdrawal.upiId && (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase text-gray-400 font-bold mb-1">UPI ID</span>
+                            <span className="text-sm font-medium text-gray-800">{withdrawal.upiId}</span>
+                          </div>
+                        )}
+
+                        {withdrawal.paymentMethod?.toLowerCase().includes('qr') && withdrawal.qrCode?.url && (
                           <a
-                            href={withdrawal.paymentScreenshot.url}
+                            href={withdrawal.qrCode.url}
                             download
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 underline flex items-center gap-1"
                           >
-                            Download payment screenshot
+                            Download QR Code
                           </a>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase text-gray-400 font-bold mb-1 tracking-tight">Requested</span>
+                            <span className="text-xs text-gray-600 font-medium">{withdrawal.date}</span>
+                          </div>
+                          {withdrawal.processedAt && (
+                            <div className="flex flex-col">
+                              <span className="text-[10px] uppercase text-gray-400 font-bold mb-1 tracking-tight">Processed</span>
+                              <span className="text-xs text-gray-600 font-medium">{withdrawal.processedAt}</span>
+                            </div>
+                          )}
                         </div>
-                      )}
+
+                        {withdrawal.rejectionReason && (
+                          <div className="bg-red-50 p-2 rounded-lg border border-red-100">
+                            <span className="text-[10px] uppercase text-red-500 font-bold mb-1 block">Rejection Reason</span>
+                            <p className="text-xs text-red-600 leading-relaxed font-medium">
+                              {withdrawal.rejectionReason}
+                            </p>
+                          </div>
+                        )}
+
+                        {withdrawal.paymentScreenshot?.url && (
+                          <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 mt-2">
+                            <p className="text-[10px] text-gray-500 font-bold mb-2 uppercase tracking-wide">Payment Proof (OP)</p>
+                            <a
+                              href={withdrawal.paymentScreenshot.url}
+                              download
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                            >
+                              Download Original Proof
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Payment Method Badge */}
-                  {withdrawal.paymentMethod && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <span className="text-xs text-gray-500 capitalize">
-                        Payment Method: {formatMethod(withdrawal.paymentMethod)}
-                      </span>
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -262,4 +273,3 @@ export default function Payout() {
     </div>
   )
 }
-

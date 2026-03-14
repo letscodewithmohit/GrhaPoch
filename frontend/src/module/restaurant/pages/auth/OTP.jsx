@@ -288,10 +288,10 @@ export default function RestaurantOTP() {
             if (incompleteStep) {
               navigate(`/restaurant/onboarding?step=${incompleteStep}`, { replace: true });
             } else {
-              navigate("/restaurant", { replace: true });
+              navigate("/restaurant/to-hub", { replace: true });
             }
           } catch {
-            navigate("/restaurant", { replace: true });
+            navigate("/restaurant/to-hub", { replace: true });
           }
         }, 500);
       }

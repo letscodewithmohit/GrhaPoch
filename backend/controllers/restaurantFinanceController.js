@@ -556,7 +556,12 @@ export const getRestaurantFinance = asyncHandler(async (req, res) => {
       restaurant: {
         name: restaurant.name || 'Restaurant',
         restaurantId: restaurant.restaurantId || restaurantId,
-        address: restaurant.location?.address || restaurant.location?.formattedAddress || ''
+        address: restaurant.location?.address || restaurant.location?.formattedAddress || '',
+        onboarding: {
+          step3: {
+            bank: restaurant.onboarding?.step3?.bank || {}
+          }
+        }
       }
     });
   } catch (error) {

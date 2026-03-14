@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/restaurant.auth.js';
 import { uploadMiddleware } from '../utils/cloudinaryService.js';
 import restaurantAuthRoutes from './restaurantAuthRoutes.js';
 import { getOnboarding, upsertOnboarding, createRestaurantFromOnboardingManual } from '../controllers/restaurantOnboardingController.js';
-import { getRestaurants, getRestaurantById, getRestaurantByOwner, updateRestaurantProfile, uploadProfileImage, uploadMenuImage, deleteRestaurantAccount, updateDeliveryStatus, getRestaurantsWithDishesUnder250, updateDiningSettings } from '../controllers/restaurantController.js';
+import { getRestaurants, getRestaurantById, getRestaurantByOwner, updateRestaurantProfile, uploadProfileImage, uploadMenuImage, deleteRestaurantAccount, updateDeliveryStatus, getRestaurantsWithDishesUnder250, updateDiningSettings, updatePayoutDetails } from '../controllers/restaurantController.js';
 import { getRestaurantFinance } from '../controllers/restaurantFinanceController.js';
 import { getWallet, getWalletTransactions, getWalletStats } from '../controllers/restaurantWalletController.js';
 import { createWithdrawalRequest, getRestaurantWithdrawalRequests } from '../controllers/withdrawalController.js';
@@ -26,8 +26,9 @@ import {
   requestDiningEnable,
   enableDiningWithoutPayment,
   createDiningActivationOrder,
-  verifyDiningActivationPayment } from
-'../controllers/diningActivationController.js';
+  verifyDiningActivationPayment
+} from
+  '../controllers/diningActivationController.js';
 
 const router = express.Router();
 
@@ -119,6 +120,9 @@ router.get('/:id/addons', getAddonsByRestaurantId);
 router.get('/:id/inventory', getInventoryByRestaurantId);
 router.get('/owner/me', authenticate, getRestaurantByOwner);
 
+// Payout details route (authenticated - for restaurant module)
+router.put('/payout-details', authenticate, updatePayoutDetails);
+
 // Profile routes (authenticated - for restaurant module)
 router.get('/profile', authenticate, getRestaurantByOwner);
 
@@ -150,5 +154,16 @@ router.delete('/notifications/:id', authenticate, deleteNotification);
 
 // Outlet Timings routes
 router.use('/', outletTimingsRoutes);
+
+// Internal catch-all for restaurant router
+router.use((req, res) => {
+  console.log(`⚠️  [RESTAURANT ROUTER] No match for: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: 'Route not found inside restaurant module',
+    path: req.originalUrl,
+    method: req.method
+  });
+});
 
 export default router;

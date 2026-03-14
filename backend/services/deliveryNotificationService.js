@@ -163,7 +163,8 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
 
     // Calculate estimated earnings and align base+distance with order-time delivery fee.
     const deliveryFeeFromOrder = order.pricing?.deliveryFee ?? 0;
-    let estimatedEarnings = await calculateEstimatedEarnings(canonicalDeliveryDistance || 0);
+    const tipAmount = Number(order.pricing?.tip) || 0;
+    let estimatedEarnings = await calculateEstimatedEarnings(canonicalDeliveryDistance || 0, tipAmount);
     estimatedEarnings = alignEstimatedEarningsToOrderFee(estimatedEarnings, deliveryFeeFromOrder);
 
     // Prepare order notification data
@@ -189,6 +190,7 @@ export async function notifyDeliveryBoyNewOrder(order, deliveryPartnerId) {
       })),
       total: order.pricing.total,
       deliveryFee: deliveryFeeFromOrder,
+      paymentMethod: order.payment?.method || 'cash',
       customerName: orderWithUser.userId?.name || 'Customer',
       customerPhone: orderWithUser.userId?.phone || '',
       status: order.status,
@@ -442,9 +444,10 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
     // Calculate estimated earnings based on delivery distance
     let estimatedEarnings = null;
     const deliveryFeeFromOrder = orderWithUser.pricing?.deliveryFee ?? 0;
+    const tipAmount = Number(orderWithUser.pricing?.tip) || 0;
 
     try {
-      estimatedEarnings = await calculateEstimatedEarnings(canonicalDeliveryDistance);
+      estimatedEarnings = await calculateEstimatedEarnings(canonicalDeliveryDistance, tipAmount);
       const earnedValue = typeof estimatedEarnings === 'object' ? estimatedEarnings.totalEarning ?? 0 : Number(estimatedEarnings) || 0;
 
 
@@ -456,10 +459,17 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
 
       // Use deliveryFee as fallback if earnings is 0 or invalid
       if (earnedValue <= 0 && deliveryFeeFromOrder > 0) {
-
         estimatedEarnings = typeof estimatedEarnings === 'object' ?
-          { ...estimatedEarnings, totalEarning: deliveryFeeFromOrder } :
-          deliveryFeeFromOrder;
+          { ...estimatedEarnings, totalEarning: deliveryFeeFromOrder + tipAmount, tip: tipAmount } :
+          {
+            basePayout: deliveryFeeFromOrder,
+            distance: canonicalDeliveryDistance,
+            commissionPerKm: 0,
+            distanceCommission: 0,
+            tip: tipAmount,
+            totalEarning: deliveryFeeFromOrder + tipAmount,
+            breakdown: 'Fallback to delivery fee'
+          };
       }
 
 
@@ -467,12 +477,21 @@ export async function notifyMultipleDeliveryBoys(order, deliveryPartnerIds, phas
       console.error('❌ Error calculating estimated earnings in notification:', earningsError);
       console.error('❌ Error stack:', earningsError.stack);
       // Fallback to deliveryFee or default
-      estimatedEarnings = deliveryFeeFromOrder > 22 ? deliveryFeeFromOrder : {
+      estimatedEarnings = deliveryFeeFromOrder > 22 ? {
+        basePayout: deliveryFeeFromOrder,
+        distance: canonicalDeliveryDistance,
+        commissionPerKm: 0,
+        distanceCommission: 0,
+        tip: tipAmount,
+        totalEarning: deliveryFeeFromOrder + tipAmount,
+        breakdown: 'Fallback to delivery fee'
+      } : {
         basePayout: 22,
         distance: canonicalDeliveryDistance,
         commissionPerKm: 5,
         distanceCommission: 0,
-        totalEarning: 22,
+        tip: tipAmount,
+        totalEarning: 22 + tipAmount,
         breakdown: 'Default calculation'
       };
 
@@ -740,9 +759,10 @@ function alignEstimatedEarningsToOrderFee(estimatedEarnings, deliveryFeeFromOrde
  * Calculate estimated earnings for delivery boy based on admin commission rules
  * Uses DeliveryBoyCommission model to calculate: Base Payout + (Distance × Per Km) if distance > minDistance
  */
-async function calculateEstimatedEarnings(deliveryDistance) {
+async function calculateEstimatedEarnings(deliveryDistance, tipAmount = 0) {
   try {
     const DeliveryBoyCommission = (await import('../models/DeliveryBoyCommission.js')).default;
+    const safeTip = Number(tipAmount) || 0;
 
     // Always use calculateCommission method which handles all cases including distance = 0
     // It will return base payout even if distance is 0
@@ -751,14 +771,15 @@ async function calculateEstimatedEarnings(deliveryDistance) {
 
     // If distance is 0 or not provided, still return base payout
     if (!deliveryDistance || deliveryDistance <= 0) {
-
+      const basePayout = commissionResult.breakdown.basePayout;
       return {
-        basePayout: commissionResult.breakdown.basePayout,
+        basePayout: basePayout,
         distance: 0,
         commissionPerKm: commissionResult.breakdown.commissionPerKm,
         distanceCommission: 0,
-        totalEarning: commissionResult.breakdown.basePayout, // Base payout only when distance is 0
-        breakdown: `Base payout: ₹${commissionResult.breakdown.basePayout}`,
+        tip: safeTip,
+        totalEarning: Math.round((basePayout + safeTip) * 100) / 100, // Base payout + tip when distance is 0
+        breakdown: `Base payout: \u20B9${basePayout}`,
         minDistance: commissionResult.rule.minDistance,
         maxDistance: commissionResult.rule.maxDistance
       };
@@ -786,7 +807,8 @@ async function calculateEstimatedEarnings(deliveryDistance) {
       distance: Math.round(distance * 100) / 100,
       commissionPerKm: Math.round(commissionPerKm * 100) / 100,
       distanceCommission: Math.round(distanceCommission * 100) / 100,
-      totalEarning: Math.round(totalEarning * 100) / 100,
+      tip: safeTip,
+      totalEarning: Math.round((totalEarning + safeTip) * 100) / 100,
       breakdown: breakdown,
       minDistance: commissionResult.rule.minDistance,
       maxDistance: commissionResult.rule.maxDistance
@@ -799,7 +821,8 @@ async function calculateEstimatedEarnings(deliveryDistance) {
       distance: deliveryDistance || 0,
       commissionPerKm: 5,
       distanceCommission: deliveryDistance && deliveryDistance > 4 ? (deliveryDistance - 4) * 5 : 0,
-      totalEarning: 22 + (deliveryDistance && deliveryDistance > 4 ? (deliveryDistance - 4) * 5 : 0),
+      tip: safeTip,
+      totalEarning: 22 + (deliveryDistance && deliveryDistance > 4 ? (deliveryDistance - 4) * 5 : 0) + safeTip,
       breakdown: 'Default calculation'
     };
   }

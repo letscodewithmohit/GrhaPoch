@@ -35,55 +35,6 @@ const transactionSchema = new mongoose.Schema({
   _id: true
 });
 
-// Withdrawal Request Schema
-const withdrawalRequestSchema = new mongoose.Schema({
-  amount: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  status: {
-    type: String,
-    enum: ['Pending', 'Approved', 'Rejected', 'Processed'],
-    default: 'Pending'
-  },
-  paymentMethod: {
-    type: String,
-    enum: ['bank_transfer', 'upi', 'card'],
-    required: true
-  },
-  bankDetails: {
-    accountNumber: String,
-    ifscCode: String,
-    accountHolderName: String,
-    bankName: String
-  },
-  upiId: String,
-  cardDetails: {
-    last4Digits: String,
-    cardType: String
-  },
-  requestedAt: {
-    type: Date,
-    default: Date.now
-  },
-  processedAt: Date,
-  processedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin',
-    sparse: true
-  },
-  rejectionReason: String,
-  transactionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Transaction',
-    sparse: true
-  }
-}, {
-  timestamps: true,
-  _id: true
-});
-
 // Restaurant Wallet Schema
 const restaurantWalletSchema = new mongoose.Schema({
   restaurantId: {
@@ -111,8 +62,6 @@ const restaurantWalletSchema = new mongoose.Schema({
   },
   // Transactions array
   transactions: [transactionSchema],
-  // Withdrawal requests
-  withdrawalRequests: [withdrawalRequestSchema],
   // Status
   isActive: {
     type: Boolean,
@@ -224,4 +173,3 @@ restaurantWalletSchema.statics.findOrCreateByRestaurantId = async function(resta
 };
 
 export default mongoose.model('RestaurantWallet', restaurantWalletSchema);
-

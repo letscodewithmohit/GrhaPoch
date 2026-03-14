@@ -23,7 +23,7 @@ export const getOnboarding = async (req, res) => {
     }
 
     const restaurantId = req.restaurant._id;
-    const restaurant = await Restaurant.findById(restaurantId).select('onboarding businessModel').lean();
+    const restaurant = await Restaurant.findById(restaurantId).select('onboarding businessModel subscription onboardingCompleted').lean();
 
     if (!restaurant) {
       return errorResponse(res, 404, 'Restaurant not found');
@@ -33,7 +33,9 @@ export const getOnboarding = async (req, res) => {
       onboarding: {
         ...(restaurant.onboarding || {}),
         businessModel: restaurant.businessModel
-      }
+      },
+      subscription: restaurant.subscription || null,
+      onboardingCompleted: restaurant.onboardingCompleted === true
     });
   } catch (error) {
     console.error('Error fetching restaurant onboarding:', error);
@@ -191,7 +193,15 @@ export const upsertOnboarding = async (req, res) => {
     // Update restaurant schema when completing onboarding (step 5)
     if (finalCompletedSteps >= 5 && (step5 || businessModel)) {
 
-      const modelToSave = step5?.businessModel === 'Subscription Base' || businessModel === 'Subscription Base' || onboarding.businessModel === 'Subscription Base' ?
+      const requestedModel = step5?.businessModel || businessModel || onboarding.businessModel;
+      const hasActiveSubscription =
+        existingRestaurant?.subscription?.status === 'active' &&
+        existingRestaurant?.subscription?.endDate &&
+        new Date(existingRestaurant.subscription.endDate) > new Date();
+
+      // Only allow Subscription Base if a paid/active subscription exists
+      const modelToSave =
+        requestedModel === 'Subscription Base' && hasActiveSubscription ?
         'Subscription Base' :
         'Commission Base';
 
@@ -234,6 +244,14 @@ export const upsertOnboarding = async (req, res) => {
 
 
       // Return success response with restaurant info
+      // Mark onboarding completed flag
+      await Restaurant.findByIdAndUpdate(restaurantId, {
+        $set: {
+          onboardingCompleted: true,
+          'onboarding.completedSteps': 5
+        }
+      });
+
       return successResponse(res, 200, 'Onboarding data saved and restaurant updated', {
         onboarding,
         restaurant: {

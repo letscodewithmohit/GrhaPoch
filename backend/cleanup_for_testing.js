@@ -52,15 +52,39 @@ async function cleanup() {
     }
   };
 
+  const resetDeliveryWallets = async () => {
+    try {
+      const collection = db.collection('deliverywallets');
+      const count = await collection.countDocuments();
+      if (count === 0) {
+        results['Delivery Wallets (Reset)'] = 0;
+        return;
+      }
+      const res = await collection.updateMany({}, {
+        $set: {
+          transactions: [],
+          totalBalance: 0,
+          cashInHand: 0,
+          totalWithdrawn: 0,
+          totalEarned: 0,
+          lastTransactionAt: null
+        }
+      });
+      results['Delivery Wallets (Reset)'] = res.modifiedCount || 0;
+    } catch (err) {
+      results['Delivery Wallets (Reset)'] = `error: ${err.message}`;
+    }
+  };
+
   // 1) Orders and related trails
   await deleteAll('orders', 'Orders');
   await deleteAll('ordersettlements', 'Order Settlements');
   await deleteAll('orderevents', 'Order Events');
   await deleteAll('etalogs', 'ETA Logs');
-  await deleteAll('deliveries', 'Delivery Records');
+  // NOTE: Do NOT delete delivery boys accounts (stored in "deliveries")
 
   // 2) Fee / commission / wallets / donations
-  await deleteAll('deliverywallets', 'Delivery Wallets');
+  await resetDeliveryWallets();
   await deleteAll('deliverywithdrawalrequests', 'Delivery Withdrawal Requests');
   await deleteAll('restaurantwallets', 'Restaurant Wallets');
   await deleteAll('withdrawalrequests', 'Restaurant Withdrawal Requests');

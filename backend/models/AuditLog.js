@@ -49,8 +49,9 @@ const auditLogSchema = new mongoose.Schema({
     comment: 'Before and after values for updates'
   },
   
-  // Transaction Details (for financial transactions)
-  transactionDetails: {
+// Transaction Details (for financial transactions)
+transactionDetails: {
+  type: {
     amount: Number,
     currency: { type: String, default: 'INR' },
     type: String,
@@ -66,6 +67,9 @@ const auditLogSchema = new mongoose.Schema({
       sparse: true
     }
   },
+  _id: false,
+  default: {}
+},
   
   // Commission Change Details
   commissionChange: {

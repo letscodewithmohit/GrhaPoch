@@ -338,6 +338,10 @@ export default function PocketPage() {
 
   const cashInHand = Number(walletState?.cashInHand ?? balances.cashInHand ?? 0);
   const hasPocketBalance = walletState?.pocketBalance !== undefined && walletState?.pocketBalance !== null;
+  const totalWithdrawn = balances.totalWithdrawn || 0;
+  const totalEarningsAllTime = walletState?.transactions?.
+    filter((t) => t.type === 'payment' && t.status === 'Completed').
+    reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
   // Pocket balance - shows total balance (includes bonus + tips)
   // Total balance = all earnings + bonus + tips - withdrawals
@@ -357,12 +361,17 @@ export default function PocketPage() {
     } else if (pocketBalance > 0 && (totalBonus > 0 || totalTips > 0)) {
       // Verify pocket balance includes bonus and tips
       // Calculate expected: Earnings + Bonus + Tips - Withdrawals
-      const totalWithdrawn = balances.totalWithdrawn || 0;
       const expectedBalance = weeklyEarnings + totalBonus + totalTips - totalWithdrawn - cashInHand;
       // Use the higher value to ensure bonus and tips are included
       if (expectedBalance > pocketBalance) {
         pocketBalance = expectedBalance;
       }
+    }
+  } else if (pocketBalance === 0 && (totalEarningsAllTime > 0 || totalBonus > 0 || totalTips > 0)) {
+    // Fallback when API pocketBalance is 0 but transactions show earnings
+    const expectedBalance = totalEarningsAllTime + totalBonus + totalTips - totalWithdrawn - cashInHand;
+    if (expectedBalance > 0) {
+      pocketBalance = expectedBalance;
     }
   }
 

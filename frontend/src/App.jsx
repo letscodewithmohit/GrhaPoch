@@ -59,7 +59,6 @@ import RestaurantStatus from "@/module/restaurant/pages/RestaurantStatus"
 import ExploreMore from "@/module/restaurant/pages/ExploreMore"
 import DeliverySettings from "@/module/restaurant/pages/DeliverySettings"
 import RushHour from "@/module/restaurant/pages/RushHour"
-import SwitchOutlet from "@/module/restaurant/pages/SwitchOutlet"
 import OutletTimings from "@/module/restaurant/pages/OutletTimings"
 import DaySlots from "@/module/restaurant/pages/DaySlots"
 import OutletInfo from "@/module/restaurant/pages/OutletInfo"
@@ -479,14 +478,6 @@ export default function App() {
         }
       />
 
-      <Route
-        path="/restaurant/switch-outlet"
-        element={
-          <ProtectedRoute requiredRole="restaurant" loginPath="/restaurant/login">
-            <SwitchOutlet />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/restaurant/outlet-timings"
         element={

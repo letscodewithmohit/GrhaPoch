@@ -289,8 +289,9 @@ export const activateSubscriptionTx = async ({
 
   const now = new Date(paymentDate || Date.now());
   const { startDate, endDate, isRenewing } = buildSubscriptionDates({ restaurant, plan, now });
-  const requiresAdminApproval = !restaurant.isActive;
-  const nextSubscriptionStatus = requiresAdminApproval ? 'pending_approval' : 'active';
+  // Activate immediately once payment is verified
+  const requiresAdminApproval = false;
+  const nextSubscriptionStatus = 'active';
 
   if (isRenewing) {
     appendRenewedHistory({ restaurant, now });
@@ -313,6 +314,21 @@ export const activateSubscriptionTx = async ({
   restaurant.businessModel = 'Subscription Base';
   // Keep newly registered restaurants inactive until admin approval.
   restaurant.isActive = requiresAdminApproval ? false : true;
+
+  // CRITICAL FIX: Normalize invalid accountType enum values that might prevent saving
+  if (restaurant.onboarding?.step3?.bank?.accountType) {
+    const at = String(restaurant.onboarding.step3.bank.accountType).toLowerCase();
+    if (at === 'saving' || at === 'savings') {
+      restaurant.onboarding.step3.bank.accountType = 'Saving';
+    } else if (at === 'current') {
+      restaurant.onboarding.step3.bank.accountType = 'Current';
+    }
+  }
+
+  restaurant.isActive = true;
+  restaurant.onboardingCompleted = true;
+  if (!restaurant.onboarding) restaurant.onboarding = {};
+  restaurant.onboarding.completedSteps = Math.max(Number(restaurant.onboarding.completedSteps || 0), 5);
 
   // CRITICAL FIX: Normalize invalid accountType enum values that might prevent saving
   if (restaurant.onboarding?.step3?.bank?.accountType) {
@@ -1089,6 +1105,19 @@ export const checkSubscriptionExpiry = async (restaurant) => {
 // Get subscription status
 export const getSubscriptionStatus = async (req, res) => {
   try {
+    // Auto-activate pending subscriptions that already have a valid end date (payment verified)
+    await Restaurant.updateMany({
+      'subscription.status': 'pending_approval',
+      'subscription.endDate': { $gt: new Date() }
+    }, {
+      $set: {
+        'subscription.status': 'active',
+        businessModel: 'Subscription Base',
+        onboardingCompleted: true,
+        'onboarding.completedSteps': 5
+      }
+    });
+
     const restaurantId = req.restaurant._id;
     let restaurant = await Restaurant.findById(restaurantId).select('subscription subscriptionHistory isActive businessModel');
 
@@ -1152,6 +1181,19 @@ export const getSubscriptionStatus = async (req, res) => {
 // Admin: Get all restaurants with subscriptions
 export const getAllSubscriptions = async (req, res) => {
   try {
+    // Auto-activate any pending subs that already have a valid end date
+    await Restaurant.updateMany({
+      'subscription.status': 'pending_approval',
+      'subscription.endDate': { $gt: new Date() }
+    }, {
+      $set: {
+        'subscription.status': 'active',
+        businessModel: 'Subscription Base',
+        onboardingCompleted: true,
+        'onboarding.completedSteps': 5
+      }
+    });
+
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
     const skip = (page - 1) * limit;

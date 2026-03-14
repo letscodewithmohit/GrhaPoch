@@ -453,9 +453,10 @@ export const restaurantAPI = {
     return apiClient.patch(API_ENDPOINTS.RESTAURANT.ORDER_READY.replace(':id', id));
   },
 
-  // Resend delivery notification for unassigned order
-  resendDeliveryNotification: (id) => {
-    return apiClient.post(API_ENDPOINTS.RESTAURANT.ORDER_RESEND_DELIVERY_NOTIFICATION.replace(':id', id));
+  // Resend / reassign delivery notification
+  resendDeliveryNotification: (id, options = {}) => {
+    const qs = options.reassign ? '?reassign=true' : '';
+    return apiClient.post(`${API_ENDPOINTS.RESTAURANT.ORDER_RESEND_DELIVERY_NOTIFICATION.replace(':id', id)}${qs}`);
   },
 
   // Get wallet
@@ -474,6 +475,9 @@ export const restaurantAPI = {
   },
   getWithdrawalRequests: (params = {}) => {
     return apiClient.get(API_ENDPOINTS.RESTAURANT.WITHDRAWAL_REQUESTS, { params });
+  },
+  updatePayoutDetails: (data) => {
+    return apiClient.put(API_ENDPOINTS.RESTAURANT.PAYOUT_DETAILS, data);
   },
 
   // Get analytics
@@ -841,6 +845,9 @@ export const deliveryAPI = {
       rating,
       review
     });
+  },
+  generateOrderQr: (orderId) => {
+    return apiClient.post(API_ENDPOINTS.DELIVERY.ORDER_GENERATE_QR.replace(':orderId', orderId));
   },
 
   // Get trip history
@@ -1250,21 +1257,20 @@ export const adminAPI = {
     // apiClient baseURL is already /api, so this becomes /api/admin/refund-requests/:orderId/process
     return apiClient.post(`/admin/refund-requests/${encodeURIComponent(orderId)}/process`, data);
   },
+  // Get customer wallet report
+  getCustomerWalletReport: (params = {}) => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.CUSTOMER_WALLET_REPORT, { params });
+  },
 
   // Withdrawal Request Management
   getWithdrawalRequests: (params = {}) => {
     return apiClient.get(API_ENDPOINTS.ADMIN.WITHDRAWAL_REQUESTS, { params });
   },
-  approveWithdrawalRequest: (id) => {
-    return apiClient.post(API_ENDPOINTS.ADMIN.WITHDRAWAL_APPROVE.replace(':id', id));
+  approveWithdrawalRequest: (id, data = {}) => {
+    return apiClient.post(API_ENDPOINTS.ADMIN.WITHDRAWAL_APPROVE.replace(':id', id), data);
   },
   rejectWithdrawalRequest: (id, rejectionReason = '') => {
     return apiClient.post(API_ENDPOINTS.ADMIN.WITHDRAWAL_REJECT.replace(':id', id), { rejectionReason });
-  },
-
-  // Get customer wallet report
-  getCustomerWalletReport: (params = {}) => {
-    return apiClient.get(API_ENDPOINTS.ADMIN.CUSTOMER_WALLET_REPORT, { params });
   },
 
   // Business Settings Management

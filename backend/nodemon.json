@@ -1,7 +1,12 @@
 {
   "watch": [
-    "modules",
-    "shared",
+    "controllers",
+    "routes",
+    "models",
+    "services",
+    "middleware",
+    "utils",
+    "constants",
     "server.js",
     "config"
   ],

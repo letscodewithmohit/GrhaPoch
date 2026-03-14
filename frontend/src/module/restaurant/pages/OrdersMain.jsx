@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { checkOnboardingStatus } from "../utils/onboardingUtils";
 import { motion, AnimatePresence } from "framer-motion";
 import Lenis from "lenis";
-import { Printer, Volume2, VolumeX, ChevronDown, ChevronUp, Minus, Plus, X, AlertCircle, Loader2 } from "lucide-react";
+import { Printer, Volume2, VolumeX, ChevronDown, ChevronUp, Minus, Plus, X, AlertCircle, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavOrders from "../components/BottomNavOrders";
 import RestaurantNavbar from "../components/RestaurantNavbar";
@@ -1861,8 +1861,9 @@ export default function OrdersMain() {
 }
 
 // Resend Notification Button Component
-function ResendNotificationButton({ orderId, mongoId, onSuccess }) {
+function ResendNotificationButton({ orderId, mongoId, onSuccess, mode = 'resend' }) {
   const [loading, setLoading] = useState(false);
+  const isReassign = mode === 'reassign';
 
   const handleResend = async (e) => {
     e.stopPropagation(); // Prevent card click
@@ -1871,12 +1872,13 @@ function ResendNotificationButton({ orderId, mongoId, onSuccess }) {
     try {
       setLoading(true);
       const id = mongoId || orderId;
-      const response = await restaurantAPI.resendDeliveryNotification(id);
+      const response = await restaurantAPI.resendDeliveryNotification(id, { reassign: isReassign });
 
       if (response.data?.success) {
         const count = response.data.data?.notifiedCount || 0;
         if (count > 0) {
-          toast.success(`Notification sent to ${count} delivery partner${count === 1 ? '' : 's'}`);
+          const actionWord = isReassign ? 'Reassigned to' : 'Notification sent to';
+          toast.success(`${actionWord} ${count} delivery partner${count === 1 ? '' : 's'}`);
         } else {
           toast.info('No delivery partners available nearby. Will try again automatically.');
         }
@@ -1898,7 +1900,7 @@ function ResendNotificationButton({ orderId, mongoId, onSuccess }) {
       onClick={handleResend}
       disabled={loading}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      title="Resend notification to delivery partners">
+      title={isReassign ? "Reassign to another delivery partner" : "Resend notification to delivery partners"}>
 
       {loading ?
         <>
@@ -1907,8 +1909,8 @@ function ResendNotificationButton({ orderId, mongoId, onSuccess }) {
         </> :
 
         <>
-          <Volume2 className="w-3 h-3" />
-          <span>Resend</span>
+          {isReassign ? <RotateCcw className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+          <span>{isReassign ? 'Reassign' : 'Resend'}</span>
         </>
       }
     </button>);
@@ -2039,8 +2041,19 @@ function OrderCard({
                     } />
                     {deliveryPartnerId ? 'Assigned' : 'Not Assigned'}
                   </span>
-                  {!deliveryPartnerId &&
-                    <ResendNotificationButton orderId={orderId} mongoId={mongoId} onSuccess={onSelect} />
+                  {deliveryPartnerId ?
+                    <ResendNotificationButton
+                      orderId={orderId}
+                      mongoId={mongoId}
+                      onSuccess={onSelect}
+                      mode="reassign"
+                    /> :
+                    <ResendNotificationButton
+                      orderId={orderId}
+                      mongoId={mongoId}
+                      onSuccess={onSelect}
+                      mode="resend"
+                    />
                   }
                 </div>
               }

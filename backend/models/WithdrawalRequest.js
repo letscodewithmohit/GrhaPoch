@@ -20,8 +20,8 @@ const withdrawalRequestSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['bank_transfer', 'upi', 'card'],
-    default: 'bank_transfer'
+    enum: ['admin_select', 'bank_transfer', 'upi', 'qr_code', 'card'],
+    default: 'admin_select'
   },
   bankDetails: {
     accountNumber: String,
@@ -30,6 +30,14 @@ const withdrawalRequestSchema = new mongoose.Schema({
     bankName: String
   },
   upiId: String,
+  qrCode: {
+    url: String,
+    publicId: String
+  },
+  paymentScreenshot: {
+    url: String,
+    publicId: String
+  },
   cardDetails: {
     last4Digits: String,
     cardType: String
@@ -48,6 +56,11 @@ const withdrawalRequestSchema = new mongoose.Schema({
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Transaction',
+    sparse: true
+  },
+  walletId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RestaurantWallet',
     sparse: true
   },
   // Additional restaurant info for quick access
