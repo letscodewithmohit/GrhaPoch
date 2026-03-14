@@ -58,13 +58,15 @@ export const getWallet = asyncHandler(async (req, res) => {
       const configured = Number(settings?.deliveryCashLimit);
       if (Number.isFinite(configured) && configured >= 0) {
         totalCashLimit = configured;
+      } else {
+        totalCashLimit = 5000;
       }
       const wl = Number(settings?.deliveryWithdrawalLimit);
       if (Number.isFinite(wl) && wl >= 0) {
         withdrawalLimit = wl;
       }
     } catch (e) {
-      totalCashLimit = 0;
+      totalCashLimit = 5000;
     }
 
     // ANYHOW FIX (end-to-end): compute COD cash collected from Orders so "Cash in hand" shows real amount.
@@ -139,6 +141,84 @@ export const getWallet = asyncHandler(async (req, res) => {
     // reduces cash in hand and increases available limit. Do not override with COD.
     const cashInHandForLimit = Math.max(0, Number(wallet.cashInHand) || 0);
 
+    // Pending COD reserve: sum of assigned COD orders not delivered/cancelled and not paid (QR)
+    // This reduces available cash limit so new COD orders are blocked earlier.
+    let pendingCodReserve = 0;
+    try {
+      const deliveryIdStr = delivery._id?.toString?.() || String(delivery._id);
+      const pendingAgg = await Order.aggregate([
+        {
+          $match: {
+            $expr: {
+              $and: [
+                {
+                  $eq: [
+                    { $toString: { $ifNull: ['$deliveryPartnerId', ''] } },
+                    deliveryIdStr
+                  ]
+                },
+                {
+                  $in: [
+                    { $toLower: { $ifNull: ['$payment.method', ''] } },
+                    ['cash', 'cod', 'cash on delivery']
+                  ]
+                },
+                {
+                  $ne: [
+                    { $toLower: { $ifNull: ['$paymentStatus', ''] } },
+                    'paid'
+                  ]
+                },
+                {
+                  $ne: [
+                    { $toLower: { $ifNull: ['$payment.status', ''] } },
+                    'completed'
+                  ]
+                },
+                {
+                  $not: {
+                    $in: [
+                      { $toLower: { $ifNull: ['$status', ''] } },
+                      ['delivered', 'cancelled']
+                    ]
+                  }
+                },
+                {
+                  $ne: [
+                    { $toLower: { $ifNull: ['$deliveryState.currentPhase', ''] } },
+                    'completed'
+                  ]
+                },
+                {
+                  $ne: [
+                    { $toLower: { $ifNull: ['$deliveryState.status', ''] } },
+                    'delivered'
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: {
+              $sum: {
+                $ifNull: [
+                  '$pricing.total',
+                  { $ifNull: ['$total', 0] }
+                ]
+              }
+            }
+          }
+        }
+      ]);
+      pendingCodReserve = Number(pendingAgg?.[0]?.total) || 0;
+    } catch (e) {
+      console.warn('⚠️ Failed to compute pending COD reserve:', e?.message || e);
+      pendingCodReserve = 0;
+    }
+
     // Get all transactions (sorted by date, newest first)
     // Frontend needs all transactions to calculate weekly earnings and orders
     const allTransactions = wallet.transactions.
@@ -173,7 +253,8 @@ export const getWallet = asyncHandler(async (req, res) => {
       totalWithdrawn: wallet.totalWithdrawn || 0,
       totalEarned: wallet.totalEarned || 0,
       totalCashLimit: totalCashLimit,
-      availableCashLimit: Math.max(0, totalCashLimit - cashInHandForLimit),
+      pendingCodReserve: pendingCodReserve,
+      availableCashLimit: Math.max(0, totalCashLimit - cashInHandForLimit - pendingCodReserve),
       deliveryWithdrawalLimit: withdrawalLimit,
       // Pocket balance = total balance - cash in hand (withdrawable amount)
       pocketBalance: Math.max(0, (wallet.totalBalance || 0) - cashInHandForLimit),
@@ -980,5 +1061,3 @@ export const verifyDepositPayment = asyncHandler(async (req, res) => {
     availableCashLimit
   });
 });
-
-

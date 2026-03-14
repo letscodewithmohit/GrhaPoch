@@ -174,6 +174,19 @@ businessSettingsSchema.statics.getSettings = async function () {
         deliveryTipAmounts: [10, 20, 30, 50]
       });
     }
+    // Ensure newly added defaults exist for older documents
+    let changed = false;
+    if (!Number.isFinite(Number(settings.deliveryCashLimit))) {
+      settings.deliveryCashLimit = 5000;
+      changed = true;
+    }
+    if (!Number.isFinite(Number(settings.deliveryWithdrawalLimit))) {
+      settings.deliveryWithdrawalLimit = 100;
+      changed = true;
+    }
+    if (changed) {
+      await settings.save();
+    }
     return settings;
   } catch (error) {
     console.error('Error in getSettings:', error);

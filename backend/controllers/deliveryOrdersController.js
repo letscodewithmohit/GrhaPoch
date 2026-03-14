@@ -610,7 +610,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 
         const wallet = await DeliveryWallet.findOne({ deliveryId: delivery._id });
         const cashInHand = Number(wallet?.cashInHand) || 0;
-        const codAmount = Number(order.pricing?.total) || 0;
+        const codAmount = Number(order.pricing?.total ?? order.total ?? 0);
 
         if ((cashInHand + codAmount) > cashLimit) {
           return errorResponse(
@@ -2012,7 +2012,7 @@ export const completeDelivery = asyncHandler(async (req, res) => {
             if (isCashPaymentMethod(resolvedMethod)) isCashOrder = true;
           } catch (e) {/* ignore */}
         }
-        const codAmount = Number(order.pricing?.total) || 0;
+        const codAmount = Number(order.pricing?.total ?? order.total ?? 0);
         if (isCashOrder && codAmount > 0 && paymentTxId) {
           try {
             await DeliveryWallet.updateOne(
@@ -2350,7 +2350,7 @@ export const completeDelivery = asyncHandler(async (req, res) => {
       }
 
       // COD: mark payment collected + add cash collected (order total) to cashInHand
-      const codAmount = Number(order.pricing?.total) || 0;
+      const codAmount = Number(order.pricing?.total ?? order.total ?? 0);
       const paymentMethod = (order.payment?.method || '').toString().toLowerCase();
       let isCashOrder = isCashPaymentMethod(paymentMethod);
       if (!isCashOrder) {
