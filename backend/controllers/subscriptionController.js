@@ -313,6 +313,18 @@ export const activateSubscriptionTx = async ({
   };
   restaurant.businessModel = 'Subscription Base';
   // Keep newly registered restaurants inactive until admin approval.
+  restaurant.isActive = requiresAdminApproval ? false : true;
+
+  // CRITICAL FIX: Normalize invalid accountType enum values that might prevent saving
+  if (restaurant.onboarding?.step3?.bank?.accountType) {
+    const at = String(restaurant.onboarding.step3.bank.accountType).toLowerCase();
+    if (at === 'saving' || at === 'savings') {
+      restaurant.onboarding.step3.bank.accountType = 'Saving';
+    } else if (at === 'current') {
+      restaurant.onboarding.step3.bank.accountType = 'Current';
+    }
+  }
+
   restaurant.isActive = true;
   restaurant.onboardingCompleted = true;
   if (!restaurant.onboarding) restaurant.onboarding = {};

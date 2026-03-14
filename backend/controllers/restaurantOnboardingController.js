@@ -2,6 +2,18 @@ import Restaurant from '../models/Restaurant.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { createRestaurantFromOnboarding } from './restaurantController.js';
 
+// Validation constants
+const NAME_REGEX = /^[A-Za-z\s]+$/;
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+
+const validateName = (name) => {
+  if (!name) return false;
+  const v = name.trim();
+  return v.length >= 3 && v.length <= 50 && NAME_REGEX.test(v);
+};
+
 // Get current restaurant's onboarding data
 export const getOnboarding = async (req, res) => {
   try {
@@ -45,6 +57,9 @@ export const upsertOnboarding = async (req, res) => {
 
     // Step1: Always update if provided
     if (step1) {
+      if (step1.ownerName && !validateName(step1.ownerName)) {
+        return errorResponse(res, 400, 'Name must contain only letters (3???50 characters).');
+      }
       update['onboarding.step1'] = step1;
     }
 
@@ -55,6 +70,66 @@ export const upsertOnboarding = async (req, res) => {
 
     // Step3: Update if provided
     if (step3 !== undefined && step3 !== null) {
+      // PAN Validation
+      if (step3.panNumber && !PAN_REGEX.test(step3.panNumber)) {
+        if (step3.panNumber.length < 10) {
+          return errorResponse(res, 400, 'PAN number must be exactly 10 characters (Format: AAAAA9999A)');
+        }
+        return errorResponse(res, 400, 'Invalid PAN format. Example: ABCDE1234F');
+      }
+      if (step3.nameOnPan && !validateName(step3.nameOnPan)) {
+        return errorResponse(res, 400, 'Name must contain only letters (3???50 characters).');
+      }
+
+      // GST Validation
+      if (step3.gstRegistered) {
+        if (step3.gstNumber && !GST_REGEX.test(step3.gstNumber)) {
+          return errorResponse(res, 400, 'Invalid GST number. Example: 22ABCDE1234F1Z5');
+        }
+        if (step3.gstLegalName && !validateName(step3.gstLegalName)) {
+          return errorResponse(res, 400, 'Legal name must contain only letters.');
+        }
+      }
+
+      // FSSAI Validation
+      if (step3.fssaiNumber && (step3.fssaiNumber.length !== 14 || !/^\d+$/.test(step3.fssaiNumber))) {
+        return errorResponse(res, 400, 'Invalid FSSAI number. It must contain exactly 14 digits.');
+      }
+
+      // Bank Account Validation
+      if (step3.accountNumber) {
+        if (step3.accountNumber.length < 9 || step3.accountNumber.length > 18 || !/^\d+$/.test(step3.accountNumber)) {
+          return errorResponse(res, 400, 'Invalid account number. Only numbers are allowed.');
+        }
+      }
+      if (step3.confirmAccountNumber && step3.confirmAccountNumber !== step3.accountNumber) {
+        return errorResponse(res, 400, 'Account numbers do not match. Please re-enter correctly.');
+      }
+      if (step3.ifscCode && !IFSC_REGEX.test(step3.ifscCode)) {
+        return errorResponse(res, 400, 'Invalid IFSC code. Example: SBIN0001234');
+      }
+      if (step3.accountHolderName && !validateName(step3.accountHolderName)) {
+        return errorResponse(res, 400, 'Name must contain only letters (3???50 characters).');
+      }
+
+      // Normalize account type to match enum: 'Saving' or 'Current'
+      if (step3.bank && step3.bank.accountType) {
+        const at = step3.bank.accountType.toLowerCase();
+        if (at === 'saving' || at === 'savings') {
+          step3.bank.accountType = 'Saving';
+        } else if (at === 'current') {
+          step3.bank.accountType = 'Current';
+        }
+      } else if (step3.accountType) {
+        // Handle cases where accountType might be at the root of step3 object
+        const at = step3.accountType.toLowerCase();
+        if (at === 'saving' || at === 'savings') {
+          step3.accountType = 'Saving';
+        } else if (at === 'current') {
+          step3.accountType = 'Current';
+        }
+      }
+
       update['onboarding.step3'] = step3;
     }
 

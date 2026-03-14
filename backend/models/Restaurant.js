@@ -288,6 +288,11 @@ const restaurantSchema = new mongoose.Schema(
           accountNumber: String,
           ifscCode: String,
           accountHolderName: String,
+          accountType: {
+            type: String,
+            enum: ['Saving', 'Current', ''],
+            default: ''
+          },
           accountType: String,
           upiId: String,
           qrCode: {
@@ -503,6 +508,16 @@ restaurantSchema.pre('save', async function (next) {
   // Set ownerEmail from email if email exists and ownerEmail not set
   if (this.email && !this.ownerEmail) {
     this.ownerEmail = this.email;
+  }
+
+  // Normalize bank account type in onboarding data
+  if (this.onboarding?.step3?.bank?.accountType) {
+    const at = String(this.onboarding.step3.bank.accountType).toLowerCase();
+    if (at === 'saving' || at === 'savings') {
+      this.onboarding.step3.bank.accountType = 'Saving';
+    } else if (at === 'current') {
+      this.onboarding.step3.bank.accountType = 'Current';
+    }
   }
 
   next();

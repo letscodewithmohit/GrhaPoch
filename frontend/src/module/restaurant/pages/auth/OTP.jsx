@@ -168,24 +168,43 @@ export default function RestaurantOTP() {
       return;
     }
 
-    // For email-based signup, use a two-step UX:
+    // For any signup (phone or email), use a two-step UX:
     // 1) First validate OTP format and show name input
-    // 2) Then, once name is provided, call the backend
-    // For email-based login, skip name input and go directly to verification
-    if (contactType === "email" && authData?.isSignUp && !showNameInput) {
-      // First step: show name input, don't hit backend yet (only for signups)
+    // 2) Then, once name is provided, move to onboarding (delayed registration)
+    if (authData?.isSignUp && !showNameInput) {
       setShowNameInput(true);
       setError("");
+      // Pre-fill name if it was already provided in signup page
+      if (authData.name && !name) {
+        setName(authData.name);
+      }
       return;
     }
 
-    // If we are on step 2 for email signup (or any flow where name input is visible), require name
+    // If we are on step 2 for signup, store data and delay registration
     if (showNameInput) {
       if (!name.trim()) {
-        setNameError("Please enter your name to continue");
+        setNameError("Please enter your restaurant name to continue");
         return;
       }
       setNameError("");
+
+      // Store data for delayed registration
+      const pendingData = {
+        phone: authData.method === "phone" ? authData.phone : null,
+        email: authData.method === "email" ? authData.email : null,
+        otpCode: code,
+        name: name.trim(),
+        businessModel: authData?.businessModel || "Commission Base"
+      };
+      localStorage.setItem("pendingRestaurantRegistration", JSON.stringify(pendingData));
+      
+      // Clear any old onboarding progress cache to ensure fresh start with new name
+      localStorage.removeItem("restaurant_onboarding_data");
+      
+      // Navigate to onboarding
+      navigate("/restaurant/onboarding?step=1", { replace: true });
+      return;
     }
 
     setIsLoading(true);
@@ -393,7 +412,7 @@ export default function RestaurantOTP() {
           {showNameInput &&
           <div className="mt-6 max-w-sm mx-auto text-left">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {authData?.method === "phone" ? "Restaurant name" : "Your name"}
+                Restaurant name
               </label>
               <input
               type="text"
@@ -402,7 +421,7 @@ export default function RestaurantOTP() {
                 setName(e.target.value);
                 if (nameError) setNameError("");
               }}
-              placeholder="Enter your full name"
+              placeholder="Enter your restaurant name"
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${nameError ?
               "border-red-500 focus:ring-red-500" :
               "border-gray-300 focus:ring-blue-500"}`

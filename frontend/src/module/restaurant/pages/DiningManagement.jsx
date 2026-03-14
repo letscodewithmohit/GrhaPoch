@@ -323,7 +323,7 @@ export default function DiningManagement() {
                                 <p className="text-sm text-gray-600 mt-1">
                                     {diningStatus?.businessModel === "Subscription Base"
                                         ? "Business Model: Subscription Based"
-                                        : "Business Model: Commission Based"}
+                                        : "Business Model: Commission Base"}
                                 </p>
                                 {renderActivationContent()}
                             </>

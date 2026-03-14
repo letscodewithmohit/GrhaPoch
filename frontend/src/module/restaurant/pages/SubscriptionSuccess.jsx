@@ -88,7 +88,7 @@ export default function SubscriptionSuccess() {
 
                     {/* Back to Home Button */}
                     <Button
-                        onClick={() => navigate('/restaurant')}
+                        onClick={() => navigate('/restaurant', { replace: true })}
                         className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold flex items-center justify-center gap-2 group"
                     >
                         <Home className="w-5 h-5" />
