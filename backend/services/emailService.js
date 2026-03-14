@@ -61,26 +61,44 @@ class EmailService {
     } else {
       // Production SMTP configuration (use database values, fallback to env)
       const smtpHost = smtpCreds.host || process.env.SMTP_HOST;
-      const smtpPort = smtpCreds.port || process.env.SMTP_PORT || '587';
+      const smtpPort = parseInt(smtpCreds.port || process.env.SMTP_PORT || '587');
       const smtpUser = smtpCreds.user || process.env.SMTP_USER;
       const smtpPass = smtpCreds.pass || process.env.SMTP_PASS;
       
-      this.transporter = nodemailer.createTransport({
+      const config = {
         host: smtpHost,
-        port: parseInt(smtpPort),
-        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+        port: smtpPort,
+        secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
         auth: {
           user: smtpUser,
           pass: smtpPass
         },
-        // For Gmail, you need to use an App Password
-        // See: https://support.google.com/accounts/answer/185833
-      });
+        tls: {
+          // Do not fail on invalid certs
+          rejectUnauthorized: false
+        }
+      };
+
+      // Special handling for Gmail to make it more reliable
+      if (smtpHost && smtpHost.toLowerCase().includes('gmail')) {
+        delete config.host;
+        delete config.port;
+        delete config.secure;
+        config.service = 'gmail';
+      }
+
+      this.transporter = nodemailer.createTransport(config);
     }
 
     // Verify transporter configuration
     if (this.transporter) {
-      this.transporter.verify(() => {});
+      this.transporter.verify((error, success) => {
+        if (error) {
+          logger.error(`SMTP Transporter verification failed: ${error.message}`);
+        } else {
+          logger.info('SMTP Transporter is ready to send emails');
+        }
+      });
     }
   }
 
